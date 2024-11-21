@@ -1,0 +1,16 @@
+# S3_HLT.sub -- submit job to run HLT
+
+executable   = S3_HLT.sh
+arguments    = 20241113 $(Process) 100 4
+
+log          = ../20241113/condor_logs/S3_HLT.log
+
+request_cpus   = 1
+request_memory = 512M
+request_disk   = 128M
+
+max_retries = 5
+
+should_transfer_files = NO
+
+queue 100

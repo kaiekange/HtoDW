@@ -1,0 +1,14 @@
+# S1_SIM.sub -- submit job to run SIM
+
+executable   = S1_SIM.sh
+arguments    = 20241113 $(Process) 100 4
+
+log          = ../20241113/condor_logs/S1_SIM.log
+
+request_cpus   = 1
+request_memory = 512M
+request_disk   = 128M
+
+should_transfer_files = NO
+
+queue 100

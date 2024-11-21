@@ -1,0 +1,16 @@
+# S2_DIGI.sub -- submit job to run DIGI
+
+executable   = S2_DIGI.sh
+arguments    = /user/kakang/tmp/x509up_u23273 20241113 $(Process) 100 4
+
+log          = ../20241113/condor_logs/S2_DIGI.log
+
+request_cpus   = 1
+request_memory = 4G
+request_disk   = 128M
+
+max_retries = 5
+
+should_transfer_files = NO
+
+queue 100
