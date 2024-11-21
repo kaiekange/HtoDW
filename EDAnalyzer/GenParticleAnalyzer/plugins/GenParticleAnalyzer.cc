@@ -65,6 +65,9 @@ class GenParticleAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResource
         TTree *mytree;
 
         int mynumCandidates;
+        std::vector<float> mypt;
+        std::vector<float> myeta;
+        std::vector<float> myphi;
         std::vector<int> mystatus;
         std::vector<int> mypdgId;
         std::vector<int> mynummother;
@@ -80,6 +83,9 @@ GenParticleAnalyzer::GenParticleAnalyzer(const edm::ParameterSet& iConfig) :
     mytree = myfile->make<TTree>("Events", "Events");
 
     mytree->Branch("numCandidates", &mynumCandidates);
+    mytree->Branch("pt", &mypt);
+    mytree->Branch("eta", &myeta);
+    mytree->Branch("phi", &myphi);
     mytree->Branch("status", &mystatus);
     mytree->Branch("pdgId", &mypdgId);
     mytree->Branch("nummother", &mynummother);
@@ -97,6 +103,9 @@ void GenParticleAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
     using namespace edm;
 
     mynumCandidates = 0;
+    mypt.clear();
+    myeta.clear();
+    myphi.clear();
     mystatus.clear();
     mypdgId.clear();
     mynummother.clear();
@@ -111,6 +120,9 @@ void GenParticleAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetu
    
     for (it = pruned->begin(); it != pruned->end(); it++){
         mynumCandidates++;
+        mypt.push_back(it->pt());
+        myeta.push_back(it->eta());
+        myphi.push_back(it->phi());
         mystatus.push_back(it->status());
         mypdgId.push_back(it->pdgId());
         mynummother.push_back(it->numberOfMothers());
