@@ -3,5 +3,7 @@
 <use name="FWCore/ParameterSet"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="FWCore/ServiceRegistry"/>
+<use name="DataFormats/PatCandidates"/>
 <use name="DataFormats/HepMCCandidate"/>
+<use name="clhep"/>
 <flags EDM_PLUGIN="1"/>

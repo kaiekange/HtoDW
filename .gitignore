@@ -1,0 +1,8 @@
+event_content.txt
+log.log
+run.log
+test.root
+*__init__.py
+*__init__.pyc
+*.log
+*.out

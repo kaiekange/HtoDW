@@ -1,9 +1,9 @@
 # condor_jobs.sub -- submit job to run SIM
 #
-executable   = GenTM.sh
+executable   = run.sh
 arguments    = $(Process)
 
-log          = condor_GenTM.log
+log          = job.log
 
 request_cpus   = 1
 request_memory = 512M
@@ -13,4 +13,4 @@ max_retries = 5
 
 should_transfer_files = NO
 
-queue 100
+queue 500

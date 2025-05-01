@@ -5,10 +5,10 @@
 //
 /**\class GenParticleMatch GenParticleMatch.cc EDAnalyzer/GenParticleAnalyzer/plugins/GenParticleMatch.cc
 
- Description: [one line class summary]
+Description: [one line class summary]
 
- Implementation:
-     [Notes on implementation]
+Implementation:
+[Notes on implementation]
 */
 //
 // Original Author:  cmsusers user
@@ -61,10 +61,10 @@ class GenParticleMatch : public edm::one::EDAnalyzer<edm::one::SharedResources>
         bool hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid ) const;
 
         edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken;
-        
+
         edm::Service<TFileService> myfile;
         TTree *mytree{};
-        
+
         std::vector<reco::GenParticle> match_part;
 };
 
@@ -187,16 +187,16 @@ void GenParticleMatch::analyze(const edm::Event& iEvent, const edm::EventSetup& 
             if(HAncestor && WAncestor) match_part.push_back(*it);
         }
     }
-    
+
     mytree->Fill();
     return;
 }
 
 bool GenParticleMatch::hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid) const{
     bool hasancestor = false;
-    
+
     if(gp.numberOfMothers()==0) return false;
-   
+
     if(gp.numberOfMothers()==1){
         if(gp.mother(0)->pdgId()==motherid){
             for(size_t i=0; i<gp.mother(0)->numberOfDaughters(); i++){
