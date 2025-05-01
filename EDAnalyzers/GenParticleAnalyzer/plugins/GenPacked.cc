@@ -173,7 +173,6 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         }
 
-        mytree->Fill();
 
         if(dR_Kp_vec.size()>0 && dR_Km_vec.size()>0 && dR_pi_vec.size()>0 && dR_mu_vec.size()>0){
 
@@ -191,24 +190,14 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             int idx_Km = idx_Km_vec[idx_min_ele_Km]; 
             int idx_pi = idx_pi_vec[idx_min_ele_pi]; 
             int idx_mu = idx_mu_vec[idx_min_ele_mu]; 
-            /* int idx_Kp=0, idx_Km=0, idx_pi=0, idx_mu=0; */
-            /* idx_Kp = idx_Kp_vec[idx_min_ele_Kp]; */ 
-            /* idx_Km = idx_Km_vec[idx_min_ele_Km]; */ 
-            /* idx_pi = idx_pi_vec[idx_min_ele_pi]; */ 
-            /* std::cout << idx_mu_vec[idx_min_ele_mu] << std::endl; */
-
-            /* idx_mu = idx_mu_vec[idx_min_ele_mu]; */ 
-            std::cout << idx_Kp << " " << idx_Km << " " << idx_pi << " " << idx_mu << std::endl;
-            /* std::cout << idx_Kp << " " << idx_Km << " " << idx_pi << std::endl; */
+            
+            /* std::cout << all_dR_Kp_vec[idx_Kp] << " " << all_dR_Km_vec[idx_Km] << " " << all_dR_pi_vec[idx_pi] << " " << all_dR_mu_vec[idx_mu] << std::endl; */ 
             if(idx_Kp == idx_pi){
-                std::cout << "check here before" << std::endl;
-
                 float min_dR = 100;
-
                 if(*min_ele_Kp > *min_ele_pi){
                     for(int i=0; i<int(dR_Kp_vec.size()) && i!=idx_Kp; i++){
                         if(dR_Kp_vec[i] < min_dR){
-                            idx_Kp = i;
+                            idx_Kp = idx_Kp_vec[i];
                             min_dR = dR_Kp_vec[i];
                         }
                     }
@@ -216,42 +205,18 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 else{
                     for(int i=0; i<int(dR_pi_vec.size()) && i!=idx_pi; i++){
                         if(dR_pi_vec[i] < min_dR){
-                            idx_pi = i;
+                            idx_pi = idx_pi_vec[i];
                             min_dR = dR_pi_vec[i];
                         }
                     }
                 }
-                std::cout << idx_Kp << " " << idx_Km << " " << idx_pi << " " << idx_mu << std::endl;
-                std::cout << "check here after" << std::endl;
+                /* std::cout << "check here" << std::endl; */
+                /* std::cout << all_dR_Kp_vec[idx_Kp] << " " << all_dR_Km_vec[idx_Km] << " " << all_dR_pi_vec[idx_pi] << " " << all_dR_mu_vec[idx_mu] << std::endl; */ 
             }
 
 
-
-            /* int idx_Kp = std::distance(all_dR_Kp_vec.begin(), std::find(all_dR_Kp_vec.begin(), all_dR_Kp_vec.end(), min_dR_Kp_vec)); */
-            /* int idx_Km = std::distance(all_dR_Km_vec.begin(), std::find(all_dR_Km_vec.begin(), all_dR_Km_vec.end(), min_dR_Km_vec)); */
-            /* int idx_pi = std::distance(all_dR_pi_vec.begin(), std::find(all_dR_pi_vec.begin(), all_dR_pi_vec.end(), min_dR_pi_vec)); */
-            /* int idx_mu = std::distance(all_dR_mu_vec.begin(), std::find(all_dR_mu_vec.begin(), all_dR_mu_vec.end(), min_dR_mu_vec)); */
-
-            /* if(idx_Kp == idx_pi){ */
-            /*     if(dR_Kp_vec[0] > dR_pi_vec[0]){ */
-            /*         min_dR_Kp_vec = dR_Kp_vec[1]; */ 
-            /*         idx_Kp = std::distance(all_dR_Kp_vec.begin(), std::find(all_dR_Kp_vec.begin(), all_dR_Kp_vec.end(), min_dR_Kp_vec)); */
-            /*     } */
-            /*     else{ */
-            /*         min_dR_pi_vec = dR_pi_vec[1]; */
-            /*         idx_pi = std::distance(all_dR_pi_vec.begin(), std::find(all_dR_pi_vec.begin(), all_dR_pi_vec.end(), min_dR_pi_vec)); */
-            /*     } */
-            /* } */
-
-            /* idx_Km = std::distance(all_dR_Km_vec.begin(), min_Km_el); */
-            /* idx_pi = std::distance(all_dR_pi_vec.begin(), min_pi_el); */
-            /* idx_mu = std::distance(all_dR_mu_vec.begin(), min_mu_el); */
-
-            /* if(min_dR_Kp_vec<0.03 && min_dR_Km_vec<0.03 && min_dR_pi_vec<0.03 && min_dR_mu_vec<0.03 ){ */
-            /* std::cout << idx_Kp << " " << idx_Km << " " << idx_pi << " " << idx_mu << std::endl; */
-            /* if(idx_Kp == idx_pi) std::cout << "check here" << std::endl; */
-            /* } */
         }
+        mytree->Fill();
     }
 
 
