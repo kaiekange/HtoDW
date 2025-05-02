@@ -33,7 +33,15 @@ Implementation:
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 
+#include "TLorentzVector.h"
 #include "TTree.h"
 #include "TFile.h"
 //
@@ -68,6 +76,7 @@ class GenPacked : public edm::one::EDAnalyzer<edm::one::SharedResources>
 
         edm::Service<TFileService> myfile;
         TTree *mytree{};
+        double mphi, mDs, chi2;
         std::vector<float> all_dR_Kp_vec, all_dR_Km_vec, all_dR_pi_vec, all_dR_mu_vec;
         std::vector<float> dR_Kp_vec, dR_Km_vec, dR_pi_vec, dR_mu_vec;
 };
@@ -77,14 +86,17 @@ GenPacked::GenPacked(const edm::ParameterSet& iConfig) :
     packedPFToken(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("packedPFCandidates")))
 {
     mytree = myfile->make<TTree>("Events", "Events");
-    mytree->Branch("all_dR_Kp_vec", &all_dR_Kp_vec);
-    mytree->Branch("all_dR_Km_vec", &all_dR_Km_vec);
-    mytree->Branch("all_dR_pi_vec", &all_dR_pi_vec);
-    mytree->Branch("all_dR_mu_vec", &all_dR_mu_vec);
-    mytree->Branch("dR_Kp_vec", &dR_Kp_vec);
-    mytree->Branch("dR_Km_vec", &dR_Km_vec);
-    mytree->Branch("dR_pi_vec", &dR_pi_vec);
-    mytree->Branch("dR_mu_vec", &dR_mu_vec);
+    mytree->Branch("chi2", &chi2);
+    mytree->Branch("mphi", &mphi);
+    mytree->Branch("mDs", &mDs);
+    /* mytree->Branch("all_dR_Kp_vec", &all_dR_Kp_vec); */
+    /* mytree->Branch("all_dR_Km_vec", &all_dR_Km_vec); */
+    /* mytree->Branch("all_dR_pi_vec", &all_dR_pi_vec); */
+    /* mytree->Branch("all_dR_mu_vec", &all_dR_mu_vec); */
+    /* mytree->Branch("dR_Kp_vec", &dR_Kp_vec); */
+    /* mytree->Branch("dR_Km_vec", &dR_Km_vec); */
+    /* mytree->Branch("dR_pi_vec", &dR_pi_vec); */
+    /* mytree->Branch("dR_mu_vec", &dR_mu_vec); */
 }
 
 GenPacked::~GenPacked() {}
@@ -100,42 +112,46 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     dR_pi_vec.clear();
     dR_mu_vec.clear();
 
+    chi2=-777;
+    mphi=-777;
+    mDs=-777;
+
     edm::Handle<reco::GenParticleCollection> prunedGen;
     iEvent.getByToken(prunedGenToken, prunedGen);
 
     edm::Handle<pat::PackedCandidateCollection> packedPF;
     iEvent.getByToken(packedPFToken, packedPF);
 
-    float Kp_phi=100, Kp_eta=100, Km_phi=100, Km_eta=100, pi_phi=100, pi_eta=100, mu_phi=100, mu_eta=100;
+    float phi_Kp=100, eta_Kp=100, phi_Km=100, eta_Km=100, phi_pi=100, eta_pi=100, phi_mu=100, eta_mu=100;
     int ctr_Kp=0, ctr_Km=0, ctr_pi=0, ctr_mu=0; 
 
     for(size_t i=0; i<prunedGen->size(); ++i){
         if( (*prunedGen)[i].pdgId()==321 ){
             if(hasAncestor((*prunedGen)[i], 333, -321) && hasAncestor((*prunedGen)[i], 431, 211) && hasAncestor((*prunedGen)[i], 25, -24)){
                 ctr_Kp++;
-                Kp_phi = (*prunedGen)[i].phi();
-                Kp_eta = (*prunedGen)[i].eta();
+                phi_Kp = (*prunedGen)[i].phi();
+                eta_Kp = (*prunedGen)[i].eta();
             }
         }
         else if( (*prunedGen)[i].pdgId()==-321 ){
             if(hasAncestor((*prunedGen)[i], 333, 321) && hasAncestor((*prunedGen)[i], 431, 211) && hasAncestor((*prunedGen)[i], 25, -24)){
                 ctr_Km++;
-                Km_phi = (*prunedGen)[i].phi();
-                Km_eta = (*prunedGen)[i].eta();
+                phi_Km = (*prunedGen)[i].phi();
+                eta_Km = (*prunedGen)[i].eta();
             }
         }
         else if( (*prunedGen)[i].pdgId()==211 ){
             if(hasAncestor((*prunedGen)[i], 431, 333) && hasAncestor((*prunedGen)[i], 25, -24)){
                 ctr_pi++;
-                pi_phi = (*prunedGen)[i].phi();
-                pi_eta = (*prunedGen)[i].eta();
+                phi_pi = (*prunedGen)[i].phi();
+                eta_pi = (*prunedGen)[i].eta();
             }
         }
         else if( (*prunedGen)[i].pdgId()==13 && (*prunedGen)[i].isHardProcess() ){
             if(hasAncestor((*prunedGen)[i], -24, -14) && hasAncestor((*prunedGen)[i], 25, 431)){
                 ctr_mu++;
-                mu_phi = (*prunedGen)[i].phi();
-                mu_eta = (*prunedGen)[i].eta();
+                phi_mu = (*prunedGen)[i].phi();
+                eta_mu = (*prunedGen)[i].eta();
             }
         }
     }
@@ -146,10 +162,10 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         for(size_t i=0; i<packedPF->size(); ++i){
 
-            float dr_Kp = getDeltaR(Kp_eta, Kp_phi, (*packedPF)[i].eta(), (*packedPF)[i].phi());
-            float dr_Km = getDeltaR(Km_eta, Km_phi, (*packedPF)[i].eta(), (*packedPF)[i].phi());
-            float dr_pi = getDeltaR(pi_eta, pi_phi, (*packedPF)[i].eta(), (*packedPF)[i].phi());
-            float dr_mu = getDeltaR(mu_eta, mu_phi, (*packedPF)[i].eta(), (*packedPF)[i].phi());
+            float dr_Kp = getDeltaR(eta_Kp, phi_Kp, (*packedPF)[i].eta(), (*packedPF)[i].phi());
+            float dr_Km = getDeltaR(eta_Km, phi_Km, (*packedPF)[i].eta(), (*packedPF)[i].phi());
+            float dr_pi = getDeltaR(eta_pi, phi_pi, (*packedPF)[i].eta(), (*packedPF)[i].phi());
+            float dr_mu = getDeltaR(eta_mu, phi_mu, (*packedPF)[i].eta(), (*packedPF)[i].phi());
 
             all_dR_Kp_vec.push_back(dr_Kp);
             all_dR_Km_vec.push_back(dr_Km);
@@ -190,8 +206,7 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             int idx_Km = idx_Km_vec[idx_min_ele_Km]; 
             int idx_pi = idx_pi_vec[idx_min_ele_pi]; 
             int idx_mu = idx_mu_vec[idx_min_ele_mu]; 
-            
-            /* std::cout << all_dR_Kp_vec[idx_Kp] << " " << all_dR_Km_vec[idx_Km] << " " << all_dR_pi_vec[idx_pi] << " " << all_dR_mu_vec[idx_mu] << std::endl; */ 
+
             if(idx_Kp == idx_pi){
                 float min_dR = 100;
                 if(*min_ele_Kp > *min_ele_pi){
@@ -210,13 +225,58 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                         }
                     }
                 }
-                /* std::cout << "check here" << std::endl; */
-                /* std::cout << all_dR_Kp_vec[idx_Kp] << " " << all_dR_Km_vec[idx_Km] << " " << all_dR_pi_vec[idx_pi] << " " << all_dR_mu_vec[idx_mu] << std::endl; */ 
             }
 
+            if(all_dR_Kp_vec[idx_Kp] < 0.03 && all_dR_Km_vec[idx_Km] < 0.03 && all_dR_pi_vec[idx_pi] < 0.03 && all_dR_mu_vec[idx_mu] < 0.03
+                && (*packedPF)[idx_Kp].hasTrackDetails() && (*packedPF)[idx_Km].hasTrackDetails() && (*packedPF)[idx_pi].hasTrackDetails()){
 
+                std::vector<reco::TransientTrack> tks;
+                edm::ESHandle<TransientTrackBuilder> theB;
+                iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",theB);
+
+                KalmanVertexFitter fitter(true);
+                TransientVertex tvx;
+
+                reco::Track track_Kp = (*packedPF)[idx_Kp].pseudoTrack();
+                reco::Track track_Km = (*packedPF)[idx_Km].pseudoTrack();
+                reco::Track track_pi = (*packedPF)[idx_pi].pseudoTrack();
+                reco::TransientTrack ttk_Kp = (*theB).build(track_Kp);
+                reco::TransientTrack ttk_Km = (*theB).build(track_Km);
+                reco::TransientTrack ttk_pi = (*theB).build(track_pi);
+                tks.push_back(ttk_Kp);
+                tks.push_back(ttk_Km);
+                tks.push_back(ttk_pi);
+
+                tvx = fitter.vertex(tks);
+
+                if(tvx.isValid()){
+                    
+                    
+                    if(tvx.hasRefittedTracks()){
+                        std::vector<reco::TransientTrack> refitted_ttks = tvx.refittedTracks();
+                        reco::Track refitted_track_Kp = refitted_ttks[0].track();
+                        reco::Track refitted_track_Km = refitted_ttks[1].track();
+                        reco::Track refitted_track_pi = refitted_ttks[2].track();
+
+                        const double mK = 0.493677;
+                        const double mpi = 0.13957039;
+
+                        TLorentzVector p4_Kp, p4_Km, p4_pi;
+                        p4_Kp.SetXYZM(refitted_track_Kp.px(), refitted_track_Kp.py(), refitted_track_Kp.pz(), mK);
+                        p4_Km.SetXYZM(refitted_track_Km.px(), refitted_track_Km.py(), refitted_track_Km.pz(), mK);
+                        p4_pi.SetXYZM(refitted_track_pi.px(), refitted_track_pi.py(), refitted_track_pi.pz(), mpi);
+
+                        chi2 = tvx.totalChiSquared();
+                        mphi = (p4_Kp + p4_Km).M();
+                        mDs = (p4_Kp + p4_Km + p4_pi).M();
+
+                        mytree->Fill();
+                    }
+
+                }
+            }
         }
-        mytree->Fill();
+        /* mytree->Fill(); */
     }
 
 

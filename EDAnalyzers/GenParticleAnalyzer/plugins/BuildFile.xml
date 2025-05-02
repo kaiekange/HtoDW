@@ -5,5 +5,9 @@
 <use name="FWCore/ServiceRegistry"/>
 <use name="DataFormats/PatCandidates"/>
 <use name="DataFormats/HepMCCandidate"/>
+<use name="DataFormats/TrackReco"/>
+<use name="TrackingTools/TransientTrack"/>
+<use name="RecoVertex/KalmanVertexFit"/>
+<use name="TrackingTools/Records"/>
 <use name="clhep"/>
 <flags EDM_PLUGIN="1"/>

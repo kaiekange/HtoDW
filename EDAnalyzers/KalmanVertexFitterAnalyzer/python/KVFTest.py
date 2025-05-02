@@ -11,7 +11,7 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
 from Configuration.AlCa.GlobalTag import GlobalTag
 
-process.GlobalTag =  GlobalTag(process.GlobalTag, "106X_mc2017_realistic_v6")
+process.GlobalTag =  GlobalTag(process.GlobalTag, "106X_mc2017_realistic_v9")
 
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
 
@@ -23,8 +23,10 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
 
-myinfile = sys.argv[2]
-myoutfile = sys.argv[3]
+myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_1.root"
+myoutfile = "file:test.root"
+# myinfile = sys.argv[2]
+# myoutfile = sys.argv[3]
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(myinfile)
