@@ -6,3 +6,4 @@ test.root
 *__init__.pyc
 *.log
 *.out
+scripts/figures

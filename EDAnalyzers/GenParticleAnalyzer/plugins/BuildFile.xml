@@ -6,6 +6,7 @@
 <use name="DataFormats/PatCandidates"/>
 <use name="DataFormats/HepMCCandidate"/>
 <use name="DataFormats/TrackReco"/>
+<use name="DataFormats/Math"/>
 <use name="TrackingTools/TransientTrack"/>
 <use name="RecoVertex/KalmanVertexFit"/>
 <use name="TrackingTools/Records"/>
