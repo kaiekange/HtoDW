@@ -98,12 +98,20 @@ GenPacked::GenPacked(const edm::ParameterSet& iConfig) :
     packedPFToken(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("packedPFCandidates")))
 {
     mytree = myfile->make<TTree>("Events", "Events");
+    mytree->Branch("all_pt", &all_pt);
+    mytree->Branch("all_p", &all_p);
+    mytree->Branch("Gen_p_Kp", &Gen_p_Kp);
+    mytree->Branch("Gen_p_Km", &Gen_p_Km);
+    mytree->Branch("Gen_p_pi", &Gen_p_pi);
     mytree->Branch("Gen_pt_Kp", &Gen_pt_Kp);
     mytree->Branch("Gen_pt_Km", &Gen_pt_Km);
     mytree->Branch("Gen_pt_pi", &Gen_pt_pi);
     mytree->Branch("Gen_dR_Kp_Km", &Gen_dR_Kp_Km);
     mytree->Branch("Gen_dR_Kp_pi", &Gen_dR_Kp_pi);
     mytree->Branch("Gen_dR_Km_pi", &Gen_dR_Km_pi);
+    mytree->Branch("p_Kp", &p_Kp);
+    mytree->Branch("p_Km", &p_Km);
+    mytree->Branch("p_pi", &p_pi);
     mytree->Branch("pt_Kp", &pt_Kp);
     mytree->Branch("pt_Km", &pt_Km);
     mytree->Branch("pt_pi", &pt_pi);
@@ -273,12 +281,22 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 }
             }
 
-            if(all_dR_Kp_vec[idx_Kp]<0.03 && all_dR_Km_vec[idx_Km]<0.03 && (*packedPF)[idx_Kp].hasTrackDetails() && (*packedPF)[idx_Km].hasTrackDetails()){
-
+            if(all_dR_Kp_vec[idx_Kp]<0.03){
                 pt_Kp.push_back((*packedPF)[idx_Kp].pt());
                 p_Kp.push_back((*packedPF)[idx_Kp].p());
+            }
+
+            if(all_dR_Km_vec[idx_Km]<0.03){
                 pt_Km.push_back((*packedPF)[idx_Km].pt());
                 p_Km.push_back((*packedPF)[idx_Km].p());
+            }
+
+            if(all_dR_pi_vec[idx_pi]<0.03){
+                pt_pi.push_back((*packedPF)[idx_pi].pt());
+                p_pi.push_back((*packedPF)[idx_pi].p());
+            }
+
+            if(all_dR_Kp_vec[idx_Kp]<0.03 && (*packedPF)[idx_Kp].hasTrackDetails() && all_dR_Km_vec[idx_Km]<0.03 && (*packedPF)[idx_Km].hasTrackDetails()){
                 dR_Kp_Km.push_back(getDeltaR((*packedPF)[idx_Kp].eta(), (*packedPF)[idx_Kp].phi(), (*packedPF)[idx_Km].eta(), (*packedPF)[idx_Km].phi()));
 
                 edm::ESHandle<TransientTrackBuilder> theB;
@@ -313,12 +331,9 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                         m_phi.push_back((rf_phi_p4_Kp + rf_phi_p4_Km).M());
 
                         if(all_dR_pi_vec[idx_pi]<0.03 && (*packedPF)[idx_pi].hasTrackDetails()){
-
-                            pt_pi.push_back((*packedPF)[idx_pi].pt());
-                            p_pi.push_back((*packedPF)[idx_pi].p());
                             dR_Kp_pi.push_back(getDeltaR((*packedPF)[idx_Kp].eta(), (*packedPF)[idx_Kp].phi(), (*packedPF)[idx_pi].eta(), (*packedPF)[idx_pi].phi()));
                             dR_Km_pi.push_back(getDeltaR((*packedPF)[idx_Km].eta(), (*packedPF)[idx_Km].phi(), (*packedPF)[idx_pi].eta(), (*packedPF)[idx_pi].phi()));
-                            
+
                             math::XYZPoint vtx_phi(tvx_phi.position().x(), tvx_phi.position().y(), tvx_phi.position().z());
                             math::XYZPoint vtx_pi = (*packedPF)[idx_pi].vertex();
                             d_phi_pi.push_back((vtx_phi-vtx_pi).R());
