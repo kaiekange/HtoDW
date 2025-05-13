@@ -103,9 +103,15 @@ int fit_results() {
     /* draw_fit_results_1d(mychain, "pt_Km", ";#it{p_{T}(K^{-})} [GeV];# events", 0, 5, "pt_Km_small"); */
     /* draw_fit_results_1d(mychain, "pt_pi", ";#it{p_{T}(#pi^{+})} [GeV];# events", 0, 5, "pt_pi_small"); */
 
+    draw_fit_results_1d(mychain, "Gen_pt_Kp-Gen_pt_Km", ";Gen #it{p_{T}(K^{+})-p_{T}(K^{-})} [GeV];# events", -30, 30, "Gen_pt_Kp_minus_pt_Km");
+    draw_fit_results_2d(mychain, "Gen_pt_Km:Gen_pt_Kp", ";Gen #it{p_{T}(K^{+})} [GeV];Gen #it{p_{T}(K^{-})} [GeV]", 0, 60, 0, 60, "Gen_pt_Kp_Km");
+    draw_fit_results_1d(mychain, "Gen_pt_Kp/Gen_pt_Km", ";Gen #it{p_{T}(K^{+})/p_{T}(K^{-})} [GeV];# events", 0, 5, "Gen_pt_Kp_divide_pt_Km");
     draw_fit_results_1d(mychain, "pt_Kp-pt_Km", ";#it{p_{T}(K^{+})-p_{T}(K^{-})} [GeV];# events", -30, 30, "pt_Kp_minus_pt_Km");
     draw_fit_results_2d(mychain, "pt_Km:pt_Kp", ";#it{p_{T}(K^{+})} [GeV];#it{p_{T}(K^{-})} [GeV]", 0, 60, 0, 60, "pt_Kp_Km");
-
+    draw_fit_results_1d(mychain, "pt_Kp/pt_Km", ";#it{p_{T}(K^{+})/p_{T}(K^{-})} [GeV];# events", 0, 5, "pt_Kp_divide_pt_Km");
+    
+    draw_fit_results_2d(mychain, "Gen_pp_Kp:((Gen_pl_Kp - Gen_pl_Km)/(Gen_pl_Kp + Gen_pl_Km))", ";Gen #it{#alpha};Gen #it{p_{T}} [GeV]", -1, 1, 0, 0.3, "Gen_APplot_phi");
+    
     /* draw_fit_results_1d(mychain, "eta_Kp", ";#it{#eta(K^{+})};# events", -6, 6, "eta_Kp"); */
     /* draw_fit_results_1d(mychain, "eta_Km", ";#it{#eta(K^{-})};# events", -6, 6, "eta_Km"); */
     /* draw_fit_results_1d(mychain, "eta_pi", ";#it{#eta(#pi^{+})};# events", -6, 6, "eta_pi"); */
@@ -129,16 +135,16 @@ int fit_results() {
     /* draw_fit_results_1d(mychain, "refitted_pt_phi", ";#it{p_{T}(K^{+}K^{-})} [GeV];# events", 0, 150, "refitted_pt_phi"); */
     /* draw_fit_results_1d(mychain, "refitted_p_phi", ";#it{p(K^{+}K^{-})} [GeV];# events", 0, 300, "refitted_p_phi"); */
     /* draw_fit_results_1d(mychain, "refitted_m_phi", ";#it{M(K^{+}K^{-})} [GeV];# events", 0.99, 1.05, "refitted_m_phi"); */
-    draw_fit_results_1d(mychain, "dR_phi_pi", ";#DeltaR(#it{#phi,#pi^{+})};# events", 0, 1, "dR_phi_pi");
+    /* draw_fit_results_1d(mychain, "dR_phi_pi", ";#DeltaR(#it{#phi,#pi^{+})};# events", 0, 1, "dR_phi_pi"); */
     /* draw_fit_results_1d(mychain, "d_phi_pi", ";#it{d(#phi,#pi^{+})} [cm];# events", 0, 8, "d_phi_pi"); */
 
-    draw_fit_results_2d(mychain, "pt_pi:refitted_pt_phi", ";#it{p_{T}(#phi)} [GeV];#it{p_{T}(#pi^{+})} [GeV]", 0, 80, 0, 60, "pt_phi_pi");
+    /* draw_fit_results_2d(mychain, "pt_pi:refitted_pt_phi", ";#it{p_{T}(#phi)} [GeV];#it{p_{T}(#pi^{+})} [GeV]", 0, 80, 0, 60, "pt_phi_pi"); */
 
     /* draw_fit_results_1d(mychain, "chi2_Ds", ";#it{#chi^{2}(D_{s}^{+})};# events", 0, 25, "chi2_Ds"); */
     /* draw_fit_results_1d(mychain, "refitted2_pt_Ds", ";#it{p_{T}(K^{+}K^{-}#pi^{+})} [GeV];# events", 0, 150, "refitted2_pt_Ds"); */
     /* draw_fit_results_1d(mychain, "refitted2_p_Ds", ";#it{p(K^{+}K^{-}#pi^{+})} [GeV];# events", 0, 500, "refitted2_p_Ds"); */
     /* draw_fit_results_1d(mychain, "refitted2_m_Ds", ";#it{M(K^{+}K^{-}#pi^{+})} [GeV];# events", 1.85, 2.1, "refitted2_m_Ds"); */
-    draw_fit_results_1d(mychain, "dR_phi_Ds", ";#DeltaR(#it{#phi,D_{s}^{+})};# events", 0, 0.5, "dR_phi_Ds");
+    /* draw_fit_results_1d(mychain, "dR_phi_Ds", ";#DeltaR(#it{#phi,D_{s}^{+})};# events", 0, 0.5, "dR_phi_Ds"); */
     /* draw_fit_results_1d(mychain, "d_phi_Ds", ";#it{d(#phi,D_{s}^{+})} [cm];# events", 0, 8, "d_phi_Ds"); */
 
     /* draw_fit_results_2d(mychain, "refitted2_m_Ds:refitted_m_phi", ";#it{M(K^{+}K^{-})} [GeV];#it{M(K^{+}K^{-}#pi^{+})} [GeV]", 0.99, 1.05, 1.85, 2.1, "m_phi_Ds"); */

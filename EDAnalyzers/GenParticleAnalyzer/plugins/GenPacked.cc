@@ -101,6 +101,15 @@ class GenPacked : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<double> Gen_phi_Km;
         std::vector<double> Gen_phi_pi;
 
+        std::vector<double> Gen_pp_Kp;
+        std::vector<double> Gen_pp_Km;
+        std::vector<double> Gen_pl_Kp;
+        std::vector<double> Gen_pl_Km;
+        std::vector<double> Gen_pp_phi;
+        std::vector<double> Gen_pp_pi;
+        std::vector<double> Gen_pl_phi;
+        std::vector<double> Gen_pl_pi;
+
         // dR & d betweem Gen tracks
         std::vector<double> Gen_dR_Kp_Km;
         std::vector<double> Gen_dR_Kp_pi;
@@ -122,6 +131,15 @@ class GenPacked : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<double> phi_Kp;
         std::vector<double> phi_Km;
         std::vector<double> phi_pi;
+
+        std::vector<double> pp_Kp;
+        std::vector<double> pp_Km;
+        std::vector<double> pl_Kp;
+        std::vector<double> pl_Km;
+        std::vector<double> pp_phi;
+        std::vector<double> pp_pi;
+        std::vector<double> pl_phi;
+        std::vector<double> pl_pi;
 
         // dR & d betweem matched tracks
         std::vector<double> dR_Kp_Km;
@@ -188,6 +206,8 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::ESHandle<TransientTrackBuilder> theB;
     iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",theB);
 
+    TVector3 Gen_p3_Kp, Gen_p3_Km, Gen_p3_pi;
+
     for(const auto& gp : *prunedGen){
         const int pdg = gp.pdgId();
         if( pdg==321 && hasAncestor(gp, 333, -321) && hasAncestor(gp, 431, 211) && hasAncestor(gp, 25, -24) ){
@@ -195,23 +215,39 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             Gen_phi_Kp.push_back(gp.phi());
             Gen_pt_Kp.push_back(gp.pt());
             Gen_p_Kp.push_back(gp.p());
+            Gen_p3_Kp.SetXYZ(gp.px(), gp.py(), gp.pz());
             num_Gen_Kp++;
         } else if( pdg==-321 && hasAncestor(gp, 333, 321) && hasAncestor(gp, 431, 211) && hasAncestor(gp, 25, -24) ){
             Gen_eta_Km.push_back(gp.eta());
             Gen_phi_Km.push_back(gp.phi());
             Gen_pt_Km.push_back(gp.pt());
             Gen_p_Km.push_back(gp.p());
+            Gen_p3_Km.SetXYZ(gp.px(), gp.py(), gp.pz());
             num_Gen_Km++;
         } else if( pdg==211 && hasAncestor(gp, 431, 333) && hasAncestor(gp, 25, -24) ){
             Gen_eta_pi.push_back(gp.eta());
             Gen_phi_pi.push_back(gp.phi());
             Gen_pt_pi.push_back(gp.pt());
             Gen_p_pi.push_back(gp.p());
+            Gen_p3_pi.SetXYZ(gp.px(), gp.py(), gp.pz());
             num_Gen_pi++;
         }
     }
 
     if(num_Gen_Kp==1 && num_Gen_Km==1 && num_Gen_pi==1){
+
+        TVector3 Gen_p3_phi = Gen_p3_Kp + Gen_p3_Km;
+        TVector3 Gen_p3_Ds = Gen_p3_phi + Gen_p3_pi;
+        Gen_pp_Kp.push_back(Gen_p3_Kp.Pt(Gen_p3_phi));
+        Gen_pp_Km.push_back(Gen_p3_Km.Pt(Gen_p3_phi));
+        Gen_pl_Kp.push_back(Gen_p3_Kp.Dot(Gen_p3_phi)/Gen_p3_phi.Mag());
+        Gen_pl_Km.push_back(Gen_p3_Km.Dot(Gen_p3_phi)/Gen_p3_phi.Mag());
+        Gen_pp_phi.push_back(Gen_p3_phi.Pt(Gen_p3_Ds));
+        Gen_pp_pi.push_back(Gen_p3_pi.Pt(Gen_p3_Ds));
+        Gen_pl_phi.push_back(Gen_p3_phi.Dot(Gen_p3_Ds)/Gen_p3_Ds.Mag());
+        Gen_pl_pi.push_back(Gen_p3_pi.Dot(Gen_p3_Ds)/Gen_p3_Ds.Mag());
+
+
 
         Gen_dR_Kp_Km.push_back(reco::deltaR(Gen_eta_Kp[0], Gen_phi_Kp[0], Gen_eta_Km[0], Gen_phi_Km[0]));
         Gen_dR_Kp_pi.push_back(reco::deltaR(Gen_eta_Kp[0], Gen_phi_Kp[0], Gen_eta_pi[0], Gen_phi_pi[0]));
@@ -281,6 +317,21 @@ void GenPacked::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         if(bestpi.dr < 0.03) num_match_pi++;
 
         if( bestKp.dr < 0.03 && bestKm.dr < 0.03 && bestpi.dr < 0.03 && (*packedPF)[bestKp.index].hasTrackDetails() && (*packedPF)[bestKm.index].hasTrackDetails() && (*packedPF)[bestpi.index].hasTrackDetails() ){
+
+            TVector3 p3_Kp; p3_Kp.SetXYZ((*packedPF)[bestKp.index].px(), (*packedPF)[bestKp.index].py(), (*packedPF)[bestKp.index].pz());
+            TVector3 p3_Km; p3_Km.SetXYZ((*packedPF)[bestKm.index].px(), (*packedPF)[bestKm.index].py(), (*packedPF)[bestKm.index].pz());
+            TVector3 p3_pi; p3_pi.SetXYZ((*packedPF)[bestpi.index].px(), (*packedPF)[bestpi.index].py(), (*packedPF)[bestpi.index].pz());
+
+            TVector3 p3_phi = p3_Kp + p3_Km;
+            TVector3 p3_Ds = p3_phi + p3_pi;
+            pp_Kp.push_back(p3_Kp.Pt(p3_phi));
+            pp_Km.push_back(p3_Km.Pt(p3_phi));
+            pl_Kp.push_back(p3_Kp.Dot(p3_phi)/p3_phi.Mag());
+            pl_Km.push_back(p3_Km.Dot(p3_phi)/p3_phi.Mag());
+            pp_phi.push_back(p3_phi.Pt(p3_Ds));
+            pp_pi.push_back(p3_pi.Pt(p3_Ds));
+            pl_phi.push_back(p3_phi.Dot(p3_Ds)/p3_Ds.Mag());
+            pl_pi.push_back(p3_pi.Dot(p3_Ds)/p3_Ds.Mag());
 
             eta_Kp.push_back((*packedPF)[bestKp.index].eta());
             phi_Kp.push_back((*packedPF)[bestKp.index].phi());
@@ -439,6 +490,15 @@ void GenPacked::vector_clear()
     Gen_phi_Km.clear();
     Gen_phi_pi.clear();
 
+    Gen_pp_Kp.clear();
+    Gen_pp_Km.clear();
+    Gen_pl_Kp.clear();
+    Gen_pl_Km.clear();
+    Gen_pp_phi.clear();
+    Gen_pp_pi.clear();
+    Gen_pl_phi.clear();
+    Gen_pl_pi.clear();
+
     // dR & d betweem Gen tracks
     Gen_dR_Kp_Km.clear();
     Gen_dR_Kp_pi.clear();
@@ -460,6 +520,15 @@ void GenPacked::vector_clear()
     phi_Kp.clear();
     phi_Km.clear();
     phi_pi.clear();
+
+    pp_Kp.clear();
+    pp_Km.clear();
+    pl_Kp.clear();
+    pl_Km.clear();
+    pp_phi.clear();
+    pp_pi.clear();
+    pl_phi.clear();
+    pl_pi.clear();
 
     // dR & d betweem matched tracks
     dR_Kp_Km.clear();
@@ -528,6 +597,15 @@ void GenPacked::beginJob()
     tree_->Branch("Gen_phi_Km", &Gen_phi_Km);
     tree_->Branch("Gen_phi_pi", &Gen_phi_pi);
 
+    tree_->Branch("Gen_pp_Kp", &Gen_pp_Kp);
+    tree_->Branch("Gen_pp_Km", &Gen_pp_Km);
+    tree_->Branch("Gen_pl_Kp", &Gen_pl_Kp);
+    tree_->Branch("Gen_pl_Km", &Gen_pl_Km);
+    tree_->Branch("Gen_pp_phi", &Gen_pp_phi);
+    tree_->Branch("Gen_pp_pi", &Gen_pp_pi);
+    tree_->Branch("Gen_pl_phi", &Gen_pl_phi);
+    tree_->Branch("Gen_pl_pi", &Gen_pl_pi);
+
     tree_->Branch("Gen_dR_Kp_Km", &Gen_dR_Kp_Km);
     tree_->Branch("Gen_dR_Kp_pi", &Gen_dR_Kp_pi);
     tree_->Branch("Gen_dR_Km_pi", &Gen_dR_Km_pi);
@@ -547,6 +625,15 @@ void GenPacked::beginJob()
     tree_->Branch("phi_Kp", &phi_Kp);
     tree_->Branch("phi_Km", &phi_Km);
     tree_->Branch("phi_pi", &phi_pi);
+
+    tree_->Branch("pp_Kp", &pp_Kp);
+    tree_->Branch("pp_Km", &pp_Km);
+    tree_->Branch("pl_Kp", &pl_Kp);
+    tree_->Branch("pl_Km", &pl_Km);
+    tree_->Branch("pp_phi", &pp_phi);
+    tree_->Branch("pp_pi", &pp_pi);
+    tree_->Branch("pl_phi", &pl_phi);
+    tree_->Branch("pl_pi", &pl_pi);
 
     tree_->Branch("dR_Kp_Km", &dR_Kp_Km);
     tree_->Branch("dR_Kp_pi", &dR_Kp_pi);
