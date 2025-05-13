@@ -90,6 +90,13 @@ class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<float> dR_Km;
         std::vector<float> dR_pi;
 
+        std::vector<float> Gen_eta_Kp;
+        std::vector<float> Gen_eta_Km;
+        std::vector<float> Gen_eta_pi;
+        std::vector<float> Gen_phi_Kp;
+        std::vector<float> Gen_phi_Km;
+        std::vector<float> Gen_phi_pi;
+
         // matched particles momenta
         std::vector<double> p_Kp;
         std::vector<double> p_Km;
@@ -165,20 +172,20 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
         const int pdg = gp.pdgId();
 
         if(pdg==321 && hasAncestor(gp, 333, -321) && hasAncestor(gp, 431, 211) && hasAncestor(gp, 25, -24)){
-            eta_Kp = gp.eta();
-            phi_Kp = gp.phi();
-            nKp++; 
+            Gen_eta_Kp.push_back(gp.eta());
+            Gen_phi_Kp.push_back(gp.phi());
+            nKp++;
         }
 
         else if(pdg==-321 && hasAncestor(gp, 333, 321) && hasAncestor(gp, 431, 211) && hasAncestor(gp, 25, -24)){
-            eta_Km = gp.eta();
-            phi_Km = gp.phi();
+            Gen_eta_Km.push_back(gp.eta());
+            Gen_phi_Km.push_back(gp.phi());
             nKm++;
         }
 
         else if(pdg==211 && hasAncestor(gp, 431, 333) && hasAncestor(gp, 25, -24)){
-            eta_pi = gp.eta();
-            phi_pi = gp.phi();
+            Gen_eta_pi.push_back(gp.eta());
+            Gen_phi_pi.push_back(gp.phi());
             npi++;
         }
     }
@@ -396,7 +403,7 @@ void SelectionStudy::beginJob()
 {
     edm::Service<TFileService> fs;
     tree_ = fs->make<TTree>("Events", "Events");
-
+    
     tree_->Branch("p_Kp", &p_Kp);
     tree_->Branch("p_Km", &p_Km);
     tree_->Branch("p_pi", &p_pi);

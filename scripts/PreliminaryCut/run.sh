@@ -7,7 +7,7 @@ ver=20250417
 year=2017UL
 pnfspath="/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/${ver}/${year}"
 
-mode="GenPacked"
+mode="PreliminaryCut"
 
 mkdir -p "${pnfspath}/tuples/${mode}/log"
 
