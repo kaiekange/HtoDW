@@ -1,0 +1,16 @@
+# condor_jobs.sub -- submit job to run SIM
+#
+executable   = run.sh
+arguments    = $(Process)
+
+log          = job.log
+
+request_cpus   = 1
+request_memory = 512M
+request_disk   = 10M
+
+max_retries = 5 
+
+should_transfer_files = NO
+
+queue 500
