@@ -602,7 +602,11 @@ class SSTree
 
         double DsFit_Mconstraint_Ds_M;
 
-        bool signal_entry;
+        bool Kp_match;
+        bool Km_match;
+        bool pi_match;
+        bool match_entry;
+        bool non_match_entry;
 
         std::vector<double> Gen_Kp_ETA_vec;
         std::vector<double> Gen_Kp_PHI_vec;
@@ -1162,7 +1166,11 @@ class SSTree
 
         std::vector<double> DsFit_Mconstraint_Ds_M_vec;
 
-        std::vector<bool> signal_entry_vec;
+        std::vector<bool> Kp_match_vec;
+        std::vector<bool> Km_match_vec;
+        std::vector<bool> pi_match_vec;
+        std::vector<bool> match_entry_vec;
+        std::vector<bool> non_match_entry_vec;
 
 };
 

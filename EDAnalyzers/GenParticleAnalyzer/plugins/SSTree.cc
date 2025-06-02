@@ -583,7 +583,11 @@ void SSTree::Init()
 
     DsFit_Mconstraint_Ds_M_vec.clear();
 
-    signal_entry_vec.clear();
+    Kp_match_vec.clear();
+    Km_match_vec.clear();
+    pi_match_vec.clear();
+    match_entry_vec.clear();
+    non_match_entry_vec.clear();
 }
 
 void SSTree::Gen_Fill_Vector()
@@ -1156,7 +1160,11 @@ void SSTree::Fill_Vector()
 
     DsFit_Mconstraint_Ds_M_vec.push_back(DsFit_Mconstraint_Ds_M);
 
-    signal_entry_vec.push_back(signal_entry);
+    Kp_match_vec.push_back(Kp_match);
+    Km_match_vec.push_back(Km_match);
+    pi_match_vec.push_back(pi_match);
+    match_entry_vec.push_back(match_entry);
+    non_match_entry_vec.push_back(non_match_entry);
 }
 
 void SSTree::CreateBranches()
@@ -1731,8 +1739,12 @@ void SSTree::CreateBranches()
     tree->Branch("DsFit_dR_pi_Ds", &DsFit_dR_pi_Ds_vec);
 
     tree->Branch("DsFit_Mconstraint_Ds_M", &DsFit_Mconstraint_Ds_M_vec);
-    
-    tree->Branch("signal_entry", &signal_entry_vec);
+   
+    tree->Branch("Kp_match", &Kp_match_vec);
+    tree->Branch("Km_match", &Km_match_vec);
+    tree->Branch("pi_match", &pi_match_vec);
+    tree->Branch("match_entry", &match_entry_vec);
+    tree->Branch("non_match_entry", &non_match_entry_vec); 
 }
 
 void SSTree::Gen_Reset()
@@ -2309,6 +2321,10 @@ void SSTree::pi_Reset()
     dz_pi_Ds = null;
     dz_phi_Ds = null;
     
-    signal_entry = false;
+    Kp_match = false;
+    Km_match = false;
+    pi_match = false;
+    match_entry = false;
+    non_match_entry = false; 
 }
 

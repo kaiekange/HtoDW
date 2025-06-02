@@ -37,3 +37,4 @@ TString lumi_sqrtS = "";
 bool drawLogo      = false;
 
 void CMS_lumi( TPad* pad, int iPeriod=0, int iPosX=11 );
+void CMS_lumi_sub( TVirtualPad* pad, int iPeriod=0, int iPosX=11 );

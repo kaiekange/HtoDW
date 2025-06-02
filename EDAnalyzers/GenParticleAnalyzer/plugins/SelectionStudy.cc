@@ -1016,8 +1016,17 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if( ftree->dz_phi_Ds > 4 ) continue;
                 ftree->num_reco_Ds++;
 
-                if( (idx_Kp_vec[i] == ftree->match_Kp_idx) && (idx_Km_vec[j] == ftree->match_Km_idx) && (idx_pi_vec[k] == ftree->match_pi_idx)) ftree->signal_entry = true;
-                else ftree->signal_entry = false;
+                if( idx_Kp_vec[i] == ftree->match_Kp_idx ) ftree->Kp_match = true;
+                else ftree->Kp_match = false;
+                if( idx_Km_vec[j] == ftree->match_Km_idx ) ftree->Km_match = true;
+                else ftree->Km_match = false;
+                if( idx_pi_vec[k] == ftree->match_pi_idx ) ftree->pi_match = true;
+                else ftree->pi_match = false;
+
+                if(ftree->Kp_match && ftree->Km_match && ftree->pi_match) ftree->match_entry = true;
+                else ftree->match_entry = false;
+                if(!ftree->Kp_match && !ftree->Km_match && !ftree->pi_match) ftree->non_match_entry = true;
+                else ftree->non_match_entry = false;
 
                 ftree->Fill_Vector(); 
             }
