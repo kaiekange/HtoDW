@@ -1,7 +1,7 @@
 event_content.txt
 log.log
 run.log
-test.root
+*.root
 *__init__.py
 *__init__.pyc
 *.log

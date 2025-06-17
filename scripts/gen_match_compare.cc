@@ -119,41 +119,77 @@ int gen_match_compare() {
     /* compare(mychain, "Gen_phi_PT", "match_phiFit_phi_PT", "Gen", "match", "#it{p_{T}}(#it{#phi}) [GeV]", 0, 100, "1", "1", "phi_PT"); */
     /* compare(mychain, "Gen_Ds_PT", "match_DsFit_Ds_PT", "Gen", "match", "#it{p_{T}}(#it{D_{s}^{+}}) [GeV]", 0, 150, "1", "1", "Ds_PT"); */
 
-    /* draw_1d(mychain, "(Gen_Kp_ETA - match_Kp_ETA)/Gen_Kp_ETA", ";#it{#epsilon#eta}(#it{K^{+}});# candidates", -0.5, 0.5, "diff_Kp_ETA", "1"); */
-    /* draw_1d(mychain, "(Gen_Km_ETA - match_Km_ETA)/Gen_Km_ETA", ";#it{#epsilon#eta}(#it{K^{-}});# candidates", -0.5, 0.5, "diff_Km_ETA", "1"); */
-    /* draw_1d(mychain, "(Gen_pi_ETA - match_pi_ETA)/Gen_pi_ETA", ";#it{#epsilon#eta}(#it{#pi^{+}});# candidates", -0.5, 0.5, "diff_pi_ETA", "1"); */
-    /* draw_1d(mychain, "(Gen_phi_ETA - match_phiFit_phi_ETA)/Gen_phi_ETA", ";#it{#epsilon#eta}(#it{#phi});# candidates", -0.5, 0.5, "diff_phi_ETA", "1"); */
-    /* draw_1d(mychain, "(Gen_Ds_ETA - match_DsFit_Ds_ETA)/Gen_Ds_ETA", ";#it{#epsilon#eta}(#it{D_{s}^{+}});# candidates", -0.5, 0.5, "diff_Ds_ETA", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_ETA - match_Kp_ETA)/Gen_Kp_ETA", ";#it{#varepsilon#eta}(#it{K^{+}});# candidates", -0.5, 0.5, "diff_Kp_ETA", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_ETA - match_Km_ETA)/Gen_Km_ETA", ";#it{#varepsilon#eta}(#it{K^{-}});# candidates", -0.5, 0.5, "diff_Km_ETA", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_ETA - match_pi_ETA)/Gen_pi_ETA", ";#it{#varepsilon#eta}(#it{#pi^{+}});# candidates", -0.5, 0.5, "diff_pi_ETA", "1"); */
+    /* draw_1d(mychain, "(Gen_phi_ETA - match_phiFit_phi_ETA)/Gen_phi_ETA", ";#it{#varepsilon#eta}(#it{#phi});# candidates", -0.5, 0.5, "diff_phi_ETA", "1"); */
+    /* draw_1d(mychain, "(Gen_Ds_ETA - match_DsFit_Ds_ETA)/Gen_Ds_ETA", ";#it{#varepsilon#eta}(#it{D_{s}^{+}});# candidates", -0.5, 0.5, "diff_Ds_ETA", "1"); */
   
-    /* draw_1d(mychain, "(Gen_Kp_PHI - match_Kp_PHI)/Gen_Kp_PHI", ";#it{#epsilon#phi}(#it{K^{+}});# candidates", -0.5, 0.5, "diff_Kp_PHI", "1"); */
-    /* draw_1d(mychain, "(Gen_Km_PHI - match_Km_PHI)/Gen_Km_PHI", ";#it{#epsilon#phi}(#it{K^{-}});# candidates", -0.5, 0.5, "diff_Km_PHI", "1"); */
-    /* draw_1d(mychain, "(Gen_pi_PHI - match_pi_PHI)/Gen_pi_PHI", ";#it{#epsilon#phi}(#it{#pi^{+}});# candidates", -0.5, 0.5, "diff_pi_PHI", "1"); */
-    /* draw_1d(mychain, "(Gen_phi_PHI - match_phiFit_phi_PHI)/Gen_phi_PHI", ";#it{#epsilon#phi}(#it{#phi});# candidates", -0.5, 0.5, "diff_phi_PHI", "1"); */
-    /* draw_1d(mychain, "(Gen_Ds_PHI - match_DsFit_Ds_PHI)/Gen_Ds_PHI", ";#it{#epsilon#phi}(#it{D_{s}^{+}});# candidates", -0.5, 0.5, "diff_Ds_PHI", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_PHI - match_Kp_PHI)/Gen_Kp_PHI", ";#it{#varepsilon#phi}(#it{K^{+}});# candidates", -0.5, 0.5, "diff_Kp_PHI", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_PHI - match_Km_PHI)/Gen_Km_PHI", ";#it{#varepsilon#phi}(#it{K^{-}});# candidates", -0.5, 0.5, "diff_Km_PHI", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_PHI - match_pi_PHI)/Gen_pi_PHI", ";#it{#varepsilon#phi}(#it{#pi^{+}});# candidates", -0.5, 0.5, "diff_pi_PHI", "1"); */
+    /* draw_1d(mychain, "(Gen_phi_PHI - match_phiFit_phi_PHI)/Gen_phi_PHI", ";#it{#varepsilon#phi}(#it{#phi});# candidates", -0.5, 0.5, "diff_phi_PHI", "1"); */
+    /* draw_1d(mychain, "(Gen_Ds_PHI - match_DsFit_Ds_PHI)/Gen_Ds_PHI", ";#it{#varepsilon#phi}(#it{D_{s}^{+}});# candidates", -0.5, 0.5, "diff_Ds_PHI", "1"); */
     
-    /* draw_1d(mychain, "(Gen_Kp_P - match_Kp_P)/Gen_Kp_P", ";#it{#epsilonp}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_P", "1"); */
-    /* draw_1d(mychain, "(Gen_Km_P - match_Km_P)/Gen_Km_P", ";#it{#epsilonp}(#it{K^{-}});# candidates", -1, 1, "diff_Km_P", "1"); */
-    /* draw_1d(mychain, "(Gen_pi_P - match_pi_P)/Gen_pi_P", ";#it{#epsilonp}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_P", "1"); */
-    /* draw_1d(mychain, "(Gen_phi_P - match_phiFit_phi_P)/Gen_phi_P", ";#it{#epsilonp}(#it{#phi});# candidates", -1, 1, "diff_phi_P", "1"); */
-    /* draw_1d(mychain, "(Gen_Ds_P - match_DsFit_Ds_P)/Gen_Ds_P", ";#it{#epsilonp}(#it{D_{s}^{+}});# candidates", -1, 1, "diff_Ds_P", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_P - match_Kp_P)/Gen_Kp_P", ";#it{#varepsilonp}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_P", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_P - match_Km_P)/Gen_Km_P", ";#it{#varepsilonp}(#it{K^{-}});# candidates", -1, 1, "diff_Km_P", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_P - match_pi_P)/Gen_pi_P", ";#it{#varepsilonp}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_P", "1"); */
+    /* draw_1d(mychain, "(Gen_phi_P - match_phiFit_phi_P)/Gen_phi_P", ";#it{#varepsilonp}(#it{#phi});# candidates", -1, 1, "diff_phi_P", "1"); */
+    /* draw_1d(mychain, "(Gen_Ds_P - match_DsFit_Ds_P)/Gen_Ds_P", ";#it{#varepsilonp}(#it{D_{s}^{+}});# candidates", -1, 1, "diff_Ds_P", "1"); */
     
-    /* draw_1d(mychain, "(Gen_Kp_PT - match_Kp_PT)/Gen_Kp_PT", ";#it{#epsilonp_{T}}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_PT", "1"); */
-    /* draw_1d(mychain, "(Gen_Km_PT - match_Km_PT)/Gen_Km_PT", ";#it{#epsilonp_{T}}(#it{K^{-}});# candidates", -1, 1, "diff_Km_PT", "1"); */
-    /* draw_1d(mychain, "(Gen_pi_PT - match_pi_PT)/Gen_pi_PT", ";#it{#epsilonp_{T}}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_PT", "1"); */
-    /* draw_1d(mychain, "(Gen_phi_PT - match_phiFit_phi_PT)/Gen_phi_PT", ";#it{#epsilonp_{T}}(#it{#phi});# candidates", -1, 1, "diff_phi_PT", "1"); */
-    /* draw_1d(mychain, "(Gen_Ds_PT - match_DsFit_Ds_PT)/Gen_Ds_PT", ";#it{#epsilonp_{T}}(#it{D_{s}^{+}});# candidates", -1, 1, "diff_Ds_PT", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_PT - match_Kp_PT)/Gen_Kp_PT", ";#it{#varepsilonp_{T}}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_PT", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_PT - match_Km_PT)/Gen_Km_PT", ";#it{#varepsilonp_{T}}(#it{K^{-}});# candidates", -1, 1, "diff_Km_PT", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_PT - match_pi_PT)/Gen_pi_PT", ";#it{#varepsilonp_{T}}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_PT", "1"); */
+    /* draw_1d(mychain, "(Gen_phi_PT - match_phiFit_phi_PT)/Gen_phi_PT", ";#it{#varepsilonp_{T}}(#it{#phi});# candidates", -1, 1, "diff_phi_PT", "1"); */
+    /* draw_1d(mychain, "(Gen_Ds_PT - match_DsFit_Ds_PT)/Gen_Ds_PT", ";#it{#varepsilonp_{T}}(#it{D_{s}^{+}});# candidates", -1, 1, "diff_Ds_PT", "1"); */
     
-    draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_Kp_ORIVX_X)/Gen_Kp_ORIVX_X", ";#it{#epsilonx}_{orig}(#it{K^{+}});# candidates", -0.5, 2, "diff_Kp_ORIVX_X", "1");
-    draw_1d(mychain, "(Gen_Km_ORIVX_X - match_Km_ORIVX_X)/Gen_Km_ORIVX_X", ";#it{#epsilonx}_{orig}(#it{K^{-}});# candidates", -0.5, 2, "diff_Km_ORIVX_X", "1");
-    draw_1d(mychain, "(Gen_pi_ORIVX_X - match_pi_ORIVX_X)/Gen_pi_ORIVX_X", ";#it{#epsilonx}_{orig}(#it{#pi^{+}});# candidates", -0.5, 2, "diff_pi_ORIVX_X", "1");
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_Kp_ORIVX_X)/Gen_Kp_ORIVX_X", ";#it{#varepsilonx}_{orig}(#it{K^{+}});# candidates", -0.5, 2, "diff_Kp_ORIVX_X", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_ORIVX_X - match_Km_ORIVX_X)/Gen_Km_ORIVX_X", ";#it{#varepsilonx}_{orig}(#it{K^{-}});# candidates", -0.5, 2, "diff_Km_ORIVX_X", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_ORIVX_X - match_pi_ORIVX_X)/Gen_pi_ORIVX_X", ";#it{#varepsilonx}_{orig}(#it{#pi^{+}});# candidates", -0.5, 2, "diff_pi_ORIVX_X", "1"); */
     
-    draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_Kp_ORIVX_Y)/Gen_Kp_ORIVX_Y", ";#it{#epsilony}_{orig}(#it{K^{+}});# candidates", -0.5, 2, "diff_Kp_ORIVX_Y", "1");
-    draw_1d(mychain, "(Gen_Km_ORIVX_Y - match_Km_ORIVX_Y)/Gen_Km_ORIVX_Y", ";#it{#epsilony}_{orig}(#it{K^{-}});# candidates", -0.5, 2, "diff_Km_ORIVX_Y", "1");
-    draw_1d(mychain, "(Gen_pi_ORIVX_Y - match_pi_ORIVX_Y)/Gen_pi_ORIVX_Y", ";#it{#epsilony}_{orig}(#it{#pi^{+}});# candidates", -0.5, 2, "diff_pi_ORIVX_Y", "1");
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_Kp_ORIVX_Y)/Gen_Kp_ORIVX_Y", ";#it{#varepsilony}_{orig}(#it{K^{+}});# candidates", -0.5, 2, "diff_Kp_ORIVX_Y", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_ORIVX_Y - match_Km_ORIVX_Y)/Gen_Km_ORIVX_Y", ";#it{#varepsilony}_{orig}(#it{K^{-}});# candidates", -0.5, 2, "diff_Km_ORIVX_Y", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_ORIVX_Y - match_pi_ORIVX_Y)/Gen_pi_ORIVX_Y", ";#it{#varepsilony}_{orig}(#it{#pi^{+}});# candidates", -0.5, 2, "diff_pi_ORIVX_Y", "1"); */
     
-    draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_Kp_ORIVX_Z)/Gen_Kp_ORIVX_Z", ";#it{#epsilonz}_{orig}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_ORIVX_Z", "1");
-    draw_1d(mychain, "(Gen_Km_ORIVX_Z - match_Km_ORIVX_Z)/Gen_Km_ORIVX_Z", ";#it{#epsilonz}_{orig}(#it{K^{-}});# candidates", -1, 1, "diff_Km_ORIVX_Z", "1");
-    draw_1d(mychain, "(Gen_pi_ORIVX_Z - match_pi_ORIVX_Z)/Gen_pi_ORIVX_Z", ";#it{#epsilonz}_{orig}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_ORIVX_Z", "1");
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_Kp_ORIVX_Z)/Gen_Kp_ORIVX_Z", ";#it{#varepsilonz}_{orig}(#it{K^{+}});# candidates", -1, 1, "diff_Kp_ORIVX_Z", "1"); */
+    /* draw_1d(mychain, "(Gen_Km_ORIVX_Z - match_Km_ORIVX_Z)/Gen_Km_ORIVX_Z", ";#it{#varepsilonz}_{orig}(#it{K^{-}});# candidates", -1, 1, "diff_Km_ORIVX_Z", "1"); */
+    /* draw_1d(mychain, "(Gen_pi_ORIVX_Z - match_pi_ORIVX_Z)/Gen_pi_ORIVX_Z", ";#it{#varepsilonz}_{orig}(#it{#pi^{+}});# candidates", -1, 1, "diff_pi_ORIVX_Z", "1"); */
+    
+    compare(mychain, "Gen_Kp_ORIVX_X", "phiFit_ENDVX_X", "Gen", "match", "vtx_{#it{x}}(#it{#phi}) [cm]", -1, 1, "1", "match_entry==1", "phi_VX");
+    compare(mychain, "Gen_Kp_ORIVX_Y", "phiFit_ENDVX_Y", "Gen", "match", "vtx_{#it{y}}(#it{#phi}) [cm]", -1, 1, "1", "match_entry==1", "phi_VY");
+    compare(mychain, "Gen_Kp_ORIVX_Z", "phiFit_ENDVX_Z", "Gen", "match", "vtx_{#it{z}}(#it{#phi}) [cm]", -15, 15, "1", "match_entry==1", "phi_VZ");
+    
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_phiFit_ENDVX_X)/Gen_Kp_ORIVX_X", ";#it{#varepsilon}vtx_{#it{x}}(#it{#phi});# candidates", -3, 3, "epsilon_phi_VX", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_phiFit_ENDVX_Y)/Gen_Kp_ORIVX_Y", ";#it{#varepsilon}vtx_{#it{y}}(#it{#phi});# candidates", -3, 3, "epsilon_phi_VY", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_phiFit_ENDVX_Z)/Gen_Kp_ORIVX_Z", ";#it{#varepsilon}vtx_{#it{z}}(#it{#phi});# candidates", -1, 1, "epsilon_phi_VZ", "1"); */
+    
+    draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_phiFit_ENDVX_X)", ";fit vtx_{#it{x}}(#it{#phi})-Gen vtx_{#it{x}}(#it{#phi}) [cm];# candidates", -1, 1, "diff_phi_VX", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_phiFit_ENDVX_Y)", ";fit vtx_{#it{y}}(#it{#phi})-Gen vtx_{#it{y}}(#it{#phi}) [cm];# candidates", -1, 1, "diff_phi_VY", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_phiFit_ENDVX_Z)", ";fit vtx_{#it{z}}(#it{#phi})-Gen vtx_{#it{z}}(#it{#phi}) [cm];# candidates", -2, 2, "diff_phi_VZ", "1");
+    
+    compare(mychain, "phiFit_ENDVX_XERR", "phiFit_ENDVX_XERR", "match", "non-match", "#Deltavtx_{#it{x}}(#it{#phi}) [cm]", 0, 1, "match_entry==1", "non_match_entry==1", "phi_VXERR");
+    compare(mychain, "phiFit_ENDVX_YERR", "phiFit_ENDVX_YERR", "match", "non-match", "#Deltavtx_{#it{y}}(#it{#phi}) [cm]", 0, 1, "match_entry==1", "non_match_entry==1", "phi_VYERR");
+    compare(mychain, "phiFit_ENDVX_ZERR", "phiFit_ENDVX_ZERR", "match", "non-match", "#Deltavtx_{#it{z}}(#it{#phi}) [cm]", 0, 2, "match_entry==1", "non_match_entry==1", "phi_VZERR");
+    
+    draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_phiFit_ENDVX_X)", ";fit vtx_{#it{x}}(#it{#phi})-Gen vtx_{#it{x}}(#it{#phi}) [cm];# candidates", -1, 1, "diff_phi_VX", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_phiFit_ENDVX_Y)", ";fit vtx_{#it{y}}(#it{#phi})-Gen vtx_{#it{y}}(#it{#phi}) [cm];# candidates", -1, 1, "diff_phi_VY", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_phiFit_ENDVX_Z)", ";fit vtx_{#it{z}}(#it{#phi})-Gen vtx_{#it{z}}(#it{#phi}) [cm];# candidates", -2, 2, "diff_phi_VZ", "1");
+    
+    compare(mychain, "Gen_Kp_ORIVX_X", "DsFit_ENDVX_X", "Gen", "match", "vtx_{#it{x}}(#it{D_{s}^{+}}) [cm]", -1, 1, "1", "match_entry==1", "Ds_VX");
+    compare(mychain, "Gen_Kp_ORIVX_Y", "DsFit_ENDVX_Y", "Gen", "match", "vtx_{#it{y}}(#it{D_{s}^{+}}) [cm]", -1, 1, "1", "match_entry==1", "Ds_VY");
+    compare(mychain, "Gen_Kp_ORIVX_Z", "DsFit_ENDVX_Z", "Gen", "match", "vtx_{#it{z}}(#it{D_{s}^{+}}) [cm]", -15, 15, "1", "match_entry==1", "Ds_VZ");
+    
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_DsFit_ENDVX_X)/Gen_Kp_ORIVX_X", ";#it{#varepsilon}vtx_{#it{x}}(#it{D_{s}^{+}});# candidates", -1, 1, "epsilon_Ds_VX", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_DsFit_ENDVX_Y)/Gen_Kp_ORIVX_Y", ";#it{#varepsilon}vtx_{#it{y}}(#it{D_{s}^{+}});# candidates", -1, 1, "epsilon_Ds_VY", "1"); */
+    /* draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_DsFit_ENDVX_Z)/Gen_Kp_ORIVX_Z", ";#it{#varepsilon}vtx_{#it{z}}(#it{D_{s}^{+}});# candidates", -1, 1, "epsilon_Ds_VZ", "1"); */
+    
+    compare(mychain, "DsFit_ENDVX_XERR", "DsFit_ENDVX_XERR", "match", "non-match", "#Deltavtx_{#it{x}}(#it{D_{s}^{+}}) [cm]", 0, 0.25, "match_entry==1", "non_match_entry==1", "Ds_VXERR");
+    compare(mychain, "DsFit_ENDVX_YERR", "DsFit_ENDVX_YERR", "match", "non-match", "#Deltavtx_{#it{y}}(#it{D_{s}^{+}}) [cm]", 0, 0.25, "match_entry==1", "non_match_entry==1", "Ds_VYERR");
+    compare(mychain, "DsFit_ENDVX_ZERR", "DsFit_ENDVX_ZERR", "match", "non-match", "#Deltavtx_{#it{z}}(#it{D_{s}^{+}}) [cm]", 0, 0.5, "match_entry==1", "non_match_entry==1", "Ds_VZERR");
+    
+    draw_1d(mychain, "(Gen_Kp_ORIVX_X - match_DsFit_ENDVX_X)", ";fit vtx_{#it{x}}(#it{D_{s}^{+}})-Gen vtx_{#it{x}}(#it{D_{s}^{+}}) [cm];# candidates", -0.5, 0.5, "diff_Ds_VX", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Y - match_DsFit_ENDVX_Y)", ";fit vtx_{#it{y}}(#it{D_{s}^{+}})-Gen vtx_{#it{y}}(#it{D_{s}^{+}}) [cm];# candidates", -0.5, 0.5, "diff_Ds_VY", "1");
+    draw_1d(mychain, "(Gen_Kp_ORIVX_Z - match_DsFit_ENDVX_Z)", ";fit vtx_{#it{z}}(#it{D_{s}^{+}})-Gen vtx_{#it{z}}(#it{D_{s}^{+}}) [cm];# candidates", -1, 1, "diff_Ds_VZ", "1");
     
     delete mychain;
 

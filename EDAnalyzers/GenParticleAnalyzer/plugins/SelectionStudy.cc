@@ -440,6 +440,9 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->match_phiFit_ENDVX_X = match_phi_Vertex.position().x();
                 ftree->match_phiFit_ENDVX_Y = match_phi_Vertex.position().y();
                 ftree->match_phiFit_ENDVX_Z = match_phi_Vertex.position().z();
+                ftree->match_phiFit_ENDVX_XERR = std::sqrt(match_phi_Vertex.positionError().cxx());
+                ftree->match_phiFit_ENDVX_YERR = std::sqrt(match_phi_Vertex.positionError().cyy());
+                ftree->match_phiFit_ENDVX_ZERR = std::sqrt(match_phi_Vertex.positionError().czz());
 
                 // some dxy dz
                 ftree->match_dxy_Kp_phi = sqrt(pow(ftree->match_Kp_ORIVX_X-ftree->match_phiFit_ENDVX_X,2) + pow(ftree->match_Kp_ORIVX_Y-ftree->match_phiFit_ENDVX_Y,2));
@@ -547,6 +550,9 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     ftree->match_DsFit_ENDVX_X = match_Ds_Vertex.position().x();
                     ftree->match_DsFit_ENDVX_Y = match_Ds_Vertex.position().y();
                     ftree->match_DsFit_ENDVX_Z = match_Ds_Vertex.position().z();
+                    ftree->match_DsFit_ENDVX_XERR = std::sqrt(match_Ds_Vertex.positionError().cxx());
+                    ftree->match_DsFit_ENDVX_YERR = std::sqrt(match_Ds_Vertex.positionError().cyy());
+                    ftree->match_DsFit_ENDVX_ZERR = std::sqrt(match_Ds_Vertex.positionError().czz());
 
                     // some dxy dz
                     ftree->match_dxy_Kp_Ds = sqrt(pow(ftree->match_Kp_ORIVX_X-ftree->match_DsFit_ENDVX_X,2) + pow(ftree->match_Kp_ORIVX_Y-ftree->match_DsFit_ENDVX_Y,2));
@@ -750,6 +756,9 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             ftree->phiFit_ENDVX_X = phi_Vertex.position().x();
             ftree->phiFit_ENDVX_Y = phi_Vertex.position().y();
             ftree->phiFit_ENDVX_Z = phi_Vertex.position().z();
+            ftree->phiFit_ENDVX_XERR = std::sqrt(phi_Vertex.positionError().cxx());
+            ftree->phiFit_ENDVX_YERR = std::sqrt(phi_Vertex.positionError().cyy());
+            ftree->phiFit_ENDVX_ZERR = std::sqrt(phi_Vertex.positionError().czz());
 
             TLorentzVector phiFit_Kp_P4;
             phiFit_Kp_P4.SetXYZM(phiFit_Tracks[0].track().px(), phiFit_Tracks[0].track().py(), phiFit_Tracks[0].track().pz(), Mass_K);
@@ -880,6 +889,8 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if( ftree->dR_Kp_pi > 0.6 ) continue;
                 if( ftree->dR_Km_pi > 0.6 ) continue;
                 if( ftree->phiFit_dR_pi_phi > 1 ) continue;
+                if( ftree->phiFit_phi_M < 0.99 ) continue;
+                if( ftree->phiFit_phi_M > 1.05 ) continue;
 
                 ftree->dxy_Kp_pi = sqrt(pow(ftree->Kp_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->pi_ORIVX_Y,2));
                 ftree->dxy_Km_pi = sqrt(pow(ftree->Km_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->pi_ORIVX_Y,2));
@@ -915,6 +926,9 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->DsFit_ENDVX_X = Ds_Vertex.position().x();
                 ftree->DsFit_ENDVX_Y = Ds_Vertex.position().y();
                 ftree->DsFit_ENDVX_Z = Ds_Vertex.position().z();
+                ftree->DsFit_ENDVX_XERR = std::sqrt(Ds_Vertex.positionError().cxx());
+                ftree->DsFit_ENDVX_YERR = std::sqrt(Ds_Vertex.positionError().cyy());
+                ftree->DsFit_ENDVX_ZERR = std::sqrt(Ds_Vertex.positionError().czz());
 
                 std::vector<reco::TransientTrack> DsFit_Tracks = Ds_Vertex.refittedTracks();
 
@@ -1014,6 +1028,9 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if( ftree->dR_phi_Ds > 0.4 ) continue;
                 if( ftree->dxy_phi_Ds > 4 ) continue;
                 if( ftree->dz_phi_Ds > 4 ) continue;
+                if( ftree->DsFit_Ds_M < 1.85) continue;
+                if( ftree->DsFit_Ds_M > 2.1) continue;
+
                 ftree->num_reco_Ds++;
 
                 if( idx_Kp_vec[i] == ftree->match_Kp_idx ) ftree->Kp_match = true;
@@ -1031,6 +1048,21 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->Fill_Vector(); 
             }
         }
+    }
+
+    int num_candidates = ftree->match_entry_vec.size();
+
+    double maxPT = 0;
+    int maxidx = -1;
+
+    for(int i=0; i<num_candidates; i++){
+        if(ftree->DsFit_Ds_PT_vec[i]>maxPT){
+            maxPT = ftree->DsFit_Ds_PT_vec[i];
+            maxidx = i;
+        }
+    }
+    if(maxidx > -1) {
+        ftree->Best_Fill_Vector(maxidx);
     }
 
     ftree->tree->Fill();

@@ -50,8 +50,9 @@ void draw_2d(TChain *mychain, TString myvar, TString vartitle, float xvarmin, fl
 int fit_results() {
     setTDRStyle();
 
-    TChain *mychain = new TChain("PackedGenParticle/Events");
-    mychain->Add("/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/tuples/GenTrackMatch/GenTrackMatch.root");
+    TChain *mychain = new TChain("SelectionStudy/Events");
+    /* mychain->Add("/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/tuples/GenTrackMatch/GenTrackMatch.root"); */
+    mychain->Add("/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/tuples/SelectionStudy/SelectionStudy.root");
 
     if(gSystem->AccessPathName("./figures")) gSystem->MakeDirectory("./figures");
     if(gSystem->AccessPathName("./figures/fit_results")) gSystem->MakeDirectory("./figures/fit_results");
@@ -124,13 +125,30 @@ int fit_results() {
     /* draw_2d(mychain, "pi_PT:phi_PT", ";#it{p_{T}(#phi)} [GeV];#it{p_{T}(#pi^{+})} [GeV]", 0, 80, 0, 60, "phi_pi_PT"); */
     /* draw_1d(mychain, "phi_PT/pi_PT", ";#it{p_{T}(#phi)/p_{T}(#pi^{+})} [GeV];# events", 0, 20, "phi_PT_divide_pi_PT"); */
     
-    draw_2d(mychain, "Gen_Kp_PP:((Gen_Kp_PL - Gen_Km_PL)/(Gen_Kp_PL + Gen_Km_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "Gen_APplot_phi");
-    draw_2d(mychain, "Kp_PP:((Kp_PL - Km_PL)/(Kp_PL + Km_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "APplot_phi");
-    draw_2d(mychain, "phiFit_Kp_PP:((phiFit_Kp_PL - phiFit_Km_PL)/(phiFit_Kp_PL + phiFit_Km_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "phiFit_APplot_phi");
+    /* draw_2d(mychain, "Gen_Kp_PP:((Gen_Kp_PL - Gen_Km_PL)/(Gen_Kp_PL + Gen_Km_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "Gen_APplot_phi"); */
+    /* draw_2d(mychain, "Kp_PP:((Kp_PL - Km_PL)/(Kp_PL + Km_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "APplot_phi"); */
+    /* draw_2d(mychain, "phiFit_Kp_PP:((phiFit_Kp_PL - phiFit_Km_PL)/(phiFit_Kp_PL + phiFit_Km_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "phiFit_APplot_phi"); */
     
-    draw_2d(mychain, "Gen_phi_PP:((Gen_phi_PL - Gen_pi_PL)/(Gen_phi_PL + Gen_pi_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "Gen_APplot_Ds");
-    draw_2d(mychain, "phi_PP:((phi_PL - pi_PL)/(phi_PL + pi_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "APplot_Ds");
-    draw_2d(mychain, "DsFit_phi_PP:((DsFit_phi_PL - DsFit_pi_PL)/(DsFit_phi_PL + DsFit_pi_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "DsFit_APplot_Ds");
+    /* draw_2d(mychain, "Gen_phi_PP:((Gen_phi_PL - Gen_pi_PL)/(Gen_phi_PL + Gen_pi_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "Gen_APplot_Ds"); */
+    /* draw_2d(mychain, "phi_PP:((phi_PL - pi_PL)/(phi_PL + pi_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "APplot_Ds"); */
+    /* draw_2d(mychain, "DsFit_phi_PP:((DsFit_phi_PL - DsFit_pi_PL)/(DsFit_phi_PL + DsFit_pi_PL))", ";#it{#alpha};#it{p_{#perp}} [GeV]", -1, 1, 0, 1.5, "DsFit_APplot_Ds"); */
+
+    /* draw_2d(mychain, "abs(phiFit_ENDVX_XERR/phiFit_ENDVX_X):(phiFit_ENDVX_X - Gen_Kp_ORIVX_X)/Gen_Kp_ORIVX_X", ";#varepsilonvtx_{#it{x}}(#it{#phi});|#Deltavtx_{#it{x}}(#it{#phi})/vtx_{#it{x}}(#it{#phi})|", -3, 3, 0, 1, "phi_sig_vtx_x"); */
+    /* draw_2d(mychain, "abs(phiFit_ENDVX_YERR/phiFit_ENDVX_Y):(phiFit_ENDVX_Y - Gen_Kp_ORIVX_Y)/Gen_Kp_ORIVX_Y", ";#varepsilonvtx_{#it{y}}(#it{#phi});|#Deltavtx_{#it{y}}(#it{#phi})/vtx_{#it{y}}(#it{#phi})|", -3, 3, 0, 1, "phi_sig_vtx_y"); */
+    /* draw_2d(mychain, "abs(phiFit_ENDVX_ZERR/phiFit_ENDVX_Z):(phiFit_ENDVX_Z - Gen_Kp_ORIVX_Z)/Gen_Kp_ORIVX_Z", ";#varepsilonvtx_{#it{z}}(#it{#phi});|#Deltavtx_{#it{z}}(#it{#phi})/vtx_{#it{z}}(#it{#phi})|", -3, 3, 0, 1, "phi_sig_vtx_z"); */
+    
+    /* draw_2d(mychain, "abs(DsFit_ENDVX_XERR/DsFit_ENDVX_X):(DsFit_ENDVX_X - Gen_Kp_ORIVX_X)/Gen_Kp_ORIVX_X", ";#varepsilonvtx_{#it{x}}(#it{D_{s}^{+}});|#Deltavtx_{#it{x}}(#it{D_{s}^{+}})/vtx_{#it{x}}(#it{D_{s}^{+}})|", -3, 3, 0, 1, "Ds_sig_vtx_x"); */
+    /* draw_2d(mychain, "abs(DsFit_ENDVX_YERR/DsFit_ENDVX_Y):(DsFit_ENDVX_Y - Gen_Kp_ORIVX_Y)/Gen_Kp_ORIVX_Y", ";#varepsilonvtx_{#it{y}}(#it{D_{s}^{+}});|#Deltavtx_{#it{y}}(#it{D_{s}^{+}})/vtx_{#it{y}}(#it{D_{s}^{+}})|", -3, 3, 0, 1, "Ds_sig_vtx_y"); */
+    /* draw_2d(mychain, "abs(DsFit_ENDVX_ZERR/DsFit_ENDVX_Z):(DsFit_ENDVX_Z - Gen_Kp_ORIVX_Z)/Gen_Kp_ORIVX_Z", ";#varepsilonvtx_{#it{z}}(#it{D_{s}^{+}});|#Deltavtx_{#it{z}}(#it{D_{s}^{+}})/vtx_{#it{z}}(#it{D_{s}^{+}})|", -3, 3, 0, 1, "Ds_sig_vtx_z"); */
+    
+    draw_2d(mychain, "phiFit_ENDVX_XERR:(phiFit_ENDVX_X - Gen_Kp_ORIVX_X)", ";fit vtx_{#it{x}}(#it{#phi})-Gen vtx_{#it{x}}(#it{#phi}) [cm];fit #Deltavtx_{#it{x}}(#it{#phi})|", -1, 1, 0, 0.6, "phi_err_vtx_x");
+    draw_2d(mychain, "phiFit_ENDVX_YERR:(phiFit_ENDVX_Y - Gen_Kp_ORIVX_Y)", ";fit vtx_{#it{y}}(#it{#phi})-Gen vtx_{#it{y}}(#it{#phi}) [cm];fit #Deltavtx_{#it{y}}(#it{#phi})|", -1, 1, 0, 0.6, "phi_err_vtx_y");
+    draw_2d(mychain, "phiFit_ENDVX_ZERR:(phiFit_ENDVX_Z - Gen_Kp_ORIVX_Z)", ";fit vtx_{#it{z}}(#it{#phi})-Gen vtx_{#it{z}}(#it{#phi}) [cm];fit #Deltavtx_{#it{z}}(#it{#phi})|", -2, 2, 0, 2, "phi_err_vtx_z");
+    
+    draw_2d(mychain, "DsFit_ENDVX_XERR:(DsFit_ENDVX_X - Gen_Kp_ORIVX_X)", ";fit vtx_{#it{x}}(#it{D_{s}^{+}})-Gen vtx_{#it{x}}(#it{D_{s}^{+}}) [cm];fit #Deltavtx_{#it{x}}(#it{D_{s}^{+}})|", -0.3, 0.3, 0, 0.1, "Ds_err_vtx_x");
+    draw_2d(mychain, "DsFit_ENDVX_YERR:(DsFit_ENDVX_Y - Gen_Kp_ORIVX_Y)", ";fit vtx_{#it{y}}(#it{D_{s}^{+}})-Gen vtx_{#it{y}}(#it{D_{s}^{+}}) [cm];fit #Deltavtx_{#it{y}}(#it{D_{s}^{+}})|", -0.3, 0.3, 0, 0.1, "Ds_err_vtx_y");
+    draw_2d(mychain, "DsFit_ENDVX_ZERR:(DsFit_ENDVX_Z - Gen_Kp_ORIVX_Z)", ";fit vtx_{#it{z}}(#it{D_{s}^{+}})-Gen vtx_{#it{z}}(#it{D_{s}^{+}}) [cm];fit #Deltavtx_{#it{z}}(#it{D_{s}^{+}})|", -0.5, 0.5, 0, 0.3, "Ds_err_vtx_z");
+
 
     /* draw_1d(mychain, "Gen_dR_Kp_Km", ";Gen #Delta#it{R(K^{+},K^{-})};# events", 0, 0.2, "Gen_dR_Kp_Km"); */
     /* draw_1d(mychain, "Gen_dR_Kp_pi", ";Gen #Delta#it{R(K^{+},#pi^{+})};# events", 0, 0.8, "Gen_dR_Kp_pi"); */

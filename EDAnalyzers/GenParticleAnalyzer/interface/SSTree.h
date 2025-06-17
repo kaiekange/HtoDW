@@ -22,6 +22,7 @@ class SSTree
         void pi_Reset();
         void Gen_Fill_Vector();
         void Match_Fill_Vector();
+        void Best_Fill_Vector(int idxmax);
         void Fill_Vector();
         void CreateBranches();
 
@@ -224,6 +225,9 @@ class SSTree
         double match_phiFit_ENDVX_X;
         double match_phiFit_ENDVX_Y;
         double match_phiFit_ENDVX_Z;
+        double match_phiFit_ENDVX_XERR;
+        double match_phiFit_ENDVX_YERR;
+        double match_phiFit_ENDVX_ZERR;
 
         double match_phiFit_Kp_ETA;
         double match_phiFit_Kp_PHI;
@@ -295,6 +299,9 @@ class SSTree
         double match_DsFit_ENDVX_X;
         double match_DsFit_ENDVX_Y;
         double match_DsFit_ENDVX_Z;
+        double match_DsFit_ENDVX_XERR;
+        double match_DsFit_ENDVX_YERR;
+        double match_DsFit_ENDVX_ZERR;
 
         double match_DsFit_Kp_ETA;
         double match_DsFit_Kp_PHI;
@@ -465,6 +472,9 @@ class SSTree
         double phiFit_ENDVX_X;
         double phiFit_ENDVX_Y;
         double phiFit_ENDVX_Z;
+        double phiFit_ENDVX_XERR;
+        double phiFit_ENDVX_YERR;
+        double phiFit_ENDVX_ZERR;
 
         double phiFit_Kp_ETA;
         double phiFit_Kp_PHI;
@@ -536,6 +546,9 @@ class SSTree
         double DsFit_ENDVX_X;
         double DsFit_ENDVX_Y;
         double DsFit_ENDVX_Z;
+        double DsFit_ENDVX_XERR;
+        double DsFit_ENDVX_YERR;
+        double DsFit_ENDVX_ZERR;
 
         double DsFit_Kp_ETA;
         double DsFit_Kp_PHI;
@@ -791,6 +804,9 @@ class SSTree
         std::vector<double> match_phiFit_ENDVX_X_vec;
         std::vector<double> match_phiFit_ENDVX_Y_vec;
         std::vector<double> match_phiFit_ENDVX_Z_vec;
+        std::vector<double> match_phiFit_ENDVX_XERR_vec;
+        std::vector<double> match_phiFit_ENDVX_YERR_vec;
+        std::vector<double> match_phiFit_ENDVX_ZERR_vec;
 
         std::vector<double> match_phiFit_Kp_ETA_vec;
         std::vector<double> match_phiFit_Kp_PHI_vec;
@@ -862,6 +878,9 @@ class SSTree
         std::vector<double> match_DsFit_ENDVX_X_vec;
         std::vector<double> match_DsFit_ENDVX_Y_vec;
         std::vector<double> match_DsFit_ENDVX_Z_vec;
+        std::vector<double> match_DsFit_ENDVX_XERR_vec;
+        std::vector<double> match_DsFit_ENDVX_YERR_vec;
+        std::vector<double> match_DsFit_ENDVX_ZERR_vec;
 
         std::vector<double> match_DsFit_Kp_ETA_vec;
         std::vector<double> match_DsFit_Kp_PHI_vec;
@@ -1029,6 +1048,9 @@ class SSTree
         std::vector<double> phiFit_ENDVX_X_vec;
         std::vector<double> phiFit_ENDVX_Y_vec;
         std::vector<double> phiFit_ENDVX_Z_vec;
+        std::vector<double> phiFit_ENDVX_XERR_vec;
+        std::vector<double> phiFit_ENDVX_YERR_vec;
+        std::vector<double> phiFit_ENDVX_ZERR_vec;
 
         std::vector<double> phiFit_Kp_ETA_vec;
         std::vector<double> phiFit_Kp_PHI_vec;
@@ -1100,6 +1122,9 @@ class SSTree
         std::vector<double> DsFit_ENDVX_X_vec;
         std::vector<double> DsFit_ENDVX_Y_vec;
         std::vector<double> DsFit_ENDVX_Z_vec;
+        std::vector<double> DsFit_ENDVX_XERR_vec;
+        std::vector<double> DsFit_ENDVX_YERR_vec;
+        std::vector<double> DsFit_ENDVX_ZERR_vec;
 
         std::vector<double> DsFit_Kp_ETA_vec;
         std::vector<double> DsFit_Kp_PHI_vec;
@@ -1172,6 +1197,252 @@ class SSTree
         std::vector<bool> match_entry_vec;
         std::vector<bool> non_match_entry_vec;
 
+        std::vector<double> best_Kp_ETA_vec;
+        std::vector<double> best_Kp_PHI_vec;
+        std::vector<double> best_Kp_ORIVX_X_vec;
+        std::vector<double> best_Kp_ORIVX_Y_vec;
+        std::vector<double> best_Kp_ORIVX_Z_vec;
+        std::vector<double> best_Kp_P_vec;
+        std::vector<double> best_Kp_PT_vec;
+        std::vector<double> best_Kp_PX_vec;
+        std::vector<double> best_Kp_PY_vec;
+        std::vector<double> best_Kp_PZ_vec;
+
+        std::vector<double> best_Km_ETA_vec;
+        std::vector<double> best_Km_PHI_vec;
+        std::vector<double> best_Km_ORIVX_X_vec;
+        std::vector<double> best_Km_ORIVX_Y_vec;
+        std::vector<double> best_Km_ORIVX_Z_vec;
+        std::vector<double> best_Km_P_vec;
+        std::vector<double> best_Km_PT_vec;
+        std::vector<double> best_Km_PX_vec;
+        std::vector<double> best_Km_PY_vec;
+        std::vector<double> best_Km_PZ_vec;
+
+        std::vector<double> best_pi_ETA_vec;
+        std::vector<double> best_pi_PHI_vec;
+        std::vector<double> best_pi_ORIVX_X_vec;
+        std::vector<double> best_pi_ORIVX_Y_vec;
+        std::vector<double> best_pi_ORIVX_Z_vec;
+        std::vector<double> best_pi_P_vec;
+        std::vector<double> best_pi_PT_vec;
+        std::vector<double> best_pi_PX_vec;
+        std::vector<double> best_pi_PY_vec;
+        std::vector<double> best_pi_PZ_vec;
+
+        std::vector<double> best_phi_ETA_vec;
+        std::vector<double> best_phi_PHI_vec;
+        std::vector<double> best_phi_P_vec;
+        std::vector<double> best_phi_PT_vec;
+        std::vector<double> best_phi_PX_vec;
+        std::vector<double> best_phi_PY_vec;
+        std::vector<double> best_phi_PZ_vec;
+        std::vector<double> best_phi_M_vec;
+
+        std::vector<double> best_Ds_ETA_vec;
+        std::vector<double> best_Ds_PHI_vec;
+        std::vector<double> best_Ds_P_vec;
+        std::vector<double> best_Ds_PT_vec;
+        std::vector<double> best_Ds_PX_vec;
+        std::vector<double> best_Ds_PY_vec;
+        std::vector<double> best_Ds_PZ_vec;
+        std::vector<double> best_Ds_M_vec;
+
+        std::vector<double> best_Kp_PP_vec;
+        std::vector<double> best_Kp_PL_vec;
+        std::vector<double> best_Km_PP_vec;
+        std::vector<double> best_Km_PL_vec;
+
+        std::vector<double> best_phi_PP_vec;
+        std::vector<double> best_phi_PL_vec;
+        std::vector<double> best_pi_PP_vec;
+        std::vector<double> best_pi_PL_vec;
+
+        std::vector<double> best_dR_Kp_Km_vec;
+        std::vector<double> best_dR_Kp_phi_vec;
+        std::vector<double> best_dR_Km_phi_vec;
+        std::vector<double> best_dR_Kp_pi_vec;
+        std::vector<double> best_dR_Km_pi_vec;
+        std::vector<double> best_dR_pi_phi_vec;
+        std::vector<double> best_dR_Kp_Ds_vec;
+        std::vector<double> best_dR_Km_Ds_vec;
+        std::vector<double> best_dR_phi_Ds_vec;
+        std::vector<double> best_dR_pi_Ds_vec;
+
+        std::vector<double> best_dxy_Kp_Km_vec;
+        std::vector<double> best_dxy_Kp_phi_vec;
+        std::vector<double> best_dxy_Km_phi_vec;
+        std::vector<double> best_dxy_Kp_pi_vec;
+        std::vector<double> best_dxy_Km_pi_vec;
+        std::vector<double> best_dxy_pi_phi_vec;
+        std::vector<double> best_dxy_Kp_Ds_vec;
+        std::vector<double> best_dxy_Km_Ds_vec;
+        std::vector<double> best_dxy_phi_Ds_vec;
+        std::vector<double> best_dxy_pi_Ds_vec;
+
+        std::vector<double> best_dz_Kp_Km_vec;
+        std::vector<double> best_dz_Kp_phi_vec;
+        std::vector<double> best_dz_Km_phi_vec;
+        std::vector<double> best_dz_Kp_pi_vec;
+        std::vector<double> best_dz_Km_pi_vec;
+        std::vector<double> best_dz_pi_phi_vec;
+        std::vector<double> best_dz_Kp_Ds_vec;
+        std::vector<double> best_dz_Km_Ds_vec;
+        std::vector<double> best_dz_phi_Ds_vec;
+        std::vector<double> best_dz_pi_Ds_vec;
+
+        // Fit on phi
+        std::vector<double> best_phiFit_CHI2_vec;
+        std::vector<double> best_phiFit_NDOF_vec;
+        std::vector<double> best_phiFit_CHI2NDOF_vec;
+        std::vector<double> best_phiFit_ENDVX_X_vec;
+        std::vector<double> best_phiFit_ENDVX_Y_vec;
+        std::vector<double> best_phiFit_ENDVX_Z_vec;
+        std::vector<double> best_phiFit_ENDVX_XERR_vec;
+        std::vector<double> best_phiFit_ENDVX_YERR_vec;
+        std::vector<double> best_phiFit_ENDVX_ZERR_vec;
+
+        std::vector<double> best_phiFit_Kp_ETA_vec;
+        std::vector<double> best_phiFit_Kp_PHI_vec;
+        std::vector<double> best_phiFit_Kp_P_vec;
+        std::vector<double> best_phiFit_Kp_PT_vec;
+        std::vector<double> best_phiFit_Kp_PX_vec;
+        std::vector<double> best_phiFit_Kp_PY_vec;
+        std::vector<double> best_phiFit_Kp_PZ_vec;
+
+        std::vector<double> best_phiFit_Km_ETA_vec;
+        std::vector<double> best_phiFit_Km_PHI_vec;
+        std::vector<double> best_phiFit_Km_P_vec;
+        std::vector<double> best_phiFit_Km_PT_vec;
+        std::vector<double> best_phiFit_Km_PX_vec;
+        std::vector<double> best_phiFit_Km_PY_vec;
+        std::vector<double> best_phiFit_Km_PZ_vec;
+
+        std::vector<double> best_phiFit_pi_ETA_vec;
+        std::vector<double> best_phiFit_pi_PHI_vec;
+        std::vector<double> best_phiFit_pi_P_vec;
+        std::vector<double> best_phiFit_pi_PT_vec;
+        std::vector<double> best_phiFit_pi_PX_vec;
+        std::vector<double> best_phiFit_pi_PY_vec;
+        std::vector<double> best_phiFit_pi_PZ_vec;
+
+        std::vector<double> best_phiFit_phi_ETA_vec;
+        std::vector<double> best_phiFit_phi_PHI_vec;
+        std::vector<double> best_phiFit_phi_P_vec;
+        std::vector<double> best_phiFit_phi_PT_vec;
+        std::vector<double> best_phiFit_phi_PX_vec;
+        std::vector<double> best_phiFit_phi_PY_vec;
+        std::vector<double> best_phiFit_phi_PZ_vec;
+        std::vector<double> best_phiFit_phi_M_vec;
+
+        std::vector<double> best_phiFit_Ds_ETA_vec;
+        std::vector<double> best_phiFit_Ds_PHI_vec;
+        std::vector<double> best_phiFit_Ds_P_vec;
+        std::vector<double> best_phiFit_Ds_PT_vec;
+        std::vector<double> best_phiFit_Ds_PX_vec;
+        std::vector<double> best_phiFit_Ds_PY_vec;
+        std::vector<double> best_phiFit_Ds_PZ_vec;
+        std::vector<double> best_phiFit_Ds_M_vec;
+
+        std::vector<double> best_phiFit_Kp_PP_vec;
+        std::vector<double> best_phiFit_Kp_PL_vec;
+        std::vector<double> best_phiFit_Km_PP_vec;
+        std::vector<double> best_phiFit_Km_PL_vec;
+
+        std::vector<double> best_phiFit_phi_PP_vec;
+        std::vector<double> best_phiFit_phi_PL_vec;
+        std::vector<double> best_phiFit_pi_PP_vec;
+        std::vector<double> best_phiFit_pi_PL_vec;
+
+        std::vector<double> best_phiFit_dR_Kp_Km_vec;
+        std::vector<double> best_phiFit_dR_Kp_phi_vec;
+        std::vector<double> best_phiFit_dR_Km_phi_vec;
+        std::vector<double> best_phiFit_dR_Kp_pi_vec;
+        std::vector<double> best_phiFit_dR_Km_pi_vec;
+        std::vector<double> best_phiFit_dR_pi_phi_vec;
+        std::vector<double> best_phiFit_dR_Kp_Ds_vec;
+        std::vector<double> best_phiFit_dR_Km_Ds_vec;
+        std::vector<double> best_phiFit_dR_phi_Ds_vec;
+        std::vector<double> best_phiFit_dR_pi_Ds_vec;
+
+        // Fit on Ds 
+        std::vector<double> best_DsFit_CHI2_vec;
+        std::vector<double> best_DsFit_NDOF_vec;
+        std::vector<double> best_DsFit_CHI2NDOF_vec;
+        std::vector<double> best_DsFit_ENDVX_X_vec;
+        std::vector<double> best_DsFit_ENDVX_Y_vec;
+        std::vector<double> best_DsFit_ENDVX_Z_vec;
+        std::vector<double> best_DsFit_ENDVX_XERR_vec;
+        std::vector<double> best_DsFit_ENDVX_YERR_vec;
+        std::vector<double> best_DsFit_ENDVX_ZERR_vec;
+
+        std::vector<double> best_DsFit_Kp_ETA_vec;
+        std::vector<double> best_DsFit_Kp_PHI_vec;
+        std::vector<double> best_DsFit_Kp_P_vec;
+        std::vector<double> best_DsFit_Kp_PT_vec;
+        std::vector<double> best_DsFit_Kp_PX_vec;
+        std::vector<double> best_DsFit_Kp_PY_vec;
+        std::vector<double> best_DsFit_Kp_PZ_vec;
+
+        std::vector<double> best_DsFit_Km_ETA_vec;
+        std::vector<double> best_DsFit_Km_PHI_vec;
+        std::vector<double> best_DsFit_Km_P_vec;
+        std::vector<double> best_DsFit_Km_PT_vec;
+        std::vector<double> best_DsFit_Km_PX_vec;
+        std::vector<double> best_DsFit_Km_PY_vec;
+        std::vector<double> best_DsFit_Km_PZ_vec;
+
+        std::vector<double> best_DsFit_pi_ETA_vec;
+        std::vector<double> best_DsFit_pi_PHI_vec;
+        std::vector<double> best_DsFit_pi_P_vec;
+        std::vector<double> best_DsFit_pi_PT_vec;
+        std::vector<double> best_DsFit_pi_PX_vec;
+        std::vector<double> best_DsFit_pi_PY_vec;
+        std::vector<double> best_DsFit_pi_PZ_vec;
+
+        std::vector<double> best_DsFit_phi_ETA_vec;
+        std::vector<double> best_DsFit_phi_PHI_vec;
+        std::vector<double> best_DsFit_phi_P_vec;
+        std::vector<double> best_DsFit_phi_PT_vec;
+        std::vector<double> best_DsFit_phi_PX_vec;
+        std::vector<double> best_DsFit_phi_PY_vec;
+        std::vector<double> best_DsFit_phi_PZ_vec;
+        std::vector<double> best_DsFit_phi_M_vec;
+
+        std::vector<double> best_DsFit_Ds_ETA_vec;
+        std::vector<double> best_DsFit_Ds_PHI_vec;
+        std::vector<double> best_DsFit_Ds_P_vec;
+        std::vector<double> best_DsFit_Ds_PT_vec;
+        std::vector<double> best_DsFit_Ds_PX_vec;
+        std::vector<double> best_DsFit_Ds_PY_vec;
+        std::vector<double> best_DsFit_Ds_PZ_vec;
+        std::vector<double> best_DsFit_Ds_M_vec;
+
+        std::vector<double> best_DsFit_Kp_PP_vec;
+        std::vector<double> best_DsFit_Kp_PL_vec;
+        std::vector<double> best_DsFit_Km_PP_vec;
+        std::vector<double> best_DsFit_Km_PL_vec;
+
+        std::vector<double> best_DsFit_phi_PP_vec;
+        std::vector<double> best_DsFit_phi_PL_vec;
+        std::vector<double> best_DsFit_pi_PP_vec;
+        std::vector<double> best_DsFit_pi_PL_vec;
+
+        std::vector<double> best_DsFit_dR_Kp_Km_vec;
+        std::vector<double> best_DsFit_dR_Kp_phi_vec;
+        std::vector<double> best_DsFit_dR_Km_phi_vec;
+        std::vector<double> best_DsFit_dR_Kp_pi_vec;
+        std::vector<double> best_DsFit_dR_Km_pi_vec;
+        std::vector<double> best_DsFit_dR_pi_phi_vec;
+        std::vector<double> best_DsFit_dR_Kp_Ds_vec;
+        std::vector<double> best_DsFit_dR_Km_Ds_vec;
+        std::vector<double> best_DsFit_dR_phi_Ds_vec;
+        std::vector<double> best_DsFit_dR_pi_Ds_vec;
+
+        std::vector<double> best_DsFit_Mconstraint_Ds_M_vec;
+
+        std::vector<bool> best_match_entry_vec;
+    
 };
 
 #endif
