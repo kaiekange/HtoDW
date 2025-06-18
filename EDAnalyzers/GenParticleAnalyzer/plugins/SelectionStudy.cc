@@ -85,9 +85,14 @@ class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<int> idx_Km_vec;
         std::vector<int> idx_pi_vec;
 
+        const double Mass_Ds = 1.96835;
+        const double Mass_phi = 1.019460;
         const double Mass_K = 0.493677;
         const double Mass_pi = 0.13957039;
-        const double Mass_phi = 1.019461;
+        const double pst_phi = Mass_phi/2;
+        const double pst_Ds = sqrt((pow(Mass_Ds,4)+pow(Mass_phi,4)+pow(Mass_pi,4)-2*pow(Mass_Ds*Mass_phi,2)-2*pow(Mass_Ds*Mass_pi,2)-2*pow(Mass_phi*Mass_pi,2))/(4*pow(Mass_Ds,2)));
+        const double Est_phi = std::sqrt(pow(Mass_phi,2) + pow(pst_Ds,2));
+        const double Est_pi = std::sqrt(pow(Mass_pi,2) + pow(pst_Ds,2));
 };
 
 SelectionStudy::SelectionStudy(const edm::ParameterSet& iConfig) :
@@ -158,7 +163,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
 
     ftree->Gen_Reset();
     ftree->Match_Reset();
-    
+
     if(ftree->num_Gen_Kp==1 && ftree->num_Gen_Km==1 && ftree->num_Gen_pi==1 && ftree->num_Gen_phi==1 && ftree->num_Gen_Ds==1){
 
         const auto& Kp_GP = (*prunedGen)[Gen_Kp_idx[0]];
@@ -313,19 +318,25 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 }
             }
         }
-        if(bestKp.dr < 0.03) ftree->num_match_Kp++;
-        if(bestKm.dr < 0.03) ftree->num_match_Km++;
-        if(bestpi.dr < 0.03) ftree->num_match_pi++;
 
-        ftree->match_Kp_idx = bestKp.index;
-        ftree->match_Km_idx = bestKm.index;
-        ftree->match_pi_idx = bestpi.index;
+        if(bestKp.dr < 0.03){
+            ftree->num_match_Kp++;
+            ftree->match_Kp_idx = bestKp.index;
+        }
+        if(bestKm.dr < 0.03){
+            ftree->num_match_Km++;
+            ftree->match_Km_idx = bestKm.index;
+        }
+        if(bestpi.dr < 0.03){
+            ftree->num_match_pi++;
+            ftree->match_pi_idx = bestpi.index;
+        }
 
-        const auto& match_Kp_PF = (*packedPF)[bestKp.index];
-        const auto& match_Km_PF = (*packedPF)[bestKm.index];
-        const auto& match_pi_PF = (*packedPF)[bestpi.index];
+        if( bestKp.dr < 0.03 && bestKm.dr < 0.03 && bestpi.dr < 0.03 && (*packedPF)[bestKp.index].hasTrackDetails() && (*packedPF)[bestKm.index].hasTrackDetails() && (*packedPF)[bestpi.index].hasTrackDetails() && (*packedPF)[bestKp.index].trackHighPurity() && (*packedPF)[bestKm.index].trackHighPurity() && (*packedPF)[bestpi.index].trackHighPurity() ){
 
-        if( bestKp.dr < 0.03 && bestKm.dr < 0.03 && bestpi.dr < 0.03 && match_Kp_PF.hasTrackDetails() && match_Km_PF.hasTrackDetails() && match_pi_PF.hasTrackDetails() ){
+            const auto& match_Kp_PF = (*packedPF)[bestKp.index];
+            const auto& match_Km_PF = (*packedPF)[bestKm.index];
+            const auto& match_pi_PF = (*packedPF)[bestpi.index];
 
             // Original Kp
             ftree->match_Kp_ETA = match_Kp_PF.eta();
@@ -390,12 +401,12 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             ftree->match_Ds_PY = match_Ds_P4.Py();
             ftree->match_Ds_PZ = match_Ds_P4.Pz();
             ftree->match_Ds_M = match_Ds_P4.M();
-            
+
             // some dxy dz
             ftree->match_dxy_Kp_Km = sqrt(pow(ftree->match_Kp_ORIVX_X-ftree->match_Km_ORIVX_X,2) + pow(ftree->match_Kp_ORIVX_Y-ftree->match_Km_ORIVX_Y,2));
             ftree->match_dxy_Kp_pi = sqrt(pow(ftree->match_Kp_ORIVX_X-ftree->match_pi_ORIVX_X,2) + pow(ftree->match_Kp_ORIVX_Y-ftree->match_pi_ORIVX_Y,2));
             ftree->match_dxy_Km_pi = sqrt(pow(ftree->match_Km_ORIVX_X-ftree->match_pi_ORIVX_X,2) + pow(ftree->match_Km_ORIVX_Y-ftree->match_pi_ORIVX_Y,2));
-            
+
             ftree->match_dz_Kp_Km = abs(ftree->match_Kp_ORIVX_Z-ftree->match_Km_ORIVX_Z);
             ftree->match_dz_Kp_pi = abs(ftree->match_Kp_ORIVX_Z-ftree->match_pi_ORIVX_Z);
             ftree->match_dz_Km_pi = abs(ftree->match_Km_ORIVX_Z-ftree->match_pi_ORIVX_Z);
@@ -432,7 +443,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
             TransientVertex match_phi_Vertex = fitter.vertex(match_phi_Tracks);
 
             if( match_phi_Vertex.isValid() && match_phi_Vertex.hasRefittedTracks() ){
-               
+
                 // phi fit variables 
                 ftree->match_phiFit_CHI2 = match_phi_Vertex.totalChiSquared();
                 ftree->match_phiFit_NDOF = match_phi_Vertex.degreesOfFreedom();
@@ -454,7 +465,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->match_dz_pi_phi = abs(ftree->match_pi_ORIVX_Z-ftree->match_phiFit_ENDVX_Z);
 
                 std::vector<reco::TransientTrack> match_phiFit_Tracks = match_phi_Vertex.refittedTracks();
-                
+
                 // phi fit Kp
                 TLorentzVector match_phiFit_Kp_P4;
                 match_phiFit_Kp_P4.SetXYZM(match_phiFit_Tracks[0].track().px(), match_phiFit_Tracks[0].track().py(), match_phiFit_Tracks[0].track().pz(), Mass_K);
@@ -497,7 +508,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->match_phiFit_phi_PY = match_phiFit_phi_P4.Py();
                 ftree->match_phiFit_phi_PZ = match_phiFit_phi_P4.Pz();
                 ftree->match_phiFit_phi_M = match_phiFit_phi_P4.M();
-                
+
                 // phi fit Ds
                 TLorentzVector match_phiFit_Ds_P4 = match_phiFit_Kp_P4 + match_phiFit_Km_P4 + match_phiFit_pi_P4;
                 ftree->match_phiFit_Ds_ETA = match_phiFit_Ds_P4.Eta();
@@ -508,7 +519,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 ftree->match_phiFit_Ds_PY = match_phiFit_Ds_P4.Py();
                 ftree->match_phiFit_Ds_PZ = match_phiFit_Ds_P4.Pz();
                 ftree->match_phiFit_Ds_M = match_phiFit_Ds_P4.M();
-               
+
                 // phi fit PP PL 
                 ftree->match_phiFit_Kp_PP = match_phiFit_Kp_P4.Vect().Pt(match_phiFit_phi_P4.Vect());
                 ftree->match_phiFit_Kp_PL = match_phiFit_Kp_P4.Vect().Dot(match_phiFit_phi_P4.Vect())/match_phiFit_phi_P4.P();
@@ -542,7 +553,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 TransientVertex match_Ds_Vertex = fitter.vertex(match_Ds_Tracks);
 
                 if( match_Ds_Vertex.isValid() && match_Ds_Vertex.hasRefittedTracks() ){
-               
+
                     // Ds fit variables 
                     ftree->match_DsFit_CHI2 = match_Ds_Vertex.totalChiSquared();
                     ftree->match_DsFit_NDOF = match_Ds_Vertex.degreesOfFreedom();
@@ -649,453 +660,467 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     ftree->match_DsFit_dR_Km_Ds = reco::deltaR(match_DsFit_Km_P4.Eta(), match_DsFit_Km_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
                     ftree->match_DsFit_dR_phi_Ds = reco::deltaR(match_DsFit_phi_P4.Eta(), match_DsFit_phi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
                     ftree->match_DsFit_dR_pi_Ds = reco::deltaR(match_DsFit_pi_P4.Eta(), match_DsFit_pi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
-                
+
                     ftree->Match_Fill_Vector();
                 }
             }
         }
-    } 
+        } 
 
-    idx_Kp_vec.clear();
-    idx_Km_vec.clear();
-    idx_pi_vec.clear();
+        idx_Kp_vec.clear();
+        idx_Km_vec.clear();
+        idx_pi_vec.clear();
 
-    for(size_t i=0; i<packedPF->size(); i++){
-        const auto& pf = (*packedPF)[i];
+        for(size_t i=0; i<packedPF->size(); i++){
+            const auto& pf = (*packedPF)[i];
 
-        if(!(pf.trackHighPurity())) continue;
-        if(!(pf.hasTrackDetails())) continue;
-        if(pf.pt() < 0.5) continue;
-        if(pf.p() < 1) continue;
+            if(!(pf.trackHighPurity())) continue;
+            if(!(pf.hasTrackDetails())) continue;
+            if(pf.pt() < 0.5) continue;
+            if(pf.p() < 1) continue;
 
-        if(pf.pdgId() == 211){
-            idx_Kp_vec.push_back(i);
-            idx_pi_vec.push_back(i);
-        } else if(pf.pdgId() == -211){
-            idx_Km_vec.push_back(i);
-        }
-    }
-
-    for(size_t i=0; i<idx_Kp_vec.size(); i++){
-
-        const auto& Kp_PF = (*packedPF)[idx_Kp_vec[i]];
-
-        ftree->Kp_Reset();
-
-        ftree->Kp_ETA = Kp_PF.eta();
-        ftree->Kp_PHI = Kp_PF.phi();
-        ftree->Kp_ORIVX_X = Kp_PF.vx();
-        ftree->Kp_ORIVX_Y = Kp_PF.vy();
-        ftree->Kp_ORIVX_Z = Kp_PF.vz();
-        ftree->Kp_P = Kp_PF.p();
-        ftree->Kp_PT = Kp_PF.pt();
-        ftree->Kp_PX = Kp_PF.px();
-        ftree->Kp_PY = Kp_PF.py();
-        ftree->Kp_PZ = Kp_PF.pz();
-        TLorentzVector Kp_P4;
-        Kp_P4.SetXYZM(Kp_PF.px(), Kp_PF.py(), Kp_PF.pz(), Mass_K);
-        
-        for(size_t j=0; j<idx_Km_vec.size(); j++){
-            const auto& Km_PF = (*packedPF)[idx_Km_vec[j]];
-
-            ftree->Km_Reset();
-            ftree->Km_ETA = Km_PF.eta();
-            ftree->Km_PHI = Km_PF.phi();
-            ftree->Km_ORIVX_X = Km_PF.vx();
-            ftree->Km_ORIVX_Y = Km_PF.vy();
-            ftree->Km_ORIVX_Z = Km_PF.vz();
-            ftree->Km_P = Km_PF.p();
-            ftree->Km_PT = Km_PF.pt();
-            ftree->Km_PX = Km_PF.px();
-            ftree->Km_PY = Km_PF.py();
-            ftree->Km_PZ = Km_PF.pz();
-            TLorentzVector Km_P4;
-            Km_P4.SetXYZM(Km_PF.px(), Km_PF.py(), Km_PF.pz(), Mass_K);
-
-            TLorentzVector phi_P4 = Kp_P4 + Km_P4;
-            ftree->phi_ETA = phi_P4.Eta();
-            ftree->phi_PHI = phi_P4.Phi();
-            ftree->phi_P = phi_P4.P();
-            ftree->phi_PT = phi_P4.Pt();
-            ftree->phi_PX = phi_P4.Px();
-            ftree->phi_PY = phi_P4.Py();
-            ftree->phi_PZ = phi_P4.Pz();
-            ftree->phi_M = phi_P4.M();
-
-            ftree->Kp_PP = Kp_P4.Vect().Pt(phi_P4.Vect());
-            ftree->Kp_PL = Kp_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
-            ftree->Km_PP = Km_P4.Vect().Pt(phi_P4.Vect());
-            ftree->Km_PL = Km_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
-
-            ftree->dR_Kp_Km = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), Km_P4.Eta(), Km_P4.Phi());
-            ftree->dR_Kp_phi = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
-            ftree->dR_Km_phi = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
-
-            ftree->dxy_Kp_Km = sqrt(pow(ftree->Kp_ORIVX_X-ftree->Km_ORIVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->Km_ORIVX_Y,2));
-            ftree->dz_Kp_Km = abs(ftree->Kp_ORIVX_Z-ftree->Km_ORIVX_Z);
-
-            if( abs(ftree->Kp_PT - ftree->Km_PT) > 20) continue;
-            if( ftree->dR_Kp_Km > 0.15 ) continue;
-            if( ftree->dxy_Kp_Km > 0.2) continue;
-            if( ftree->dz_Kp_Km > 0.2) continue;
-
-            std::vector<reco::TransientTrack> phi_Tracks = {
-                (*theB).build(Kp_PF.pseudoTrack()),
-                (*theB).build(Km_PF.pseudoTrack())
-            };
-            TransientVertex phi_Vertex = fitter.vertex(phi_Tracks);
-
-            if( !(phi_Vertex.isValid()) ) continue;
-            if( !(phi_Vertex.hasRefittedTracks()) ) continue;
-
-            std::vector<reco::TransientTrack> phiFit_Tracks = phi_Vertex.refittedTracks();
-
-            ftree->phiFit_CHI2 = phi_Vertex.totalChiSquared();
-            ftree->phiFit_NDOF = phi_Vertex.degreesOfFreedom();
-            ftree->phiFit_CHI2NDOF = phi_Vertex.normalisedChiSquared();
-            ftree->phiFit_ENDVX_X = phi_Vertex.position().x();
-            ftree->phiFit_ENDVX_Y = phi_Vertex.position().y();
-            ftree->phiFit_ENDVX_Z = phi_Vertex.position().z();
-            ftree->phiFit_ENDVX_XERR = std::sqrt(phi_Vertex.positionError().cxx());
-            ftree->phiFit_ENDVX_YERR = std::sqrt(phi_Vertex.positionError().cyy());
-            ftree->phiFit_ENDVX_ZERR = std::sqrt(phi_Vertex.positionError().czz());
-
-            TLorentzVector phiFit_Kp_P4;
-            phiFit_Kp_P4.SetXYZM(phiFit_Tracks[0].track().px(), phiFit_Tracks[0].track().py(), phiFit_Tracks[0].track().pz(), Mass_K);
-            ftree->phiFit_Kp_ETA = phiFit_Kp_P4.Eta();
-            ftree->phiFit_Kp_PHI = phiFit_Kp_P4.Phi();
-            ftree->phiFit_Kp_P = phiFit_Kp_P4.P();
-            ftree->phiFit_Kp_PT = phiFit_Kp_P4.Pt();
-            ftree->phiFit_Kp_PX = phiFit_Kp_P4.Px();
-            ftree->phiFit_Kp_PY = phiFit_Kp_P4.Py();
-            ftree->phiFit_Kp_PZ = phiFit_Kp_P4.Pz();
-
-            TLorentzVector phiFit_Km_P4;
-            phiFit_Km_P4.SetXYZM(phiFit_Tracks[1].track().px(), phiFit_Tracks[1].track().py(), phiFit_Tracks[1].track().pz(), Mass_K);
-            ftree->phiFit_Km_ETA = phiFit_Km_P4.Eta();
-            ftree->phiFit_Km_PHI = phiFit_Km_P4.Phi();
-            ftree->phiFit_Km_P = phiFit_Km_P4.P();
-            ftree->phiFit_Km_PT = phiFit_Km_P4.Pt();
-            ftree->phiFit_Km_PX = phiFit_Km_P4.Px();
-            ftree->phiFit_Km_PY = phiFit_Km_P4.Py();
-            ftree->phiFit_Km_PZ = phiFit_Km_P4.Pz();
-
-            TLorentzVector phiFit_phi_P4 = phiFit_Kp_P4 + phiFit_Km_P4;
-            ftree->phiFit_phi_ETA = phiFit_phi_P4.Eta();
-            ftree->phiFit_phi_PHI = phiFit_phi_P4.Phi();
-            ftree->phiFit_phi_P = phiFit_phi_P4.P();
-            ftree->phiFit_phi_PT = phiFit_phi_P4.Pt();
-            ftree->phiFit_phi_PX = phiFit_phi_P4.Px();
-            ftree->phiFit_phi_PY = phiFit_phi_P4.Py();
-            ftree->phiFit_phi_PZ = phiFit_phi_P4.Pz();
-            ftree->phiFit_phi_M = phiFit_phi_P4.M();
-
-            ftree->phiFit_Kp_PP = phiFit_Kp_P4.Vect().Pt(phiFit_phi_P4.Vect());
-            ftree->phiFit_Kp_PL = phiFit_Kp_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
-            ftree->phiFit_Km_PP = phiFit_Km_P4.Vect().Pt(phiFit_phi_P4.Vect());
-            ftree->phiFit_Km_PL = phiFit_Km_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
-
-            ftree->phiFit_dR_Kp_Km = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi());
-            ftree->phiFit_dR_Kp_phi = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
-            ftree->phiFit_dR_Km_phi = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
-            
-            ftree->dxy_Kp_phi = sqrt(pow(ftree->Kp_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
-            ftree->dxy_Km_phi = sqrt(pow(ftree->Km_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
-
-            ftree->dz_Kp_phi = abs(ftree->Kp_ORIVX_Z-ftree->phiFit_ENDVX_Z);
-            ftree->dz_Km_phi = abs(ftree->Km_ORIVX_Z-ftree->phiFit_ENDVX_Z);
-
-            if( ftree->phiFit_CHI2NDOF < 0 ) continue;
-            if( ftree->phiFit_CHI2NDOF > 10 ) continue;
-            ftree->num_reco_phi++;
-
-            for(size_t k=0; k<idx_pi_vec.size(); k++){
-
-                if( idx_pi_vec[k] == idx_Kp_vec[i] ) continue;
-            
-                const auto& pi_PF = (*packedPF)[idx_pi_vec[k]];
-                ftree->pi_Reset();
-             
-                ftree->pi_ETA = pi_PF.eta();
-                ftree->pi_PHI = pi_PF.phi();
-                ftree->pi_ORIVX_X = pi_PF.vx();
-                ftree->pi_ORIVX_Y = pi_PF.vy();
-                ftree->pi_ORIVX_Z = pi_PF.vz();
-                ftree->pi_P = pi_PF.p();
-                ftree->pi_PT = pi_PF.pt();
-                ftree->pi_PX = pi_PF.px();
-                ftree->pi_PY = pi_PF.py();
-                ftree->pi_PZ = pi_PF.pz();
-                TLorentzVector pi_P4;
-                pi_P4.SetXYZM(pi_PF.px(), pi_PF.py(), pi_PF.pz(), Mass_pi);
-                
-                ftree->dR_Kp_pi = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), pi_P4.Eta(), pi_P4.Phi());
-                ftree->dR_Km_pi = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), pi_P4.Eta(), pi_P4.Phi());
-                ftree->dR_pi_phi = reco::deltaR(pi_P4.Eta(), pi_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
-
-                TLorentzVector Ds_P4 = Kp_P4 + Km_P4 + pi_P4;
-                ftree->Ds_ETA = Ds_P4.Eta();
-                ftree->Ds_PHI = Ds_P4.Phi();
-                ftree->Ds_P = Ds_P4.P();
-                ftree->Ds_PT = Ds_P4.Pt();
-                ftree->Ds_PX = Ds_P4.Px();
-                ftree->Ds_PY = Ds_P4.Py();
-                ftree->Ds_PZ = Ds_P4.Pz();
-                ftree->Ds_M = Ds_P4.M();
-                
-                ftree->dR_Kp_Ds = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
-                ftree->dR_Km_Ds = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
-                ftree->dR_pi_Ds = reco::deltaR(pi_P4.Eta(), pi_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
-                ftree->dR_phi_Ds = reco::deltaR(phi_P4.Eta(), phi_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
-
-                ftree->pi_PP = pi_P4.Vect().Pt(Ds_P4.Vect());
-                ftree->pi_PL = pi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
-                ftree->phi_PP = phi_P4.Vect().Pt(Ds_P4.Vect());
-                ftree->phi_PL = phi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
-
-                TLorentzVector phiFit_pi_P4 = pi_P4;
-                ftree->phiFit_pi_ETA = phiFit_pi_P4.Eta();
-                ftree->phiFit_pi_PHI = phiFit_pi_P4.Phi();
-                ftree->phiFit_pi_P = phiFit_pi_P4.P();
-                ftree->phiFit_pi_PT = phiFit_pi_P4.Pt();
-                ftree->phiFit_pi_PX = phiFit_pi_P4.Px();
-                ftree->phiFit_pi_PY = phiFit_pi_P4.Py();
-                ftree->phiFit_pi_PZ = phiFit_pi_P4.Pz();
-                
-                ftree->phiFit_dR_Kp_pi = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi());
-                ftree->phiFit_dR_Km_pi = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi());
-                ftree->phiFit_dR_pi_phi = reco::deltaR(phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
-
-                TLorentzVector phiFit_Ds_P4 = phiFit_Kp_P4 + phiFit_Km_P4 + phiFit_pi_P4;
-                ftree->phiFit_Ds_ETA = phiFit_Ds_P4.Eta();
-                ftree->phiFit_Ds_PHI = phiFit_Ds_P4.Phi();
-                ftree->phiFit_Ds_P = phiFit_Ds_P4.P();
-                ftree->phiFit_Ds_PT = phiFit_Ds_P4.Pt();
-                ftree->phiFit_Ds_PX = phiFit_Ds_P4.Px();
-                ftree->phiFit_Ds_PY = phiFit_Ds_P4.Py();
-                ftree->phiFit_Ds_PZ = phiFit_Ds_P4.Pz();
-                ftree->phiFit_Ds_M = phiFit_Ds_P4.M();
-
-                ftree->phiFit_pi_PP = phiFit_pi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
-                ftree->phiFit_pi_PL = phiFit_pi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
-                ftree->phiFit_phi_PP = phiFit_phi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
-                ftree->phiFit_phi_PL = phiFit_phi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
-
-                ftree->phiFit_dR_Kp_Ds = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
-                ftree->phiFit_dR_Km_Ds = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
-                ftree->phiFit_dR_pi_Ds = reco::deltaR(phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
-                ftree->phiFit_dR_phi_Ds = reco::deltaR(phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
-
-                if( ftree->dR_Kp_pi > 0.6 ) continue;
-                if( ftree->dR_Km_pi > 0.6 ) continue;
-                if( ftree->phiFit_dR_pi_phi > 1 ) continue;
-                if( ftree->phiFit_phi_M < 0.99 ) continue;
-                if( ftree->phiFit_phi_M > 1.05 ) continue;
-
-                ftree->dxy_Kp_pi = sqrt(pow(ftree->Kp_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->pi_ORIVX_Y,2));
-                ftree->dxy_Km_pi = sqrt(pow(ftree->Km_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->pi_ORIVX_Y,2));
-                ftree->dxy_pi_phi = sqrt(pow(ftree->pi_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->pi_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
-
-                ftree->dz_Kp_pi = abs(ftree->Kp_ORIVX_Z-ftree->pi_ORIVX_Z);
-                ftree->dz_Km_pi = abs(ftree->Km_ORIVX_Z-ftree->pi_ORIVX_Z);
-                ftree->dz_pi_phi = abs(ftree->pi_ORIVX_Z-ftree->phiFit_ENDVX_Z);
-                
-                if( ftree->dxy_Kp_pi > 0.4 ) continue;
-                if( ftree->dz_Kp_pi > 0.4 ) continue;
-
-                if( ftree->dxy_Km_pi > 0.4 ) continue;
-                if( ftree->dz_Km_pi > 0.4 ) continue;
-
-                if( ftree->dxy_pi_phi > 6 ) continue;
-                if( ftree->dz_pi_phi > 6 ) continue;
-
-                std::vector<reco::TransientTrack> Ds_Tracks = {
-                    phiFit_Tracks[0],
-                    phiFit_Tracks[1],
-                    (*theB).build(pi_PF.pseudoTrack())
-                };
-
-                TransientVertex Ds_Vertex = fitter.vertex(Ds_Tracks);
-
-                if( !(Ds_Vertex.isValid()) ) continue;
-                if( !(Ds_Vertex.hasRefittedTracks()) ) continue;
-                
-                ftree->DsFit_CHI2 = Ds_Vertex.totalChiSquared();
-                ftree->DsFit_NDOF = Ds_Vertex.degreesOfFreedom();
-                ftree->DsFit_CHI2NDOF = Ds_Vertex.normalisedChiSquared();
-                ftree->DsFit_ENDVX_X = Ds_Vertex.position().x();
-                ftree->DsFit_ENDVX_Y = Ds_Vertex.position().y();
-                ftree->DsFit_ENDVX_Z = Ds_Vertex.position().z();
-                ftree->DsFit_ENDVX_XERR = std::sqrt(Ds_Vertex.positionError().cxx());
-                ftree->DsFit_ENDVX_YERR = std::sqrt(Ds_Vertex.positionError().cyy());
-                ftree->DsFit_ENDVX_ZERR = std::sqrt(Ds_Vertex.positionError().czz());
-
-                std::vector<reco::TransientTrack> DsFit_Tracks = Ds_Vertex.refittedTracks();
-
-                // Ds fit Kp
-                TLorentzVector DsFit_Kp_P4;
-                DsFit_Kp_P4.SetXYZM(DsFit_Tracks[0].track().px(), DsFit_Tracks[0].track().py(), DsFit_Tracks[0].track().pz(), Mass_K);
-                ftree->DsFit_Kp_ETA = DsFit_Kp_P4.Eta();
-                ftree->DsFit_Kp_PHI = DsFit_Kp_P4.Phi();
-                ftree->DsFit_Kp_P = DsFit_Kp_P4.P();
-                ftree->DsFit_Kp_PT = DsFit_Kp_P4.Pt();
-                ftree->DsFit_Kp_PX = DsFit_Kp_P4.Px();
-                ftree->DsFit_Kp_PY = DsFit_Kp_P4.Py();
-                ftree->DsFit_Kp_PZ = DsFit_Kp_P4.Pz();
-
-                // Ds fit Km
-                TLorentzVector DsFit_Km_P4;
-                DsFit_Km_P4.SetXYZM(DsFit_Tracks[1].track().px(), DsFit_Tracks[1].track().py(), DsFit_Tracks[1].track().pz(), Mass_K);
-                ftree->DsFit_Km_ETA = DsFit_Km_P4.Eta();
-                ftree->DsFit_Km_PHI = DsFit_Km_P4.Phi();
-                ftree->DsFit_Km_P = DsFit_Km_P4.P();
-                ftree->DsFit_Km_PT = DsFit_Km_P4.Pt();
-                ftree->DsFit_Km_PX = DsFit_Km_P4.Px();
-                ftree->DsFit_Km_PY = DsFit_Km_P4.Py();
-                ftree->DsFit_Km_PZ = DsFit_Km_P4.Pz();
-
-                // Ds fit pi
-                TLorentzVector DsFit_pi_P4;
-                DsFit_pi_P4.SetXYZM(DsFit_Tracks[2].track().px(), DsFit_Tracks[2].track().py(), DsFit_Tracks[2].track().pz(), Mass_pi);
-                ftree->DsFit_pi_ETA = DsFit_pi_P4.Eta();
-                ftree->DsFit_pi_PHI = DsFit_pi_P4.Phi();
-                ftree->DsFit_pi_P = DsFit_pi_P4.P();
-                ftree->DsFit_pi_PT = DsFit_pi_P4.Pt();
-                ftree->DsFit_pi_PX = DsFit_pi_P4.Px();
-                ftree->DsFit_pi_PY = DsFit_pi_P4.Py();
-                ftree->DsFit_pi_PZ = DsFit_pi_P4.Pz();
-               
-                // Ds fit phi
-                TLorentzVector DsFit_phi_P4 = DsFit_Kp_P4 + DsFit_Km_P4;
-                ftree->DsFit_phi_ETA = DsFit_phi_P4.Eta();
-                ftree->DsFit_phi_PHI = DsFit_phi_P4.Phi();
-                ftree->DsFit_phi_P = DsFit_phi_P4.P();
-                ftree->DsFit_phi_PT = DsFit_phi_P4.Pt();
-                ftree->DsFit_phi_PX = DsFit_phi_P4.Px();
-                ftree->DsFit_phi_PY = DsFit_phi_P4.Py();
-                ftree->DsFit_phi_PZ = DsFit_phi_P4.Pz();
-                ftree->DsFit_phi_M = DsFit_phi_P4.M();
-
-                // Ds fit Ds
-                TLorentzVector DsFit_Ds_P4 = DsFit_Kp_P4 + DsFit_Km_P4 + DsFit_pi_P4;
-                ftree->DsFit_Ds_ETA = DsFit_Ds_P4.Eta();
-                ftree->DsFit_Ds_PHI = DsFit_Ds_P4.Phi();
-                ftree->DsFit_Ds_P = DsFit_Ds_P4.P();
-                ftree->DsFit_Ds_PT = DsFit_Ds_P4.Pt();
-                ftree->DsFit_Ds_PX = DsFit_Ds_P4.Px();
-                ftree->DsFit_Ds_PY = DsFit_Ds_P4.Py();
-                ftree->DsFit_Ds_PZ = DsFit_Ds_P4.Pz();
-                ftree->DsFit_Ds_M = DsFit_Ds_P4.M();
-
-                TLorentzVector DsFit_Mconstraint_phi_P4;
-                DsFit_Mconstraint_phi_P4.SetXYZM(DsFit_phi_P4.Px(), DsFit_phi_P4.Py(), DsFit_phi_P4.Pz(), Mass_phi);
-                TLorentzVector DsFit_Mconstraint_Ds_P4 = DsFit_Mconstraint_phi_P4 + DsFit_pi_P4;
-                ftree->DsFit_Mconstraint_Ds_M = DsFit_Mconstraint_Ds_P4.M();
-
-                ftree->DsFit_Kp_PP = DsFit_Kp_P4.Vect().Pt(DsFit_phi_P4.Vect());
-                ftree->DsFit_Kp_PL = DsFit_Kp_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
-                ftree->DsFit_Km_PP = DsFit_Km_P4.Vect().Pt(DsFit_phi_P4.Vect());
-                ftree->DsFit_Km_PL = DsFit_Km_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
-
-                ftree->DsFit_phi_PP = DsFit_phi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
-                ftree->DsFit_phi_PL = DsFit_phi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
-                ftree->DsFit_pi_PP = DsFit_pi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
-                ftree->DsFit_pi_PL = DsFit_pi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
-
-                ftree->DsFit_dR_Kp_Km = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi());
-                ftree->DsFit_dR_Kp_phi = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
-                ftree->DsFit_dR_Km_phi = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
-                ftree->DsFit_dR_Kp_pi = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
-                ftree->DsFit_dR_Km_pi = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
-                ftree->DsFit_dR_pi_phi = reco::deltaR(DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
-                ftree->DsFit_dR_Kp_Ds = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
-                ftree->DsFit_dR_Km_Ds = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
-                ftree->DsFit_dR_phi_Ds = reco::deltaR(DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
-                ftree->DsFit_dR_pi_Ds = reco::deltaR(DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
-
-                ftree->dxy_Kp_Ds = sqrt(pow(ftree->Kp_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
-                ftree->dxy_Km_Ds = sqrt(pow(ftree->Km_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
-                ftree->dxy_pi_Ds = sqrt(pow(ftree->pi_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->pi_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
-                ftree->dxy_phi_Ds = sqrt(pow(ftree->phiFit_ENDVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->phiFit_ENDVX_Y-ftree->DsFit_ENDVX_Y,2));
-
-                ftree->dz_Kp_Ds = abs(ftree->Kp_ORIVX_Z-ftree->DsFit_ENDVX_Z);
-                ftree->dz_Km_Ds = abs(ftree->Km_ORIVX_Z-ftree->DsFit_ENDVX_Z);
-                ftree->dz_pi_Ds = abs(ftree->pi_ORIVX_Z-ftree->DsFit_ENDVX_Z);
-                ftree->dz_phi_Ds = abs(ftree->phiFit_ENDVX_Z-ftree->DsFit_ENDVX_Z);
-
-                if( ftree->DsFit_CHI2NDOF < 0 ) continue;
-                if( ftree->DsFit_CHI2NDOF > 10 ) continue;
-                if( ftree->dR_phi_Ds > 0.4 ) continue;
-                if( ftree->dxy_phi_Ds > 4 ) continue;
-                if( ftree->dz_phi_Ds > 4 ) continue;
-                if( ftree->DsFit_Ds_M < 1.85) continue;
-                if( ftree->DsFit_Ds_M > 2.1) continue;
-
-                ftree->num_reco_Ds++;
-
-                if( idx_Kp_vec[i] == ftree->match_Kp_idx ) ftree->Kp_match = true;
-                else ftree->Kp_match = false;
-                if( idx_Km_vec[j] == ftree->match_Km_idx ) ftree->Km_match = true;
-                else ftree->Km_match = false;
-                if( idx_pi_vec[k] == ftree->match_pi_idx ) ftree->pi_match = true;
-                else ftree->pi_match = false;
-
-                if(ftree->Kp_match && ftree->Km_match && ftree->pi_match) ftree->match_entry = true;
-                else ftree->match_entry = false;
-                if(!ftree->Kp_match && !ftree->Km_match && !ftree->pi_match) ftree->non_match_entry = true;
-                else ftree->non_match_entry = false;
-
-                ftree->Fill_Vector(); 
+            if(pf.pdgId() == 211){
+                idx_Kp_vec.push_back(i);
+                idx_pi_vec.push_back(i);
+            } else if(pf.pdgId() == -211){
+                idx_Km_vec.push_back(i);
             }
         }
-    }
 
-    int num_candidates = ftree->match_entry_vec.size();
+        for(size_t i=0; i<idx_Kp_vec.size(); i++){
 
-    double maxPT = 0;
-    int maxidx = -1;
+            const auto& Kp_PF = (*packedPF)[idx_Kp_vec[i]];
 
-    for(int i=0; i<num_candidates; i++){
-        if(ftree->DsFit_Ds_PT_vec[i]>maxPT){
-            maxPT = ftree->DsFit_Ds_PT_vec[i];
-            maxidx = i;
+            ftree->Kp_Reset();
+
+            ftree->Kp_ETA = Kp_PF.eta();
+            ftree->Kp_PHI = Kp_PF.phi();
+            ftree->Kp_ORIVX_X = Kp_PF.vx();
+            ftree->Kp_ORIVX_Y = Kp_PF.vy();
+            ftree->Kp_ORIVX_Z = Kp_PF.vz();
+            ftree->Kp_P = Kp_PF.p();
+            ftree->Kp_PT = Kp_PF.pt();
+            ftree->Kp_PX = Kp_PF.px();
+            ftree->Kp_PY = Kp_PF.py();
+            ftree->Kp_PZ = Kp_PF.pz();
+            TLorentzVector Kp_P4;
+            Kp_P4.SetXYZM(Kp_PF.px(), Kp_PF.py(), Kp_PF.pz(), Mass_K);
+
+            for(size_t j=0; j<idx_Km_vec.size(); j++){
+                const auto& Km_PF = (*packedPF)[idx_Km_vec[j]];
+
+                ftree->Km_Reset();
+                ftree->Km_ETA = Km_PF.eta();
+                ftree->Km_PHI = Km_PF.phi();
+                ftree->Km_ORIVX_X = Km_PF.vx();
+                ftree->Km_ORIVX_Y = Km_PF.vy();
+                ftree->Km_ORIVX_Z = Km_PF.vz();
+                ftree->Km_P = Km_PF.p();
+                ftree->Km_PT = Km_PF.pt();
+                ftree->Km_PX = Km_PF.px();
+                ftree->Km_PY = Km_PF.py();
+                ftree->Km_PZ = Km_PF.pz();
+                TLorentzVector Km_P4;
+                Km_P4.SetXYZM(Km_PF.px(), Km_PF.py(), Km_PF.pz(), Mass_K);
+
+                TLorentzVector phi_P4 = Kp_P4 + Km_P4;
+                ftree->phi_ETA = phi_P4.Eta();
+                ftree->phi_PHI = phi_P4.Phi();
+                ftree->phi_P = phi_P4.P();
+                ftree->phi_PT = phi_P4.Pt();
+                ftree->phi_PX = phi_P4.Px();
+                ftree->phi_PY = phi_P4.Py();
+                ftree->phi_PZ = phi_P4.Pz();
+                ftree->phi_M = phi_P4.M();
+
+                ftree->Kp_PP = Kp_P4.Vect().Pt(phi_P4.Vect());
+                ftree->Kp_PL = Kp_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
+                ftree->Km_PP = Km_P4.Vect().Pt(phi_P4.Vect());
+                ftree->Km_PL = Km_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
+
+                ftree->dR_Kp_Km = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), Km_P4.Eta(), Km_P4.Phi());
+                ftree->dR_Kp_phi = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
+                ftree->dR_Km_phi = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
+
+                ftree->dxy_Kp_Km = sqrt(pow(ftree->Kp_ORIVX_X-ftree->Km_ORIVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->Km_ORIVX_Y,2));
+                ftree->dz_Kp_Km = abs(ftree->Kp_ORIVX_Z-ftree->Km_ORIVX_Z);
+
+                if( abs(ftree->Kp_PT - ftree->Km_PT) > 20) continue;
+                if( ftree->dR_Kp_Km > 0.15 ) continue;
+                if( ftree->dxy_Kp_Km > 0.2) continue;
+                if( ftree->dz_Kp_Km > 0.2) continue;
+
+                std::vector<reco::TransientTrack> phi_Tracks = {
+                    (*theB).build(Kp_PF.pseudoTrack()),
+                    (*theB).build(Km_PF.pseudoTrack())
+                };
+                TransientVertex phi_Vertex = fitter.vertex(phi_Tracks);
+
+                if( !(phi_Vertex.isValid()) ) continue;
+                if( !(phi_Vertex.hasRefittedTracks()) ) continue;
+
+                std::vector<reco::TransientTrack> phiFit_Tracks = phi_Vertex.refittedTracks();
+
+                ftree->phiFit_CHI2 = phi_Vertex.totalChiSquared();
+                ftree->phiFit_NDOF = phi_Vertex.degreesOfFreedom();
+                ftree->phiFit_CHI2NDOF = phi_Vertex.normalisedChiSquared();
+                ftree->phiFit_ENDVX_X = phi_Vertex.position().x();
+                ftree->phiFit_ENDVX_Y = phi_Vertex.position().y();
+                ftree->phiFit_ENDVX_Z = phi_Vertex.position().z();
+                ftree->phiFit_ENDVX_XERR = std::sqrt(phi_Vertex.positionError().cxx());
+                ftree->phiFit_ENDVX_YERR = std::sqrt(phi_Vertex.positionError().cyy());
+                ftree->phiFit_ENDVX_ZERR = std::sqrt(phi_Vertex.positionError().czz());
+
+                TLorentzVector phiFit_Kp_P4;
+                phiFit_Kp_P4.SetXYZM(phiFit_Tracks[0].track().px(), phiFit_Tracks[0].track().py(), phiFit_Tracks[0].track().pz(), Mass_K);
+                ftree->phiFit_Kp_ETA = phiFit_Kp_P4.Eta();
+                ftree->phiFit_Kp_PHI = phiFit_Kp_P4.Phi();
+                ftree->phiFit_Kp_P = phiFit_Kp_P4.P();
+                ftree->phiFit_Kp_PT = phiFit_Kp_P4.Pt();
+                ftree->phiFit_Kp_PX = phiFit_Kp_P4.Px();
+                ftree->phiFit_Kp_PY = phiFit_Kp_P4.Py();
+                ftree->phiFit_Kp_PZ = phiFit_Kp_P4.Pz();
+
+                TLorentzVector phiFit_Km_P4;
+                phiFit_Km_P4.SetXYZM(phiFit_Tracks[1].track().px(), phiFit_Tracks[1].track().py(), phiFit_Tracks[1].track().pz(), Mass_K);
+                ftree->phiFit_Km_ETA = phiFit_Km_P4.Eta();
+                ftree->phiFit_Km_PHI = phiFit_Km_P4.Phi();
+                ftree->phiFit_Km_P = phiFit_Km_P4.P();
+                ftree->phiFit_Km_PT = phiFit_Km_P4.Pt();
+                ftree->phiFit_Km_PX = phiFit_Km_P4.Px();
+                ftree->phiFit_Km_PY = phiFit_Km_P4.Py();
+                ftree->phiFit_Km_PZ = phiFit_Km_P4.Pz();
+
+                TLorentzVector phiFit_phi_P4 = phiFit_Kp_P4 + phiFit_Km_P4;
+                ftree->phiFit_phi_ETA = phiFit_phi_P4.Eta();
+                ftree->phiFit_phi_PHI = phiFit_phi_P4.Phi();
+                ftree->phiFit_phi_P = phiFit_phi_P4.P();
+                ftree->phiFit_phi_PT = phiFit_phi_P4.Pt();
+                ftree->phiFit_phi_PX = phiFit_phi_P4.Px();
+                ftree->phiFit_phi_PY = phiFit_phi_P4.Py();
+                ftree->phiFit_phi_PZ = phiFit_phi_P4.Pz();
+                ftree->phiFit_phi_M = phiFit_phi_P4.M();
+
+                ftree->phiFit_Kp_PP = phiFit_Kp_P4.Vect().Pt(phiFit_phi_P4.Vect());
+                ftree->phiFit_Kp_PL = phiFit_Kp_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
+                ftree->phiFit_Km_PP = phiFit_Km_P4.Vect().Pt(phiFit_phi_P4.Vect());
+                ftree->phiFit_Km_PL = phiFit_Km_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
+
+                ftree->phiFit_dR_Kp_Km = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi());
+                ftree->phiFit_dR_Kp_phi = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
+                ftree->phiFit_dR_Km_phi = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
+
+                ftree->dxy_Kp_phi = sqrt(pow(ftree->Kp_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
+                ftree->dxy_Km_phi = sqrt(pow(ftree->Km_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
+
+                ftree->dz_Kp_phi = abs(ftree->Kp_ORIVX_Z-ftree->phiFit_ENDVX_Z);
+                ftree->dz_Km_phi = abs(ftree->Km_ORIVX_Z-ftree->phiFit_ENDVX_Z);
+
+                if( ftree->phiFit_CHI2NDOF < 0 ) continue;
+                if( ftree->phiFit_CHI2NDOF > 10 ) continue;
+                ftree->num_reco_phi++;
+
+                for(size_t k=0; k<idx_pi_vec.size(); k++){
+
+                    if( idx_pi_vec[k] == idx_Kp_vec[i] ) continue;
+
+                    const auto& pi_PF = (*packedPF)[idx_pi_vec[k]];
+                    ftree->pi_Reset();
+
+                    ftree->pi_ETA = pi_PF.eta();
+                    ftree->pi_PHI = pi_PF.phi();
+                    ftree->pi_ORIVX_X = pi_PF.vx();
+                    ftree->pi_ORIVX_Y = pi_PF.vy();
+                    ftree->pi_ORIVX_Z = pi_PF.vz();
+                    ftree->pi_P = pi_PF.p();
+                    ftree->pi_PT = pi_PF.pt();
+                    ftree->pi_PX = pi_PF.px();
+                    ftree->pi_PY = pi_PF.py();
+                    ftree->pi_PZ = pi_PF.pz();
+                    TLorentzVector pi_P4;
+                    pi_P4.SetXYZM(pi_PF.px(), pi_PF.py(), pi_PF.pz(), Mass_pi);
+
+                    ftree->dR_Kp_pi = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), pi_P4.Eta(), pi_P4.Phi());
+                    ftree->dR_Km_pi = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), pi_P4.Eta(), pi_P4.Phi());
+                    ftree->dR_pi_phi = reco::deltaR(pi_P4.Eta(), pi_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
+
+                    TLorentzVector Ds_P4 = Kp_P4 + Km_P4 + pi_P4;
+                    ftree->Ds_ETA = Ds_P4.Eta();
+                    ftree->Ds_PHI = Ds_P4.Phi();
+                    ftree->Ds_P = Ds_P4.P();
+                    ftree->Ds_PT = Ds_P4.Pt();
+                    ftree->Ds_PX = Ds_P4.Px();
+                    ftree->Ds_PY = Ds_P4.Py();
+                    ftree->Ds_PZ = Ds_P4.Pz();
+                    ftree->Ds_M = Ds_P4.M();
+
+                    ftree->dR_Kp_Ds = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
+                    ftree->dR_Km_Ds = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
+                    ftree->dR_pi_Ds = reco::deltaR(pi_P4.Eta(), pi_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
+                    ftree->dR_phi_Ds = reco::deltaR(phi_P4.Eta(), phi_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
+
+                    ftree->pi_PP = pi_P4.Vect().Pt(Ds_P4.Vect());
+                    ftree->pi_PL = pi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
+                    ftree->phi_PP = phi_P4.Vect().Pt(Ds_P4.Vect());
+                    ftree->phi_PL = phi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
+
+                    TLorentzVector phiFit_pi_P4 = pi_P4;
+                    ftree->phiFit_pi_ETA = phiFit_pi_P4.Eta();
+                    ftree->phiFit_pi_PHI = phiFit_pi_P4.Phi();
+                    ftree->phiFit_pi_P = phiFit_pi_P4.P();
+                    ftree->phiFit_pi_PT = phiFit_pi_P4.Pt();
+                    ftree->phiFit_pi_PX = phiFit_pi_P4.Px();
+                    ftree->phiFit_pi_PY = phiFit_pi_P4.Py();
+                    ftree->phiFit_pi_PZ = phiFit_pi_P4.Pz();
+
+                    ftree->phiFit_dR_Kp_pi = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi());
+                    ftree->phiFit_dR_Km_pi = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi());
+                    ftree->phiFit_dR_pi_phi = reco::deltaR(phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
+
+                    TLorentzVector phiFit_Ds_P4 = phiFit_Kp_P4 + phiFit_Km_P4 + phiFit_pi_P4;
+                    ftree->phiFit_Ds_ETA = phiFit_Ds_P4.Eta();
+                    ftree->phiFit_Ds_PHI = phiFit_Ds_P4.Phi();
+                    ftree->phiFit_Ds_P = phiFit_Ds_P4.P();
+                    ftree->phiFit_Ds_PT = phiFit_Ds_P4.Pt();
+                    ftree->phiFit_Ds_PX = phiFit_Ds_P4.Px();
+                    ftree->phiFit_Ds_PY = phiFit_Ds_P4.Py();
+                    ftree->phiFit_Ds_PZ = phiFit_Ds_P4.Pz();
+                    ftree->phiFit_Ds_M = phiFit_Ds_P4.M();
+
+                    ftree->phiFit_pi_PP = phiFit_pi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
+                    ftree->phiFit_pi_PL = phiFit_pi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
+                    ftree->phiFit_phi_PP = phiFit_phi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
+                    ftree->phiFit_phi_PL = phiFit_phi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
+
+                    ftree->phiFit_dR_Kp_Ds = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
+                    ftree->phiFit_dR_Km_Ds = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
+                    ftree->phiFit_dR_pi_Ds = reco::deltaR(phiFit_pi_P4.Eta(), phiFit_pi_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
+                    ftree->phiFit_dR_phi_Ds = reco::deltaR(phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi(), phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
+
+                    if( ftree->dR_Kp_pi > 0.6 ) continue;
+                    if( ftree->dR_Km_pi > 0.6 ) continue;
+                    if( ftree->phiFit_dR_pi_phi > 1 ) continue;
+                    if( ftree->phiFit_phi_M < 0.99 ) continue;
+                    if( ftree->phiFit_phi_M > 1.05 ) continue;
+
+                    ftree->dxy_Kp_pi = sqrt(pow(ftree->Kp_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->pi_ORIVX_Y,2));
+                    ftree->dxy_Km_pi = sqrt(pow(ftree->Km_ORIVX_X-ftree->pi_ORIVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->pi_ORIVX_Y,2));
+                    ftree->dxy_pi_phi = sqrt(pow(ftree->pi_ORIVX_X-ftree->phiFit_ENDVX_X,2) + pow(ftree->pi_ORIVX_Y-ftree->phiFit_ENDVX_Y,2));
+
+                    ftree->dz_Kp_pi = abs(ftree->Kp_ORIVX_Z-ftree->pi_ORIVX_Z);
+                    ftree->dz_Km_pi = abs(ftree->Km_ORIVX_Z-ftree->pi_ORIVX_Z);
+                    ftree->dz_pi_phi = abs(ftree->pi_ORIVX_Z-ftree->phiFit_ENDVX_Z);
+
+                    if( ftree->dxy_Kp_pi > 0.4 ) continue;
+                    if( ftree->dz_Kp_pi > 0.4 ) continue;
+
+                    if( ftree->dxy_Km_pi > 0.4 ) continue;
+                    if( ftree->dz_Km_pi > 0.4 ) continue;
+
+                    if( ftree->dxy_pi_phi > 6 ) continue;
+                    if( ftree->dz_pi_phi > 6 ) continue;
+
+                    std::vector<reco::TransientTrack> Ds_Tracks = {
+                        phiFit_Tracks[0],
+                        phiFit_Tracks[1],
+                        (*theB).build(pi_PF.pseudoTrack())
+                    };
+
+                    TransientVertex Ds_Vertex = fitter.vertex(Ds_Tracks);
+
+                    if( !(Ds_Vertex.isValid()) ) continue;
+                    if( !(Ds_Vertex.hasRefittedTracks()) ) continue;
+
+                    ftree->DsFit_CHI2 = Ds_Vertex.totalChiSquared();
+                    ftree->DsFit_NDOF = Ds_Vertex.degreesOfFreedom();
+                    ftree->DsFit_CHI2NDOF = Ds_Vertex.normalisedChiSquared();
+                    ftree->DsFit_ENDVX_X = Ds_Vertex.position().x();
+                    ftree->DsFit_ENDVX_Y = Ds_Vertex.position().y();
+                    ftree->DsFit_ENDVX_Z = Ds_Vertex.position().z();
+                    ftree->DsFit_ENDVX_XERR = std::sqrt(Ds_Vertex.positionError().cxx());
+                    ftree->DsFit_ENDVX_YERR = std::sqrt(Ds_Vertex.positionError().cyy());
+                    ftree->DsFit_ENDVX_ZERR = std::sqrt(Ds_Vertex.positionError().czz());
+
+                    std::vector<reco::TransientTrack> DsFit_Tracks = Ds_Vertex.refittedTracks();
+
+                    // Ds fit Kp
+                    TLorentzVector DsFit_Kp_P4;
+                    DsFit_Kp_P4.SetXYZM(DsFit_Tracks[0].track().px(), DsFit_Tracks[0].track().py(), DsFit_Tracks[0].track().pz(), Mass_K);
+                    ftree->DsFit_Kp_ETA = DsFit_Kp_P4.Eta();
+                    ftree->DsFit_Kp_PHI = DsFit_Kp_P4.Phi();
+                    ftree->DsFit_Kp_P = DsFit_Kp_P4.P();
+                    ftree->DsFit_Kp_PT = DsFit_Kp_P4.Pt();
+                    ftree->DsFit_Kp_PX = DsFit_Kp_P4.Px();
+                    ftree->DsFit_Kp_PY = DsFit_Kp_P4.Py();
+                    ftree->DsFit_Kp_PZ = DsFit_Kp_P4.Pz();
+
+                    // Ds fit Km
+                    TLorentzVector DsFit_Km_P4;
+                    DsFit_Km_P4.SetXYZM(DsFit_Tracks[1].track().px(), DsFit_Tracks[1].track().py(), DsFit_Tracks[1].track().pz(), Mass_K);
+                    ftree->DsFit_Km_ETA = DsFit_Km_P4.Eta();
+                    ftree->DsFit_Km_PHI = DsFit_Km_P4.Phi();
+                    ftree->DsFit_Km_P = DsFit_Km_P4.P();
+                    ftree->DsFit_Km_PT = DsFit_Km_P4.Pt();
+                    ftree->DsFit_Km_PX = DsFit_Km_P4.Px();
+                    ftree->DsFit_Km_PY = DsFit_Km_P4.Py();
+                    ftree->DsFit_Km_PZ = DsFit_Km_P4.Pz();
+
+                    // Ds fit pi
+                    TLorentzVector DsFit_pi_P4;
+                    DsFit_pi_P4.SetXYZM(DsFit_Tracks[2].track().px(), DsFit_Tracks[2].track().py(), DsFit_Tracks[2].track().pz(), Mass_pi);
+                    ftree->DsFit_pi_ETA = DsFit_pi_P4.Eta();
+                    ftree->DsFit_pi_PHI = DsFit_pi_P4.Phi();
+                    ftree->DsFit_pi_P = DsFit_pi_P4.P();
+                    ftree->DsFit_pi_PT = DsFit_pi_P4.Pt();
+                    ftree->DsFit_pi_PX = DsFit_pi_P4.Px();
+                    ftree->DsFit_pi_PY = DsFit_pi_P4.Py();
+                    ftree->DsFit_pi_PZ = DsFit_pi_P4.Pz();
+
+                    // Ds fit phi
+                    TLorentzVector DsFit_phi_P4 = DsFit_Kp_P4 + DsFit_Km_P4;
+                    ftree->DsFit_phi_ETA = DsFit_phi_P4.Eta();
+                    ftree->DsFit_phi_PHI = DsFit_phi_P4.Phi();
+                    ftree->DsFit_phi_P = DsFit_phi_P4.P();
+                    ftree->DsFit_phi_PT = DsFit_phi_P4.Pt();
+                    ftree->DsFit_phi_PX = DsFit_phi_P4.Px();
+                    ftree->DsFit_phi_PY = DsFit_phi_P4.Py();
+                    ftree->DsFit_phi_PZ = DsFit_phi_P4.Pz();
+                    ftree->DsFit_phi_M = DsFit_phi_P4.M();
+
+                    // Ds fit Ds
+                    TLorentzVector DsFit_Ds_P4 = DsFit_Kp_P4 + DsFit_Km_P4 + DsFit_pi_P4;
+                    ftree->DsFit_Ds_ETA = DsFit_Ds_P4.Eta();
+                    ftree->DsFit_Ds_PHI = DsFit_Ds_P4.Phi();
+                    ftree->DsFit_Ds_P = DsFit_Ds_P4.P();
+                    ftree->DsFit_Ds_PT = DsFit_Ds_P4.Pt();
+                    ftree->DsFit_Ds_PX = DsFit_Ds_P4.Px();
+                    ftree->DsFit_Ds_PY = DsFit_Ds_P4.Py();
+                    ftree->DsFit_Ds_PZ = DsFit_Ds_P4.Pz();
+                    ftree->DsFit_Ds_M = DsFit_Ds_P4.M();
+
+                    TLorentzVector DsFit_Mconstraint_phi_P4;
+                    DsFit_Mconstraint_phi_P4.SetXYZM(DsFit_phi_P4.Px(), DsFit_phi_P4.Py(), DsFit_phi_P4.Pz(), Mass_phi);
+                    TLorentzVector DsFit_Mconstraint_Ds_P4 = DsFit_Mconstraint_phi_P4 + DsFit_pi_P4;
+                    ftree->DsFit_Mconstraint_Ds_M = DsFit_Mconstraint_Ds_P4.M();
+
+                    ftree->DsFit_Kp_PP = DsFit_Kp_P4.Vect().Pt(DsFit_phi_P4.Vect());
+                    ftree->DsFit_Kp_PL = DsFit_Kp_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
+                    ftree->DsFit_Km_PP = DsFit_Km_P4.Vect().Pt(DsFit_phi_P4.Vect());
+                    ftree->DsFit_Km_PL = DsFit_Km_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
+
+                    ftree->DsFit_phi_PP = DsFit_phi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
+                    ftree->DsFit_phi_PL = DsFit_phi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
+                    ftree->DsFit_pi_PP = DsFit_pi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
+                    ftree->DsFit_pi_PL = DsFit_pi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
+
+                    ftree->DsFit_dR_Kp_Km = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi());
+                    ftree->DsFit_dR_Kp_phi = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
+                    ftree->DsFit_dR_Km_phi = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
+                    ftree->DsFit_dR_Kp_pi = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
+                    ftree->DsFit_dR_Km_pi = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
+                    ftree->DsFit_dR_pi_phi = reco::deltaR(DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi(), DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi());
+                    ftree->DsFit_dR_Kp_Ds = reco::deltaR(DsFit_Kp_P4.Eta(), DsFit_Kp_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
+                    ftree->DsFit_dR_Km_Ds = reco::deltaR(DsFit_Km_P4.Eta(), DsFit_Km_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
+                    ftree->DsFit_dR_phi_Ds = reco::deltaR(DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
+                    ftree->DsFit_dR_pi_Ds = reco::deltaR(DsFit_pi_P4.Eta(), DsFit_pi_P4.Phi(), DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi());
+
+                    ftree->dxy_Kp_Ds = sqrt(pow(ftree->Kp_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->Kp_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
+                    ftree->dxy_Km_Ds = sqrt(pow(ftree->Km_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->Km_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
+                    ftree->dxy_pi_Ds = sqrt(pow(ftree->pi_ORIVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->pi_ORIVX_Y-ftree->DsFit_ENDVX_Y,2));
+                    ftree->dxy_phi_Ds = sqrt(pow(ftree->phiFit_ENDVX_X-ftree->DsFit_ENDVX_X,2) + pow(ftree->phiFit_ENDVX_Y-ftree->DsFit_ENDVX_Y,2));
+
+                    ftree->dz_Kp_Ds = abs(ftree->Kp_ORIVX_Z-ftree->DsFit_ENDVX_Z);
+                    ftree->dz_Km_Ds = abs(ftree->Km_ORIVX_Z-ftree->DsFit_ENDVX_Z);
+                    ftree->dz_pi_Ds = abs(ftree->pi_ORIVX_Z-ftree->DsFit_ENDVX_Z);
+                    ftree->dz_phi_Ds = abs(ftree->phiFit_ENDVX_Z-ftree->DsFit_ENDVX_Z);
+
+                    if( ftree->DsFit_CHI2NDOF < 0 ) continue;
+                    if( ftree->DsFit_CHI2NDOF > 10 ) continue;
+                    if( ftree->DsFit_dR_phi_Ds > 0.4 ) continue;
+                    if( ftree->dxy_phi_Ds > 4 ) continue;
+                    if( ftree->dz_phi_Ds > 4 ) continue;
+                    if( ftree->DsFit_Ds_M < 1.85) continue;
+                    if( ftree->DsFit_Ds_M > 2.1) continue;
+
+                    /* double alpha_phi = (ftree->phiFit_Kp_PL - ftree->phiFit_Km_PL) / (ftree->phiFit_Kp_PL + ftree->phiFit_Km_PL); */
+                    /* double alpha_Ds = (ftree->DsFit_phi_PL - ftree->DsFit_pi_PL) / (ftree->DsFit_phi_PL + ftree->DsFit_pi_PL); */
+
+                    /* double beta_phi = std::sqrt(pow(ftree->phiFit_phi_P,2) / (pow(Mass_phi,2) + pow(ftree->phiFit_phi_P,2))); */
+                    /* double beta_Ds = std::sqrt(pow(ftree->DsFit_Ds_P,2) / (pow(Mass_Ds,2) + pow(ftree->DsFit_Ds_P,2))); */
+
+                    /* double var_phi = pow(ftree->phiFit_Kp_PP,2) + pow(alpha_phi*beta_phi*Mass_phi,2)/4; */
+                    /* double var_Ds = pow(ftree->DsFit_phi_PP,2) + pow(beta_Ds*(Est_phi-Est_pi)-alpha_Ds*beta_Ds*(Est_phi+Est_pi),2)/4; */
+
+                    /* if(var_phi < 0.006) continue; */
+                    /* if(var_phi > 0.028) continue; */
+                    /* if(var_Ds < 0.4) continue; */
+                    /* if(var_Ds > 0.6) continue; */
+
+                    ftree->num_reco_Ds++;
+
+                    if( idx_Kp_vec[i] == ftree->match_Kp_idx ) ftree->Kp_match = true;
+                    else ftree->Kp_match = false;
+                    if( idx_Km_vec[j] == ftree->match_Km_idx ) ftree->Km_match = true;
+                    else ftree->Km_match = false;
+                    if( idx_pi_vec[k] == ftree->match_pi_idx ) ftree->pi_match = true;
+                    else ftree->pi_match = false;
+
+                    if(ftree->Kp_match && ftree->Km_match && ftree->pi_match) ftree->match_entry = true;
+                    else ftree->match_entry = false;
+                    if(!ftree->Kp_match && !ftree->Km_match && !ftree->pi_match) ftree->non_match_entry = true;
+                    else ftree->non_match_entry = false;
+
+                    ftree->Fill_Vector(); 
+                }
+            }
         }
-    }
-    if(maxidx > -1) {
-        ftree->Best_Fill_Vector(maxidx);
-    }
 
-    ftree->tree->Fill();
-    return;
-}
+        int num_candidates = ftree->match_entry_vec.size();
 
-bool SelectionStudy::hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid) const
-{
-    bool hasancestor = false;
+        double maxPT = 0;
+        int maxidx = -1;
 
-    if(gp.numberOfMothers()==0) return false;
-
-    if(gp.numberOfMothers()==1 && gp.mother(0)->pdgId()==motherid){
-        if(gp.mother(0)->numberOfDaughters()==2){
-            if(gp.mother(0)->daughter(0)->pdgId()==otherparticleid || gp.mother(0)->daughter(1)->pdgId()==otherparticleid) hasancestor = true;
+        for(int i=0; i<num_candidates; i++){
+            if(ftree->DsFit_Ds_PT_vec[i]>maxPT){
+                maxPT = ftree->DsFit_Ds_PT_vec[i];
+                maxidx = i;
+            }
         }
+        if(maxidx > -1) {
+            ftree->Best_Fill_Vector(maxidx);
+        }
+
+        ftree->tree->Fill();
+        return;
     }
 
-    if (hasancestor) return true;
-    else return hasAncestor(*gp.motherRef(0), motherid, otherparticleid);
-}
+    bool SelectionStudy::hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid) const
+    {
+        bool hasancestor = false;
 
-void SelectionStudy::beginJob() {}
+        if(gp.numberOfMothers()==0) return false;
 
-void SelectionStudy::endJob() {}
+        if(gp.numberOfMothers()==1 && gp.mother(0)->pdgId()==motherid){
+            if(gp.mother(0)->numberOfDaughters()==2){
+                if(gp.mother(0)->daughter(0)->pdgId()==otherparticleid || gp.mother(0)->daughter(1)->pdgId()==otherparticleid) hasancestor = true;
+            }
+        }
 
-void SelectionStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
-{
-    edm::ParameterSetDescription desc;
-    desc.add<edm::InputTag>("prunedGenParticles", edm::InputTag("prunedGenParticles"));
-    desc.add<edm::InputTag>("packedPFCandidates", edm::InputTag("packedPFCandidates"));;
-    descriptions.add("SelectionStudy", desc);
-}
+        if (hasancestor) return true;
+        else return hasAncestor(*gp.motherRef(0), motherid, otherparticleid);
+    }
 
-//define this as a plug-in
-DEFINE_FWK_MODULE(SelectionStudy);
+    void SelectionStudy::beginJob() {}
+
+    void SelectionStudy::endJob() {}
+
+    void SelectionStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
+    {
+        edm::ParameterSetDescription desc;
+        desc.add<edm::InputTag>("prunedGenParticles", edm::InputTag("prunedGenParticles"));
+        desc.add<edm::InputTag>("packedPFCandidates", edm::InputTag("packedPFCandidates"));;
+        descriptions.add("SelectionStudy", desc);
+    }
+
+    //define this as a plug-in
+    DEFINE_FWK_MODULE(SelectionStudy);
