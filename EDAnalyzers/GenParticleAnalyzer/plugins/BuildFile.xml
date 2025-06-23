@@ -9,6 +9,7 @@
 <use name="DataFormats/Math"/>
 <use name="TrackingTools/TransientTrack"/>
 <use name="RecoVertex/KalmanVertexFit"/>
+<use name="RecoVertex/AdaptiveVertexFit"/>
 <use name="TrackingTools/Records"/>
 <use name="clhep"/>
 <flags EDM_PLUGIN="1"/>

@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
 // Package:    EDAnalyzer/GenParticleAnalyzer
-// Class:      SelectionStudy
+// Class:      PVStudy
 //
-/**\class SelectionStudy SelectionStudy.cc EDAnalyzer/GenParticleAnalyzer/plugins/SelectionStudy.cc
+/**\class PVStudy PVStudy.cc EDAnalyzer/GenParticleAnalyzer/plugins/PVStudy.cc
 
 Description: [one line class summary]
 
@@ -38,19 +38,20 @@ Implementation:
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
+#include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "TLorentzVector.h"
 #include "TTree.h"
 #include "TFile.h"
 
-#include "EDAnalyzers/GenParticleAnalyzer/interface/SSTree.h"
+#include "EDAnalyzers/GenParticleAnalyzer/interface/PVTree.h"
 
 
-class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
+class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
 {
     public:
-        explicit SelectionStudy(const edm::ParameterSet&);
-        ~SelectionStudy();
+        explicit PVStudy(const edm::ParameterSet&);
+        ~PVStudy();
 
         static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -65,7 +66,7 @@ class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         bool hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid ) const;
 
         const edm::Service<TFileService> fs;
-        SSTree *ftree;
+        PVTree *ftree;
 
         // dR of hadrons to Gen
         std::vector<float> all_dR_Kp;
@@ -80,6 +81,10 @@ class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<int> Gen_pi_idx;
         std::vector<int> Gen_phi_idx;
         std::vector<int> Gen_Ds_idx;
+        std::vector<int> Gen_mu_idx;
+        std::vector<int> Gen_nu_idx;
+        std::vector<int> Gen_W_idx;
+        std::vector<int> Gen_H_idx;
 
         std::vector<int> idx_Kp_vec;
         std::vector<int> idx_Km_vec;
@@ -95,17 +100,17 @@ class SelectionStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         const double Est_pi = std::sqrt(pow(Mass_pi,2) + pow(pst_Ds,2));
 };
 
-SelectionStudy::SelectionStudy(const edm::ParameterSet& iConfig) :
+PVStudy::PVStudy(const edm::ParameterSet& iConfig) :
     prunedGenToken(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("prunedGenParticles"))),
     packedPFToken(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("packedPFCandidates")))
 {
-    ftree = new SSTree(fs->make<TTree>("Events", "Events"));
+    ftree = new PVTree(fs->make<TTree>("Events", "Events"));
     ftree->CreateBranches();
 }
 
-SelectionStudy::~SelectionStudy() {}
+PVStudy::~PVStudy() {}
 
-void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
     all_dR_Kp.clear();
     all_dR_Km.clear();
@@ -119,6 +124,10 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     Gen_pi_idx.clear();
     Gen_phi_idx.clear();
     Gen_Ds_idx.clear();
+    Gen_mu_idx.clear();
+    Gen_nu_idx.clear();
+    Gen_W_idx.clear();
+    Gen_H_idx.clear();
 
     ftree->Init();
 
@@ -134,7 +143,8 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     edm::ESHandle<TransientTrackBuilder> theB;
     iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",theB);
 
-    KalmanVertexFitter fitter(true);
+    KalmanVertexFitter KVFitter(true);
+    AdaptiveVertexFitter AVFitter;
 
     for(size_t i=0; i<prunedGen->size(); i++){
         const auto& gp = (*prunedGen)[i];
@@ -158,19 +168,35 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
         } else if( pdg==431 && hasAncestor(gp, 25, -24) && gp.isHardProcess() ){
             Gen_Ds_idx.push_back(i);
             ftree->num_Gen_Ds++;
+        } else if( pdg==13 && hasAncestor(gp, -24, -14) && hasAncestor(gp, 25, 431) && gp.isHardProcess() ){
+            Gen_mu_idx.push_back(i);
+            ftree->num_Gen_mu++;
+        } else if( pdg==-14 && hasAncestor(gp, -24, 13) && hasAncestor(gp, 25, 431) && gp.isHardProcess() ){
+            Gen_nu_idx.push_back(i);
+            ftree->num_Gen_nu++;
+        } else if( pdg==-24 && hasAncestor(gp, 25, 431) && gp.isHardProcess() ){
+            Gen_W_idx.push_back(i);
+            ftree->num_Gen_W++;
+        } else if( pdg==25 && gp.isHardProcess() ){
+            Gen_H_idx.push_back(i);
+            ftree->num_Gen_H++;
         }
     }
 
     ftree->Gen_Reset();
     ftree->Match_Reset();
 
-    if(ftree->num_Gen_Kp==1 && ftree->num_Gen_Km==1 && ftree->num_Gen_pi==1 && ftree->num_Gen_phi==1 && ftree->num_Gen_Ds==1){
+    if(ftree->num_Gen_Kp==1 && ftree->num_Gen_Km==1 && ftree->num_Gen_pi==1 && ftree->num_Gen_phi==1 && ftree->num_Gen_Ds==1 && ftree->num_Gen_mu==1 && ftree->num_Gen_nu==1 && ftree->num_Gen_W==1 && ftree->num_Gen_H==1){
 
         const auto& Kp_GP = (*prunedGen)[Gen_Kp_idx[0]];
         const auto& Km_GP = (*prunedGen)[Gen_Km_idx[0]];
         const auto& pi_GP = (*prunedGen)[Gen_pi_idx[0]];
         const auto& phi_GP = (*prunedGen)[Gen_phi_idx[0]];
         const auto& Ds_GP = (*prunedGen)[Gen_Ds_idx[0]];
+        const auto& mu_GP = (*prunedGen)[Gen_mu_idx[0]];
+        const auto& nu_GP = (*prunedGen)[Gen_nu_idx[0]];
+        const auto& W_GP = (*prunedGen)[Gen_W_idx[0]];
+        const auto& H_GP = (*prunedGen)[Gen_H_idx[0]];
 
         ftree->Gen_Kp_ETA = Kp_GP.eta();
         ftree->Gen_Kp_PHI = Kp_GP.phi();
@@ -231,6 +257,54 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
         ftree->Gen_Ds_PY = Ds_GP.py();
         ftree->Gen_Ds_PZ = Ds_GP.pz();
         TVector3 Gen_Ds_P3(Ds_GP.px(), Ds_GP.py(), Ds_GP.pz());
+
+        ftree->Gen_mu_ETA = mu_GP.eta();
+        ftree->Gen_mu_PHI = mu_GP.phi();
+        ftree->Gen_mu_ORIVX_X = mu_GP.vx();
+        ftree->Gen_mu_ORIVX_Y = mu_GP.vy();
+        ftree->Gen_mu_ORIVX_Z = mu_GP.vz();
+        ftree->Gen_mu_P = mu_GP.p();
+        ftree->Gen_mu_PT = mu_GP.pt();
+        ftree->Gen_mu_PX = mu_GP.px();
+        ftree->Gen_mu_PY = mu_GP.py();
+        ftree->Gen_mu_PZ = mu_GP.pz();
+        TVector3 Gen_mu_P3(mu_GP.px(), mu_GP.py(), mu_GP.pz());
+
+        ftree->Gen_nu_ETA = nu_GP.eta();
+        ftree->Gen_nu_PHI = nu_GP.phi();
+        ftree->Gen_nu_ORIVX_X = nu_GP.vx();
+        ftree->Gen_nu_ORIVX_Y = nu_GP.vy();
+        ftree->Gen_nu_ORIVX_Z = nu_GP.vz();
+        ftree->Gen_nu_P = nu_GP.p();
+        ftree->Gen_nu_PT = nu_GP.pt();
+        ftree->Gen_nu_PX = nu_GP.px();
+        ftree->Gen_nu_PY = nu_GP.py();
+        ftree->Gen_nu_PZ = nu_GP.pz();
+        TVector3 Gen_nu_P3(nu_GP.px(), nu_GP.py(), nu_GP.pz());
+
+        ftree->Gen_W_ETA = W_GP.eta();
+        ftree->Gen_W_PHI = W_GP.phi();
+        ftree->Gen_W_ORIVX_X = W_GP.vx();
+        ftree->Gen_W_ORIVX_Y = W_GP.vy();
+        ftree->Gen_W_ORIVX_Z = W_GP.vz();
+        ftree->Gen_W_P = W_GP.p();
+        ftree->Gen_W_PT = W_GP.pt();
+        ftree->Gen_W_PX = W_GP.px();
+        ftree->Gen_W_PY = W_GP.py();
+        ftree->Gen_W_PZ = W_GP.pz();
+        TVector3 Gen_W_P3(W_GP.px(), W_GP.py(), W_GP.pz());
+
+        ftree->Gen_H_ETA = H_GP.eta();
+        ftree->Gen_H_PHI = H_GP.phi();
+        ftree->Gen_H_ORIVX_X = H_GP.vx();
+        ftree->Gen_H_ORIVX_Y = H_GP.vy();
+        ftree->Gen_H_ORIVX_Z = H_GP.vz();
+        ftree->Gen_H_P = H_GP.p();
+        ftree->Gen_H_PT = H_GP.pt();
+        ftree->Gen_H_PX = H_GP.px();
+        ftree->Gen_H_PY = H_GP.py();
+        ftree->Gen_H_PZ = H_GP.pz();
+        TVector3 Gen_H_P3(H_GP.px(), H_GP.py(), H_GP.pz());
 
         ftree->Gen_Kp_PP = Gen_Kp_P3.Pt(Gen_phi_P3);
         ftree->Gen_Kp_PL = Gen_Kp_P3.Dot(Gen_phi_P3)/Gen_phi_P3.Mag();
@@ -440,7 +514,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 (*theB).build(match_Km_PF.pseudoTrack())
             };
 
-            TransientVertex match_phi_Vertex = fitter.vertex(match_phi_Tracks);
+            TransientVertex match_phi_Vertex = KVFitter.vertex(match_phi_Tracks);
 
             if( match_phi_Vertex.isValid() && match_phi_Vertex.hasRefittedTracks() ){
 
@@ -550,7 +624,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     (*theB).build(match_pi_PF.pseudoTrack())
                 };
 
-                TransientVertex match_Ds_Vertex = fitter.vertex(match_Ds_Tracks);
+                TransientVertex match_Ds_Vertex = KVFitter.vertex(match_Ds_Tracks);
 
                 if( match_Ds_Vertex.isValid() && match_Ds_Vertex.hasRefittedTracks() ){
 
@@ -662,6 +736,42 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     ftree->match_DsFit_dR_pi_Ds = reco::deltaR(match_DsFit_pi_P4.Eta(), match_DsFit_pi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
 
                     ftree->Match_Fill_Vector();
+
+
+                    std::vector<reco::TransientTrack> match_PV_ttracks;
+
+                    for(size_t i=0; i<packedPF->size(); i++){
+
+                        if(int(i) ==  ftree->match_Kp_idx) continue;
+                        if(int(i) ==  ftree->match_Km_idx) continue;
+                        if(int(i) ==  ftree->match_pi_idx) continue;
+                        
+                        const auto& pf = (*packedPF)[i];
+
+                        if( !(pf.trackHighPurity()) ) continue;
+                        if( !(pf.hasTrackDetails()) ) continue;
+
+                        if(pf.pt() > 1){
+                            match_PV_ttracks.push_back( (*theB).build(pf.pseudoTrack()) );
+                        }
+                    }
+
+                    if(match_PV_ttracks.size() > 2){
+                        TransientVertex match_PV_tvertex = AVFitter.vertex(match_PV_ttracks);
+                        if( match_PV_tvertex.isValid() ){ 
+                            ftree->match_PV_CHI2 = match_PV_tvertex.totalChiSquared();
+                            ftree->match_PV_NDOF = match_PV_tvertex.degreesOfFreedom();
+                            ftree->match_PV_CHI2NDOF = match_PV_tvertex.normalisedChiSquared();
+                            ftree->match_PV_X = match_PV_tvertex.position().x();
+                            ftree->match_PV_Y = match_PV_tvertex.position().y();
+                            ftree->match_PV_Z = match_PV_tvertex.position().z();
+                            ftree->match_PV_XERR = std::sqrt(match_PV_tvertex.positionError().cxx());
+                            ftree->match_PV_YERR = std::sqrt(match_PV_tvertex.positionError().cyy());
+                            ftree->match_PV_ZERR = std::sqrt(match_PV_tvertex.positionError().czz());
+                        }
+                    }
+                    
+                    ftree->Match_Fill_PV();
                 }
             }
         }
@@ -755,7 +865,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 (*theB).build(Kp_PF.pseudoTrack()),
                 (*theB).build(Km_PF.pseudoTrack())
             };
-            TransientVertex phi_Vertex = fitter.vertex(phi_Tracks);
+            TransientVertex phi_Vertex = KVFitter.vertex(phi_Tracks);
 
             if( !(phi_Vertex.isValid()) ) continue;
             if( !(phi_Vertex.hasRefittedTracks()) ) continue;
@@ -931,7 +1041,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                     (*theB).build(pi_PF.pseudoTrack())
                 };
 
-                TransientVertex Ds_Vertex = fitter.vertex(Ds_Tracks);
+                TransientVertex Ds_Vertex = KVFitter.vertex(Ds_Tracks);
 
                 if( !(Ds_Vertex.isValid()) ) continue;
                 if( !(Ds_Vertex.hasRefittedTracks()) ) continue;
@@ -1078,7 +1188,42 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
                 if(!ftree->Kp_match && !ftree->Km_match && !ftree->pi_match) ftree->non_match_entry = true;
                 else ftree->non_match_entry = false;
 
-                ftree->Fill_Vector(); 
+                ftree->Fill_Vector();
+
+                std::vector<reco::TransientTrack> PV_ttracks;
+                
+                for(size_t l=0; l<packedPF->size(); l++){
+
+                    if(int(l) ==  idx_Kp_vec[i]) continue;
+                    if(int(l) ==  idx_Km_vec[j]) continue;
+                    if(int(l) ==  idx_pi_vec[k]) continue;
+
+                    const auto& otherpf = (*packedPF)[l];
+
+                    if( !(otherpf.trackHighPurity()) ) continue;
+                    if( !(otherpf.hasTrackDetails()) ) continue;
+
+                    if(otherpf.pt() > 1){
+                        PV_ttracks.push_back( (*theB).build(otherpf.pseudoTrack()) );
+                    }
+                }
+
+                if(PV_ttracks.size() > 1){
+                    TransientVertex PV_tvertex = AVFitter.vertex(PV_ttracks);
+                    if( PV_tvertex.isValid() ){ 
+                        ftree->PV_CHI2 = PV_tvertex.totalChiSquared();
+                        ftree->PV_NDOF = PV_tvertex.degreesOfFreedom();
+                        ftree->PV_CHI2NDOF = PV_tvertex.normalisedChiSquared();
+                        ftree->PV_X = PV_tvertex.position().x();
+                        ftree->PV_Y = PV_tvertex.position().y();
+                        ftree->PV_Z = PV_tvertex.position().z();
+                        ftree->PV_XERR = std::sqrt(PV_tvertex.positionError().cxx());
+                        ftree->PV_YERR = std::sqrt(PV_tvertex.positionError().cyy());
+                        ftree->PV_ZERR = std::sqrt(PV_tvertex.positionError().czz());
+                    }
+                }
+
+                ftree->Fill_PV();
             }
         }
     }
@@ -1102,7 +1247,7 @@ void SelectionStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iS
     return;
 }
 
-bool SelectionStudy::hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid) const
+bool PVStudy::hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid) const
 {
     bool hasancestor = false;
 
@@ -1118,17 +1263,17 @@ bool SelectionStudy::hasAncestor(const reco::GenParticle & gp, const int motheri
     else return hasAncestor(*gp.motherRef(0), motherid, otherparticleid);
 }
 
-void SelectionStudy::beginJob() {}
+void PVStudy::beginJob() {}
 
-void SelectionStudy::endJob() {}
+void PVStudy::endJob() {}
 
-void SelectionStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
+void PVStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
 {
     edm::ParameterSetDescription desc;
     desc.add<edm::InputTag>("prunedGenParticles", edm::InputTag("prunedGenParticles"));
     desc.add<edm::InputTag>("packedPFCandidates", edm::InputTag("packedPFCandidates"));;
-    descriptions.add("SelectionStudy", desc);
+    descriptions.add("PVStudy", desc);
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(SelectionStudy);
+DEFINE_FWK_MODULE(PVStudy);

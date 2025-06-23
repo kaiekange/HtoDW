@@ -74,7 +74,7 @@ int checkAP()
             double var_Ds = pow(DsFit_phi_PP->at(j),2) + pow(beta_Ds*(Est_phi-Est_pi)-alpha_Ds*beta_Ds*(Est_phi+Est_pi),2)/4;
 
             if(var_phi < 0.006) continue;
-            if(var_phi > 0.03) continue;
+            if(var_phi > 0.028) continue;
             if(var_Ds < 0.4) continue;
             if(var_Ds > 0.6) continue;
 

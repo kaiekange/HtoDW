@@ -5,14 +5,14 @@
 //
 /**\class RecoAnalyzer RecoAnalyzer.cc EDAnalyzers/RecoAnalyzer/plugins/RecoAnalyzer.cc
 
-Description: [one line class summary]
+ Description: [one line class summary]
 
-Implementation:
-[Notes on implementation]
+ Implementation:
+     [Notes on implementation]
 */
 //
 // Original Author:  cmsusers user
-//         Created:  Tue, 22 Apr 2025 14:40:41 GMT
+//         Created:  Mon, 23 Jun 2025 12:55:16 GMT
 //
 //
 
@@ -28,20 +28,9 @@ Implementation:
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Utilities/interface/InputTag.h"
-#include "DataFormats/TrackReco/interface/Track.h"
-#include "DataFormats/TrackReco/interface/TrackFwd.h"
-
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
-#include "DataFormats/Candidate/interface/iterator.h"
-
-#include "FWCore/ServiceRegistry/interface/Service.h"
-#include "CommonTools/UtilAlgos/interface/TFileService.h"
-
-#include "TTree.h"
-#include "TFile.h"
-#include "TLorentzVector.h"
-
+ #include "FWCore/Utilities/interface/InputTag.h"
+ #include "DataFormats/TrackReco/interface/Track.h"
+ #include "DataFormats/TrackReco/interface/TrackFwd.h"
 //
 // class declaration
 //
@@ -55,96 +44,101 @@ Implementation:
 using reco::TrackCollection;
 
 class RecoAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources>  {
-    public:
-        explicit RecoAnalyzer(const edm::ParameterSet&);
-        ~RecoAnalyzer();
+   public:
+      explicit RecoAnalyzer(const edm::ParameterSet&);
+      ~RecoAnalyzer();
 
-        static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+      static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 
-    private:
-        virtual void beginJob() override;
-        virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
-        virtual void endJob() override;
+   private:
+      virtual void beginJob() override;
+      virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
+      virtual void endJob() override;
 
-        edm::EDGetTokenT<pat::PackedCandidateCollection> packedToken_;
-        edm::Service<TFileService> outfile;
-        TTree *mytree;
-
-        std::vector<float> mass;
-        /* std::vector<float> m_phi; */
-        /* std::vector<float> dv; */
+      // ----------member data ---------------------------
+      edm::EDGetTokenT<TrackCollection> tracksToken_;  //used to select what tracks to read from configuration file
 };
 
+//
+// constants, enums and typedefs
+//
+
+//
+// static data member definitions
+//
+
+//
+// constructors and destructor
+//
 RecoAnalyzer::RecoAnalyzer(const edm::ParameterSet& iConfig)
-    :
-        packedToken_(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("packed")))
+ :
+  tracksToken_(consumes<TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks")))
 
 {
-    mytree = outfile->make<TTree>("Events", "Events");
-    mytree->Branch("mass", &mass);
-    /* mytree->Branch("m_phi", &m_phi); */ 
-    /* mytree->Branch("dv", &dv); */ 
+   //now do what ever initialization is needed
+
 }
 
-RecoAnalyzer::~RecoAnalyzer(){}
 
-void RecoAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+RecoAnalyzer::~RecoAnalyzer()
 {
-    mass.clear();
-    int ctr = 0;
-    /* m_phi.clear(); */
-    /* dv.clear(); */
 
-    edm::Handle<pat::PackedCandidateCollection> packed;
-    iEvent.getByToken(packedToken_, packed);
+   // do anything here that needs to be done at desctruction time
+   // (e.g. close files, deallocate resources etc.)
 
-    std::vector<int> mycharge;
-    std::vector<TLorentzVector> myp4;
-    std::vector<ROOT::Math::XYZVector> myvertex;
-
-    for(const pat::PackedCandidate &pfcandidate : *packed){
-        if(pfcandidate.trackHighPurity() && (abs(pfcandidate.charge()) == 1) && (pfcandidate.pt()>1)){
-            mass.push_back(pfcandidate.mass());
-            if (pfcandidate.mass()>0.49 && pfcandidate.mass()<0.5) {
-                ctr++;
-                std::cout << pfcandidate.mass() << std::endl;
-            }
-            /* mycharge.push_back(pfcandidate.charge()); */
-            /* myp4.push_back(TLorentzVector(pfcandidate.px(), pfcandidate.py(), pfcandidate.pz(), pfcandidate.energy())); */
-            /* ROOT::Math::XYZVector pfvertex(pfcandidate.vertex().x(), pfcandidate.vertex().y(), pfcandidate.vertex().z()); */ 
-            /* myvertex.push_back(pfvertex); */
-        }
-    }
-
-    std::cout << "number of kaon " << ctr << std::endl; 
-
-/*     int partsize = mycharge.size(); */
-
-/*     std::cout << partsize << std::endl; */
-
-/*     if (partsize>3) { */
-/*         for(int i=0; i<partsize-1; i++){ */
-/*             for(int j=i+1; j<partsize; j++){ */
-/*                 if(mycharge[i] == mycharge[j]) continue; */
-/*                 if((myvertex[i] - myvertex[j]).R() > 0.1) continue; */
-/*                 m_phi.push_back((myp4[i] + myp4[j]).M()); */
-/*             } */
-/*         } */
-/*     } */
-
-    mytree->Fill();
 }
 
 
-void RecoAnalyzer::beginJob(){}
+//
+// member functions
+//
 
-void RecoAnalyzer::endJob(){}
+// ------------ method called for each event  ------------
+void
+RecoAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+{
+   using namespace edm;
 
-void RecoAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
-    edm::ParameterSetDescription desc;
-    desc.setUnknown();
-    descriptions.addDefault(desc);
+   for(const auto& track : iEvent.get(tracksToken_) ) {
+      // do something with track parameters, e.g, plot the charge.
+      // int charge = track.charge();
+   }
+
+#ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
+   ESHandle<SetupData> pSetup;
+   iSetup.get<SetupRecord>().get(pSetup);
+#endif
 }
 
+
+// ------------ method called once each job just before starting event loop  ------------
+void
+RecoAnalyzer::beginJob()
+{
+}
+
+// ------------ method called once each job just after ending the event loop  ------------
+void
+RecoAnalyzer::endJob()
+{
+}
+
+// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
+void
+RecoAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+  //The following says we do not know what parameters are allowed so do no validation
+  // Please change this to state exactly what you do use, even if it is no parameters
+  edm::ParameterSetDescription desc;
+  desc.setUnknown();
+  descriptions.addDefault(desc);
+
+  //Specify that only 'tracks' is allowed
+  //To use, remove the default given above and uncomment below
+  //ParameterSetDescription desc;
+  //desc.addUntracked<edm::InputTag>("tracks","ctfWithMaterialTracks");
+  //descriptions.addDefault(desc);
+}
+
+//define this as a plug-in
 DEFINE_FWK_MODULE(RecoAnalyzer);
