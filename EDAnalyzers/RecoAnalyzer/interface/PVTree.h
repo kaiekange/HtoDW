@@ -20,10 +20,9 @@ class PVTree
         void Kp_Reset();
         void Km_Reset();
         void pi_Reset();
+        void PV_Reset();
         void Gen_Fill_Vector();
         void Match_Fill_Vector();
-        void Match_Fill_PV();
-        void Fill_PV();
         void Best_Fill_Vector(int idxmax);
         void Fill_Vector();
         void CreateBranches();
@@ -135,7 +134,7 @@ class PVTree
         double Gen_W_PX;
         double Gen_W_PY;
         double Gen_W_PZ;
-        
+
         double Gen_H_ETA;
         double Gen_H_PHI;
         double Gen_H_ORIVX_X;
@@ -146,7 +145,7 @@ class PVTree
         double Gen_H_PX;
         double Gen_H_PY;
         double Gen_H_PZ;
-        
+
         double Gen_dR_Kp_Km;
         double Gen_dR_Kp_phi;
         double Gen_dR_Km_phi;
@@ -418,16 +417,6 @@ class PVTree
 
         double match_DsFit_Mconstraint_Ds_M;
 
-        double match_PV_CHI2;
-        double match_PV_NDOF;
-        double match_PV_CHI2NDOF;
-        double match_PV_X;
-        double match_PV_Y;
-        double match_PV_Z;
-        double match_PV_XERR;
-        double match_PV_YERR;
-        double match_PV_ZERR;
-
         int num_reco_phi;
         int num_reco_Ds;
 
@@ -681,16 +670,6 @@ class PVTree
         bool match_entry;
         bool non_match_entry;
 
-        double PV_CHI2;
-        double PV_NDOF;
-        double PV_CHI2NDOF;
-        double PV_X;
-        double PV_Y;
-        double PV_Z;
-        double PV_XERR;
-        double PV_YERR;
-        double PV_ZERR;
-        
         std::vector<double> Gen_Kp_ETA_vec;
         std::vector<double> Gen_Kp_PHI_vec;
         std::vector<double> Gen_Kp_ORIVX_X_vec;
@@ -1061,16 +1040,6 @@ class PVTree
 
         std::vector<double> match_DsFit_Mconstraint_Ds_M_vec;
 
-        std::vector<double> match_PV_CHI2_vec;
-        std::vector<double> match_PV_NDOF_vec;
-        std::vector<double> match_PV_CHI2NDOF_vec;
-        std::vector<double> match_PV_X_vec;
-        std::vector<double> match_PV_Y_vec;
-        std::vector<double> match_PV_Z_vec;
-        std::vector<double> match_PV_XERR_vec;
-        std::vector<double> match_PV_YERR_vec;
-        std::vector<double> match_PV_ZERR_vec;
-
         std::vector<double> Kp_ETA_vec;
         std::vector<double> Kp_PHI_vec;
         std::vector<double> Kp_ORIVX_X_vec;
@@ -1320,16 +1289,6 @@ class PVTree
         std::vector<bool> pi_match_vec;
         std::vector<bool> match_entry_vec;
         std::vector<bool> non_match_entry_vec;
-        
-        std::vector<double> PV_CHI2_vec;
-        std::vector<double> PV_NDOF_vec;
-        std::vector<double> PV_CHI2NDOF_vec;
-        std::vector<double> PV_X_vec;
-        std::vector<double> PV_Y_vec;
-        std::vector<double> PV_Z_vec;
-        std::vector<double> PV_XERR_vec;
-        std::vector<double> PV_YERR_vec;
-        std::vector<double> PV_ZERR_vec;
 
         std::vector<double> best_Kp_ETA_vec;
         std::vector<double> best_Kp_PHI_vec;
@@ -1576,16 +1535,18 @@ class PVTree
         std::vector<double> best_DsFit_Mconstraint_Ds_M_vec;
 
         std::vector<bool> best_match_entry_vec;
-    
-        std::vector<double> best_PV_CHI2_vec;
-        std::vector<double> best_PV_NDOF_vec;
-        std::vector<double> best_PV_CHI2NDOF_vec;
-        std::vector<double> best_PV_X_vec;
-        std::vector<double> best_PV_Y_vec;
-        std::vector<double> best_PV_Z_vec;
-        std::vector<double> best_PV_XERR_vec;
-        std::vector<double> best_PV_YERR_vec;
-        std::vector<double> best_PV_ZERR_vec;
+
+        bool PV_IsValid;
+        bool PV_IsFake;
+        double PV_CHI2;
+        double PV_NDOF;
+        double PV_CHI2NDOF;
+        double PV_X;
+        double PV_Y;
+        double PV_Z;
+        double PV_XERR;
+        double PV_YERR;
+        double PV_ZERR;
 
 };
 

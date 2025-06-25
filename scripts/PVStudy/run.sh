@@ -14,7 +14,7 @@ mkdir -p "${pnfspath}/tuples/${mode}/log"
 infile="${pnfspath}/FullGEN/PAT/output_${process}.root"
 outfile="${pnfspath}/tuples/${mode}/output_${process}.root"
 logfile="${pnfspath}/tuples/${mode}/log/output_${process}.log"
-cfgfile="EDAnalyzers/GenParticleAnalyzer/test/${mode}_cfg.py"
+cfgfile="EDAnalyzers/RecoAnalyzer/test/${mode}_cfg.py"
 
 if [ ! -f "${logfile}" ] || [ ! -f "${outfile}" ] || ! grep -q "Begin processing the 200th record" "${logfile}" || ! grep -q "dropped waiting message count 0" "${logfile}"; then
 

@@ -102,78 +102,20 @@ int PV_plots() {
     mychain->Add("/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/tuples/PVStudy/PVStudy.root");
 
     if(gSystem->AccessPathName("./figures")) gSystem->MakeDirectory("./figures");
-    if(gSystem->AccessPathName("./figures/PVStudy")) gSystem->MakeDirectory("./figures/PVStudy");
-    
-    // compare gen and match 
-    /* compare(mychain, "Gen_H_ORIVX_X", "match_PV_PT1_X", "Gen", "match", "#it{x}_{PV} [cm]", -0.04, -0.01, "1", "1", "./figures/PVStudy/compare_PVX_Gen_PT1.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_X", "match_PV_PT2_X", "Gen", "match", "#it{x}_{PV} [cm]", -0.04, -0.01, "1", "1", "./figures/PVStudy/compare_PVX_Gen_PT2.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_X", "match_PV_PT5_X", "Gen", "match", "#it{x}_{PV} [cm]", -0.04, -0.01, "1", "1", "./figures/PVStudy/compare_PVX_Gen_PT5.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_X", "match_PV_PT10_X", "Gen", "match", "#it{x}_{PV} [cm]", -0.04, -0.01, "1", "1", "./figures/PVStudy/compare_PVX_Gen_PT10.png"); */
+    if(gSystem->AccessPathName("./figures/PV_figures")) gSystem->MakeDirectory("./figures/PV_figures");
 
-    /* compare(mychain, "Gen_H_ORIVX_Y", "match_PV_PT1_Y", "Gen", "match", "#it{y}_{PV} [cm]", 0.058, 0.08, "1", "1", "./figures/PVStudy/compare_PVY_Gen_PT1.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Y", "match_PV_PT2_Y", "Gen", "match", "#it{y}_{PV} [cm]", 0.058, 0.08, "1", "1", "./figures/PVStudy/compare_PVY_Gen_PT2.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Y", "match_PV_PT5_Y", "Gen", "match", "#it{y}_{PV} [cm]", 0.058, 0.08, "1", "1", "./figures/PVStudy/compare_PVY_Gen_PT5.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Y", "match_PV_PT10_Y", "Gen", "match", "#it{y}_{PV} [cm]", 0.058, 0.08, "1", "1", "./figures/PVStudy/compare_PVY_Gen_PT10.png"); */
+    compare(mychain, "Gen_H_ORIVX_X", "PV_X", "Gen", "Fit", "#it{x}_{PV} [cm]", -0.1, 0.1, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_X.png");
+    compare(mychain, "Gen_H_ORIVX_Y", "PV_Y", "Gen", "Fit", "#it{y}_{PV} [cm]", -0.1, 0.2, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_Y.png");
+    compare(mychain, "Gen_H_ORIVX_Z", "PV_Z", "Gen", "Fit", "#it{z}_{PV} [cm]", -15, 15, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_Z.png");
 
-    /* compare(mychain, "Gen_H_ORIVX_Z", "match_PV_PT1_Z", "Gen", "match", "#it{z}_{PV} [cm]", -20, 20, "1", "1", "./figures/PVStudy/compare_PVZ_Gen_PT1.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Z", "match_PV_PT2_Z", "Gen", "match", "#it{z}_{PV} [cm]", -20, 20, "1", "1", "./figures/PVStudy/compare_PVZ_Gen_PT2.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Z", "match_PV_PT5_Z", "Gen", "match", "#it{z}_{PV} [cm]", -20, 20, "1", "1", "./figures/PVStudy/compare_PVZ_Gen_PT5.png"); */
-    /* compare(mychain, "Gen_H_ORIVX_Z", "match_PV_PT10_Z", "Gen", "match", "#it{z}_{PV} [cm]", -20, 20, "1", "1", "./figures/PVStudy/compare_PVZ_Gen_PT10.png"); */
+    compare(mychain, "Gen_Kp_ORIVX_X", "PV_X", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{x} [cm]", -0.1, 0.1, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_X.png");
+    compare(mychain, "Gen_Kp_ORIVX_Y", "PV_Y", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{y} [cm]", -0.1, 0.2, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_Y.png");
+    compare(mychain, "Gen_Kp_ORIVX_Z", "PV_Z", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{z} [cm]", -15, 15, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_Z.png");
 
-    /* draw_1d(mychain, "match_PV_PT1_X - Gen_H_ORIVX_X", ";fit - Gen #it{x}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVX_PT1.png"); */
-    /* draw_1d(mychain, "match_PV_PT2_X - Gen_H_ORIVX_X", ";fit - Gen #it{x}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVX_PT2.png"); */
-    /* draw_1d(mychain, "match_PV_PT5_X - Gen_H_ORIVX_X", ";fit - Gen #it{x}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVX_PT5.png"); */
-    /* draw_1d(mychain, "match_PV_PT10_X - Gen_H_ORIVX_X", ";fit - Gen #it{x}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVX_PT10.png"); */
+    /* draw_1d(mychain, "(Gen_dR_Km_pi - match_dR_Km_pi)", ";Gen #Delta#it{R(K^{-},#pi^{+})}-reco #Delta#it{R(K^{-},#pi^{+})};# candidates", -0.8, 0.8, "1", "./figures/gen_match_compare/diff_dR_Km_pi.png"); */
+    /* draw_2d(mychain, "Gen_Kp_PP:((Gen_Kp_PL - Gen_Km_PL)/(Gen_Kp_PL + Gen_Km_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "1", "./figures/APplot/Gen_APplot_phi.png"); */
 
-    /* draw_1d(mychain, "match_PV_PT1_Y - Gen_H_ORIVX_Y", ";fit - Gen #it{y}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVY_PT1.png"); */
-    /* draw_1d(mychain, "match_PV_PT2_Y - Gen_H_ORIVX_Y", ";fit - Gen #it{y}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVY_PT2.png"); */
-    /* draw_1d(mychain, "match_PV_PT5_Y - Gen_H_ORIVX_Y", ";fit - Gen #it{y}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVY_PT5.png"); */
-    /* draw_1d(mychain, "match_PV_PT10_Y - Gen_H_ORIVX_Y", ";fit - Gen #it{y}_{PV} [cm];# candidates", -1, 1, "1", "./figures/PVStudy/diff_PVY_PT10.png"); */
 
-    /* draw_1d(mychain, "match_PV_PT1_Z - Gen_H_ORIVX_Z", ";fit - Gen #it{z}_{PV} [cm];# candidates", -15, 15, "1", "./figures/PVStudy/diff_PVZ_PT1.png"); */
-    /* draw_1d(mychain, "match_PV_PT2_Z - Gen_H_ORIVX_Z", ";fit - Gen #it{z}_{PV} [cm];# candidates", -15, 15, "1", "./figures/PVStudy/diff_PVZ_PT2.png"); */
-    /* draw_1d(mychain, "match_PV_PT5_Z - Gen_H_ORIVX_Z", ";fit - Gen #it{z}_{PV} [cm];# candidates", -15, 15, "1", "./figures/PVStudy/diff_PVZ_PT5.png"); */
-    /* draw_1d(mychain, "match_PV_PT10_Z - Gen_H_ORIVX_Z", ";fit - Gen #it{z}_{PV} [cm];# candidates", -15, 15, "1", "./figures/PVStudy/diff_PVZ_PT10.png"); */
-    
-    /* draw_2d(mychain, "match_PV_PT1_XERR:(match_PV_PT1_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{x}_{PV} error [cm]", -1, 1, 0, 0.0015, "1", "./figures/PVStudy/err_PVX_PT1.png"); */
-    /* draw_2d(mychain, "match_PV_PT2_XERR:(match_PV_PT2_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{x}_{PV} error [cm]", -1, 1, 0, 0.0025, "1", "./figures/PVStudy/err_PVX_PT2.png"); */
-    /* draw_2d(mychain, "match_PV_PT5_XERR:(match_PV_PT5_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{x}_{PV} error [cm]", -1, 1, 0, 0.01, "1", "./figures/PVStudy/err_PVX_PT5.png"); */
-    /* draw_2d(mychain, "match_PV_PT10_XERR:(match_PV_PT10_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{x}_{PV} error [cm]", -1, 1, 0, 0.01, "1", "./figures/PVStudy/err_PVX_PT10.png"); */
-    
-    /* draw_2d(mychain, "match_PV_PT1_YERR:(match_PV_PT1_Y - Gen_H_ORIVX_Y)", ";fit - Gen #it{y}_{PV} [cm];fit #it{y}_{PV} error [cm]", -1, 1, 0, 0.0015, "1", "./figures/PVStudy/err_PVY_PT1.png"); */
-    /* draw_2d(mychain, "match_PV_PT2_YERR:(match_PV_PT2_Y - Gen_H_ORIVX_Y)", ";fit - Gen #it{y}_{PV} [cm];fit #it{y}_{PV} error [cm]", -1, 1, 0, 0.0025, "1", "./figures/PVStudy/err_PVY_PT2.png"); */
-    /* draw_2d(mychain, "match_PV_PT5_YERR:(match_PV_PT5_Y - Gen_H_ORIVX_Y)", ";fit - Gen #it{y}_{PV} [cm];fit #it{y}_{PV} error [cm]", -1, 1, 0, 0.01, "1", "./figures/PVStudy/err_PVY_PT5.png"); */
-    /* draw_2d(mychain, "match_PV_PT10_YERR:(match_PV_PT10_Y - Gen_H_ORIVX_Y)", ";fit - Gen #it{y}_{PV} [cm];fit #it{y}_{PV} error [cm]", -1, 1, 0, 0.01, "1", "./figures/PVStudy/err_PVY_PT10.png"); */
-    
-    /* draw_2d(mychain, "match_PV_PT1_ZERR:(match_PV_PT1_Z - Gen_H_ORIVX_Z)", ";fit - Gen #it{z}_{PV} [cm];fit #it{z}_{PV} error [cm]", -1, 1, 0, 0.003, "1", "./figures/PVStudy/err_PVZ_PT1.png"); */
-    /* draw_2d(mychain, "match_PV_PT2_ZERR:(match_PV_PT2_Z - Gen_H_ORIVX_Z)", ";fit - Gen #it{z}_{PV} [cm];fit #it{z}_{PV} error [cm]", -1, 1, 0, 0.005, "1", "./figures/PVStudy/err_PVZ_PT2.png"); */
-    /* draw_2d(mychain, "match_PV_PT5_ZERR:(match_PV_PT5_Z - Gen_H_ORIVX_Z)", ";fit - Gen #it{z}_{PV} [cm];fit #it{z}_{PV} error [cm]", -1, 1, 0, 0.02, "1", "./figures/PVStudy/err_PVZ_PT5.png"); */
-    /* draw_2d(mychain, "match_PV_PT10_ZERR:(match_PV_PT10_Z - Gen_H_ORIVX_Z)", ";fit - Gen #it{z}_{PV} [cm];fit #it{z}_{PV} error [cm]", -1, 1, 0, 0.02, "1", "./figures/PVStudy/err_PVZ_PT10.png"); */
-
-    /* draw_2d(mychain, "match_PV_PT1_CHI2NDOF:(match_PV_PT1_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{#chi}^{2}/NDOF", -1, 1, 0, 400000, "1", "./figures/PVStudy/CHI2NDOF_PV_PT1.png"); */
-    /* draw_2d(mychain, "match_PV_PT2_CHI2NDOF:(match_PV_PT2_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{#chi}^{2}/NDOF", -1, 1, 0, 700000, "1", "./figures/PVStudy/CHI2NDOF_PV_PT2.png"); */
-    /* draw_2d(mychain, "match_PV_PT5_CHI2NDOF:(match_PV_PT5_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{#chi}^{2}/NDOF", -0.4, 0.4, 0, 10, "1", "./figures/PVStudy/CHI2NDOF_PV_PT5.png"); */
-    /* draw_2d(mychain, "match_PV_PT10_CHI2NDOF:(match_PV_PT10_X - Gen_H_ORIVX_X)", ";fit - Gen #it{x}_{PV} [cm];fit #it{#chi}^{2}/NDOF", -0.2, 0.2, 0, 10, "1", "./figures/PVStudy/CHI2NDOF_PV_PT10.png"); */
-
-/*     draw_1d(mychain, "match_PV_PT1_CHI2NDOF", ";fit #it{#chi}^{2}/NDOF;# candidates", 0, 400000, "1", "./figures/PVStudy/CHI2NDOF_PT1.png"); */
-/*     draw_1d(mychain, "match_PV_PT2_CHI2NDOF", ";fit #it{#chi}^{2}/NDOF;# candidates", 0, 700000, "1", "./figures/PVStudy/CHI2NDOF_PT2.png"); */
-/*     draw_1d(mychain, "match_PV_PT5_CHI2NDOF", ";fit #it{#chi}^{2}/NDOF;# candidates", 0, 10, "1", "./figures/PVStudy/CHI2NDOF_PT5.png"); */
-/*     draw_1d(mychain, "match_PV_PT10_CHI2NDOF", ";fit #it{#chi}^{2}/NDOF;# candidates", 0, 10, "1", "./figures/PVStudy/CHI2NDOF_PT10.png"); */
-
-    draw_1d(mychain, "match_PV_PT1_XERR", ";fit #it{x}_{PV} error [cm];# candidates", 0, 0.0015, "1", "./figures/PVStudy/XERR_PT1.png");
-    draw_1d(mychain, "match_PV_PT2_XERR", ";fit #it{x}_{PV} error [cm];# candidates", 0, 0.0025, "1", "./figures/PVStudy/XERR_PT2.png");
-    draw_1d(mychain, "match_PV_PT5_XERR", ";fit #it{x}_{PV} error [cm];# candidates", 0, 0.01, "1", "./figures/PVStudy/XERR_PT5.png");
-    draw_1d(mychain, "match_PV_PT10_XERR", ";fit #it{x}_{PV} error [cm];# candidates", 0, 0.01, "1", "./figures/PVStudy/XERR_PT10.png");
-
-    draw_1d(mychain, "match_PV_PT1_YERR", ";fit #it{y}_{PV} error [cm];# candidates", 0, 0.0015, "1", "./figures/PVStudy/YERR_PT1.png");
-    draw_1d(mychain, "match_PV_PT2_YERR", ";fit #it{y}_{PV} error [cm];# candidates", 0, 0.0025, "1", "./figures/PVStudy/YERR_PT2.png");
-    draw_1d(mychain, "match_PV_PT5_YERR", ";fit #it{y}_{PV} error [cm];# candidates", 0, 0.01, "1", "./figures/PVStudy/YERR_PT5.png");
-    draw_1d(mychain, "match_PV_PT10_YERR", ";fit #it{y}_{PV} error [cm];# candidates", 0, 0.01, "1", "./figures/PVStudy/YERR_PT10.png");
-
-    draw_1d(mychain, "match_PV_PT1_ZERR", ";fit #it{z}_{PV} error [cm];# candidates", 0, 0.003, "1", "./figures/PVStudy/ZERR_PT1.png");
-    draw_1d(mychain, "match_PV_PT2_ZERR", ";fit #it{z}_{PV} error [cm];# candidates", 0, 0.005, "1", "./figures/PVStudy/ZERR_PT2.png");
-    draw_1d(mychain, "match_PV_PT5_ZERR", ";fit #it{z}_{PV} error [cm];# candidates", 0, 0.02, "1", "./figures/PVStudy/ZERR_PT5.png");
-    draw_1d(mychain, "match_PV_PT10_ZERR", ";fit #it{z}_{PV} error [cm];# candidates", 0, 0.02, "1", "./figures/PVStudy/ZERR_PT10.png");
     delete mychain;
 
     return 0;

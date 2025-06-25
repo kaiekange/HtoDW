@@ -44,13 +44,14 @@ Implementation:
 #include "TTree.h"
 #include "TFile.h"
 
-#include "EDAnalyzers/GenParticleAnalyzer/interface/PVTree.h"
+#include "EDAnalyzers/RecoAnalyzer/interface/PVTree.h"
+#include "EDAnalyzers/RecoAnalyzer/interface/VertexReProducer.h"
 
 
 class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
 {
     public:
-        explicit PVStudy(const edm::ParameterSet&);
+        explicit PVStudy(const edm::ParameterSet& iConfig);
         ~PVStudy();
 
         static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
@@ -64,6 +65,8 @@ class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         edm::EDGetTokenT<pat::PackedCandidateCollection> packedPFToken;
 
         bool hasAncestor(const reco::GenParticle & gp, const int motherid, const int otherparticleid ) const;
+
+        VertexReProducer *revertex;
 
         const edm::Service<TFileService> fs;
         PVTree *ftree;
@@ -106,6 +109,8 @@ PVStudy::PVStudy(const edm::ParameterSet& iConfig) :
 {
     ftree = new PVTree(fs->make<TTree>("Events", "Events"));
     ftree->CreateBranches();
+    
+    revertex = new VertexReProducer(iConfig);
 }
 
 PVStudy::~PVStudy() {}
@@ -736,42 +741,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     ftree->match_DsFit_dR_pi_Ds = reco::deltaR(match_DsFit_pi_P4.Eta(), match_DsFit_pi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
 
                     ftree->Match_Fill_Vector();
-
-
-                    std::vector<reco::TransientTrack> match_PV_ttracks;
-
-                    for(size_t i=0; i<packedPF->size(); i++){
-
-                        if(int(i) ==  ftree->match_Kp_idx) continue;
-                        if(int(i) ==  ftree->match_Km_idx) continue;
-                        if(int(i) ==  ftree->match_pi_idx) continue;
-                        
-                        const auto& pf = (*packedPF)[i];
-
-                        if( !(pf.trackHighPurity()) ) continue;
-                        if( !(pf.hasTrackDetails()) ) continue;
-
-                        if(pf.pt() > 1){
-                            match_PV_ttracks.push_back( (*theB).build(pf.pseudoTrack()) );
-                        }
-                    }
-
-                    if(match_PV_ttracks.size() > 2){
-                        TransientVertex match_PV_tvertex = AVFitter.vertex(match_PV_ttracks);
-                        if( match_PV_tvertex.isValid() ){ 
-                            ftree->match_PV_CHI2 = match_PV_tvertex.totalChiSquared();
-                            ftree->match_PV_NDOF = match_PV_tvertex.degreesOfFreedom();
-                            ftree->match_PV_CHI2NDOF = match_PV_tvertex.normalisedChiSquared();
-                            ftree->match_PV_X = match_PV_tvertex.position().x();
-                            ftree->match_PV_Y = match_PV_tvertex.position().y();
-                            ftree->match_PV_Z = match_PV_tvertex.position().z();
-                            ftree->match_PV_XERR = std::sqrt(match_PV_tvertex.positionError().cxx());
-                            ftree->match_PV_YERR = std::sqrt(match_PV_tvertex.positionError().cyy());
-                            ftree->match_PV_ZERR = std::sqrt(match_PV_tvertex.positionError().czz());
-                        }
-                    }
-                    
-                    ftree->Match_Fill_PV();
                 }
             }
         }
@@ -1189,41 +1158,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 else ftree->non_match_entry = false;
 
                 ftree->Fill_Vector();
-
-                std::vector<reco::TransientTrack> PV_ttracks;
-                
-                for(size_t l=0; l<packedPF->size(); l++){
-
-                    if(int(l) ==  idx_Kp_vec[i]) continue;
-                    if(int(l) ==  idx_Km_vec[j]) continue;
-                    if(int(l) ==  idx_pi_vec[k]) continue;
-
-                    const auto& otherpf = (*packedPF)[l];
-
-                    if( !(otherpf.trackHighPurity()) ) continue;
-                    if( !(otherpf.hasTrackDetails()) ) continue;
-
-                    if(otherpf.pt() > 1){
-                        PV_ttracks.push_back( (*theB).build(otherpf.pseudoTrack()) );
-                    }
-                }
-
-                if(PV_ttracks.size() > 1){
-                    TransientVertex PV_tvertex = AVFitter.vertex(PV_ttracks);
-                    if( PV_tvertex.isValid() ){ 
-                        ftree->PV_CHI2 = PV_tvertex.totalChiSquared();
-                        ftree->PV_NDOF = PV_tvertex.degreesOfFreedom();
-                        ftree->PV_CHI2NDOF = PV_tvertex.normalisedChiSquared();
-                        ftree->PV_X = PV_tvertex.position().x();
-                        ftree->PV_Y = PV_tvertex.position().y();
-                        ftree->PV_Z = PV_tvertex.position().z();
-                        ftree->PV_XERR = std::sqrt(PV_tvertex.positionError().cxx());
-                        ftree->PV_YERR = std::sqrt(PV_tvertex.positionError().cyy());
-                        ftree->PV_ZERR = std::sqrt(PV_tvertex.positionError().czz());
-                    }
-                }
-
-                ftree->Fill_PV();
             }
         }
     }
@@ -1244,6 +1178,35 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
 
     ftree->tree->Fill();
+
+
+    reco::TrackCollection tracks;
+    for(size_t i=0; i<packedPF->size(); i++){
+        const auto& pf = (*packedPF)[i];
+        if( ! pf.hasTrackDetails() ) continue;
+        if( ! pf.trackHighPurity() ) continue;
+        tracks.push_back(pf.pseudoTrack());
+    }
+
+    ftree->PV_Reset();
+    std::vector<TransientVertex> pvs = revertex->makeVertices(tracks, iSetup);
+
+    if( !(pvs.empty()) ){
+        reco::Vertex pv = reco::Vertex(pvs.front());
+
+        ftree->PV_IsValid = pv.isValid();
+        ftree->PV_IsFake = pv.isFake();
+        ftree->PV_CHI2 = pv.chi2();
+        ftree->PV_NDOF = pv.ndof();
+        ftree->PV_CHI2NDOF = pv.chi2()/pv.ndof();
+        ftree->PV_X = pv.x();
+        ftree->PV_Y = pv.y();
+        ftree->PV_Z = pv.z();
+        ftree->PV_XERR = pv.xError();
+        ftree->PV_YERR = pv.yError();
+        ftree->PV_ZERR = pv.zError();
+    }
+
     return;
 }
 
@@ -1270,9 +1233,12 @@ void PVStudy::endJob() {}
 void PVStudy::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
 {
     edm::ParameterSetDescription desc;
-    desc.add<edm::InputTag>("prunedGenParticles", edm::InputTag("prunedGenParticles"));
-    desc.add<edm::InputTag>("packedPFCandidates", edm::InputTag("packedPFCandidates"));;
-    descriptions.add("PVStudy", desc);
+    desc.setUnknown();
+    descriptions.addDefault(desc);
+    /* edm::ParameterSetDescription desc; */
+    /* desc.add<edm::InputTag>("prunedGenParticles", edm::InputTag("prunedGenParticles")); */
+    /* desc.add<edm::InputTag>("packedPFCandidates", edm::InputTag("packedPFCandidates"));; */
+    /* descriptions.add("PVStudy", desc); */
 }
 
 //define this as a plug-in

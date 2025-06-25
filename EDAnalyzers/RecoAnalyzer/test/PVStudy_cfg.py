@@ -5,7 +5,7 @@ import FWCore.ParameterSet.Types as CfgTypes
 from Configuration.AlCa.GlobalTag import GlobalTag
 import sys
 
-process = cms.Process("GenPartAnalysis")
+process = cms.Process("PVAnalysis")
 
 process.load("Configuration/StandardSequences/FrontierConditions_GlobalTag_cff")
 process.GlobalTag =  GlobalTag(process.GlobalTag, "106X_mc2017_realistic_v9")
@@ -14,7 +14,7 @@ process.load("Configuration.Geometry.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.StandardSequences.Services_cff")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
-
+process.load('RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi')
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
 
@@ -29,7 +29,50 @@ process.source = cms.Source("PoolSource",
 
 process.PVStudy = cms.EDAnalyzer('PVStudy',
     prunedGenParticles = cms.InputTag('prunedGenParticles'),
-    packedPFCandidates = cms.InputTag('packedPFCandidates')
+    packedPFCandidates = cms.InputTag('packedPFCandidates'),
+
+    TkFilterParameters = cms.PSet(
+        algorithm=cms.string('filter'),
+        maxNormalizedChi2 = cms.double(10.0),
+        minPixelLayersWithHits = cms.int32(2),
+        minSiliconLayersWithHits = cms.int32(5),
+        maxD0Significance = cms.double(4.0),
+        minPt = cms.double(0.5),
+        maxEta = cms.double(5.0), # 2.4
+        trackQuality = cms.string("any")
+    ),
+
+#     TkClusParameters = cms.PSet(
+#         algorithm   = cms.string("DA"),
+#         TkDAClusParameters = cms.PSet(
+#             coolingFactor = cms.double(0.6),  #  moderate annealing speed
+#             Tmin = cms.double(4.),            #  end of annealing
+#             vertexSize = cms.double(0.01),    #  ~ resolution / sqrt(Tmin)
+#             d0CutOff = cms.double(3.),        # downweight high IP tracks                    (only in 42X and higher)
+#             dzCutOff = cms.double(4.)         # outlier rejection after freeze-out (T<Tmin)  (only in 42X and higher)
+#         )
+#     ),
+
+    TkClusParameters = cms.PSet(
+        algorithm = cms.string("DA_vect"),
+        TkDAClusParameters = cms.PSet(coolingFactor = cms.double(0.6),  #  moderate annealing speed
+            Tmin = cms.double(2.0),            #  end of annealing
+            Tpurge = cms.double(2.0),         # cleaning
+            Tstop = cms.double(0.5),          # end of annealing
+            uniquetrkweight = cms.double(0.8), # require at least two tracks with this weight at T=Tpurge
+            zmerge = cms.double(1e-2),        # merge intermediat clusters separated by less than zmerge
+            vertexSize = cms.double(0.006),    #  ~ resolution / sqrt(Tmin)
+            d0CutOff = cms.double(3.),        # downweight high IP tracks 
+            dzCutOff = cms.double(3.)         # outlier rejection after freeze-out (T<Tmin)
+        )
+    ),
+
+    VxFitterParameters = cms.PSet(
+        # algorithm=cms.string('AdaptiveVertexFitter'),
+        minNdof = cms.double(0.0),
+        # useBeamConstraint = cms.bool(False);
+        # maxDistanceToBeam = cms.double(1.0)
+    )
 )
 
 process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
