@@ -6,4 +6,5 @@ run.log
 *__init__.pyc
 *.log
 *.out
+*.png
 scripts/figures

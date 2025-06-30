@@ -16,18 +16,28 @@
 
 VertexReProducer::VertexReProducer(const edm::ParameterSet &iConfig)
 {
+    /* beamSpotConfig_ = iConfig.getParameter<std::string>("BeamSpotConfig"); */
+
     std::string trackSelectionAlgorithm = iConfig.getParameter<edm::ParameterSet>("TkFilterParameters").getParameter<std::string>("algorithm");
-    if( trackSelectionAlgorithm == "filter" )
-    {
-        theTrackFilter_ = new TrackFilterForPVFinding(iConfig.getParameter<edm::ParameterSet>("TkFilterParameters"));
-    }
+
+    if( trackSelectionAlgorithm == "filter" )  theTrackFilter_ = new TrackFilterForPVFinding(iConfig.getParameter<edm::ParameterSet>("TkFilterParameters"));
+
     theTrackClusterizer_ = new DAClusterizerInZ_vect(iConfig.getParameter<edm::ParameterSet>("TkClusParameters").getParameter<edm::ParameterSet>("TkDAClusParameters"));
+
+    vertexSelector_ = new VertexCompatibleWithBeam(VertexDistanceXY(), iConfig.getParameter<edm::ParameterSet>("VxFitterParameters").getParameter<double>("maxDistanceToBeam"));
 
     minNdof_ = iConfig.getParameter<edm::ParameterSet>("VxFitterParameters").getParameter<double>("minNdof");
 }
 
-std::vector<TransientVertex> VertexReProducer::makeVertices(const reco::TrackCollection &tracks, const edm::EventSetup &iSetup) const
+std::vector<TransientVertex> VertexReProducer::makeVertices(const reco::TrackCollection &tracks, const reco::BeamSpot &bs, const edm::EventSetup &iSetup, std::string beamSpotConfig_) const
 {
+    bool validBS = true;
+    VertexState beamVertexState(bs);
+    if ( (beamVertexState.error().cxx() <= 0.) || (beamVertexState.error().cyy() <= 0.) || (beamVertexState.error().czz() <= 0.) ) {
+        validBS = false;
+        edm::LogError("UnusableBeamSpot") << "Beamspot with invalid errors " << beamVertexState.error().matrix();
+    }
+
     edm::ESHandle<TransientTrackBuilder> theB;
     iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder", theB);
 
@@ -39,6 +49,7 @@ std::vector<TransientVertex> VertexReProducer::makeVertices(const reco::TrackCol
 
         reco::TransientTrack transTrack = (*theB).build(pseudoTrack);
         t_tks.push_back(transTrack);
+        t_tks.back().setBeamSpot(bs);
     }
 
     std::vector<reco::TransientTrack> seltks = theTrackFilter_->select(t_tks);
@@ -50,12 +61,12 @@ std::vector<TransientVertex> VertexReProducer::makeVertices(const reco::TrackCol
     std::vector<TransientVertex> pvs;
 
     for( std::vector< std::vector<reco::TransientTrack> >::const_iterator iclus=clusters.begin(); iclus!=clusters.end(); iclus++ ){
-        
         TransientVertex v;
 
-        if( (*iclus).size()>1 ) v = fit.vertex(*iclus);
+        if( beamSpotConfig_ == "WithBS" && validBS && ((*iclus).size()>1) ) v = fit.vertex(*iclus, bs);
+        else if( beamSpotConfig_ != "WithBS" && ((*iclus).size()>1) ) v = fit.vertex(*iclus);
 
-        if( v.isValid() && (v.degreesOfFreedom() >= minNdof_) ) pvs.push_back(v);
+        if( v.isValid() && (v.degreesOfFreedom() >= minNdof_) && (!validBS || (*(vertexSelector_))(v, beamVertexState)) ) pvs.push_back(v);
     }
 
     if( pvs.size() > 1 ) sort(pvs.begin(), pvs.end(), VertexHigherPtSquared());

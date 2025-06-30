@@ -27,7 +27,7 @@ process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(myinfile)
 )
 
-process.PVStudy = cms.EDAnalyzer('PVStudy',
+process.RecoAnalyzer = cms.EDAnalyzer('RecoAnalyzer',
     prunedGenParticles = cms.InputTag('prunedGenParticles'),
     packedPFCandidates = cms.InputTag('packedPFCandidates'),
     beamspot = cms.InputTag("offlineBeamSpot"),
@@ -70,4 +70,4 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
 
 process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
 
-process.p = cms.Path(process.PVStudy)
+process.p = cms.Path(process.RecoAnalyzer)

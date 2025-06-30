@@ -71,7 +71,7 @@ void compare(TChain *mychain, TString myvar1, TString myvar2, TString leg1, TStr
     h1->SetMaximum(height*1.3);
     h1->SetMinimum(0);
     h1->GetXaxis()->SetTitle(vartitle);
-    h1->GetYaxis()->SetTitle("Normalized # candidates");
+    h1->GetYaxis()->SetTitle("Normalized # Events");
 
     TCanvas *canvas = new TCanvas("canvas", "canvas", 800, 600);
     canvas_setup(canvas);
@@ -101,21 +101,73 @@ int PV_plots() {
     TChain *mychain = new TChain("PVStudy/Events");
     mychain->Add("/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/tuples/PVStudy/PVStudy.root");
 
-    if(gSystem->AccessPathName("./figures")) gSystem->MakeDirectory("./figures");
-    if(gSystem->AccessPathName("./figures/PV_figures")) gSystem->MakeDirectory("./figures/PV_figures");
+    if(gSystem->AccessPathName("./PVfigures")) gSystem->MakeDirectory("./PVfigures");
+    if(gSystem->AccessPathName("./PVfigures/noBS")) gSystem->MakeDirectory("./PVfigures/noBS");
+    if(gSystem->AccessPathName("./PVfigures/withBS")) gSystem->MakeDirectory("./PVfigures/withBS");
 
-    compare(mychain, "Gen_H_ORIVX_X", "PV_X", "Gen", "Fit", "#it{x}_{PV} [cm]", -0.1, 0.1, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_X.png");
-    compare(mychain, "Gen_H_ORIVX_Y", "PV_Y", "Gen", "Fit", "#it{y}_{PV} [cm]", -0.1, 0.2, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_Y.png");
-    compare(mychain, "Gen_H_ORIVX_Z", "PV_Z", "Gen", "Fit", "#it{z}_{PV} [cm]", -15, 15, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Gen_Fit_PV_Z.png");
+    TCut sel_withBS = "PV_withBS_IsValid && !PV_withBS_IsFake";
+    TCut sel_noBS = "PV_noBS_IsValid && !PV_noBS_IsFake";
 
-    compare(mychain, "Gen_Kp_ORIVX_X", "PV_X", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{x} [cm]", -0.1, 0.1, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_X.png");
-    compare(mychain, "Gen_Kp_ORIVX_Y", "PV_Y", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{y} [cm]", -0.1, 0.2, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_Y.png");
-    compare(mychain, "Gen_Kp_ORIVX_Z", "PV_Z", "Gen #it{D_{s}^{+}} decay", "Fit PV", "#it{z} [cm]", -15, 15, "1", "PV_IsValid && !PV_IsFake", "./figures/PV_figures/Kp_PV_Z.png");
+    /* compare(mychain, "Gen_H_ORIVX_X", "PV_noBS_X", "Gen", "Fit noBS", "#it{x}_{PV} [cm]", -0.035, -0.015, "1", sel_noBS, "./PVfigures/noBS/compare_PV_X.png"); */
+    /* compare(mychain, "Gen_H_ORIVX_Y", "PV_noBS_Y", "Gen", "Fit noBS", "#it{y}_{PV} [cm]", 0.06, 0.08, "1", sel_noBS, "./PVfigures/noBS/compare_PV_Y.png"); */
+    /* compare(mychain, "Gen_H_ORIVX_Z", "PV_noBS_Z", "Gen", "Fit noBS", "#it{z}_{PV} [cm]", -15, 15, "1", sel_noBS, "./PVfigures/noBS/compare_PV_Z.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_X - PV_noBS_X)", ";noBS #Delta#it{x}_{PV} [cm];# events", -0.01, 0.01, sel_noBS, "./PVfigures/noBS/diff_PV_X.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Y - PV_noBS_Y)", ";noBS #Delta#it{y}_{PV} [cm];# events", -0.01, 0.01, sel_noBS, "./PVfigures/noBS/diff_PV_Y.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Z - PV_noBS_Z)", ";noBS #Delta#it{z}_{PV} [cm];# events", -0.01, 0.01, sel_noBS, "./PVfigures/noBS/diff_PV_Z.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_X - PV_noBS_X)/Gen_H_ORIVX_X", ";noBS #it{#varepsilonx}_{PV};# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_PV_X.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Y - PV_noBS_Y)/Gen_H_ORIVX_Y", ";noBS #it{#varepsilony}_{PV};# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_PV_Y.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Z - PV_noBS_Z)/Gen_H_ORIVX_Z", ";noBS #it{#varepsilonz}_{PV};# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_PV_Z.png"); */
+    /* compare(mychain, "sqrt(Gen_H_ORIVX_X*Gen_H_ORIVX_X + Gen_H_ORIVX_Y*Gen_H_ORIVX_Y)", "sqrt(PV_noBS_X*PV_noBS_X + PV_noBS_Y*PV_noBS_Y)", "Gen", "Fit noBS", "#it{d_{xy}}(PV) [cm]", 0.05, 0.1, "1", sel_noBS, "./PVfigures/noBS/compare_dxy.png"); */
+    /* draw_1d(mychain, "(sqrt(Gen_H_ORIVX_X*Gen_H_ORIVX_X + Gen_H_ORIVX_Y*Gen_H_ORIVX_Y) - sqrt(PV_noBS_X*PV_noBS_X + PV_noBS_Y*PV_noBS_Y))", ";noBS #Delta#it{d_{xy}}(PV) [cm];# events", -0.01, 0.01, sel_noBS, "./PVfigures/noBS/diff_dxy.png"); */
 
-    /* draw_1d(mychain, "(Gen_dR_Km_pi - match_dR_Km_pi)", ";Gen #Delta#it{R(K^{-},#pi^{+})}-reco #Delta#it{R(K^{-},#pi^{+})};# candidates", -0.8, 0.8, "1", "./figures/gen_match_compare/diff_dR_Km_pi.png"); */
-    /* draw_2d(mychain, "Gen_Kp_PP:((Gen_Kp_PL - Gen_Km_PL)/(Gen_Kp_PL + Gen_Km_PL))", ";Gen #it{#alpha};Gen #it{p_{#perp}} [GeV]", -1, 1, 0, 0.3, "1", "./figures/APplot/Gen_APplot_phi.png"); */
+    /* compare(mychain, "Gen_H_ORIVX_X", "PV_withBS_X", "Gen", "Fit withBS", "#it{x}_{PV} [cm]", -0.035, -0.015, "1", sel_withBS, "./PVfigures/withBS/compare_PV_X.png"); */
+    /* compare(mychain, "Gen_H_ORIVX_Y", "PV_withBS_Y", "Gen", "Fit withBS", "#it{y}_{PV} [cm]", 0.06, 0.08, "1", sel_withBS, "./PVfigures/withBS/compare_PV_Y.png"); */
+    /* compare(mychain, "Gen_H_ORIVX_Z", "PV_withBS_Z", "Gen", "Fit withBS", "#it{z}_{PV} [cm]", -15, 15, "1", sel_withBS, "./PVfigures/withBS/compare_PV_Z.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_X - PV_withBS_X)", ";withBS #Delta#it{x}_{PV} [cm];# events", -0.01, 0.01, sel_withBS, "./PVfigures/withBS/diff_PV_X.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Y - PV_withBS_Y)", ";withBS #Delta#it{y}_{PV} [cm];# events", -0.01, 0.01, sel_withBS, "./PVfigures/withBS/diff_PV_Y.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Z - PV_withBS_Z)", ";withBS #Delta#it{z}_{PV} [cm];# events", -0.01, 0.01, sel_withBS, "./PVfigures/withBS/diff_PV_Z.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_X - PV_withBS_X)/Gen_H_ORIVX_X", ";withBS #it{#varepsilonx}_{PV};# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_PV_X.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Y - PV_withBS_Y)/Gen_H_ORIVX_Y", ";withBS #it{#varepsilony}_{PV};# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_PV_Y.png"); */
+    /* draw_1d(mychain, "(Gen_H_ORIVX_Z - PV_withBS_Z)/Gen_H_ORIVX_Z", ";withBS #it{#varepsilonz}_{PV};# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_PV_Z.png"); */
+    /* compare(mychain, "sqrt(Gen_H_ORIVX_X*Gen_H_ORIVX_X + Gen_H_ORIVX_Y*Gen_H_ORIVX_Y)", "sqrt(PV_withBS_X*PV_withBS_X + PV_withBS_Y*PV_withBS_Y)", "Gen", "Fit withBS", "#it{d_{xy}}(PV) [cm]", 0.05, 0.1, "1", sel_withBS, "./PVfigures/withBS/compare_dxy.png"); */
+    /* draw_1d(mychain, "(sqrt(Gen_H_ORIVX_X*Gen_H_ORIVX_X + Gen_H_ORIVX_Y*Gen_H_ORIVX_Y) - sqrt(PV_withBS_X*PV_withBS_X + PV_withBS_Y*PV_withBS_Y))", ";withBS #Delta#it{d_{xy}}(PV) [cm];# events", -0.01, 0.01, sel_withBS, "./PVfigures/withBS/diff_dxy.png"); */
 
+    /* compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2))", "sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2))", "Gen", "Fit noBS", "FD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_noBS, "./PVfigures/noBS/compare_FDxy_Ds_PV.png"); */
+    /* compare(mychain, "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z)", "abs(match_DsFit_ENDVX_Z-PV_noBS_Z)", "Gen", "Fit noBS", "FD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_noBS, "./PVfigures/noBS/compare_FDz_Ds_PV.png"); */
+    /* compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2))", "sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_noBS_Z,2))", "Gen", "Fit noBS", "FD(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_noBS, "./PVfigures/noBS/compare_FD_Ds_PV.png"); */
+    
+    /* draw_1d(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2))", ";noBS #DeltaFD_{#it{xy}}(#it{D_{s}^{+}}) [cm];# events", -0.2, 0.2, sel_noBS, "./PVfigures/noBS/diff_FDxy_Ds_PV.png"); */
+    /* draw_1d(mychain, "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_noBS_Z)", ";noBS #DeltaFD_{#it{z}}(#it{D_{s}^{+}}) [cm];# events", -0.2, 0.2, sel_noBS, "./PVfigures/noBS/diff_FDz_Ds_PV.png"); */
+    /* draw_1d(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_noBS_Z,2))", ";noBS #DeltaFD(#it{D_{s}^{+}}) [cm];# events", -0.2, 0.2, sel_noBS, "./PVfigures/noBS/diff_FD_Ds_PV.png"); */
+    
+    /* draw_1d(mychain, "(sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2)))/sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2))", ";noBS #it{#varepsilon}FD_{#it{xy}}(#it{D_{s}^{+}});# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_FDxy_Ds_PV.png"); */
+    /* draw_1d(mychain, "(abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_noBS_Z))/abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z)", ";noBS #it{#varepsilon}FD_{#it{z}}(#it{D_{s}^{+}});# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_FDz_Ds_PV.png"); */
+    /* draw_1d(mychain, "(sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_noBS_Z,2)))/sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2))", ";noBS #it{#varepsilon}FD(#it{D_{s}^{+}});# events", -1, 1, sel_noBS, "./PVfigures/noBS/epsilon_FD_Ds_PV.png"); */
 
+    /* compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2))", "sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2))", "Gen", "Fit withBS", "FD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_withBS, "./PVfigures/withBS/compare_FDxy_Ds_PV.png"); */
+    /* compare(mychain, "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z)", "abs(match_DsFit_ENDVX_Z-PV_withBS_Z)", "Gen", "Fit withBS", "FD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_withBS, "./PVfigures/withBS/compare_FDz_Ds_PV.png"); */
+    /* compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2))", "sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_withBS_Z,2))", "Gen", "Fit withBS", "FD(#it{D_{s}^{+}}) [cm]", 0, 2, "1", sel_withBS, "./PVfigures/withBS/compare_FD_Ds_PV.png"); */
+    
+    /* draw_1d(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2))", ";withBS #DeltaFD_{#it{xy}}(#it{D_{s}^{+}}) [cm];# events", -0.5, 0.5, sel_withBS, "./PVfigures/withBS/diff_FDxy_Ds_PV.png"); */
+    /* draw_1d(mychain, "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_withBS_Z)", ";withBS #DeltaFD_{#it{z}}(#it{D_{s}^{+}}) [cm];# events", -0.5, 0.5, sel_withBS, "./PVfigures/withBS/diff_FDz_Ds_PV.png"); */
+    /* draw_1d(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_withBS_Z,2))", ";withBS #DeltaFD(#it{D_{s}^{+}}) [cm];# events", -0.5, 0.5, sel_withBS, "./PVfigures/withBS/diff_FD_Ds_PV.png"); */
+
+    /* draw_1d(mychain, "(sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2)))/sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2))", ";withBS #it{#varepsilon}FD_{#it{xy}}(#it{D_{s}^{+}});# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_FDxy_Ds_PV.png"); */
+    /* draw_1d(mychain, "(abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_withBS_Z))/abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z)", ";withBS #it{#varepsilon}FD_{#it{z}}(#it{D_{s}^{+}});# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_FDz_Ds_PV.png"); */
+    /* draw_1d(mychain, "(sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_withBS_Z,2)))/sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2))", ";withBS #it{#varepsilon}FD(#it{D_{s}^{+}});# events", -1, 1, sel_withBS, "./PVfigures/withBS/epsilon_FD_Ds_PV.png"); */
+
+    compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2))", "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2))", "Fit noBS", "Fit withBS", "#DeltaFD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", -0.5, 0.5, sel_noBS, sel_withBS, "./PVfigures/compare_FDxy_Ds_PV.png");
+    compare(mychain, "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_noBS_Z)", "abs(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z) - abs(match_DsFit_ENDVX_Z-PV_withBS_Z)", "Fit noBS", "Fit withBS", "#DeltaFD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", -0.5, 0.5, sel_noBS, sel_withBS, "./PVfigures/compare_FDz_Ds_PV.png");
+    compare(mychain, "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_noBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_noBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_noBS_Z,2))", "sqrt(pow(Gen_Kp_ORIVX_X-Gen_H_ORIVX_X,2)+pow(Gen_Kp_ORIVX_Y-Gen_H_ORIVX_Y,2)+pow(Gen_Kp_ORIVX_Z-Gen_H_ORIVX_Z,2)) - sqrt(pow(match_DsFit_ENDVX_X-PV_withBS_X,2)+pow(match_DsFit_ENDVX_Y-PV_withBS_Y,2)+pow(match_DsFit_ENDVX_Z-PV_withBS_Z,2))", "Fit noBS", "Fit withBS", "#DeltaFD_{#it{xy}}(#it{D_{s}^{+}}) [cm]", -0.5, 0.5, sel_noBS, sel_withBS, "./PVfigures/compare_FD_Ds_PV.png");
+    
+    compare(mychain, "PV_noBS_XERR", "PV_withBS_XERR", "Fit noBS", "Fit withBS", "#it{#deltax}_{PV} [cm]", 0, 0.003, sel_noBS, sel_withBS, "./PVfigures/compare_PV_XERR.png");
+    compare(mychain, "PV_noBS_YERR", "PV_withBS_YERR", "Fit noBS", "Fit withBS", "#it{#deltay}_{PV} [cm]", 0, 0.003, sel_noBS, sel_withBS, "./PVfigures/compare_PV_YERR.png");
+    compare(mychain, "PV_noBS_ZERR", "PV_withBS_ZERR", "Fit noBS", "Fit withBS", "#it{#deltaz}_{PV} [cm]", 0, 0.006, sel_noBS, sel_withBS, "./PVfigures/compare_PV_ZERR.png");
+
+    compare(mychain, "abs(PV_noBS_X)/PV_noBS_XERR", "abs(PV_withBS_X)/PV_withBS_XERR", "Fit noBS", "Fit withBS", "sig(#it{x}_{PV}) [cm]", 0, 100, sel_noBS, sel_withBS, "./PVfigures/compare_sig_X.png");
+    compare(mychain, "abs(PV_noBS_Y)/PV_noBS_YERR", "abs(PV_withBS_Y)/PV_withBS_YERR", "Fit noBS", "Fit withBS", "sig(#it{y}_{PV}) [cm]", 0, 200, sel_noBS, sel_withBS, "./PVfigures/compare_sig_Y.png");
+    compare(mychain, "abs(PV_noBS_Z)/PV_noBS_ZERR", "abs(PV_withBS_Z)/PV_withBS_ZERR", "Fit noBS", "Fit withBS", "sig(#it{z}_{PV}) [cm]", 0, 10000, sel_noBS, sel_withBS, "./PVfigures/compare_sig_Z.png");
+    
     delete mychain;
 
     return 0;

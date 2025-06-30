@@ -31,6 +31,7 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
     prunedGenParticles = cms.InputTag('prunedGenParticles'),
     packedPFCandidates = cms.InputTag('packedPFCandidates'),
     beamspot = cms.InputTag("offlineBeamSpot"),
+    # BeamSpotConfig = cms.string("WithBS"),
 
     TkFilterParameters = cms.PSet(
         algorithm=cms.string('filter'),

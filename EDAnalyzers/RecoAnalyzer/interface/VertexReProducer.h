@@ -1,8 +1,9 @@
-#ifndef VERTEXREPRODUCER_H
-#define VERTEXREPRODUCER_H
+#ifndef TrackingAnalysis_EDAnalyzers_interface_VertexReProducer_h
+#define TrackingAnalysis_EDAnalyzers_interface_VertexReProducer_h
 
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
@@ -13,7 +14,7 @@
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
 #include "RecoVertex/PrimaryVertexProducer/interface/PrimaryVertexProducerAlgorithm.h"
 
-class VertexReProducer
+class VertexReProducer 
 {
 
     public:
@@ -23,7 +24,10 @@ class VertexReProducer
         ~VertexReProducer();
 
         /// Make the vertices
-        std::vector<TransientVertex> makeVertices(const reco::TrackCollection &tracks, const edm::EventSetup &iSetup) const;
+        std::vector<TransientVertex> makeVertices(const reco::TrackCollection &tracks,
+                const reco::BeamSpot &bs,
+                const edm::EventSetup &iSetup,
+                std::string beamSpotConfig_) const;
 
         /// Get the configuration used in the VertexProducer
         const edm::ParameterSet &inputConfig() const { return config_; }
@@ -37,7 +41,7 @@ class VertexReProducer
         double minNdof_;
 
         edm::ParameterSet config_;
-        std::string beamSpotConfig_;
+        /* std::string beamSpotConfig_; */
 };
 
 #endif

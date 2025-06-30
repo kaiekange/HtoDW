@@ -16,19 +16,19 @@ process.load("Configuration.StandardSequences.Services_cff")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 process.load('RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi')
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) ) 
 
 # myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_1.root"
+# myinfile = "/store/mc/RunIISummer20UL17MiniAODv2/WJetsToLNu_012JetsNLO_34JetsLO_EWNLOcorr_13TeV-sherpa/MINIAODSIM/106X_mc2017_realistic_v9-v4/2430001/BA4335A5-EECE-904E-BC67-562EB77C1B2F.root"
 # myoutfile = "file:test.root"
-myinfile = sys.argv[2]
-myoutfile = sys.argv[3]
+# myinfile = sys.argv[2]
+# myoutfile = sys.argv[3]
 
 process.source = cms.Source("PoolSource",
-    fileNames = cms.untracked.vstring(myinfile)
+    fileNames = cms.untracked.vstring()
 )
 
-process.PVStudy = cms.EDAnalyzer('PVStudy',
-    prunedGenParticles = cms.InputTag('prunedGenParticles'),
+process.RecoBestAnalyzer = cms.EDAnalyzer('RecoBestAnalyzer',
     packedPFCandidates = cms.InputTag('packedPFCandidates'),
     beamspot = cms.InputTag("offlineBeamSpot"),
 
@@ -68,6 +68,7 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
     ),
 )
 
-process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
+# process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
+process.TFileService = cms.Service("TFileService", fileName=cms.string("output.root"), closeFileFast = cms.untracked.bool(True))
 
-process.p = cms.Path(process.PVStudy)
+process.p = cms.Path(process.RecoBestAnalyzer)

@@ -31,6 +31,7 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
     prunedGenParticles = cms.InputTag('prunedGenParticles'),
     packedPFCandidates = cms.InputTag('packedPFCandidates'),
     beamspot = cms.InputTag("offlineBeamSpot"),
+    BeamSpotConfig = cms.string("noBS"),
 
     TkFilterParameters = cms.PSet(
         algorithm=cms.string('filter'),
@@ -57,12 +58,14 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
         )
     ),
 
-    VxFitterParameters = cms.PSet(algorithm=cms.string('AVF'),
+    VxFitterParameters = cms.PSet(
+        algorithm=cms.string('AVF'),
         minNdof = cms.double(0.0),
         maxDistanceToBeam = cms.double(1.0)
     ),
 
-    VxFitterBSParameters = cms.PSet(algorithm=cms.string('AVFBS'),
+    VxFitterBSParameters = cms.PSet(
+        algorithm=cms.string('AVFBS'),
         minNdof = cms.double(2.0),
         maxDistanceToBeam = cms.double(1.0)
     ),

@@ -1,12 +1,35 @@
-#include "EDAnalyzers/RecoAnalyzer/interface/PVTree.h"
+#include "EDAnalyzers/RecoAnalyzer/interface/RecoTree.h"
 #include <iostream>
 
-PVTree::PVTree(TTree *tree_)
+RecoTree::RecoTree(TTree *tree_)
 {
     tree = tree_;
 }
-void PVTree::Init()
+void RecoTree::Init()
 {
+    PV_withBS_IsValid_vec.clear();
+    PV_withBS_IsFake_vec.clear();
+    PV_withBS_CHI2_vec.clear();
+    PV_withBS_NDOF_vec.clear();
+    PV_withBS_CHI2NDOF_vec.clear();
+    PV_withBS_X_vec.clear();
+    PV_withBS_Y_vec.clear();
+    PV_withBS_Z_vec.clear();
+    PV_withBS_XERR_vec.clear();
+    PV_withBS_YERR_vec.clear();
+    PV_withBS_ZERR_vec.clear();
+    PV_noBS_IsValid_vec.clear();
+    PV_noBS_IsFake_vec.clear();
+    PV_noBS_CHI2_vec.clear();
+    PV_noBS_NDOF_vec.clear();
+    PV_noBS_CHI2NDOF_vec.clear();
+    PV_noBS_X_vec.clear();
+    PV_noBS_Y_vec.clear();
+    PV_noBS_Z_vec.clear();
+    PV_noBS_XERR_vec.clear();
+    PV_noBS_YERR_vec.clear();
+    PV_noBS_ZERR_vec.clear();
+    
     // Gen particles
     num_Gen_Kp = 0;
     num_Gen_Km = 0;
@@ -271,6 +294,27 @@ void PVTree::Init()
     match_DsFit_dR_pi_Ds_vec.clear();
 
     match_DsFit_Mconstraint_Ds_M_vec.clear();
+   
+
+    match_Ds_FDxy_vec.clear();
+    match_Ds_FDxy_Err_vec.clear();
+    match_Ds_FDxy_Chi2_vec.clear();
+    match_Ds_FDz_vec.clear();
+    match_Ds_FDz_Err_vec.clear();
+    match_Ds_FDz_Chi2_vec.clear();
+    match_Ds_FD_vec.clear();
+    match_Ds_FD_Err_vec.clear();
+    match_Ds_FD_Chi2_vec.clear();
+    match_Ds_DIRA_vec.clear();
+    match_Kp_IP_vec.clear();
+    match_Kp_IP_Err_vec.clear();
+    match_Kp_IP_Chi2_vec.clear();
+    match_Km_IP_vec.clear();
+    match_Km_IP_Err_vec.clear();
+    match_Km_IP_Chi2_vec.clear();
+    match_pi_IP_vec.clear();
+    match_pi_IP_Err_vec.clear();
+    match_pi_IP_Chi2_vec.clear();
 
     num_reco_phi = 0;
     num_reco_Ds = 0;
@@ -770,33 +814,9 @@ void PVTree::Init()
     best_DsFit_Mconstraint_Ds_M_vec.clear();
 
     best_match_entry_vec.clear();
-    
-    PV_withBS_IsValid_vec.clear();
-    PV_withBS_IsFake_vec.clear();
-    PV_withBS_CHI2_vec.clear();
-    PV_withBS_NDOF_vec.clear();
-    PV_withBS_CHI2NDOF_vec.clear();
-    PV_withBS_X_vec.clear();
-    PV_withBS_Y_vec.clear();
-    PV_withBS_Z_vec.clear();
-    PV_withBS_XERR_vec.clear();
-    PV_withBS_YERR_vec.clear();
-    PV_withBS_ZERR_vec.clear();
-    PV_noBS_IsValid_vec.clear();
-    PV_noBS_IsFake_vec.clear();
-    PV_noBS_CHI2_vec.clear();
-    PV_noBS_NDOF_vec.clear();
-    PV_noBS_CHI2NDOF_vec.clear();
-    PV_noBS_X_vec.clear();
-    PV_noBS_Y_vec.clear();
-    PV_noBS_Z_vec.clear();
-    PV_noBS_XERR_vec.clear();
-    PV_noBS_YERR_vec.clear();
-    PV_noBS_ZERR_vec.clear();
-
 }
 
-void PVTree::Match_Fill_Vector()
+void RecoTree::Match_Fill_Vector()
 {
     match_Kp_ETA_vec.push_back(match_Kp_ETA);
     match_Kp_PHI_vec.push_back(match_Kp_PHI);
@@ -1045,7 +1065,30 @@ void PVTree::Match_Fill_Vector()
 
 }
 
-void PVTree::Best_Fill_Vector(int idxmax)
+void RecoTree::Match_FD_IP_Fill_Vector()
+{
+    match_Ds_FDxy_vec.push_back(match_Ds_FDxy);
+    match_Ds_FDxy_Err_vec.push_back(match_Ds_FDxy_Err);
+    match_Ds_FDxy_Chi2_vec.push_back(match_Ds_FDxy_Chi2);
+    match_Ds_FDz_vec.push_back(match_Ds_FDz);
+    match_Ds_FDz_Err_vec.push_back(match_Ds_FDz_Err);
+    match_Ds_FDz_Chi2_vec.push_back(match_Ds_FDz_Chi2);
+    match_Ds_FD_vec.push_back(match_Ds_FD);
+    match_Ds_FD_Err_vec.push_back(match_Ds_FD_Err);
+    match_Ds_FD_Chi2_vec.push_back(match_Ds_FD_Chi2);
+    match_Ds_DIRA_vec.push_back(match_Ds_DIRA);
+    match_Kp_IP_vec.push_back(match_Kp_IP);
+    match_Kp_IP_Err_vec.push_back(match_Kp_IP_Err);
+    match_Kp_IP_Chi2_vec.push_back(match_Kp_IP_Chi2);
+    match_Km_IP_vec.push_back(match_Km_IP);
+    match_Km_IP_Err_vec.push_back(match_Km_IP_Err);
+    match_Km_IP_Chi2_vec.push_back(match_Km_IP_Chi2);
+    match_pi_IP_vec.push_back(match_pi_IP);
+    match_pi_IP_Err_vec.push_back(match_pi_IP_Err);
+    match_pi_IP_Chi2_vec.push_back(match_pi_IP_Chi2);
+}
+
+void RecoTree::Best_Fill_Vector(int idxmax)
 {
     best_Kp_ETA_vec.push_back(Kp_ETA_vec[idxmax]);
     best_Kp_PHI_vec.push_back(Kp_PHI_vec[idxmax]);
@@ -1295,7 +1338,7 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_match_entry_vec.push_back(match_entry_vec[idxmax]);
 }
 
-void PVTree::Fill_Vector()
+void RecoTree::Fill_Vector()
 {
     Kp_ETA_vec.push_back(Kp_ETA);
     Kp_PHI_vec.push_back(Kp_PHI);
@@ -1549,7 +1592,7 @@ void PVTree::Fill_Vector()
     non_match_entry_vec.push_back(non_match_entry);
 }
 
-void PVTree::PV_withBS_Fill_Vector()
+void RecoTree::PV_withBS_Fill_Vector()
 {
     PV_withBS_IsValid_vec.push_back(PV_withBS_IsValid);
     PV_withBS_IsFake_vec.push_back(PV_withBS_IsFake);
@@ -1564,7 +1607,7 @@ void PVTree::PV_withBS_Fill_Vector()
     PV_withBS_ZERR_vec.push_back(PV_withBS_ZERR);
 }
 
-void PVTree::PV_noBS_Fill_Vector()
+void RecoTree::PV_noBS_Fill_Vector()
 {
     PV_noBS_IsValid_vec.push_back(PV_noBS_IsValid);
     PV_noBS_IsFake_vec.push_back(PV_noBS_IsFake);
@@ -1579,8 +1622,52 @@ void PVTree::PV_noBS_Fill_Vector()
     PV_noBS_ZERR_vec.push_back(PV_noBS_ZERR);
 }
 
-void PVTree::CreateBranches()
+void RecoTree::CreateBranches()
 {
+    tree->Branch("BS_type", &BS_type); 
+    tree->Branch("BS_X0", &BS_X0);
+    tree->Branch("BS_Y0", &BS_Y0);
+    tree->Branch("BS_Z0", &BS_Z0);
+    tree->Branch("BS_SigmaZ", &BS_SigmaZ);
+    tree->Branch("BS_dXdZ", &BS_dXdZ);
+    tree->Branch("BS_dYdZ", &BS_dYdZ);
+    tree->Branch("BS_BWX", &BS_BWX);
+    tree->Branch("BS_BWY", &BS_BWY);
+    tree->Branch("BS_X0ERR", &BS_X0ERR);
+    tree->Branch("BS_Y0ERR", &BS_Y0ERR);
+    tree->Branch("BS_Z0ERR", &BS_Z0ERR);
+    tree->Branch("BS_SigmaZ0ERR", &BS_SigmaZ0ERR);
+    tree->Branch("BS_dXdZERR", &BS_dXdZERR);
+    tree->Branch("BS_dYdZERR", &BS_dYdZERR);
+    tree->Branch("BS_BWXERR", &BS_BWXERR);
+    tree->Branch("BS_BWYERR", &BS_BWYERR);
+    tree->Branch("BS_EmitX", &BS_EmitX);
+    tree->Branch("BS_EmitY", &BS_EmitY);
+    tree->Branch("BS_BetaStar", &BS_BetaStar);
+    
+    tree->Branch("PV_withBS_IsValid", &PV_withBS_IsValid_vec);
+    tree->Branch("PV_withBS_IsFake", &PV_withBS_IsFake_vec);
+    tree->Branch("PV_withBS_CHI2", &PV_withBS_CHI2_vec);
+    tree->Branch("PV_withBS_NDOF", &PV_withBS_NDOF_vec);
+    tree->Branch("PV_withBS_CHI2NDOF", &PV_withBS_CHI2NDOF_vec);
+    tree->Branch("PV_withBS_X", &PV_withBS_X_vec);
+    tree->Branch("PV_withBS_Y", &PV_withBS_Y_vec);
+    tree->Branch("PV_withBS_Z", &PV_withBS_Z_vec);
+    tree->Branch("PV_withBS_XERR", &PV_withBS_XERR_vec);
+    tree->Branch("PV_withBS_YERR", &PV_withBS_YERR_vec);
+    tree->Branch("PV_withBS_ZERR", &PV_withBS_ZERR_vec);
+    tree->Branch("PV_noBS_IsValid", &PV_noBS_IsValid_vec);
+    tree->Branch("PV_noBS_IsFake", &PV_noBS_IsFake_vec);
+    tree->Branch("PV_noBS_CHI2", &PV_noBS_CHI2_vec);
+    tree->Branch("PV_noBS_NDOF", &PV_noBS_NDOF_vec);
+    tree->Branch("PV_noBS_CHI2NDOF", &PV_noBS_CHI2NDOF_vec);
+    tree->Branch("PV_noBS_X", &PV_noBS_X_vec);
+    tree->Branch("PV_noBS_Y", &PV_noBS_Y_vec);
+    tree->Branch("PV_noBS_Z", &PV_noBS_Z_vec);
+    tree->Branch("PV_noBS_XERR", &PV_noBS_XERR_vec);
+    tree->Branch("PV_noBS_YERR", &PV_noBS_YERR_vec);
+    tree->Branch("PV_noBS_ZERR", &PV_noBS_ZERR_vec);
+
     tree->Branch("num_Gen_Kp", &num_Gen_Kp);
     tree->Branch("num_Gen_Km", &num_Gen_Km);
     tree->Branch("num_Gen_pi", &num_Gen_pi);
@@ -1715,6 +1802,14 @@ void PVTree::CreateBranches()
     tree->Branch("Gen_dz_Kp_Km", &Gen_dz_Kp_Km);
     tree->Branch("Gen_dz_Kp_pi", &Gen_dz_Kp_pi);
     tree->Branch("Gen_dz_Km_pi", &Gen_dz_Km_pi);
+
+    tree->Branch("Gen_Ds_FDxy", &Gen_Ds_FDxy);
+    tree->Branch("Gen_Ds_FDz", &Gen_Ds_FDz);
+    tree->Branch("Gen_Ds_FD", &Gen_Ds_FD);
+    tree->Branch("Gen_Ds_DIRA", &Gen_Ds_DIRA);
+    tree->Branch("Gen_Kp_IP", &Gen_Kp_IP);
+    tree->Branch("Gen_Km_IP", &Gen_Km_IP);
+    tree->Branch("Gen_pi_IP", &Gen_pi_IP);
 
     tree->Branch("num_match_Kp", &num_match_Kp);
     tree->Branch("num_match_Km", &num_match_Km);
@@ -1965,6 +2060,26 @@ void PVTree::CreateBranches()
     tree->Branch("match_DsFit_dR_pi_Ds", &match_DsFit_dR_pi_Ds_vec);
 
     tree->Branch("match_DsFit_Mconstraint_Ds_M", &match_DsFit_Mconstraint_Ds_M_vec);
+
+    tree->Branch("match_Ds_FDxy", &match_Ds_FDxy_vec);
+    tree->Branch("match_Ds_FDxy_Err", &match_Ds_FDxy_Err_vec);
+    tree->Branch("match_Ds_FDxy_Chi2", &match_Ds_FDxy_Chi2_vec);
+    tree->Branch("match_Ds_FDz", &match_Ds_FDz_vec);
+    tree->Branch("match_Ds_FDz_Err", &match_Ds_FDz_Err_vec);
+    tree->Branch("match_Ds_FDz_Chi2", &match_Ds_FDz_Chi2_vec);
+    tree->Branch("match_Ds_FD", &match_Ds_FD_vec);
+    tree->Branch("match_Ds_FD_Err", &match_Ds_FD_Err_vec);
+    tree->Branch("match_Ds_FD_Chi2", &match_Ds_FD_Chi2_vec);
+    tree->Branch("match_Ds_DIRA", &match_Ds_DIRA_vec);
+    tree->Branch("match_Kp_IP", &match_Kp_IP_vec);
+    tree->Branch("match_Kp_IP_Err", &match_Kp_IP_Err_vec);
+    tree->Branch("match_Kp_IP_Chi2", &match_Kp_IP_Chi2_vec);
+    tree->Branch("match_Km_IP", &match_Km_IP_vec);
+    tree->Branch("match_Km_IP_Err", &match_Km_IP_Err_vec);
+    tree->Branch("match_Km_IP_Chi2", &match_Km_IP_Chi2_vec);
+    tree->Branch("match_pi_IP", &match_pi_IP_vec);
+    tree->Branch("match_pi_IP_Err", &match_pi_IP_Err_vec);
+    tree->Branch("match_pi_IP_Chi2", &match_pi_IP_Chi2_vec);
 
     tree->Branch("num_reco_phi", &num_reco_phi);
     tree->Branch("num_reco_Ds", &num_reco_Ds);
@@ -2462,53 +2577,9 @@ void PVTree::CreateBranches()
     tree->Branch("best_DsFit_Mconstraint_Ds_M", &best_DsFit_Mconstraint_Ds_M_vec);
 
     tree->Branch("best_match_entry", &best_match_entry_vec);
-    
-    tree->Branch("BS_type", &BS_type); 
-    tree->Branch("BS_X0", &BS_X0);
-    tree->Branch("BS_Y0", &BS_Y0);
-    tree->Branch("BS_Z0", &BS_Z0);
-    tree->Branch("BS_SigmaZ", &BS_SigmaZ);
-    tree->Branch("BS_dXdZ", &BS_dXdZ);
-    tree->Branch("BS_dYdZ", &BS_dYdZ);
-    tree->Branch("BS_BWX", &BS_BWX);
-    tree->Branch("BS_BWY", &BS_BWY);
-    tree->Branch("BS_X0ERR", &BS_X0ERR);
-    tree->Branch("BS_Y0ERR", &BS_Y0ERR);
-    tree->Branch("BS_Z0ERR", &BS_Z0ERR);
-    tree->Branch("BS_SigmaZ0ERR", &BS_SigmaZ0ERR);
-    tree->Branch("BS_dXdZERR", &BS_dXdZERR);
-    tree->Branch("BS_dYdZERR", &BS_dYdZERR);
-    tree->Branch("BS_BWXERR", &BS_BWXERR);
-    tree->Branch("BS_BWYERR", &BS_BWYERR);
-    tree->Branch("BS_EmitX", &BS_EmitX);
-    tree->Branch("BS_EmitY", &BS_EmitY);
-    tree->Branch("BS_BetaStar", &BS_BetaStar);
-    
-    tree->Branch("PV_withBS_IsValid", &PV_withBS_IsValid_vec);
-    tree->Branch("PV_withBS_IsFake", &PV_withBS_IsFake_vec);
-    tree->Branch("PV_withBS_CHI2", &PV_withBS_CHI2_vec);
-    tree->Branch("PV_withBS_NDOF", &PV_withBS_NDOF_vec);
-    tree->Branch("PV_withBS_CHI2NDOF", &PV_withBS_CHI2NDOF_vec);
-    tree->Branch("PV_withBS_X", &PV_withBS_X_vec);
-    tree->Branch("PV_withBS_Y", &PV_withBS_Y_vec);
-    tree->Branch("PV_withBS_Z", &PV_withBS_Z_vec);
-    tree->Branch("PV_withBS_XERR", &PV_withBS_XERR_vec);
-    tree->Branch("PV_withBS_YERR", &PV_withBS_YERR_vec);
-    tree->Branch("PV_withBS_ZERR", &PV_withBS_ZERR_vec);
-    tree->Branch("PV_noBS_IsValid", &PV_noBS_IsValid_vec);
-    tree->Branch("PV_noBS_IsFake", &PV_noBS_IsFake_vec);
-    tree->Branch("PV_noBS_CHI2", &PV_noBS_CHI2_vec);
-    tree->Branch("PV_noBS_NDOF", &PV_noBS_NDOF_vec);
-    tree->Branch("PV_noBS_CHI2NDOF", &PV_noBS_CHI2NDOF_vec);
-    tree->Branch("PV_noBS_X", &PV_noBS_X_vec);
-    tree->Branch("PV_noBS_Y", &PV_noBS_Y_vec);
-    tree->Branch("PV_noBS_Z", &PV_noBS_Z_vec);
-    tree->Branch("PV_noBS_XERR", &PV_noBS_XERR_vec);
-    tree->Branch("PV_noBS_YERR", &PV_noBS_YERR_vec);
-    tree->Branch("PV_noBS_ZERR", &PV_noBS_ZERR_vec);
 }
 
-void PVTree::Gen_Reset()
+void RecoTree::Gen_Reset()
 {
     Gen_Kp_ETA = null;
     Gen_Kp_PHI = null;
@@ -2634,9 +2705,17 @@ void PVTree::Gen_Reset()
     Gen_dz_Kp_Km = null;
     Gen_dz_Kp_pi = null;
     Gen_dz_Km_pi = null;
+    
+    Gen_Ds_FDxy = null;
+    Gen_Ds_FDz = null;
+    Gen_Ds_FD = null;
+    Gen_Ds_DIRA = null;
+    Gen_Kp_IP = null;
+    Gen_Km_IP = null;
+    Gen_pi_IP = null;
 }
 
-void PVTree::Match_Reset()
+void RecoTree::Match_Reset()
 {
     // Original info
     match_Kp_ETA = null;
@@ -2882,9 +2961,29 @@ void PVTree::Match_Reset()
     match_DsFit_dR_pi_Ds = null;
 
     match_DsFit_Mconstraint_Ds_M = null;
+    
+    match_Ds_FDxy = null;
+    match_Ds_FDxy_Err = null;
+    match_Ds_FDxy_Chi2 = null;
+    match_Ds_FDz = null;
+    match_Ds_FDz_Err = null;
+    match_Ds_FDz_Chi2 = null;
+    match_Ds_FD = null;
+    match_Ds_FD_Err = null;
+    match_Ds_FD_Chi2 = null;
+    match_Ds_DIRA = null;
+    match_Kp_IP = null;
+    match_Kp_IP_Err = null;
+    match_Kp_IP_Chi2 = null;
+    match_Km_IP = null;
+    match_Km_IP_Err = null;
+    match_Km_IP_Chi2 = null;
+    match_pi_IP = null;
+    match_pi_IP_Err = null;
+    match_pi_IP_Chi2 = null;
 }
 
-void PVTree::Kp_Reset()
+void RecoTree::Kp_Reset()
 {
     Kp_ETA = null;
     Kp_PHI = null;
@@ -2898,7 +2997,7 @@ void PVTree::Kp_Reset()
     Kp_PZ = null;
 }
 
-void PVTree::Km_Reset()
+void RecoTree::Km_Reset()
 {
     Km_ETA = null;
     Km_PHI = null;
@@ -2982,7 +3081,7 @@ void PVTree::Km_Reset()
     dz_Km_phi = null;
 }
 
-void PVTree::pi_Reset()
+void RecoTree::pi_Reset()
 {
     pi_ETA = null;
     pi_PHI = null;
@@ -3145,7 +3244,7 @@ void PVTree::pi_Reset()
     non_match_entry = false; 
 }
 
-void PVTree::BS_Reset()
+void RecoTree::BS_Reset()
 {
     BS_type = null; 
     BS_X0 = null;
@@ -3169,7 +3268,7 @@ void PVTree::BS_Reset()
     BS_BetaStar = null;
 }
 
-void PVTree::PV_Reset()
+void RecoTree::PV_Reset()
 {
     PV_withBS_IsValid = false;
     PV_withBS_IsFake = false;

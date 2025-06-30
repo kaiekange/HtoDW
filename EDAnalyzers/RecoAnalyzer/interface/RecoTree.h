@@ -1,16 +1,16 @@
-#ifndef PVTREE_H 
-#define PVTREE_H
+#ifndef RECOTREE_H 
+#define RECOTREE_H
 
 #include <TTree.h>
 #include <vector>
 
 #define null -777
 
-class PVTree 
+class RecoTree 
 {
     public:
 
-        PVTree(TTree *tree_);
+        RecoTree(TTree *tree_);
 
         TTree *tree;
 
@@ -23,6 +23,7 @@ class PVTree
         void BS_Reset();
         void PV_Reset();
         void Match_Fill_Vector();
+        void Match_FD_IP_Fill_Vector();
         void Best_Fill_Vector(int idxmax);
         void Fill_Vector();
         void PV_withBS_Fill_Vector(); 
@@ -30,6 +31,50 @@ class PVTree
         void CreateBranches();
 
         // Gen particles
+
+        int BS_type;
+        double BS_X0;
+        double BS_Y0;
+        double BS_Z0;
+        double BS_SigmaZ;
+        double BS_dXdZ;
+        double BS_dYdZ;
+        double BS_BWX;
+        double BS_BWY;
+        double BS_X0ERR;
+        double BS_Y0ERR;
+        double BS_Z0ERR;
+        double BS_SigmaZ0ERR;
+        double BS_dXdZERR;
+        double BS_dYdZERR;
+        double BS_BWXERR;
+        double BS_BWYERR;
+        double BS_EmitX;
+        double BS_EmitY;
+        double BS_BetaStar;
+
+        bool PV_withBS_IsValid;
+        bool PV_withBS_IsFake;
+        double PV_withBS_CHI2;
+        double PV_withBS_NDOF;
+        double PV_withBS_CHI2NDOF;
+        double PV_withBS_X;
+        double PV_withBS_Y;
+        double PV_withBS_Z;
+        double PV_withBS_XERR;
+        double PV_withBS_YERR;
+        double PV_withBS_ZERR;
+        bool PV_noBS_IsValid;
+        bool PV_noBS_IsFake;
+        double PV_noBS_CHI2;
+        double PV_noBS_NDOF;
+        double PV_noBS_CHI2NDOF;
+        double PV_noBS_X;
+        double PV_noBS_Y;
+        double PV_noBS_Z;
+        double PV_noBS_XERR;
+        double PV_noBS_YERR;
+        double PV_noBS_ZERR;
 
         int num_Gen_Kp;
         int num_Gen_Km;
@@ -165,6 +210,14 @@ class PVTree
         double Gen_dz_Kp_Km;
         double Gen_dz_Kp_pi;
         double Gen_dz_Km_pi;
+
+        double Gen_Ds_FDxy;
+        double Gen_Ds_FDz;
+        double Gen_Ds_FD;
+        double Gen_Ds_DIRA;
+        double Gen_Kp_IP;
+        double Gen_Km_IP;
+        double Gen_pi_IP;
 
         // Matched particles
         int num_match_Kp;
@@ -419,6 +472,26 @@ class PVTree
 
         double match_DsFit_Mconstraint_Ds_M;
 
+        double match_Ds_FDxy;
+        double match_Ds_FDxy_Err;
+        double match_Ds_FDxy_Chi2;
+        double match_Ds_FDz;
+        double match_Ds_FDz_Err;
+        double match_Ds_FDz_Chi2;
+        double match_Ds_FD;
+        double match_Ds_FD_Err;
+        double match_Ds_FD_Chi2;
+        double match_Ds_DIRA;
+        double match_Kp_IP;
+        double match_Kp_IP_Err;
+        double match_Kp_IP_Chi2;
+        double match_Km_IP;
+        double match_Km_IP_Err;
+        double match_Km_IP_Chi2;
+        double match_pi_IP;
+        double match_pi_IP_Err;
+        double match_pi_IP_Chi2;
+
         int num_reco_phi;
         int num_reco_Ds;
 
@@ -672,49 +745,28 @@ class PVTree
         bool match_entry;
         bool non_match_entry;
 
-        int BS_type;
-        double BS_X0;
-        double BS_Y0;
-        double BS_Z0;
-        double BS_SigmaZ;
-        double BS_dXdZ;
-        double BS_dYdZ;
-        double BS_BWX;
-        double BS_BWY;
-        double BS_X0ERR;
-        double BS_Y0ERR;
-        double BS_Z0ERR;
-        double BS_SigmaZ0ERR;
-        double BS_dXdZERR;
-        double BS_dYdZERR;
-        double BS_BWXERR;
-        double BS_BWYERR;
-        double BS_EmitX;
-        double BS_EmitY;
-        double BS_BetaStar;
-
-        bool PV_withBS_IsValid;
-        bool PV_withBS_IsFake;
-        double PV_withBS_CHI2;
-        double PV_withBS_NDOF;
-        double PV_withBS_CHI2NDOF;
-        double PV_withBS_X;
-        double PV_withBS_Y;
-        double PV_withBS_Z;
-        double PV_withBS_XERR;
-        double PV_withBS_YERR;
-        double PV_withBS_ZERR;
-        bool PV_noBS_IsValid;
-        bool PV_noBS_IsFake;
-        double PV_noBS_CHI2;
-        double PV_noBS_NDOF;
-        double PV_noBS_CHI2NDOF;
-        double PV_noBS_X;
-        double PV_noBS_Y;
-        double PV_noBS_Z;
-        double PV_noBS_XERR;
-        double PV_noBS_YERR;
-        double PV_noBS_ZERR;
+        std::vector<bool> PV_withBS_IsValid_vec;
+        std::vector<bool> PV_withBS_IsFake_vec;
+        std::vector<double> PV_withBS_CHI2_vec;
+        std::vector<double> PV_withBS_NDOF_vec;
+        std::vector<double> PV_withBS_CHI2NDOF_vec;
+        std::vector<double> PV_withBS_X_vec;
+        std::vector<double> PV_withBS_Y_vec;
+        std::vector<double> PV_withBS_Z_vec;
+        std::vector<double> PV_withBS_XERR_vec;
+        std::vector<double> PV_withBS_YERR_vec;
+        std::vector<double> PV_withBS_ZERR_vec;
+        std::vector<bool> PV_noBS_IsValid_vec;
+        std::vector<bool> PV_noBS_IsFake_vec;
+        std::vector<double> PV_noBS_CHI2_vec;
+        std::vector<double> PV_noBS_NDOF_vec;
+        std::vector<double> PV_noBS_CHI2NDOF_vec;
+        std::vector<double> PV_noBS_X_vec;
+        std::vector<double> PV_noBS_Y_vec;
+        std::vector<double> PV_noBS_Z_vec;
+        std::vector<double> PV_noBS_XERR_vec;
+        std::vector<double> PV_noBS_YERR_vec;
+        std::vector<double> PV_noBS_ZERR_vec;
 
         // Original info
         std::vector<double> match_Kp_ETA_vec;
@@ -961,6 +1013,26 @@ class PVTree
 
         std::vector<double> match_DsFit_Mconstraint_Ds_M_vec;
 
+        std::vector<double> match_Ds_FDxy_vec;
+        std::vector<double> match_Ds_FDxy_Err_vec;
+        std::vector<double> match_Ds_FDxy_Chi2_vec;
+        std::vector<double> match_Ds_FDz_vec;
+        std::vector<double> match_Ds_FDz_Err_vec;
+        std::vector<double> match_Ds_FDz_Chi2_vec;
+        std::vector<double> match_Ds_FD_vec;
+        std::vector<double> match_Ds_FD_Err_vec;
+        std::vector<double> match_Ds_FD_Chi2_vec;
+        std::vector<double> match_Ds_DIRA_vec;
+        std::vector<double> match_Kp_IP_vec;
+        std::vector<double> match_Kp_IP_Err_vec;
+        std::vector<double> match_Kp_IP_Chi2_vec;
+        std::vector<double> match_Km_IP_vec;
+        std::vector<double> match_Km_IP_Err_vec;
+        std::vector<double> match_Km_IP_Chi2_vec;
+        std::vector<double> match_pi_IP_vec;
+        std::vector<double> match_pi_IP_Err_vec;
+        std::vector<double> match_pi_IP_Chi2_vec;
+        
         std::vector<double> Kp_ETA_vec;
         std::vector<double> Kp_PHI_vec;
         std::vector<double> Kp_ORIVX_X_vec;
@@ -1456,29 +1528,6 @@ class PVTree
         std::vector<double> best_DsFit_Mconstraint_Ds_M_vec;
 
         std::vector<bool> best_match_entry_vec;
-
-        std::vector<bool> PV_withBS_IsValid_vec;
-        std::vector<bool> PV_withBS_IsFake_vec;
-        std::vector<double> PV_withBS_CHI2_vec;
-        std::vector<double> PV_withBS_NDOF_vec;
-        std::vector<double> PV_withBS_CHI2NDOF_vec;
-        std::vector<double> PV_withBS_X_vec;
-        std::vector<double> PV_withBS_Y_vec;
-        std::vector<double> PV_withBS_Z_vec;
-        std::vector<double> PV_withBS_XERR_vec;
-        std::vector<double> PV_withBS_YERR_vec;
-        std::vector<double> PV_withBS_ZERR_vec;
-        std::vector<bool> PV_noBS_IsValid_vec;
-        std::vector<bool> PV_noBS_IsFake_vec;
-        std::vector<double> PV_noBS_CHI2_vec;
-        std::vector<double> PV_noBS_NDOF_vec;
-        std::vector<double> PV_noBS_CHI2NDOF_vec;
-        std::vector<double> PV_noBS_X_vec;
-        std::vector<double> PV_noBS_Y_vec;
-        std::vector<double> PV_noBS_Z_vec;
-        std::vector<double> PV_noBS_XERR_vec;
-        std::vector<double> PV_noBS_YERR_vec;
-        std::vector<double> PV_noBS_ZERR_vec;
 
 };
 
