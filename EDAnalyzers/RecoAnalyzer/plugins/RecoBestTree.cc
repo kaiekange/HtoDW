@@ -277,6 +277,27 @@ void RecoBestTree::Init()
 
     DsFit_Mconstraint_Ds_M_vec.clear();
 
+    Ds_FDxy_vec.clear();
+    Ds_FDxy_Err_vec.clear();
+    Ds_FDxy_Chi2_vec.clear();
+    Ds_FDz_vec.clear();
+    Ds_FDz_Err_vec.clear();
+    Ds_FDz_Chi2_vec.clear();
+    Ds_FD_vec.clear();
+    Ds_FD_Err_vec.clear();
+    Ds_FD_Chi2_vec.clear();
+    Ds_DIRA_angle_vec.clear();
+    Ds_DIRA_vec.clear();
+    Kp_IP_vec.clear();
+    Kp_IP_Err_vec.clear();
+    Kp_IP_Chi2_vec.clear();
+    Km_IP_vec.clear();
+    Km_IP_Err_vec.clear();
+    Km_IP_Chi2_vec.clear();
+    pi_IP_vec.clear();
+    pi_IP_Err_vec.clear();
+    pi_IP_Chi2_vec.clear();
+
     best_Kp_ETA_vec.clear();
     best_Kp_PHI_vec.clear();
     best_Kp_ORIVX_X_vec.clear();
@@ -520,6 +541,28 @@ void RecoBestTree::Init()
     best_DsFit_dR_pi_Ds_vec.clear();
 
     best_DsFit_Mconstraint_Ds_M_vec.clear();
+    
+    best_Ds_FDxy_vec.clear();
+    best_Ds_FDxy_Err_vec.clear();
+    best_Ds_FDxy_Chi2_vec.clear();
+    best_Ds_FDz_vec.clear();
+    best_Ds_FDz_Err_vec.clear();
+    best_Ds_FDz_Chi2_vec.clear();
+    best_Ds_FD_vec.clear();
+    best_Ds_FD_Err_vec.clear();
+    best_Ds_FD_Chi2_vec.clear();
+    best_Ds_DIRA_angle_vec.clear();
+    best_Ds_DIRA_vec.clear();
+    best_Kp_IP_vec.clear();
+    best_Kp_IP_Err_vec.clear();
+    best_Kp_IP_Chi2_vec.clear();
+    best_Km_IP_vec.clear();
+    best_Km_IP_Err_vec.clear();
+    best_Km_IP_Chi2_vec.clear();
+    best_pi_IP_vec.clear();
+    best_pi_IP_Err_vec.clear();
+    best_pi_IP_Chi2_vec.clear();
+
 }
 
 void RecoBestTree::Best_Fill_Vector(int idxmax)
@@ -768,6 +811,27 @@ void RecoBestTree::Best_Fill_Vector(int idxmax)
     best_DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds_vec[idxmax]);
 
     best_DsFit_Mconstraint_Ds_M_vec.push_back(DsFit_Mconstraint_Ds_M_vec[idxmax]);
+    
+    best_Ds_FDxy_vec.push_back(Ds_FDxy_vec[idxmax]);
+    best_Ds_FDxy_Err_vec.push_back(Ds_FDxy_Err_vec[idxmax]);
+    best_Ds_FDxy_Chi2_vec.push_back(Ds_FDxy_Chi2_vec[idxmax]);
+    best_Ds_FDz_vec.push_back(Ds_FDz_vec[idxmax]);
+    best_Ds_FDz_Err_vec.push_back(Ds_FDz_Err_vec[idxmax]);
+    best_Ds_FDz_Chi2_vec.push_back(Ds_FDz_Chi2_vec[idxmax]);
+    best_Ds_FD_vec.push_back(Ds_FD_vec[idxmax]);
+    best_Ds_FD_Err_vec.push_back(Ds_FD_Err_vec[idxmax]);
+    best_Ds_FD_Chi2_vec.push_back(Ds_FD_Chi2_vec[idxmax]);
+    best_Ds_DIRA_angle_vec.push_back(Ds_DIRA_angle_vec[idxmax]);
+    best_Ds_DIRA_vec.push_back(Ds_DIRA_vec[idxmax]);
+    best_Kp_IP_vec.push_back(Kp_IP_vec[idxmax]);
+    best_Kp_IP_Err_vec.push_back(Kp_IP_Err_vec[idxmax]);
+    best_Kp_IP_Chi2_vec.push_back(Kp_IP_Chi2_vec[idxmax]);
+    best_Km_IP_vec.push_back(Km_IP_vec[idxmax]);
+    best_Km_IP_Err_vec.push_back(Km_IP_Err_vec[idxmax]);
+    best_Km_IP_Chi2_vec.push_back(Km_IP_Chi2_vec[idxmax]);
+    best_pi_IP_vec.push_back(pi_IP_vec[idxmax]);
+    best_pi_IP_Err_vec.push_back(pi_IP_Err_vec[idxmax]);
+    best_pi_IP_Chi2_vec.push_back(pi_IP_Chi2_vec[idxmax]);
 }
 
 void RecoBestTree::Fill_Vector()
@@ -1016,6 +1080,27 @@ void RecoBestTree::Fill_Vector()
     DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds);
 
     DsFit_Mconstraint_Ds_M_vec.push_back(DsFit_Mconstraint_Ds_M);
+    
+    Ds_FDxy_vec.push_back(Ds_FDxy);
+    Ds_FDxy_Err_vec.push_back(Ds_FDxy_Err);
+    Ds_FDxy_Chi2_vec.push_back(Ds_FDxy_Chi2);
+    Ds_FDz_vec.push_back(Ds_FDz);
+    Ds_FDz_Err_vec.push_back(Ds_FDz_Err);
+    Ds_FDz_Chi2_vec.push_back(Ds_FDz_Chi2);
+    Ds_FD_vec.push_back(Ds_FD);
+    Ds_FD_Err_vec.push_back(Ds_FD_Err);
+    Ds_FD_Chi2_vec.push_back(Ds_FD_Chi2);
+    Ds_DIRA_angle_vec.push_back(Ds_DIRA_angle);
+    Ds_DIRA_vec.push_back(Ds_DIRA);
+    Kp_IP_vec.push_back(Kp_IP);
+    Kp_IP_Err_vec.push_back(Kp_IP_Err);
+    Kp_IP_Chi2_vec.push_back(Kp_IP_Chi2);
+    Km_IP_vec.push_back(Km_IP);
+    Km_IP_Err_vec.push_back(Km_IP_Err);
+    Km_IP_Chi2_vec.push_back(Km_IP_Chi2);
+    pi_IP_vec.push_back(pi_IP);
+    pi_IP_Err_vec.push_back(pi_IP_Err);
+    pi_IP_Chi2_vec.push_back(pi_IP_Chi2);
 }
 
 void RecoBestTree::PV_withBS_Fill_Vector()
@@ -1339,6 +1424,27 @@ void RecoBestTree::CreateBranches()
     tree->Branch("best_DsFit_dR_pi_Ds", &best_DsFit_dR_pi_Ds_vec);
 
     tree->Branch("best_DsFit_Mconstraint_Ds_M", &best_DsFit_Mconstraint_Ds_M_vec);
+    
+    tree->Branch("best_Ds_FDxy", &best_Ds_FDxy_vec);
+    tree->Branch("best_Ds_FDxy_Err", &best_Ds_FDxy_Err_vec);
+    tree->Branch("best_Ds_FDxy_Chi2", &best_Ds_FDxy_Chi2_vec);
+    tree->Branch("best_Ds_FDz", &best_Ds_FDz_vec);
+    tree->Branch("best_Ds_FDz_Err", &best_Ds_FDz_Err_vec);
+    tree->Branch("best_Ds_FDz_Chi2", &best_Ds_FDz_Chi2_vec);
+    tree->Branch("best_Ds_FD", &best_Ds_FD_vec);
+    tree->Branch("best_Ds_FD_Err", &best_Ds_FD_Err_vec);
+    tree->Branch("best_Ds_FD_Chi2", &best_Ds_FD_Chi2_vec);
+    tree->Branch("best_Ds_DIRA_angle", &best_Ds_DIRA_angle_vec);
+    tree->Branch("best_Ds_DIRA", &best_Ds_DIRA_vec);
+    tree->Branch("best_Kp_IP", &best_Kp_IP_vec);
+    tree->Branch("best_Kp_IP_Err", &best_Kp_IP_Err_vec);
+    tree->Branch("best_Kp_IP_Chi2", &best_Kp_IP_Chi2_vec);
+    tree->Branch("best_Km_IP", &best_Km_IP_vec);
+    tree->Branch("best_Km_IP_Err", &best_Km_IP_Err_vec);
+    tree->Branch("best_Km_IP_Chi2", &best_Km_IP_Chi2_vec);
+    tree->Branch("best_pi_IP", &best_pi_IP_vec);
+    tree->Branch("best_pi_IP_Err", &best_pi_IP_Err_vec);
+    tree->Branch("best_pi_IP_Chi2", &best_pi_IP_Chi2_vec);
 }
 
 void RecoBestTree::Kp_Reset()
@@ -1594,6 +1700,27 @@ void RecoBestTree::pi_Reset()
     dz_Km_Ds = null;
     dz_pi_Ds = null;
     dz_phi_Ds = null;
+    
+    Ds_FDxy = null;
+    Ds_FDxy_Err = null;
+    Ds_FDxy_Chi2 = null;
+    Ds_FDz = null;
+    Ds_FDz_Err = null;
+    Ds_FDz_Chi2 = null;
+    Ds_FD = null;
+    Ds_FD_Err = null;
+    Ds_FD_Chi2 = null;
+    Ds_DIRA_angle = null;
+    Ds_DIRA = null;
+    Kp_IP = null;
+    Kp_IP_Err = null;
+    Kp_IP_Chi2 = null;
+    Km_IP = null;
+    Km_IP_Err = null;
+    Km_IP_Chi2 = null;
+    pi_IP = null;
+    pi_IP_Err = null;
+    pi_IP_Chi2 = null;
 }
 
 void RecoBestTree::BS_Reset()

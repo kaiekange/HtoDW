@@ -214,6 +214,7 @@ class RecoTree
         double Gen_Ds_FDxy;
         double Gen_Ds_FDz;
         double Gen_Ds_FD;
+        double Gen_Ds_DIRA_angle;
         double Gen_Ds_DIRA;
         double Gen_Kp_IP;
         double Gen_Km_IP;
@@ -481,6 +482,7 @@ class RecoTree
         double match_Ds_FD;
         double match_Ds_FD_Err;
         double match_Ds_FD_Chi2;
+        double match_Ds_DIRA_angle;
         double match_Ds_DIRA;
         double match_Kp_IP;
         double match_Kp_IP_Err;
@@ -744,6 +746,27 @@ class RecoTree
         bool pi_match;
         bool match_entry;
         bool non_match_entry;
+
+        double Ds_FDxy;
+        double Ds_FDxy_Err;
+        double Ds_FDxy_Chi2;
+        double Ds_FDz;
+        double Ds_FDz_Err;
+        double Ds_FDz_Chi2;
+        double Ds_FD;
+        double Ds_FD_Err;
+        double Ds_FD_Chi2;
+        double Ds_DIRA_angle;
+        double Ds_DIRA;
+        double Kp_IP;
+        double Kp_IP_Err;
+        double Kp_IP_Chi2;
+        double Km_IP;
+        double Km_IP_Err;
+        double Km_IP_Chi2;
+        double pi_IP;
+        double pi_IP_Err;
+        double pi_IP_Chi2;
 
         std::vector<bool> PV_withBS_IsValid_vec;
         std::vector<bool> PV_withBS_IsFake_vec;
@@ -1022,6 +1045,7 @@ class RecoTree
         std::vector<double> match_Ds_FD_vec;
         std::vector<double> match_Ds_FD_Err_vec;
         std::vector<double> match_Ds_FD_Chi2_vec;
+        std::vector<double> match_Ds_DIRA_angle_vec;
         std::vector<double> match_Ds_DIRA_vec;
         std::vector<double> match_Kp_IP_vec;
         std::vector<double> match_Kp_IP_Err_vec;
@@ -1283,6 +1307,27 @@ class RecoTree
         std::vector<bool> match_entry_vec;
         std::vector<bool> non_match_entry_vec;
 
+        std::vector<double> Ds_FDxy_vec;
+        std::vector<double> Ds_FDxy_Err_vec;
+        std::vector<double> Ds_FDxy_Chi2_vec;
+        std::vector<double> Ds_FDz_vec;
+        std::vector<double> Ds_FDz_Err_vec;
+        std::vector<double> Ds_FDz_Chi2_vec;
+        std::vector<double> Ds_FD_vec;
+        std::vector<double> Ds_FD_Err_vec;
+        std::vector<double> Ds_FD_Chi2_vec;
+        std::vector<double> Ds_DIRA_angle_vec;
+        std::vector<double> Ds_DIRA_vec;
+        std::vector<double> Kp_IP_vec;
+        std::vector<double> Kp_IP_Err_vec;
+        std::vector<double> Kp_IP_Chi2_vec;
+        std::vector<double> Km_IP_vec;
+        std::vector<double> Km_IP_Err_vec;
+        std::vector<double> Km_IP_Chi2_vec;
+        std::vector<double> pi_IP_vec;
+        std::vector<double> pi_IP_Err_vec;
+        std::vector<double> pi_IP_Chi2_vec;
+
         std::vector<double> best_Kp_ETA_vec;
         std::vector<double> best_Kp_PHI_vec;
         std::vector<double> best_Kp_ORIVX_X_vec;
@@ -1528,6 +1573,27 @@ class RecoTree
         std::vector<double> best_DsFit_Mconstraint_Ds_M_vec;
 
         std::vector<bool> best_match_entry_vec;
+
+        std::vector<double> best_Ds_FDxy_vec;
+        std::vector<double> best_Ds_FDxy_Err_vec;
+        std::vector<double> best_Ds_FDxy_Chi2_vec;
+        std::vector<double> best_Ds_FDz_vec;
+        std::vector<double> best_Ds_FDz_Err_vec;
+        std::vector<double> best_Ds_FDz_Chi2_vec;
+        std::vector<double> best_Ds_FD_vec;
+        std::vector<double> best_Ds_FD_Err_vec;
+        std::vector<double> best_Ds_FD_Chi2_vec;
+        std::vector<double> best_Ds_DIRA_angle_vec;
+        std::vector<double> best_Ds_DIRA_vec;
+        std::vector<double> best_Kp_IP_vec;
+        std::vector<double> best_Kp_IP_Err_vec;
+        std::vector<double> best_Kp_IP_Chi2_vec;
+        std::vector<double> best_Km_IP_vec;
+        std::vector<double> best_Km_IP_Err_vec;
+        std::vector<double> best_Km_IP_Chi2_vec;
+        std::vector<double> best_pi_IP_vec;
+        std::vector<double> best_pi_IP_Err_vec;
+        std::vector<double> best_pi_IP_Chi2_vec;
 
 };
 

@@ -68,6 +68,7 @@ process.RecoAnalyzer = cms.EDAnalyzer('RecoAnalyzer',
     ),
 )
 
-process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
+# process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
+process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile), closeFileFast = cms.untracked.bool(True))
 
 process.p = cms.Path(process.RecoAnalyzer)

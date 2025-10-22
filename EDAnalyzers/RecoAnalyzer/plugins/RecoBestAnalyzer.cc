@@ -567,6 +567,69 @@ void RecoBestAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& 
 
                 ftree->num_reco_Ds++;
 
+                if( !(pvs_withBS.empty()) && ftree->PV_withBS_IsValid  && !(ftree->PV_withBS_IsFake) ){
+
+                    GlobalPoint Ds_pos = Ds_Vertex.position();
+                    GlobalPoint PV_pos = pvs_withBS.front().position();
+                    GlobalVector Ds_PV_pos = Ds_pos - PV_pos;
+
+                    ftree->Ds_FDxy = std::hypot(Ds_PV_pos.x(), Ds_PV_pos.y());
+                    ftree->Ds_FDz = std::abs(Ds_PV_pos.z());
+                    ftree->Ds_FD = std::hypot(ftree->Ds_FDxy, ftree->Ds_FDz);
+
+                    GlobalError Ds_cov = Ds_Vertex.positionError();
+                    GlobalError PV_cov = pvs_withBS.front().positionError();
+                    GlobalError Ds_PV_coverr = Ds_cov + PV_cov;
+                    AlgebraicSymMatrix33 Ds_PV_cov = Ds_PV_coverr.matrix();
+
+                    ftree->Ds_FDxy_Err = std::sqrt(
+                            Ds_PV_pos.x()*Ds_PV_pos.x()*Ds_PV_cov(0,0) +
+                            Ds_PV_pos.y()*Ds_PV_pos.y()*Ds_PV_cov(1,1) +
+                            2*Ds_PV_pos.x()*Ds_PV_pos.y()*Ds_PV_cov(0,1) ) / ftree->Ds_FDxy;
+                    Measurement1D Ds_FDxy_withErr(ftree->Ds_FDxy, ftree->Ds_FDxy_Err);
+                    ftree->Ds_FDxy_Chi2 = Ds_FDxy_withErr.significance();
+
+                    ftree->Ds_FDz_Err = std::sqrt( Ds_PV_cov(2,2) );
+                    Measurement1D Ds_FDz_withErr(ftree->Ds_FDz, ftree->Ds_FDz_Err);
+                    ftree->Ds_FDz_Chi2 = Ds_FDz_withErr.significance();
+
+                    ftree->Ds_FD_Err = std::sqrt(
+                            Ds_PV_pos.x()*Ds_PV_pos.x()*Ds_PV_cov(0,0) +
+                            Ds_PV_pos.y()*Ds_PV_pos.y()*Ds_PV_cov(1,1) +
+                            Ds_PV_pos.z()*Ds_PV_pos.z()*Ds_PV_cov(2,2) +
+                            2*Ds_PV_pos.x()*Ds_PV_pos.y()*Ds_PV_cov(0,1) +
+                            2*Ds_PV_pos.x()*Ds_PV_pos.z()*Ds_PV_cov(0,2) +
+                            2*Ds_PV_pos.y()*Ds_PV_pos.z()*Ds_PV_cov(1,2)) / ftree->Ds_FD;
+                    Measurement1D Ds_FD_withErr(ftree->Ds_FD, ftree->Ds_FD_Err);
+                    ftree->Ds_FD_Chi2 = Ds_FD_withErr.significance();
+
+                    GlobalVector Ds_PDirec(ftree->DsFit_Ds_PX, ftree->DsFit_Ds_PY, ftree->DsFit_Ds_PZ);
+
+                    ftree->Ds_DIRA = Ds_PV_pos.dot(Ds_PDirec) / ( Ds_PV_pos.mag() * Ds_PDirec.mag() );
+                    ftree->Ds_DIRA_angle = std::acos(ftree->Ds_DIRA);
+
+                    std::pair<bool, Measurement1D> Kp_IPresult = IPTools::absoluteImpactParameter3D((*theB).build(Kp_PF.pseudoTrack()), pvs_withBS.front());
+                    if( Kp_IPresult.first ){
+                        ftree->Kp_IP = Kp_IPresult.second.value();
+                        ftree->Kp_IP_Err = Kp_IPresult.second.error();
+                        ftree->Kp_IP_Chi2 = Kp_IPresult.second.significance();
+                    }
+
+                    std::pair<bool, Measurement1D> Km_IPresult = IPTools::absoluteImpactParameter3D((*theB).build(Km_PF.pseudoTrack()), pvs_withBS.front());
+                    if( Km_IPresult.first ){
+                        ftree->Km_IP = Km_IPresult.second.value();
+                        ftree->Km_IP_Err = Km_IPresult.second.error();
+                        ftree->Km_IP_Chi2 = Km_IPresult.second.significance();
+                    }
+
+                    std::pair<bool, Measurement1D> pi_IPresult = IPTools::absoluteImpactParameter3D((*theB).build(pi_PF.pseudoTrack()), pvs_withBS.front());
+                    if( pi_IPresult.first ){
+                        ftree->pi_IP = pi_IPresult.second.value();
+                        ftree->pi_IP_Err = pi_IPresult.second.error();
+                        ftree->pi_IP_Chi2 = pi_IPresult.second.significance();
+                    }
+                }
+
                 ftree->Fill_Vector();
             }
         }
