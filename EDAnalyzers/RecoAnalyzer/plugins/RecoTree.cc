@@ -7,379 +7,72 @@ RecoTree::RecoTree(TTree *tree_)
 }
 void RecoTree::Init()
 {
-    PV_withBS_IsValid_vec.clear();
-    PV_withBS_IsFake_vec.clear();
-    PV_withBS_CHI2_vec.clear();
-    PV_withBS_NDOF_vec.clear();
-    PV_withBS_CHI2NDOF_vec.clear();
-    PV_withBS_X_vec.clear();
-    PV_withBS_Y_vec.clear();
-    PV_withBS_Z_vec.clear();
-    PV_withBS_XERR_vec.clear();
-    PV_withBS_YERR_vec.clear();
-    PV_withBS_ZERR_vec.clear();
-    PV_noBS_IsValid_vec.clear();
-    PV_noBS_IsFake_vec.clear();
-    PV_noBS_CHI2_vec.clear();
-    PV_noBS_NDOF_vec.clear();
-    PV_noBS_CHI2NDOF_vec.clear();
-    PV_noBS_X_vec.clear();
-    PV_noBS_Y_vec.clear();
-    PV_noBS_Z_vec.clear();
-    PV_noBS_XERR_vec.clear();
-    PV_noBS_YERR_vec.clear();
-    PV_noBS_ZERR_vec.clear();
-    
-    // Gen particles
-    num_Gen_Kp = 0;
-    num_Gen_Km = 0;
-    num_Gen_pi = 0;
-    num_Gen_phi = 0;
-    num_Gen_Ds = 0;
-    num_Gen_mu = 0;
-    num_Gen_nu = 0;
-    num_Gen_W = 0;
-    num_Gen_H = 0;
+    Kp_isIsolatedChargedHadron_vec.clear();
+    Kp_charge_vec.clear();
+    Kp_eta_vec.clear();
+    Kp_phi_vec.clear();
+    Kp_vx_vec.clear();
+    Kp_vy_vec.clear();
+    Kp_vz_vec.clear();
+    Kp_p_vec.clear();
+    Kp_pt_vec.clear();
+    Kp_px_vec.clear();
+    Kp_py_vec.clear();
+    Kp_pz_vec.clear();
 
-    // Matched particles
-    num_match_Kp = 0;
-    num_match_Km = 0;
-    num_match_pi = 0;
+    Km_isIsolatedChargedHadron_vec.clear();
+    Km_charge_vec.clear();
+    Km_eta_vec.clear();
+    Km_phi_vec.clear();
+    Km_vx_vec.clear();
+    Km_vy_vec.clear();
+    Km_vz_vec.clear();
+    Km_p_vec.clear();
+    Km_pt_vec.clear();
+    Km_px_vec.clear();
+    Km_py_vec.clear();
+    Km_pz_vec.clear();
 
-    match_Kp_idx = null;
-    match_Km_idx = null;
-    match_pi_idx = null;
-    
-    // Original info
-    match_Kp_ETA_vec.clear();
-    match_Kp_PHI_vec.clear();
-    match_Kp_ORIVX_X_vec.clear();
-    match_Kp_ORIVX_Y_vec.clear();
-    match_Kp_ORIVX_Z_vec.clear();
-    match_Kp_P_vec.clear();
-    match_Kp_PT_vec.clear();
-    match_Kp_PX_vec.clear();
-    match_Kp_PY_vec.clear();
-    match_Kp_PZ_vec.clear();
+    pi_isIsolatedChargedHadron_vec.clear();
+    pi_charge_vec.clear();
+    pi_eta_vec.clear();
+    pi_phi_vec.clear();
+    pi_vx_vec.clear();
+    pi_vy_vec.clear();
+    pi_vz_vec.clear();
+    pi_p_vec.clear();
+    pi_pt_vec.clear();
+    pi_px_vec.clear();
+    pi_py_vec.clear();
+    pi_pz_vec.clear();
 
-    match_Km_ETA_vec.clear();
-    match_Km_PHI_vec.clear();
-    match_Km_ORIVX_X_vec.clear();
-    match_Km_ORIVX_Y_vec.clear();
-    match_Km_ORIVX_Z_vec.clear();
-    match_Km_P_vec.clear();
-    match_Km_PT_vec.clear();
-    match_Km_PX_vec.clear();
-    match_Km_PY_vec.clear();
-    match_Km_PZ_vec.clear();
+    phi_eta_vec.clear();
+    phi_phi_vec.clear();
+    phi_p_vec.clear();
+    phi_pt_vec.clear();
+    phi_px_vec.clear();
+    phi_py_vec.clear();
+    phi_pz_vec.clear();
+    phi_invm_vec.clear();
 
-    match_pi_ETA_vec.clear();
-    match_pi_PHI_vec.clear();
-    match_pi_ORIVX_X_vec.clear();
-    match_pi_ORIVX_Y_vec.clear();
-    match_pi_ORIVX_Z_vec.clear();
-    match_pi_P_vec.clear();
-    match_pi_PT_vec.clear();
-    match_pi_PX_vec.clear();
-    match_pi_PY_vec.clear();
-    match_pi_PZ_vec.clear();
+    Ds_eta_vec.clear();
+    Ds_phi_vec.clear();
+    Ds_p_vec.clear();
+    Ds_pt_vec.clear();
+    Ds_px_vec.clear();
+    Ds_py_vec.clear();
+    Ds_pz_vec.clear();
+    Ds_invm_vec.clear();
 
-    match_phi_ETA_vec.clear();
-    match_phi_PHI_vec.clear();
-    match_phi_P_vec.clear();
-    match_phi_PT_vec.clear();
-    match_phi_PX_vec.clear();
-    match_phi_PY_vec.clear();
-    match_phi_PZ_vec.clear();
-    match_phi_M_vec.clear();
+    Kp_pp_vec.clear();
+    Kp_pl_vec.clear();
+    Km_pp_vec.clear();
+    Km_pl_vec.clear();
 
-    match_Ds_ETA_vec.clear();
-    match_Ds_PHI_vec.clear();
-    match_Ds_P_vec.clear();
-    match_Ds_PT_vec.clear();
-    match_Ds_PX_vec.clear();
-    match_Ds_PY_vec.clear();
-    match_Ds_PZ_vec.clear();
-    match_Ds_M_vec.clear();
-
-    match_Kp_PP_vec.clear();
-    match_Kp_PL_vec.clear();
-    match_Km_PP_vec.clear();
-    match_Km_PL_vec.clear();
-
-    match_phi_PP_vec.clear();
-    match_phi_PL_vec.clear();
-    match_pi_PP_vec.clear();
-    match_pi_PL_vec.clear();
-
-    match_dR_Kp_Km_vec.clear();
-    match_dR_Kp_phi_vec.clear();
-    match_dR_Km_phi_vec.clear();
-    match_dR_Kp_pi_vec.clear();
-    match_dR_Km_pi_vec.clear();
-    match_dR_pi_phi_vec.clear();
-    match_dR_Kp_Ds_vec.clear();
-    match_dR_Km_Ds_vec.clear();
-    match_dR_phi_Ds_vec.clear();
-    match_dR_pi_Ds_vec.clear();
-
-    match_dxy_Kp_Km_vec.clear();
-    match_dxy_Kp_phi_vec.clear();
-    match_dxy_Km_phi_vec.clear();
-    match_dxy_Kp_pi_vec.clear();
-    match_dxy_Km_pi_vec.clear();
-    match_dxy_pi_phi_vec.clear();
-    match_dxy_Kp_Ds_vec.clear();
-    match_dxy_Km_Ds_vec.clear();
-    match_dxy_phi_Ds_vec.clear();
-    match_dxy_pi_Ds_vec.clear();
-
-    match_dz_Kp_Km_vec.clear();
-    match_dz_Kp_phi_vec.clear();
-    match_dz_Km_phi_vec.clear();
-    match_dz_Kp_pi_vec.clear();
-    match_dz_Km_pi_vec.clear();
-    match_dz_pi_phi_vec.clear();
-    match_dz_Kp_Ds_vec.clear();
-    match_dz_Km_Ds_vec.clear();
-    match_dz_phi_Ds_vec.clear();
-    match_dz_pi_Ds_vec.clear();
-
-    // Fit on phi
-    match_phiFit_CHI2_vec.clear();
-    match_phiFit_NDOF_vec.clear();
-    match_phiFit_CHI2NDOF_vec.clear();
-    match_phiFit_ENDVX_X_vec.clear();
-    match_phiFit_ENDVX_Y_vec.clear();
-    match_phiFit_ENDVX_Z_vec.clear();
-    match_phiFit_ENDVX_XERR_vec.clear();
-    match_phiFit_ENDVX_YERR_vec.clear();
-    match_phiFit_ENDVX_ZERR_vec.clear();
-
-    match_phiFit_Kp_ETA_vec.clear();
-    match_phiFit_Kp_PHI_vec.clear();
-    match_phiFit_Kp_P_vec.clear();
-    match_phiFit_Kp_PT_vec.clear();
-    match_phiFit_Kp_PX_vec.clear();
-    match_phiFit_Kp_PY_vec.clear();
-    match_phiFit_Kp_PZ_vec.clear();
-
-    match_phiFit_Km_ETA_vec.clear();
-    match_phiFit_Km_PHI_vec.clear();
-    match_phiFit_Km_P_vec.clear();
-    match_phiFit_Km_PT_vec.clear();
-    match_phiFit_Km_PX_vec.clear();
-    match_phiFit_Km_PY_vec.clear();
-    match_phiFit_Km_PZ_vec.clear();
-
-    match_phiFit_pi_ETA_vec.clear();
-    match_phiFit_pi_PHI_vec.clear();
-    match_phiFit_pi_P_vec.clear();
-    match_phiFit_pi_PT_vec.clear();
-    match_phiFit_pi_PX_vec.clear();
-    match_phiFit_pi_PY_vec.clear();
-    match_phiFit_pi_PZ_vec.clear();
-
-    match_phiFit_phi_ETA_vec.clear();
-    match_phiFit_phi_PHI_vec.clear();
-    match_phiFit_phi_P_vec.clear();
-    match_phiFit_phi_PT_vec.clear();
-    match_phiFit_phi_PX_vec.clear();
-    match_phiFit_phi_PY_vec.clear();
-    match_phiFit_phi_PZ_vec.clear();
-    match_phiFit_phi_M_vec.clear();
-
-    match_phiFit_Ds_ETA_vec.clear();
-    match_phiFit_Ds_PHI_vec.clear();
-    match_phiFit_Ds_P_vec.clear();
-    match_phiFit_Ds_PT_vec.clear();
-    match_phiFit_Ds_PX_vec.clear();
-    match_phiFit_Ds_PY_vec.clear();
-    match_phiFit_Ds_PZ_vec.clear();
-    match_phiFit_Ds_M_vec.clear();
-
-    match_phiFit_Kp_PP_vec.clear();
-    match_phiFit_Kp_PL_vec.clear();
-    match_phiFit_Km_PP_vec.clear();
-    match_phiFit_Km_PL_vec.clear();
-
-    match_phiFit_phi_PP_vec.clear();
-    match_phiFit_phi_PL_vec.clear();
-    match_phiFit_pi_PP_vec.clear();
-    match_phiFit_pi_PL_vec.clear();
-
-    match_phiFit_dR_Kp_Km_vec.clear();
-    match_phiFit_dR_Kp_phi_vec.clear();
-    match_phiFit_dR_Km_phi_vec.clear();
-    match_phiFit_dR_Kp_pi_vec.clear();
-    match_phiFit_dR_Km_pi_vec.clear();
-    match_phiFit_dR_pi_phi_vec.clear();
-    match_phiFit_dR_Kp_Ds_vec.clear();
-    match_phiFit_dR_Km_Ds_vec.clear();
-    match_phiFit_dR_phi_Ds_vec.clear();
-    match_phiFit_dR_pi_Ds_vec.clear();
-
-    // Fit on Ds 
-    match_DsFit_CHI2_vec.clear();
-    match_DsFit_NDOF_vec.clear();
-    match_DsFit_CHI2NDOF_vec.clear();
-    match_DsFit_ENDVX_X_vec.clear();
-    match_DsFit_ENDVX_Y_vec.clear();
-    match_DsFit_ENDVX_Z_vec.clear();
-    match_DsFit_ENDVX_XERR_vec.clear();
-    match_DsFit_ENDVX_YERR_vec.clear();
-    match_DsFit_ENDVX_ZERR_vec.clear();
-
-    match_DsFit_Kp_ETA_vec.clear();
-    match_DsFit_Kp_PHI_vec.clear();
-    match_DsFit_Kp_P_vec.clear();
-    match_DsFit_Kp_PT_vec.clear();
-    match_DsFit_Kp_PX_vec.clear();
-    match_DsFit_Kp_PY_vec.clear();
-    match_DsFit_Kp_PZ_vec.clear();
-
-    match_DsFit_Km_ETA_vec.clear();
-    match_DsFit_Km_PHI_vec.clear();
-    match_DsFit_Km_P_vec.clear();
-    match_DsFit_Km_PT_vec.clear();
-    match_DsFit_Km_PX_vec.clear();
-    match_DsFit_Km_PY_vec.clear();
-    match_DsFit_Km_PZ_vec.clear();
-
-    match_DsFit_pi_ETA_vec.clear();
-    match_DsFit_pi_PHI_vec.clear();
-    match_DsFit_pi_P_vec.clear();
-    match_DsFit_pi_PT_vec.clear();
-    match_DsFit_pi_PX_vec.clear();
-    match_DsFit_pi_PY_vec.clear();
-    match_DsFit_pi_PZ_vec.clear();
-
-    match_DsFit_phi_ETA_vec.clear();
-    match_DsFit_phi_PHI_vec.clear();
-    match_DsFit_phi_P_vec.clear();
-    match_DsFit_phi_PT_vec.clear();
-    match_DsFit_phi_PX_vec.clear();
-    match_DsFit_phi_PY_vec.clear();
-    match_DsFit_phi_PZ_vec.clear();
-    match_DsFit_phi_M_vec.clear();
-
-    match_DsFit_Ds_ETA_vec.clear();
-    match_DsFit_Ds_PHI_vec.clear();
-    match_DsFit_Ds_P_vec.clear();
-    match_DsFit_Ds_PT_vec.clear();
-    match_DsFit_Ds_PX_vec.clear();
-    match_DsFit_Ds_PY_vec.clear();
-    match_DsFit_Ds_PZ_vec.clear();
-    match_DsFit_Ds_M_vec.clear();
-
-    match_DsFit_Kp_PP_vec.clear();
-    match_DsFit_Kp_PL_vec.clear();
-    match_DsFit_Km_PP_vec.clear();
-    match_DsFit_Km_PL_vec.clear();
-
-    match_DsFit_phi_PP_vec.clear();
-    match_DsFit_phi_PL_vec.clear();
-    match_DsFit_pi_PP_vec.clear();
-    match_DsFit_pi_PL_vec.clear();
-
-    match_DsFit_dR_Kp_Km_vec.clear();
-    match_DsFit_dR_Kp_phi_vec.clear();
-    match_DsFit_dR_Km_phi_vec.clear();
-    match_DsFit_dR_Kp_pi_vec.clear();
-    match_DsFit_dR_Km_pi_vec.clear();
-    match_DsFit_dR_pi_phi_vec.clear();
-    match_DsFit_dR_Kp_Ds_vec.clear();
-    match_DsFit_dR_Km_Ds_vec.clear();
-    match_DsFit_dR_phi_Ds_vec.clear();
-    match_DsFit_dR_pi_Ds_vec.clear();
-
-    match_DsFit_Mconstraint_Ds_M_vec.clear();
-   
-
-    match_Ds_FDxy_vec.clear();
-    match_Ds_FDxy_Err_vec.clear();
-    match_Ds_FDxy_Chi2_vec.clear();
-    match_Ds_FDz_vec.clear();
-    match_Ds_FDz_Err_vec.clear();
-    match_Ds_FDz_Chi2_vec.clear();
-    match_Ds_FD_vec.clear();
-    match_Ds_FD_Err_vec.clear();
-    match_Ds_FD_Chi2_vec.clear();
-    match_Ds_DIRA_angle_vec.clear();
-    match_Ds_DIRA_vec.clear();
-    match_Kp_IP_vec.clear();
-    match_Kp_IP_Err_vec.clear();
-    match_Kp_IP_Chi2_vec.clear();
-    match_Km_IP_vec.clear();
-    match_Km_IP_Err_vec.clear();
-    match_Km_IP_Chi2_vec.clear();
-    match_pi_IP_vec.clear();
-    match_pi_IP_Err_vec.clear();
-    match_pi_IP_Chi2_vec.clear();
-
-    num_reco_phi = 0;
-    num_reco_Ds = 0;
-
-    Kp_ETA_vec.clear();
-    Kp_PHI_vec.clear();
-    Kp_ORIVX_X_vec.clear();
-    Kp_ORIVX_Y_vec.clear();
-    Kp_ORIVX_Z_vec.clear();
-    Kp_P_vec.clear();
-    Kp_PT_vec.clear();
-    Kp_PX_vec.clear();
-    Kp_PY_vec.clear();
-    Kp_PZ_vec.clear();
-
-    Km_ETA_vec.clear();
-    Km_PHI_vec.clear();
-    Km_ORIVX_X_vec.clear();
-    Km_ORIVX_Y_vec.clear();
-    Km_ORIVX_Z_vec.clear();
-    Km_P_vec.clear();
-    Km_PT_vec.clear();
-    Km_PX_vec.clear();
-    Km_PY_vec.clear();
-    Km_PZ_vec.clear();
-
-    pi_ETA_vec.clear();
-    pi_PHI_vec.clear();
-    pi_ORIVX_X_vec.clear();
-    pi_ORIVX_Y_vec.clear();
-    pi_ORIVX_Z_vec.clear();
-    pi_P_vec.clear();
-    pi_PT_vec.clear();
-    pi_PX_vec.clear();
-    pi_PY_vec.clear();
-    pi_PZ_vec.clear();
-
-    phi_ETA_vec.clear();
-    phi_PHI_vec.clear();
-    phi_P_vec.clear();
-    phi_PT_vec.clear();
-    phi_PX_vec.clear();
-    phi_PY_vec.clear();
-    phi_PZ_vec.clear();
-    phi_M_vec.clear();
-
-    Ds_ETA_vec.clear();
-    Ds_PHI_vec.clear();
-    Ds_P_vec.clear();
-    Ds_PT_vec.clear();
-    Ds_PX_vec.clear();
-    Ds_PY_vec.clear();
-    Ds_PZ_vec.clear();
-    Ds_M_vec.clear();
-
-    Kp_PP_vec.clear();
-    Kp_PL_vec.clear();
-    Km_PP_vec.clear();
-    Km_PL_vec.clear();
-
-    phi_PP_vec.clear();
-    phi_PL_vec.clear();
-    pi_PP_vec.clear();
-    pi_PL_vec.clear();
+    phi_pp_vec.clear();
+    phi_pl_vec.clear();
+    pi_pp_vec.clear();
+    pi_pl_vec.clear();
 
     dR_Kp_Km_vec.clear();
     dR_Kp_phi_vec.clear();
@@ -415,67 +108,67 @@ void RecoTree::Init()
     dz_pi_Ds_vec.clear();
 
     // Fit on phi
-    phiFit_CHI2_vec.clear();
-    phiFit_NDOF_vec.clear();
-    phiFit_CHI2NDOF_vec.clear();
-    phiFit_ENDVX_X_vec.clear();
-    phiFit_ENDVX_Y_vec.clear();
-    phiFit_ENDVX_Z_vec.clear();
-    phiFit_ENDVX_XERR_vec.clear();
-    phiFit_ENDVX_YERR_vec.clear();
-    phiFit_ENDVX_ZERR_vec.clear();
+    phiFit_chi2_vec.clear();
+    phiFit_ndof_vec.clear();
+    phiFit_chi2ndof_vec.clear();
+    phiFit_vx_vec.clear();
+    phiFit_vy_vec.clear();
+    phiFit_vz_vec.clear();
+    phiFit_vxerr_vec.clear();
+    phiFit_vyerr_vec.clear();
+    phiFit_vzerr_vec.clear();
 
-    phiFit_Kp_ETA_vec.clear();
-    phiFit_Kp_PHI_vec.clear();
-    phiFit_Kp_P_vec.clear();
-    phiFit_Kp_PT_vec.clear();
-    phiFit_Kp_PX_vec.clear();
-    phiFit_Kp_PY_vec.clear();
-    phiFit_Kp_PZ_vec.clear();
+    phiFit_Kp_eta_vec.clear();
+    phiFit_Kp_phi_vec.clear();
+    phiFit_Kp_p_vec.clear();
+    phiFit_Kp_pt_vec.clear();
+    phiFit_Kp_px_vec.clear();
+    phiFit_Kp_py_vec.clear();
+    phiFit_Kp_pz_vec.clear();
 
-    phiFit_Km_ETA_vec.clear();
-    phiFit_Km_PHI_vec.clear();
-    phiFit_Km_P_vec.clear();
-    phiFit_Km_PT_vec.clear();
-    phiFit_Km_PX_vec.clear();
-    phiFit_Km_PY_vec.clear();
-    phiFit_Km_PZ_vec.clear();
+    phiFit_Km_eta_vec.clear();
+    phiFit_Km_phi_vec.clear();
+    phiFit_Km_p_vec.clear();
+    phiFit_Km_pt_vec.clear();
+    phiFit_Km_px_vec.clear();
+    phiFit_Km_py_vec.clear();
+    phiFit_Km_pz_vec.clear();
 
-    phiFit_pi_ETA_vec.clear();
-    phiFit_pi_PHI_vec.clear();
-    phiFit_pi_P_vec.clear();
-    phiFit_pi_PT_vec.clear();
-    phiFit_pi_PX_vec.clear();
-    phiFit_pi_PY_vec.clear();
-    phiFit_pi_PZ_vec.clear();
+    phiFit_pi_eta_vec.clear();
+    phiFit_pi_phi_vec.clear();
+    phiFit_pi_p_vec.clear();
+    phiFit_pi_pt_vec.clear();
+    phiFit_pi_px_vec.clear();
+    phiFit_pi_py_vec.clear();
+    phiFit_pi_pz_vec.clear();
 
-    phiFit_phi_ETA_vec.clear();
-    phiFit_phi_PHI_vec.clear();
-    phiFit_phi_P_vec.clear();
-    phiFit_phi_PT_vec.clear();
-    phiFit_phi_PX_vec.clear();
-    phiFit_phi_PY_vec.clear();
-    phiFit_phi_PZ_vec.clear();
-    phiFit_phi_M_vec.clear();
+    phiFit_phi_eta_vec.clear();
+    phiFit_phi_phi_vec.clear();
+    phiFit_phi_p_vec.clear();
+    phiFit_phi_pt_vec.clear();
+    phiFit_phi_px_vec.clear();
+    phiFit_phi_py_vec.clear();
+    phiFit_phi_pz_vec.clear();
+    phiFit_phi_invm_vec.clear();
 
-    phiFit_Ds_ETA_vec.clear();
-    phiFit_Ds_PHI_vec.clear();
-    phiFit_Ds_P_vec.clear();
-    phiFit_Ds_PT_vec.clear();
-    phiFit_Ds_PX_vec.clear();
-    phiFit_Ds_PY_vec.clear();
-    phiFit_Ds_PZ_vec.clear();
-    phiFit_Ds_M_vec.clear();
+    phiFit_Ds_eta_vec.clear();
+    phiFit_Ds_phi_vec.clear();
+    phiFit_Ds_p_vec.clear();
+    phiFit_Ds_pt_vec.clear();
+    phiFit_Ds_px_vec.clear();
+    phiFit_Ds_py_vec.clear();
+    phiFit_Ds_pz_vec.clear();
+    phiFit_Ds_invm_vec.clear();
 
-    phiFit_Kp_PP_vec.clear();
-    phiFit_Kp_PL_vec.clear();
-    phiFit_Km_PP_vec.clear();
-    phiFit_Km_PL_vec.clear();
+    phiFit_Kp_pp_vec.clear();
+    phiFit_Kp_pl_vec.clear();
+    phiFit_Km_pp_vec.clear();
+    phiFit_Km_pl_vec.clear();
 
-    phiFit_phi_PP_vec.clear();
-    phiFit_phi_PL_vec.clear();
-    phiFit_pi_PP_vec.clear();
-    phiFit_pi_PL_vec.clear();
+    phiFit_phi_pp_vec.clear();
+    phiFit_phi_pl_vec.clear();
+    phiFit_pi_pp_vec.clear();
+    phiFit_pi_pl_vec.clear();
 
     phiFit_dR_Kp_Km_vec.clear();
     phiFit_dR_Kp_phi_vec.clear();
@@ -488,68 +181,72 @@ void RecoTree::Init()
     phiFit_dR_phi_Ds_vec.clear();
     phiFit_dR_pi_Ds_vec.clear();
 
+    alpha_phi_vec.clear();
+    beta_phi_vec.clear();
+    APvar_phi_vec.clear();
+
     // Fit on Ds 
-    DsFit_CHI2_vec.clear();
-    DsFit_NDOF_vec.clear();
-    DsFit_CHI2NDOF_vec.clear();
-    DsFit_ENDVX_X_vec.clear();
-    DsFit_ENDVX_Y_vec.clear();
-    DsFit_ENDVX_Z_vec.clear();
-    DsFit_ENDVX_XERR_vec.clear();
-    DsFit_ENDVX_YERR_vec.clear();
-    DsFit_ENDVX_ZERR_vec.clear();
+    DsFit_chi2_vec.clear();
+    DsFit_ndof_vec.clear();
+    DsFit_chi2ndof_vec.clear();
+    DsFit_vx_vec.clear();
+    DsFit_vy_vec.clear();
+    DsFit_vz_vec.clear();
+    DsFit_vxerr_vec.clear();
+    DsFit_vyerr_vec.clear();
+    DsFit_vzerr_vec.clear();
 
-    DsFit_Kp_ETA_vec.clear();
-    DsFit_Kp_PHI_vec.clear();
-    DsFit_Kp_P_vec.clear();
-    DsFit_Kp_PT_vec.clear();
-    DsFit_Kp_PX_vec.clear();
-    DsFit_Kp_PY_vec.clear();
-    DsFit_Kp_PZ_vec.clear();
+    DsFit_Kp_eta_vec.clear();
+    DsFit_Kp_phi_vec.clear();
+    DsFit_Kp_p_vec.clear();
+    DsFit_Kp_pt_vec.clear();
+    DsFit_Kp_px_vec.clear();
+    DsFit_Kp_py_vec.clear();
+    DsFit_Kp_pz_vec.clear();
 
-    DsFit_Km_ETA_vec.clear();
-    DsFit_Km_PHI_vec.clear();
-    DsFit_Km_P_vec.clear();
-    DsFit_Km_PT_vec.clear();
-    DsFit_Km_PX_vec.clear();
-    DsFit_Km_PY_vec.clear();
-    DsFit_Km_PZ_vec.clear();
+    DsFit_Km_eta_vec.clear();
+    DsFit_Km_phi_vec.clear();
+    DsFit_Km_p_vec.clear();
+    DsFit_Km_pt_vec.clear();
+    DsFit_Km_px_vec.clear();
+    DsFit_Km_py_vec.clear();
+    DsFit_Km_pz_vec.clear();
 
-    DsFit_pi_ETA_vec.clear();
-    DsFit_pi_PHI_vec.clear();
-    DsFit_pi_P_vec.clear();
-    DsFit_pi_PT_vec.clear();
-    DsFit_pi_PX_vec.clear();
-    DsFit_pi_PY_vec.clear();
-    DsFit_pi_PZ_vec.clear();
+    DsFit_pi_eta_vec.clear();
+    DsFit_pi_phi_vec.clear();
+    DsFit_pi_p_vec.clear();
+    DsFit_pi_pt_vec.clear();
+    DsFit_pi_px_vec.clear();
+    DsFit_pi_py_vec.clear();
+    DsFit_pi_pz_vec.clear();
 
-    DsFit_phi_ETA_vec.clear();
-    DsFit_phi_PHI_vec.clear();
-    DsFit_phi_P_vec.clear();
-    DsFit_phi_PT_vec.clear();
-    DsFit_phi_PX_vec.clear();
-    DsFit_phi_PY_vec.clear();
-    DsFit_phi_PZ_vec.clear();
-    DsFit_phi_M_vec.clear();
+    DsFit_phi_eta_vec.clear();
+    DsFit_phi_phi_vec.clear();
+    DsFit_phi_p_vec.clear();
+    DsFit_phi_pt_vec.clear();
+    DsFit_phi_px_vec.clear();
+    DsFit_phi_py_vec.clear();
+    DsFit_phi_pz_vec.clear();
+    DsFit_phi_invm_vec.clear();
 
-    DsFit_Ds_ETA_vec.clear();
-    DsFit_Ds_PHI_vec.clear();
-    DsFit_Ds_P_vec.clear();
-    DsFit_Ds_PT_vec.clear();
-    DsFit_Ds_PX_vec.clear();
-    DsFit_Ds_PY_vec.clear();
-    DsFit_Ds_PZ_vec.clear();
-    DsFit_Ds_M_vec.clear();
+    DsFit_Ds_eta_vec.clear();
+    DsFit_Ds_phi_vec.clear();
+    DsFit_Ds_p_vec.clear();
+    DsFit_Ds_pt_vec.clear();
+    DsFit_Ds_px_vec.clear();
+    DsFit_Ds_py_vec.clear();
+    DsFit_Ds_pz_vec.clear();
+    DsFit_Ds_invm_vec.clear();
 
-    DsFit_Kp_PP_vec.clear();
-    DsFit_Kp_PL_vec.clear();
-    DsFit_Km_PP_vec.clear();
-    DsFit_Km_PL_vec.clear();
+    DsFit_Kp_pp_vec.clear();
+    DsFit_Kp_pl_vec.clear();
+    DsFit_Km_pp_vec.clear();
+    DsFit_Km_pl_vec.clear();
 
-    DsFit_phi_PP_vec.clear();
-    DsFit_phi_PL_vec.clear();
-    DsFit_pi_PP_vec.clear();
-    DsFit_pi_PL_vec.clear();
+    DsFit_phi_pp_vec.clear();
+    DsFit_phi_pl_vec.clear();
+    DsFit_pi_pp_vec.clear();
+    DsFit_pi_pl_vec.clear();
 
     DsFit_dR_Kp_Km_vec.clear();
     DsFit_dR_Kp_phi_vec.clear();
@@ -562,95 +259,149 @@ void RecoTree::Init()
     DsFit_dR_phi_Ds_vec.clear();
     DsFit_dR_pi_Ds_vec.clear();
 
-    DsFit_Mconstraint_Ds_M_vec.clear();
+    DsFit_Mconstraint_Ds_invm_vec.clear();
+    
+    alpha_Ds_vec.clear();
+    beta_Ds_vec.clear();
+    APvar_Ds_vec.clear();
 
-    Kp_match_vec.clear();
-    Km_match_vec.clear();
-    pi_match_vec.clear();
-    match_entry_vec.clear();
-    non_match_entry_vec.clear();
+    Ds_primvtx_FDxy_vec.clear();
+    Ds_primvtx_FDz_vec.clear();
+    Ds_primvtx_FD_vec.clear();
+    Ds_primvtx_FDxyerr_vec.clear();
+    Ds_primvtx_FDxychi2_vec.clear();
+    Ds_primvtx_FDzerr_vec.clear();
+    Ds_primvtx_FDzchi2_vec.clear();
+    Ds_primvtx_FDerr_vec.clear();
+    Ds_primvtx_FDchi2_vec.clear();
+    Ds_primvtx_dira_vec.clear();
+    Ds_primvtx_dira_angle_vec.clear();
+    Kp_primvtx_ip_vec.clear();
+    Kp_primvtx_iperr_vec.clear();
+    Kp_primvtx_ipchi2_vec.clear();
+    Km_primvtx_ip_vec.clear();
+    Km_primvtx_iperr_vec.clear();
+    Km_primvtx_ipchi2_vec.clear();
+    pi_primvtx_ip_vec.clear();
+    pi_primvtx_iperr_vec.clear();
+    pi_primvtx_ipchi2_vec.clear();
 
-    Ds_FDxy_vec.clear();
-    Ds_FDxy_Err_vec.clear();
-    Ds_FDxy_Chi2_vec.clear();
-    Ds_FDz_vec.clear();
-    Ds_FDz_Err_vec.clear();
-    Ds_FDz_Chi2_vec.clear();
-    Ds_FD_vec.clear();
-    Ds_FD_Err_vec.clear();
-    Ds_FD_Chi2_vec.clear();
-    Ds_DIRA_angle_vec.clear();
-    Ds_DIRA_vec.clear();
-    Kp_IP_vec.clear();
-    Kp_IP_Err_vec.clear();
-    Kp_IP_Chi2_vec.clear();
-    Km_IP_vec.clear();
-    Km_IP_Err_vec.clear();
-    Km_IP_Chi2_vec.clear();
-    pi_IP_vec.clear();
-    pi_IP_Err_vec.clear();
-    pi_IP_Chi2_vec.clear();
+    Ds_Iso_R0p3_vec.clear();
+    Ds_Iso_R0p4_vec.clear();
+    Ds_IsoRel_R0p3_vec.clear();
+    Ds_IsoRel_R0p4_vec.clear();
 
-    best_Kp_ETA_vec.clear();
-    best_Kp_PHI_vec.clear();
-    best_Kp_ORIVX_X_vec.clear();
-    best_Kp_ORIVX_Y_vec.clear();
-    best_Kp_ORIVX_Z_vec.clear();
-    best_Kp_P_vec.clear();
-    best_Kp_PT_vec.clear();
-    best_Kp_PX_vec.clear();
-    best_Kp_PY_vec.clear();
-    best_Kp_PZ_vec.clear();
+    PV_noDs_withBS_IsValid_vec.clear();
+    PV_noDs_withBS_IsFake_vec.clear();
+    PV_noDs_withBS_chi2_vec.clear();
+    PV_noDs_withBS_ndof_vec.clear();
+    PV_noDs_withBS_chi2ndof_vec.clear();
+    PV_noDs_withBS_x_vec.clear();
+    PV_noDs_withBS_y_vec.clear();
+    PV_noDs_withBS_z_vec.clear();
+    PV_noDs_withBS_xerr_vec.clear();
+    PV_noDs_withBS_yerr_vec.clear();
+    PV_noDs_withBS_zerr_vec.clear();
 
-    best_Km_ETA_vec.clear();
-    best_Km_PHI_vec.clear();
-    best_Km_ORIVX_X_vec.clear();
-    best_Km_ORIVX_Y_vec.clear();
-    best_Km_ORIVX_Z_vec.clear();
-    best_Km_P_vec.clear();
-    best_Km_PT_vec.clear();
-    best_Km_PX_vec.clear();
-    best_Km_PY_vec.clear();
-    best_Km_PZ_vec.clear();
+    PV_noDs_noBS_IsValid_vec.clear();
+    PV_noDs_noBS_IsFake_vec.clear();
+    PV_noDs_noBS_chi2_vec.clear();
+    PV_noDs_noBS_ndof_vec.clear();
+    PV_noDs_noBS_chi2ndof_vec.clear();
+    PV_noDs_noBS_x_vec.clear();
+    PV_noDs_noBS_y_vec.clear();
+    PV_noDs_noBS_z_vec.clear();
+    PV_noDs_noBS_xerr_vec.clear();
+    PV_noDs_noBS_yerr_vec.clear();
+    PV_noDs_noBS_zerr_vec.clear();
 
-    best_pi_ETA_vec.clear();
-    best_pi_PHI_vec.clear();
-    best_pi_ORIVX_X_vec.clear();
-    best_pi_ORIVX_Y_vec.clear();
-    best_pi_ORIVX_Z_vec.clear();
-    best_pi_P_vec.clear();
-    best_pi_PT_vec.clear();
-    best_pi_PX_vec.clear();
-    best_pi_PY_vec.clear();
-    best_pi_PZ_vec.clear();
+    Ds_PVnoDs_FDxy_vec.clear();
+    Ds_PVnoDs_FDz_vec.clear();
+    Ds_PVnoDs_FD_vec.clear();
+    Ds_PVnoDs_FDxyerr_vec.clear();
+    Ds_PVnoDs_FDxychi2_vec.clear();
+    Ds_PVnoDs_FDzerr_vec.clear();
+    Ds_PVnoDs_FDzchi2_vec.clear();
+    Ds_PVnoDs_FDerr_vec.clear();
+    Ds_PVnoDs_FDchi2_vec.clear();
+    Ds_PVnoDs_dira_vec.clear();
+    Ds_PVnoDs_dira_angle_vec.clear();
+    Kp_PVnoDs_ip_vec.clear();
+    Kp_PVnoDs_iperr_vec.clear();
+    Kp_PVnoDs_ipchi2_vec.clear();
+    Km_PVnoDs_ip_vec.clear();
+    Km_PVnoDs_iperr_vec.clear();
+    Km_PVnoDs_ipchi2_vec.clear();
+    pi_PVnoDs_ip_vec.clear();
+    pi_PVnoDs_iperr_vec.clear();
+    pi_PVnoDs_ipchi2_vec.clear();
 
-    best_phi_ETA_vec.clear();
-    best_phi_PHI_vec.clear();
-    best_phi_P_vec.clear();
-    best_phi_PT_vec.clear();
-    best_phi_PX_vec.clear();
-    best_phi_PY_vec.clear();
-    best_phi_PZ_vec.clear();
-    best_phi_M_vec.clear();
+    best_Kp_isIsolatedChargedHadron_vec.clear();
+    best_Kp_charge_vec.clear();
+    best_Kp_eta_vec.clear();
+    best_Kp_phi_vec.clear();
+    best_Kp_vx_vec.clear();
+    best_Kp_vy_vec.clear();
+    best_Kp_vz_vec.clear();
+    best_Kp_p_vec.clear();
+    best_Kp_pt_vec.clear();
+    best_Kp_px_vec.clear();
+    best_Kp_py_vec.clear();
+    best_Kp_pz_vec.clear();
 
-    best_Ds_ETA_vec.clear();
-    best_Ds_PHI_vec.clear();
-    best_Ds_P_vec.clear();
-    best_Ds_PT_vec.clear();
-    best_Ds_PX_vec.clear();
-    best_Ds_PY_vec.clear();
-    best_Ds_PZ_vec.clear();
-    best_Ds_M_vec.clear();
+    best_Km_isIsolatedChargedHadron_vec.clear();
+    best_Km_charge_vec.clear();
+    best_Km_eta_vec.clear();
+    best_Km_phi_vec.clear();
+    best_Km_vx_vec.clear();
+    best_Km_vy_vec.clear();
+    best_Km_vz_vec.clear();
+    best_Km_p_vec.clear();
+    best_Km_pt_vec.clear();
+    best_Km_px_vec.clear();
+    best_Km_py_vec.clear();
+    best_Km_pz_vec.clear();
 
-    best_Kp_PP_vec.clear();
-    best_Kp_PL_vec.clear();
-    best_Km_PP_vec.clear();
-    best_Km_PL_vec.clear();
+    best_pi_isIsolatedChargedHadron_vec.clear();
+    best_pi_charge_vec.clear();
+    best_pi_eta_vec.clear();
+    best_pi_phi_vec.clear();
+    best_pi_vx_vec.clear();
+    best_pi_vy_vec.clear();
+    best_pi_vz_vec.clear();
+    best_pi_p_vec.clear();
+    best_pi_pt_vec.clear();
+    best_pi_px_vec.clear();
+    best_pi_py_vec.clear();
+    best_pi_pz_vec.clear();
 
-    best_phi_PP_vec.clear();
-    best_phi_PL_vec.clear();
-    best_pi_PP_vec.clear();
-    best_pi_PL_vec.clear();
+    best_phi_eta_vec.clear();
+    best_phi_phi_vec.clear();
+    best_phi_p_vec.clear();
+    best_phi_pt_vec.clear();
+    best_phi_px_vec.clear();
+    best_phi_py_vec.clear();
+    best_phi_pz_vec.clear();
+    best_phi_invm_vec.clear();
+
+    best_Ds_eta_vec.clear();
+    best_Ds_phi_vec.clear();
+    best_Ds_p_vec.clear();
+    best_Ds_pt_vec.clear();
+    best_Ds_px_vec.clear();
+    best_Ds_py_vec.clear();
+    best_Ds_pz_vec.clear();
+    best_Ds_invm_vec.clear();
+
+    best_Kp_pp_vec.clear();
+    best_Kp_pl_vec.clear();
+    best_Km_pp_vec.clear();
+    best_Km_pl_vec.clear();
+
+    best_phi_pp_vec.clear();
+    best_phi_pl_vec.clear();
+    best_pi_pp_vec.clear();
+    best_pi_pl_vec.clear();
 
     best_dR_Kp_Km_vec.clear();
     best_dR_Kp_phi_vec.clear();
@@ -686,67 +437,67 @@ void RecoTree::Init()
     best_dz_pi_Ds_vec.clear();
 
     // Fit on phi
-    best_phiFit_CHI2_vec.clear();
-    best_phiFit_NDOF_vec.clear();
-    best_phiFit_CHI2NDOF_vec.clear();
-    best_phiFit_ENDVX_X_vec.clear();
-    best_phiFit_ENDVX_Y_vec.clear();
-    best_phiFit_ENDVX_Z_vec.clear();
-    best_phiFit_ENDVX_XERR_vec.clear();
-    best_phiFit_ENDVX_YERR_vec.clear();
-    best_phiFit_ENDVX_ZERR_vec.clear();
+    best_phiFit_chi2_vec.clear();
+    best_phiFit_ndof_vec.clear();
+    best_phiFit_chi2ndof_vec.clear();
+    best_phiFit_vx_vec.clear();
+    best_phiFit_vy_vec.clear();
+    best_phiFit_vz_vec.clear();
+    best_phiFit_vxerr_vec.clear();
+    best_phiFit_vyerr_vec.clear();
+    best_phiFit_vzerr_vec.clear();
 
-    best_phiFit_Kp_ETA_vec.clear();
-    best_phiFit_Kp_PHI_vec.clear();
-    best_phiFit_Kp_P_vec.clear();
-    best_phiFit_Kp_PT_vec.clear();
-    best_phiFit_Kp_PX_vec.clear();
-    best_phiFit_Kp_PY_vec.clear();
-    best_phiFit_Kp_PZ_vec.clear();
+    best_phiFit_Kp_eta_vec.clear();
+    best_phiFit_Kp_phi_vec.clear();
+    best_phiFit_Kp_p_vec.clear();
+    best_phiFit_Kp_pt_vec.clear();
+    best_phiFit_Kp_px_vec.clear();
+    best_phiFit_Kp_py_vec.clear();
+    best_phiFit_Kp_pz_vec.clear();
 
-    best_phiFit_Km_ETA_vec.clear();
-    best_phiFit_Km_PHI_vec.clear();
-    best_phiFit_Km_P_vec.clear();
-    best_phiFit_Km_PT_vec.clear();
-    best_phiFit_Km_PX_vec.clear();
-    best_phiFit_Km_PY_vec.clear();
-    best_phiFit_Km_PZ_vec.clear();
+    best_phiFit_Km_eta_vec.clear();
+    best_phiFit_Km_phi_vec.clear();
+    best_phiFit_Km_p_vec.clear();
+    best_phiFit_Km_pt_vec.clear();
+    best_phiFit_Km_px_vec.clear();
+    best_phiFit_Km_py_vec.clear();
+    best_phiFit_Km_pz_vec.clear();
 
-    best_phiFit_pi_ETA_vec.clear();
-    best_phiFit_pi_PHI_vec.clear();
-    best_phiFit_pi_P_vec.clear();
-    best_phiFit_pi_PT_vec.clear();
-    best_phiFit_pi_PX_vec.clear();
-    best_phiFit_pi_PY_vec.clear();
-    best_phiFit_pi_PZ_vec.clear();
+    best_phiFit_pi_eta_vec.clear();
+    best_phiFit_pi_phi_vec.clear();
+    best_phiFit_pi_p_vec.clear();
+    best_phiFit_pi_pt_vec.clear();
+    best_phiFit_pi_px_vec.clear();
+    best_phiFit_pi_py_vec.clear();
+    best_phiFit_pi_pz_vec.clear();
 
-    best_phiFit_phi_ETA_vec.clear();
-    best_phiFit_phi_PHI_vec.clear();
-    best_phiFit_phi_P_vec.clear();
-    best_phiFit_phi_PT_vec.clear();
-    best_phiFit_phi_PX_vec.clear();
-    best_phiFit_phi_PY_vec.clear();
-    best_phiFit_phi_PZ_vec.clear();
-    best_phiFit_phi_M_vec.clear();
+    best_phiFit_phi_eta_vec.clear();
+    best_phiFit_phi_phi_vec.clear();
+    best_phiFit_phi_p_vec.clear();
+    best_phiFit_phi_pt_vec.clear();
+    best_phiFit_phi_px_vec.clear();
+    best_phiFit_phi_py_vec.clear();
+    best_phiFit_phi_pz_vec.clear();
+    best_phiFit_phi_invm_vec.clear();
 
-    best_phiFit_Ds_ETA_vec.clear();
-    best_phiFit_Ds_PHI_vec.clear();
-    best_phiFit_Ds_P_vec.clear();
-    best_phiFit_Ds_PT_vec.clear();
-    best_phiFit_Ds_PX_vec.clear();
-    best_phiFit_Ds_PY_vec.clear();
-    best_phiFit_Ds_PZ_vec.clear();
-    best_phiFit_Ds_M_vec.clear();
+    best_phiFit_Ds_eta_vec.clear();
+    best_phiFit_Ds_phi_vec.clear();
+    best_phiFit_Ds_p_vec.clear();
+    best_phiFit_Ds_pt_vec.clear();
+    best_phiFit_Ds_px_vec.clear();
+    best_phiFit_Ds_py_vec.clear();
+    best_phiFit_Ds_pz_vec.clear();
+    best_phiFit_Ds_invm_vec.clear();
 
-    best_phiFit_Kp_PP_vec.clear();
-    best_phiFit_Kp_PL_vec.clear();
-    best_phiFit_Km_PP_vec.clear();
-    best_phiFit_Km_PL_vec.clear();
+    best_phiFit_Kp_pp_vec.clear();
+    best_phiFit_Kp_pl_vec.clear();
+    best_phiFit_Km_pp_vec.clear();
+    best_phiFit_Km_pl_vec.clear();
 
-    best_phiFit_phi_PP_vec.clear();
-    best_phiFit_phi_PL_vec.clear();
-    best_phiFit_pi_PP_vec.clear();
-    best_phiFit_pi_PL_vec.clear();
+    best_phiFit_phi_pp_vec.clear();
+    best_phiFit_phi_pl_vec.clear();
+    best_phiFit_pi_pp_vec.clear();
+    best_phiFit_pi_pl_vec.clear();
 
     best_phiFit_dR_Kp_Km_vec.clear();
     best_phiFit_dR_Kp_phi_vec.clear();
@@ -759,68 +510,72 @@ void RecoTree::Init()
     best_phiFit_dR_phi_Ds_vec.clear();
     best_phiFit_dR_pi_Ds_vec.clear();
 
+    best_alpha_phi_vec.clear();
+    best_beta_phi_vec.clear();
+    best_APvar_phi_vec.clear();
+
     // Fit on Ds 
-    best_DsFit_CHI2_vec.clear();
-    best_DsFit_NDOF_vec.clear();
-    best_DsFit_CHI2NDOF_vec.clear();
-    best_DsFit_ENDVX_X_vec.clear();
-    best_DsFit_ENDVX_Y_vec.clear();
-    best_DsFit_ENDVX_Z_vec.clear();
-    best_DsFit_ENDVX_XERR_vec.clear();
-    best_DsFit_ENDVX_YERR_vec.clear();
-    best_DsFit_ENDVX_ZERR_vec.clear();
+    best_DsFit_chi2_vec.clear();
+    best_DsFit_ndof_vec.clear();
+    best_DsFit_chi2ndof_vec.clear();
+    best_DsFit_vx_vec.clear();
+    best_DsFit_vy_vec.clear();
+    best_DsFit_vz_vec.clear();
+    best_DsFit_vxerr_vec.clear();
+    best_DsFit_vyerr_vec.clear();
+    best_DsFit_vzerr_vec.clear();
 
-    best_DsFit_Kp_ETA_vec.clear();
-    best_DsFit_Kp_PHI_vec.clear();
-    best_DsFit_Kp_P_vec.clear();
-    best_DsFit_Kp_PT_vec.clear();
-    best_DsFit_Kp_PX_vec.clear();
-    best_DsFit_Kp_PY_vec.clear();
-    best_DsFit_Kp_PZ_vec.clear();
+    best_DsFit_Kp_eta_vec.clear();
+    best_DsFit_Kp_phi_vec.clear();
+    best_DsFit_Kp_p_vec.clear();
+    best_DsFit_Kp_pt_vec.clear();
+    best_DsFit_Kp_px_vec.clear();
+    best_DsFit_Kp_py_vec.clear();
+    best_DsFit_Kp_pz_vec.clear();
 
-    best_DsFit_Km_ETA_vec.clear();
-    best_DsFit_Km_PHI_vec.clear();
-    best_DsFit_Km_P_vec.clear();
-    best_DsFit_Km_PT_vec.clear();
-    best_DsFit_Km_PX_vec.clear();
-    best_DsFit_Km_PY_vec.clear();
-    best_DsFit_Km_PZ_vec.clear();
+    best_DsFit_Km_eta_vec.clear();
+    best_DsFit_Km_phi_vec.clear();
+    best_DsFit_Km_p_vec.clear();
+    best_DsFit_Km_pt_vec.clear();
+    best_DsFit_Km_px_vec.clear();
+    best_DsFit_Km_py_vec.clear();
+    best_DsFit_Km_pz_vec.clear();
 
-    best_DsFit_pi_ETA_vec.clear();
-    best_DsFit_pi_PHI_vec.clear();
-    best_DsFit_pi_P_vec.clear();
-    best_DsFit_pi_PT_vec.clear();
-    best_DsFit_pi_PX_vec.clear();
-    best_DsFit_pi_PY_vec.clear();
-    best_DsFit_pi_PZ_vec.clear();
+    best_DsFit_pi_eta_vec.clear();
+    best_DsFit_pi_phi_vec.clear();
+    best_DsFit_pi_p_vec.clear();
+    best_DsFit_pi_pt_vec.clear();
+    best_DsFit_pi_px_vec.clear();
+    best_DsFit_pi_py_vec.clear();
+    best_DsFit_pi_pz_vec.clear();
 
-    best_DsFit_phi_ETA_vec.clear();
-    best_DsFit_phi_PHI_vec.clear();
-    best_DsFit_phi_P_vec.clear();
-    best_DsFit_phi_PT_vec.clear();
-    best_DsFit_phi_PX_vec.clear();
-    best_DsFit_phi_PY_vec.clear();
-    best_DsFit_phi_PZ_vec.clear();
-    best_DsFit_phi_M_vec.clear();
+    best_DsFit_phi_eta_vec.clear();
+    best_DsFit_phi_phi_vec.clear();
+    best_DsFit_phi_p_vec.clear();
+    best_DsFit_phi_pt_vec.clear();
+    best_DsFit_phi_px_vec.clear();
+    best_DsFit_phi_py_vec.clear();
+    best_DsFit_phi_pz_vec.clear();
+    best_DsFit_phi_invm_vec.clear();
 
-    best_DsFit_Ds_ETA_vec.clear();
-    best_DsFit_Ds_PHI_vec.clear();
-    best_DsFit_Ds_P_vec.clear();
-    best_DsFit_Ds_PT_vec.clear();
-    best_DsFit_Ds_PX_vec.clear();
-    best_DsFit_Ds_PY_vec.clear();
-    best_DsFit_Ds_PZ_vec.clear();
-    best_DsFit_Ds_M_vec.clear();
+    best_DsFit_Ds_eta_vec.clear();
+    best_DsFit_Ds_phi_vec.clear();
+    best_DsFit_Ds_p_vec.clear();
+    best_DsFit_Ds_pt_vec.clear();
+    best_DsFit_Ds_px_vec.clear();
+    best_DsFit_Ds_py_vec.clear();
+    best_DsFit_Ds_pz_vec.clear();
+    best_DsFit_Ds_invm_vec.clear();
 
-    best_DsFit_Kp_PP_vec.clear();
-    best_DsFit_Kp_PL_vec.clear();
-    best_DsFit_Km_PP_vec.clear();
-    best_DsFit_Km_PL_vec.clear();
+    best_DsFit_Kp_pp_vec.clear();
+    best_DsFit_Kp_pl_vec.clear();
+    best_DsFit_Km_pp_vec.clear();
+    best_DsFit_Km_pl_vec.clear();
 
-    best_DsFit_phi_PP_vec.clear();
-    best_DsFit_phi_PL_vec.clear();
-    best_DsFit_pi_PP_vec.clear();
-    best_DsFit_pi_PL_vec.clear();
+    best_DsFit_phi_pp_vec.clear();
+    best_DsFit_phi_pl_vec.clear();
+    best_DsFit_pi_pp_vec.clear();
+    best_DsFit_pi_pl_vec.clear();
 
     best_DsFit_dR_Kp_Km_vec.clear();
     best_DsFit_dR_Kp_phi_vec.clear();
@@ -833,639 +588,897 @@ void RecoTree::Init()
     best_DsFit_dR_phi_Ds_vec.clear();
     best_DsFit_dR_pi_Ds_vec.clear();
 
-    best_DsFit_Mconstraint_Ds_M_vec.clear();
+    best_DsFit_Mconstraint_Ds_invm_vec.clear();
 
-    best_match_entry_vec.clear();
+    best_alpha_Ds_vec.clear();
+    best_beta_Ds_vec.clear();
+    best_APvar_Ds_vec.clear();
 
-    best_Ds_FDxy_vec.clear();
-    best_Ds_FDxy_Err_vec.clear();
-    best_Ds_FDxy_Chi2_vec.clear();
-    best_Ds_FDz_vec.clear();
-    best_Ds_FDz_Err_vec.clear();
-    best_Ds_FDz_Chi2_vec.clear();
-    best_Ds_FD_vec.clear();
-    best_Ds_FD_Err_vec.clear();
-    best_Ds_FD_Chi2_vec.clear();
-    best_Ds_DIRA_angle_vec.clear();
-    best_Ds_DIRA_vec.clear();
-    best_Kp_IP_vec.clear();
-    best_Kp_IP_Err_vec.clear();
-    best_Kp_IP_Chi2_vec.clear();
-    best_Km_IP_vec.clear();
-    best_Km_IP_Err_vec.clear();
-    best_Km_IP_Chi2_vec.clear();
-    best_pi_IP_vec.clear();
-    best_pi_IP_Err_vec.clear();
-    best_pi_IP_Chi2_vec.clear();
+    best_Ds_primvtx_FDxy_vec.clear();
+    best_Ds_primvtx_FDz_vec.clear();
+    best_Ds_primvtx_FD_vec.clear();
+    best_Ds_primvtx_FDxyerr_vec.clear();
+    best_Ds_primvtx_FDxychi2_vec.clear();
+    best_Ds_primvtx_FDzerr_vec.clear();
+    best_Ds_primvtx_FDzchi2_vec.clear();
+    best_Ds_primvtx_FDerr_vec.clear();
+    best_Ds_primvtx_FDchi2_vec.clear();
+    best_Ds_primvtx_dira_vec.clear();
+    best_Ds_primvtx_dira_angle_vec.clear();
+    best_Kp_primvtx_ip_vec.clear();
+    best_Kp_primvtx_iperr_vec.clear();
+    best_Kp_primvtx_ipchi2_vec.clear();
+    best_Km_primvtx_ip_vec.clear();
+    best_Km_primvtx_iperr_vec.clear();
+    best_Km_primvtx_ipchi2_vec.clear();
+    best_pi_primvtx_ip_vec.clear();
+    best_pi_primvtx_iperr_vec.clear();
+    best_pi_primvtx_ipchi2_vec.clear();
 
+    best_Ds_Iso_R0p3_vec.clear();
+    best_Ds_Iso_R0p4_vec.clear();
+    best_Ds_IsoRel_R0p3_vec.clear();
+    best_Ds_IsoRel_R0p4_vec.clear();
+
+    best_PV_noDs_withBS_IsValid_vec.clear();
+    best_PV_noDs_withBS_IsFake_vec.clear();
+    best_PV_noDs_withBS_chi2_vec.clear();
+    best_PV_noDs_withBS_ndof_vec.clear();
+    best_PV_noDs_withBS_chi2ndof_vec.clear();
+    best_PV_noDs_withBS_x_vec.clear();
+    best_PV_noDs_withBS_y_vec.clear();
+    best_PV_noDs_withBS_z_vec.clear();
+    best_PV_noDs_withBS_xerr_vec.clear();
+    best_PV_noDs_withBS_yerr_vec.clear();
+    best_PV_noDs_withBS_zerr_vec.clear();
+
+    best_PV_noDs_noBS_IsValid_vec.clear();
+    best_PV_noDs_noBS_IsFake_vec.clear();
+    best_PV_noDs_noBS_chi2_vec.clear();
+    best_PV_noDs_noBS_ndof_vec.clear();
+    best_PV_noDs_noBS_chi2ndof_vec.clear();
+    best_PV_noDs_noBS_x_vec.clear();
+    best_PV_noDs_noBS_y_vec.clear();
+    best_PV_noDs_noBS_z_vec.clear();
+    best_PV_noDs_noBS_xerr_vec.clear();
+    best_PV_noDs_noBS_yerr_vec.clear();
+    best_PV_noDs_noBS_zerr_vec.clear();
+
+    best_Ds_PVnoDs_FDxy_vec.clear();
+    best_Ds_PVnoDs_FDz_vec.clear();
+    best_Ds_PVnoDs_FD_vec.clear();
+    best_Ds_PVnoDs_FDxyerr_vec.clear();
+    best_Ds_PVnoDs_FDxychi2_vec.clear();
+    best_Ds_PVnoDs_FDzerr_vec.clear();
+    best_Ds_PVnoDs_FDzchi2_vec.clear();
+    best_Ds_PVnoDs_FDerr_vec.clear();
+    best_Ds_PVnoDs_FDchi2_vec.clear();
+    best_Ds_PVnoDs_dira_vec.clear();
+    best_Ds_PVnoDs_dira_angle_vec.clear();
+    best_Kp_PVnoDs_ip_vec.clear();
+    best_Kp_PVnoDs_iperr_vec.clear();
+    best_Kp_PVnoDs_ipchi2_vec.clear();
+    best_Km_PVnoDs_ip_vec.clear();
+    best_Km_PVnoDs_iperr_vec.clear();
+    best_Km_PVnoDs_ipchi2_vec.clear();
+    best_pi_PVnoDs_ip_vec.clear();
+    best_pi_PVnoDs_iperr_vec.clear();
+    best_pi_PVnoDs_ipchi2_vec.clear();
 }
 
-void RecoTree::Match_Fill_Vector()
+void RecoTree::CreateBranches()
 {
-    match_Kp_ETA_vec.push_back(match_Kp_ETA);
-    match_Kp_PHI_vec.push_back(match_Kp_PHI);
-    match_Kp_ORIVX_X_vec.push_back(match_Kp_ORIVX_X);
-    match_Kp_ORIVX_Y_vec.push_back(match_Kp_ORIVX_Y);
-    match_Kp_ORIVX_Z_vec.push_back(match_Kp_ORIVX_Z);
-    match_Kp_P_vec.push_back(match_Kp_P);
-    match_Kp_PT_vec.push_back(match_Kp_PT);
-    match_Kp_PX_vec.push_back(match_Kp_PX);
-    match_Kp_PY_vec.push_back(match_Kp_PY);
-    match_Kp_PZ_vec.push_back(match_Kp_PZ);
+    tree->Branch("BS_type", &BS_type);
+    tree->Branch("BS_x0", &BS_x0);
+    tree->Branch("BS_y0", &BS_y0);
+    tree->Branch("BS_z0", &BS_z0);
+    tree->Branch("BS_sigmaZ", &BS_sigmaZ);
+    tree->Branch("BS_dxdz", &BS_dxdz);
+    tree->Branch("BS_dydz", &BS_dydz);
+    tree->Branch("BS_BWX", &BS_BWX);
+    tree->Branch("BS_BWY", &BS_BWY);
+    tree->Branch("BS_x0err", &BS_x0err);
+    tree->Branch("BS_y0err", &BS_y0err);
+    tree->Branch("BS_z0err", &BS_z0err);
+    tree->Branch("BS_sigmaZ0err", &BS_sigmaZ0err);
+    tree->Branch("BS_dxdzerr", &BS_dxdzerr);
+    tree->Branch("BS_dydzerr", &BS_dydzerr);
+    tree->Branch("BS_BWXerr", &BS_BWXerr);
+    tree->Branch("BS_BWYerr", &BS_BWYerr);
+    tree->Branch("BS_emitX", &BS_emitX);
+    tree->Branch("BS_emitY", &BS_emitY);
+    tree->Branch("BS_betaStar", &BS_betaStar);
+   
+    tree->Branch("PV_vx", &PV_vx); 
+    tree->Branch("PV_vy", &PV_vy); 
+    tree->Branch("PV_vz", &PV_vz); 
+    tree->Branch("PV_vxerr", &PV_vxerr); 
+    tree->Branch("PV_vyerr", &PV_vyerr); 
+    tree->Branch("PV_vzerr", &PV_vzerr); 
 
-    match_Km_ETA_vec.push_back(match_Km_ETA);
-    match_Km_PHI_vec.push_back(match_Km_PHI);
-    match_Km_ORIVX_X_vec.push_back(match_Km_ORIVX_X);
-    match_Km_ORIVX_Y_vec.push_back(match_Km_ORIVX_Y);
-    match_Km_ORIVX_Z_vec.push_back(match_Km_ORIVX_Z);
-    match_Km_P_vec.push_back(match_Km_P);
-    match_Km_PT_vec.push_back(match_Km_PT);
-    match_Km_PX_vec.push_back(match_Km_PX);
-    match_Km_PY_vec.push_back(match_Km_PY);
-    match_Km_PZ_vec.push_back(match_Km_PZ);
+    tree->Branch("Kp_isIsolatedChargedHadron", &best_Kp_isIsolatedChargedHadron_vec);
+    tree->Branch("Kp_charge", &best_Kp_charge_vec);
+    tree->Branch("Kp_eta", &best_Kp_eta_vec);
+    tree->Branch("Kp_phi", &best_Kp_phi_vec);
+    tree->Branch("Kp_vx", &best_Kp_vx_vec);
+    tree->Branch("Kp_vy", &best_Kp_vy_vec);
+    tree->Branch("Kp_vz", &best_Kp_vz_vec);
+    tree->Branch("Kp_p", &best_Kp_p_vec);
+    tree->Branch("Kp_pt", &best_Kp_pt_vec);
+    tree->Branch("Kp_px", &best_Kp_px_vec);
+    tree->Branch("Kp_py", &best_Kp_py_vec);
+    tree->Branch("Kp_pz", &best_Kp_pz_vec);
 
-    match_pi_ETA_vec.push_back(match_pi_ETA);
-    match_pi_PHI_vec.push_back(match_pi_PHI);
-    match_pi_ORIVX_X_vec.push_back(match_pi_ORIVX_X);
-    match_pi_ORIVX_Y_vec.push_back(match_pi_ORIVX_Y);
-    match_pi_ORIVX_Z_vec.push_back(match_pi_ORIVX_Z);
-    match_pi_P_vec.push_back(match_pi_P);
-    match_pi_PT_vec.push_back(match_pi_PT);
-    match_pi_PX_vec.push_back(match_pi_PX);
-    match_pi_PY_vec.push_back(match_pi_PY);
-    match_pi_PZ_vec.push_back(match_pi_PZ);
+    tree->Branch("Km_isIsolatedChargedHadron", &best_Km_isIsolatedChargedHadron_vec);
+    tree->Branch("Km_charge", &best_Km_charge_vec);
+    tree->Branch("Km_eta", &best_Km_eta_vec);
+    tree->Branch("Km_phi", &best_Km_phi_vec);
+    tree->Branch("Km_vx", &best_Km_vx_vec);
+    tree->Branch("Km_vy", &best_Km_vy_vec);
+    tree->Branch("Km_vz", &best_Km_vz_vec);
+    tree->Branch("Km_p", &best_Km_p_vec);
+    tree->Branch("Km_pt", &best_Km_pt_vec);
+    tree->Branch("Km_px", &best_Km_px_vec);
+    tree->Branch("Km_py", &best_Km_py_vec);
+    tree->Branch("Km_pz", &best_Km_pz_vec);
 
-    match_phi_ETA_vec.push_back(match_phi_ETA);
-    match_phi_PHI_vec.push_back(match_phi_PHI);
-    match_phi_P_vec.push_back(match_phi_P);
-    match_phi_PT_vec.push_back(match_phi_PT);
-    match_phi_PX_vec.push_back(match_phi_PX);
-    match_phi_PY_vec.push_back(match_phi_PY);
-    match_phi_PZ_vec.push_back(match_phi_PZ);
-    match_phi_M_vec.push_back(match_phi_M);
+    tree->Branch("pi_isIsolatedChargedHadron", &best_pi_isIsolatedChargedHadron_vec);
+    tree->Branch("pi_charge", &best_pi_charge_vec);
+    tree->Branch("pi_eta", &best_pi_eta_vec);
+    tree->Branch("pi_phi", &best_pi_phi_vec);
+    tree->Branch("pi_vx", &best_pi_vx_vec);
+    tree->Branch("pi_vy", &best_pi_vy_vec);
+    tree->Branch("pi_vz", &best_pi_vz_vec);
+    tree->Branch("pi_p", &best_pi_p_vec);
+    tree->Branch("pi_pt", &best_pi_pt_vec);
+    tree->Branch("pi_px", &best_pi_px_vec);
+    tree->Branch("pi_py", &best_pi_py_vec);
+    tree->Branch("pi_pz", &best_pi_pz_vec);
 
-    match_Ds_ETA_vec.push_back(match_Ds_ETA);
-    match_Ds_PHI_vec.push_back(match_Ds_PHI);
-    match_Ds_P_vec.push_back(match_Ds_P);
-    match_Ds_PT_vec.push_back(match_Ds_PT);
-    match_Ds_PX_vec.push_back(match_Ds_PX);
-    match_Ds_PY_vec.push_back(match_Ds_PY);
-    match_Ds_PZ_vec.push_back(match_Ds_PZ);
-    match_Ds_M_vec.push_back(match_Ds_M);
+    tree->Branch("phi_eta", &best_phi_eta_vec);
+    tree->Branch("phi_phi", &best_phi_phi_vec);
+    tree->Branch("phi_p", &best_phi_p_vec);
+    tree->Branch("phi_pt", &best_phi_pt_vec);
+    tree->Branch("phi_px", &best_phi_px_vec);
+    tree->Branch("phi_py", &best_phi_py_vec);
+    tree->Branch("phi_pz", &best_phi_pz_vec);
+    tree->Branch("phi_invm", &best_phi_invm_vec);
 
-    match_Kp_PP_vec.push_back(match_Kp_PP);
-    match_Kp_PL_vec.push_back(match_Kp_PL);
-    match_Km_PP_vec.push_back(match_Km_PP);
-    match_Km_PL_vec.push_back(match_Km_PL);
+    tree->Branch("Ds_eta", &best_Ds_eta_vec);
+    tree->Branch("Ds_phi", &best_Ds_phi_vec);
+    tree->Branch("Ds_p", &best_Ds_p_vec);
+    tree->Branch("Ds_pt", &best_Ds_pt_vec);
+    tree->Branch("Ds_px", &best_Ds_px_vec);
+    tree->Branch("Ds_py", &best_Ds_py_vec);
+    tree->Branch("Ds_pz", &best_Ds_pz_vec);
+    tree->Branch("Ds_invm", &best_Ds_invm_vec);
 
-    match_phi_PP_vec.push_back(match_phi_PP);
-    match_phi_PL_vec.push_back(match_phi_PL);
-    match_pi_PP_vec.push_back(match_pi_PP);
-    match_pi_PL_vec.push_back(match_pi_PL);
+    tree->Branch("Kp_pp", &best_Kp_pp_vec);
+    tree->Branch("Kp_pl", &best_Kp_pl_vec);
+    tree->Branch("Km_pp", &best_Km_pp_vec);
+    tree->Branch("Km_pl", &best_Km_pl_vec);
 
-    match_dR_Kp_Km_vec.push_back(match_dR_Kp_Km);
-    match_dR_Kp_phi_vec.push_back(match_dR_Kp_phi);
-    match_dR_Km_phi_vec.push_back(match_dR_Km_phi);
-    match_dR_Kp_pi_vec.push_back(match_dR_Kp_pi);
-    match_dR_Km_pi_vec.push_back(match_dR_Km_pi);
-    match_dR_pi_phi_vec.push_back(match_dR_pi_phi);
-    match_dR_Kp_Ds_vec.push_back(match_dR_Kp_Ds);
-    match_dR_Km_Ds_vec.push_back(match_dR_Km_Ds);
-    match_dR_phi_Ds_vec.push_back(match_dR_phi_Ds);
-    match_dR_pi_Ds_vec.push_back(match_dR_pi_Ds);
+    tree->Branch("phi_pp", &best_phi_pp_vec);
+    tree->Branch("phi_pl", &best_phi_pl_vec);
+    tree->Branch("pi_pp", &best_pi_pp_vec);
+    tree->Branch("pi_pl", &best_pi_pl_vec);
 
-    match_dxy_Kp_Km_vec.push_back(match_dxy_Kp_Km);
-    match_dxy_Kp_phi_vec.push_back(match_dxy_Kp_phi);
-    match_dxy_Km_phi_vec.push_back(match_dxy_Km_phi);
-    match_dxy_Kp_pi_vec.push_back(match_dxy_Kp_pi);
-    match_dxy_Km_pi_vec.push_back(match_dxy_Km_pi);
-    match_dxy_pi_phi_vec.push_back(match_dxy_pi_phi);
-    match_dxy_Kp_Ds_vec.push_back(match_dxy_Kp_Ds);
-    match_dxy_Km_Ds_vec.push_back(match_dxy_Km_Ds);
-    match_dxy_phi_Ds_vec.push_back(match_dxy_phi_Ds);
-    match_dxy_pi_Ds_vec.push_back(match_dxy_pi_Ds);
+    tree->Branch("dR_Kp_Km", &best_dR_Kp_Km_vec);
+    tree->Branch("dR_Kp_phi", &best_dR_Kp_phi_vec);
+    tree->Branch("dR_Km_phi", &best_dR_Km_phi_vec);
+    tree->Branch("dR_Kp_pi", &best_dR_Kp_pi_vec);
+    tree->Branch("dR_Km_pi", &best_dR_Km_pi_vec);
+    tree->Branch("dR_pi_phi", &best_dR_pi_phi_vec);
+    tree->Branch("dR_Kp_Ds", &best_dR_Kp_Ds_vec);
+    tree->Branch("dR_Km_Ds", &best_dR_Km_Ds_vec);
+    tree->Branch("dR_phi_Ds", &best_dR_phi_Ds_vec);
+    tree->Branch("dR_pi_Ds", &best_dR_pi_Ds_vec);
 
-    match_dz_Kp_Km_vec.push_back(match_dz_Kp_Km);
-    match_dz_Kp_phi_vec.push_back(match_dz_Kp_phi);
-    match_dz_Km_phi_vec.push_back(match_dz_Km_phi);
-    match_dz_Kp_pi_vec.push_back(match_dz_Kp_pi);
-    match_dz_Km_pi_vec.push_back(match_dz_Km_pi);
-    match_dz_pi_phi_vec.push_back(match_dz_pi_phi);
-    match_dz_Kp_Ds_vec.push_back(match_dz_Kp_Ds);
-    match_dz_Km_Ds_vec.push_back(match_dz_Km_Ds);
-    match_dz_phi_Ds_vec.push_back(match_dz_phi_Ds);
-    match_dz_pi_Ds_vec.push_back(match_dz_pi_Ds);
+    tree->Branch("dxy_Kp_Km", &best_dxy_Kp_Km_vec);
+    tree->Branch("dxy_Kp_phi", &best_dxy_Kp_phi_vec);
+    tree->Branch("dxy_Km_phi", &best_dxy_Km_phi_vec);
+    tree->Branch("dxy_Kp_pi", &best_dxy_Kp_pi_vec);
+    tree->Branch("dxy_Km_pi", &best_dxy_Km_pi_vec);
+    tree->Branch("dxy_pi_phi", &best_dxy_pi_phi_vec);
+    tree->Branch("dxy_Kp_Ds", &best_dxy_Kp_Ds_vec);
+    tree->Branch("dxy_Km_Ds", &best_dxy_Km_Ds_vec);
+    tree->Branch("dxy_phi_Ds", &best_dxy_phi_Ds_vec);
+    tree->Branch("dxy_pi_Ds", &best_dxy_pi_Ds_vec);
 
+    tree->Branch("dz_Kp_Km", &best_dz_Kp_Km_vec);
+    tree->Branch("dz_Kp_phi", &best_dz_Kp_phi_vec);
+    tree->Branch("dz_Km_phi", &best_dz_Km_phi_vec);
+    tree->Branch("dz_Kp_pi", &best_dz_Kp_pi_vec);
+    tree->Branch("dz_Km_pi", &best_dz_Km_pi_vec);
+    tree->Branch("dz_pi_phi", &best_dz_pi_phi_vec);
+    tree->Branch("dz_Kp_Ds", &best_dz_Kp_Ds_vec);
+    tree->Branch("dz_Km_Ds", &best_dz_Km_Ds_vec);
+    tree->Branch("dz_phi_Ds", &best_dz_phi_Ds_vec);
+    tree->Branch("dz_pi_Ds", &best_dz_pi_Ds_vec);
 
-    // Fit on phi
-    match_phiFit_CHI2_vec.push_back(match_phiFit_CHI2);
-    match_phiFit_NDOF_vec.push_back(match_phiFit_NDOF);
-    match_phiFit_CHI2NDOF_vec.push_back(match_phiFit_CHI2NDOF);
-    match_phiFit_ENDVX_X_vec.push_back(match_phiFit_ENDVX_X);
-    match_phiFit_ENDVX_Y_vec.push_back(match_phiFit_ENDVX_Y);
-    match_phiFit_ENDVX_Z_vec.push_back(match_phiFit_ENDVX_Z);
-    match_phiFit_ENDVX_XERR_vec.push_back(match_phiFit_ENDVX_XERR);
-    match_phiFit_ENDVX_YERR_vec.push_back(match_phiFit_ENDVX_YERR);
-    match_phiFit_ENDVX_ZERR_vec.push_back(match_phiFit_ENDVX_ZERR);
+    tree->Branch("phiFit_chi2", &best_phiFit_chi2_vec);
+    tree->Branch("phiFit_ndof", &best_phiFit_ndof_vec);
+    tree->Branch("phiFit_chi2ndof", &best_phiFit_chi2ndof_vec);
+    tree->Branch("phiFit_vx", &best_phiFit_vx_vec);
+    tree->Branch("phiFit_vy", &best_phiFit_vy_vec);
+    tree->Branch("phiFit_vz", &best_phiFit_vz_vec);
+    tree->Branch("phiFit_vxerr", &best_phiFit_vxerr_vec);
+    tree->Branch("phiFit_vyerr", &best_phiFit_vyerr_vec);
+    tree->Branch("phiFit_vzerr", &best_phiFit_vzerr_vec);
 
-    match_phiFit_Kp_ETA_vec.push_back(match_phiFit_Kp_ETA);
-    match_phiFit_Kp_PHI_vec.push_back(match_phiFit_Kp_PHI);
-    match_phiFit_Kp_P_vec.push_back(match_phiFit_Kp_P);
-    match_phiFit_Kp_PT_vec.push_back(match_phiFit_Kp_PT);
-    match_phiFit_Kp_PX_vec.push_back(match_phiFit_Kp_PX);
-    match_phiFit_Kp_PY_vec.push_back(match_phiFit_Kp_PY);
-    match_phiFit_Kp_PZ_vec.push_back(match_phiFit_Kp_PZ);
+    tree->Branch("phiFit_Kp_eta", &best_phiFit_Kp_eta_vec);
+    tree->Branch("phiFit_Kp_phi", &best_phiFit_Kp_phi_vec);
+    tree->Branch("phiFit_Kp_p", &best_phiFit_Kp_p_vec);
+    tree->Branch("phiFit_Kp_pt", &best_phiFit_Kp_pt_vec);
+    tree->Branch("phiFit_Kp_px", &best_phiFit_Kp_px_vec);
+    tree->Branch("phiFit_Kp_py", &best_phiFit_Kp_py_vec);
+    tree->Branch("phiFit_Kp_pz", &best_phiFit_Kp_pz_vec);
 
-    match_phiFit_Km_ETA_vec.push_back(match_phiFit_Km_ETA);
-    match_phiFit_Km_PHI_vec.push_back(match_phiFit_Km_PHI);
-    match_phiFit_Km_P_vec.push_back(match_phiFit_Km_P);
-    match_phiFit_Km_PT_vec.push_back(match_phiFit_Km_PT);
-    match_phiFit_Km_PX_vec.push_back(match_phiFit_Km_PX);
-    match_phiFit_Km_PY_vec.push_back(match_phiFit_Km_PY);
-    match_phiFit_Km_PZ_vec.push_back(match_phiFit_Km_PZ);
+    tree->Branch("phiFit_Km_eta", &best_phiFit_Km_eta_vec);
+    tree->Branch("phiFit_Km_phi", &best_phiFit_Km_phi_vec);
+    tree->Branch("phiFit_Km_p", &best_phiFit_Km_p_vec);
+    tree->Branch("phiFit_Km_pt", &best_phiFit_Km_pt_vec);
+    tree->Branch("phiFit_Km_px", &best_phiFit_Km_px_vec);
+    tree->Branch("phiFit_Km_py", &best_phiFit_Km_py_vec);
+    tree->Branch("phiFit_Km_pz", &best_phiFit_Km_pz_vec);
 
-    match_phiFit_pi_ETA_vec.push_back(match_phiFit_pi_ETA);
-    match_phiFit_pi_PHI_vec.push_back(match_phiFit_pi_PHI);
-    match_phiFit_pi_P_vec.push_back(match_phiFit_pi_P);
-    match_phiFit_pi_PT_vec.push_back(match_phiFit_pi_PT);
-    match_phiFit_pi_PX_vec.push_back(match_phiFit_pi_PX);
-    match_phiFit_pi_PY_vec.push_back(match_phiFit_pi_PY);
-    match_phiFit_pi_PZ_vec.push_back(match_phiFit_pi_PZ);
+    tree->Branch("phiFit_pi_eta", &best_phiFit_pi_eta_vec);
+    tree->Branch("phiFit_pi_phi", &best_phiFit_pi_phi_vec);
+    tree->Branch("phiFit_pi_p", &best_phiFit_pi_p_vec);
+    tree->Branch("phiFit_pi_pt", &best_phiFit_pi_pt_vec);
+    tree->Branch("phiFit_pi_px", &best_phiFit_pi_px_vec);
+    tree->Branch("phiFit_pi_py", &best_phiFit_pi_py_vec);
+    tree->Branch("phiFit_pi_pz", &best_phiFit_pi_pz_vec);
 
-    match_phiFit_phi_ETA_vec.push_back(match_phiFit_phi_ETA);
-    match_phiFit_phi_PHI_vec.push_back(match_phiFit_phi_PHI);
-    match_phiFit_phi_P_vec.push_back(match_phiFit_phi_P);
-    match_phiFit_phi_PT_vec.push_back(match_phiFit_phi_PT);
-    match_phiFit_phi_PX_vec.push_back(match_phiFit_phi_PX);
-    match_phiFit_phi_PY_vec.push_back(match_phiFit_phi_PY);
-    match_phiFit_phi_PZ_vec.push_back(match_phiFit_phi_PZ);
-    match_phiFit_phi_M_vec.push_back(match_phiFit_phi_M);
+    tree->Branch("phiFit_phi_eta", &best_phiFit_phi_eta_vec);
+    tree->Branch("phiFit_phi_phi", &best_phiFit_phi_phi_vec);
+    tree->Branch("phiFit_phi_p", &best_phiFit_phi_p_vec);
+    tree->Branch("phiFit_phi_pt", &best_phiFit_phi_pt_vec);
+    tree->Branch("phiFit_phi_px", &best_phiFit_phi_px_vec);
+    tree->Branch("phiFit_phi_py", &best_phiFit_phi_py_vec);
+    tree->Branch("phiFit_phi_pz", &best_phiFit_phi_pz_vec);
+    tree->Branch("phiFit_phi_invm", &best_phiFit_phi_invm_vec);
 
-    match_phiFit_Ds_ETA_vec.push_back(match_phiFit_Ds_ETA);
-    match_phiFit_Ds_PHI_vec.push_back(match_phiFit_Ds_PHI);
-    match_phiFit_Ds_P_vec.push_back(match_phiFit_Ds_P);
-    match_phiFit_Ds_PT_vec.push_back(match_phiFit_Ds_PT);
-    match_phiFit_Ds_PX_vec.push_back(match_phiFit_Ds_PX);
-    match_phiFit_Ds_PY_vec.push_back(match_phiFit_Ds_PY);
-    match_phiFit_Ds_PZ_vec.push_back(match_phiFit_Ds_PZ);
-    match_phiFit_Ds_M_vec.push_back(match_phiFit_Ds_M);
+    tree->Branch("phiFit_Ds_eta", &best_phiFit_Ds_eta_vec);
+    tree->Branch("phiFit_Ds_phi", &best_phiFit_Ds_phi_vec);
+    tree->Branch("phiFit_Ds_p", &best_phiFit_Ds_p_vec);
+    tree->Branch("phiFit_Ds_pt", &best_phiFit_Ds_pt_vec);
+    tree->Branch("phiFit_Ds_px", &best_phiFit_Ds_px_vec);
+    tree->Branch("phiFit_Ds_py", &best_phiFit_Ds_py_vec);
+    tree->Branch("phiFit_Ds_pz", &best_phiFit_Ds_pz_vec);
+    tree->Branch("phiFit_Ds_invm", &best_phiFit_Ds_invm_vec);
 
-    match_phiFit_Kp_PP_vec.push_back(match_phiFit_Kp_PP);
-    match_phiFit_Kp_PL_vec.push_back(match_phiFit_Kp_PL);
-    match_phiFit_Km_PP_vec.push_back(match_phiFit_Km_PP);
-    match_phiFit_Km_PL_vec.push_back(match_phiFit_Km_PL);
+    tree->Branch("phiFit_Kp_pp", &best_phiFit_Kp_pp_vec);
+    tree->Branch("phiFit_Kp_pl", &best_phiFit_Kp_pl_vec);
+    tree->Branch("phiFit_Km_pp", &best_phiFit_Km_pp_vec);
+    tree->Branch("phiFit_Km_pl", &best_phiFit_Km_pl_vec);
 
-    match_phiFit_phi_PP_vec.push_back(match_phiFit_phi_PP);
-    match_phiFit_phi_PL_vec.push_back(match_phiFit_phi_PL);
-    match_phiFit_pi_PP_vec.push_back(match_phiFit_pi_PP);
-    match_phiFit_pi_PL_vec.push_back(match_phiFit_pi_PL);
+    tree->Branch("phiFit_phi_pp", &best_phiFit_phi_pp_vec);
+    tree->Branch("phiFit_phi_pl", &best_phiFit_phi_pl_vec);
+    tree->Branch("phiFit_pi_pp", &best_phiFit_pi_pp_vec);
+    tree->Branch("phiFit_pi_pl", &best_phiFit_pi_pl_vec);
 
-    match_phiFit_dR_Kp_Km_vec.push_back(match_phiFit_dR_Kp_Km);
-    match_phiFit_dR_Kp_phi_vec.push_back(match_phiFit_dR_Kp_phi);
-    match_phiFit_dR_Km_phi_vec.push_back(match_phiFit_dR_Km_phi);
-    match_phiFit_dR_Kp_pi_vec.push_back(match_phiFit_dR_Kp_pi);
-    match_phiFit_dR_Km_pi_vec.push_back(match_phiFit_dR_Km_pi);
-    match_phiFit_dR_pi_phi_vec.push_back(match_phiFit_dR_pi_phi);
-    match_phiFit_dR_Kp_Ds_vec.push_back(match_phiFit_dR_Kp_Ds);
-    match_phiFit_dR_Km_Ds_vec.push_back(match_phiFit_dR_Km_Ds);
-    match_phiFit_dR_phi_Ds_vec.push_back(match_phiFit_dR_phi_Ds);
-    match_phiFit_dR_pi_Ds_vec.push_back(match_phiFit_dR_pi_Ds);
-
-    // Fit on Ds 
-    match_DsFit_CHI2_vec.push_back(match_DsFit_CHI2);
-    match_DsFit_NDOF_vec.push_back(match_DsFit_NDOF);
-    match_DsFit_CHI2NDOF_vec.push_back(match_DsFit_CHI2NDOF);
-    match_DsFit_ENDVX_X_vec.push_back(match_DsFit_ENDVX_X);
-    match_DsFit_ENDVX_Y_vec.push_back(match_DsFit_ENDVX_Y);
-    match_DsFit_ENDVX_Z_vec.push_back(match_DsFit_ENDVX_Z);
-    match_DsFit_ENDVX_XERR_vec.push_back(match_DsFit_ENDVX_XERR);
-    match_DsFit_ENDVX_YERR_vec.push_back(match_DsFit_ENDVX_YERR);
-    match_DsFit_ENDVX_ZERR_vec.push_back(match_DsFit_ENDVX_ZERR);
-
-    match_DsFit_Kp_ETA_vec.push_back(match_DsFit_Kp_ETA);
-    match_DsFit_Kp_PHI_vec.push_back(match_DsFit_Kp_PHI);
-    match_DsFit_Kp_P_vec.push_back(match_DsFit_Kp_P);
-    match_DsFit_Kp_PT_vec.push_back(match_DsFit_Kp_PT);
-    match_DsFit_Kp_PX_vec.push_back(match_DsFit_Kp_PX);
-    match_DsFit_Kp_PY_vec.push_back(match_DsFit_Kp_PY);
-    match_DsFit_Kp_PZ_vec.push_back(match_DsFit_Kp_PZ);
-
-    match_DsFit_Km_ETA_vec.push_back(match_DsFit_Km_ETA);
-    match_DsFit_Km_PHI_vec.push_back(match_DsFit_Km_PHI);
-    match_DsFit_Km_P_vec.push_back(match_DsFit_Km_P);
-    match_DsFit_Km_PT_vec.push_back(match_DsFit_Km_PT);
-    match_DsFit_Km_PX_vec.push_back(match_DsFit_Km_PX);
-    match_DsFit_Km_PY_vec.push_back(match_DsFit_Km_PY);
-    match_DsFit_Km_PZ_vec.push_back(match_DsFit_Km_PZ);
-
-    match_DsFit_pi_ETA_vec.push_back(match_DsFit_pi_ETA);
-    match_DsFit_pi_PHI_vec.push_back(match_DsFit_pi_PHI);
-    match_DsFit_pi_P_vec.push_back(match_DsFit_pi_P);
-    match_DsFit_pi_PT_vec.push_back(match_DsFit_pi_PT);
-    match_DsFit_pi_PX_vec.push_back(match_DsFit_pi_PX);
-    match_DsFit_pi_PY_vec.push_back(match_DsFit_pi_PY);
-    match_DsFit_pi_PZ_vec.push_back(match_DsFit_pi_PZ);
-
-    match_DsFit_phi_ETA_vec.push_back(match_DsFit_phi_ETA);
-    match_DsFit_phi_PHI_vec.push_back(match_DsFit_phi_PHI);
-    match_DsFit_phi_P_vec.push_back(match_DsFit_phi_P);
-    match_DsFit_phi_PT_vec.push_back(match_DsFit_phi_PT);
-    match_DsFit_phi_PX_vec.push_back(match_DsFit_phi_PX);
-    match_DsFit_phi_PY_vec.push_back(match_DsFit_phi_PY);
-    match_DsFit_phi_PZ_vec.push_back(match_DsFit_phi_PZ);
-    match_DsFit_phi_M_vec.push_back(match_DsFit_phi_M);
-
-    match_DsFit_Ds_ETA_vec.push_back(match_DsFit_Ds_ETA);
-    match_DsFit_Ds_PHI_vec.push_back(match_DsFit_Ds_PHI);
-    match_DsFit_Ds_P_vec.push_back(match_DsFit_Ds_P);
-    match_DsFit_Ds_PT_vec.push_back(match_DsFit_Ds_PT);
-    match_DsFit_Ds_PX_vec.push_back(match_DsFit_Ds_PX);
-    match_DsFit_Ds_PY_vec.push_back(match_DsFit_Ds_PY);
-    match_DsFit_Ds_PZ_vec.push_back(match_DsFit_Ds_PZ);
-    match_DsFit_Ds_M_vec.push_back(match_DsFit_Ds_M);
-
-    match_DsFit_Kp_PP_vec.push_back(match_DsFit_Kp_PP);
-    match_DsFit_Kp_PL_vec.push_back(match_DsFit_Kp_PL);
-    match_DsFit_Km_PP_vec.push_back(match_DsFit_Km_PP);
-    match_DsFit_Km_PL_vec.push_back(match_DsFit_Km_PL);
-
-    match_DsFit_phi_PP_vec.push_back(match_DsFit_phi_PP);
-    match_DsFit_phi_PL_vec.push_back(match_DsFit_phi_PL);
-    match_DsFit_pi_PP_vec.push_back(match_DsFit_pi_PP);
-    match_DsFit_pi_PL_vec.push_back(match_DsFit_pi_PL);
-
-    match_DsFit_dR_Kp_Km_vec.push_back(match_DsFit_dR_Kp_Km);
-    match_DsFit_dR_Kp_phi_vec.push_back(match_DsFit_dR_Kp_phi);
-    match_DsFit_dR_Km_phi_vec.push_back(match_DsFit_dR_Km_phi);
-    match_DsFit_dR_Kp_pi_vec.push_back(match_DsFit_dR_Kp_pi);
-    match_DsFit_dR_Km_pi_vec.push_back(match_DsFit_dR_Km_pi);
-    match_DsFit_dR_pi_phi_vec.push_back(match_DsFit_dR_pi_phi);
-    match_DsFit_dR_Kp_Ds_vec.push_back(match_DsFit_dR_Kp_Ds);
-    match_DsFit_dR_Km_Ds_vec.push_back(match_DsFit_dR_Km_Ds);
-    match_DsFit_dR_phi_Ds_vec.push_back(match_DsFit_dR_phi_Ds);
-    match_DsFit_dR_pi_Ds_vec.push_back(match_DsFit_dR_pi_Ds);
-
-    match_DsFit_Mconstraint_Ds_M_vec.push_back(match_DsFit_Mconstraint_Ds_M);
-
-}
-
-void RecoTree::Match_FD_IP_Fill_Vector()
-{
-    match_Ds_FDxy_vec.push_back(match_Ds_FDxy);
-    match_Ds_FDxy_Err_vec.push_back(match_Ds_FDxy_Err);
-    match_Ds_FDxy_Chi2_vec.push_back(match_Ds_FDxy_Chi2);
-    match_Ds_FDz_vec.push_back(match_Ds_FDz);
-    match_Ds_FDz_Err_vec.push_back(match_Ds_FDz_Err);
-    match_Ds_FDz_Chi2_vec.push_back(match_Ds_FDz_Chi2);
-    match_Ds_FD_vec.push_back(match_Ds_FD);
-    match_Ds_FD_Err_vec.push_back(match_Ds_FD_Err);
-    match_Ds_FD_Chi2_vec.push_back(match_Ds_FD_Chi2);
-    match_Ds_DIRA_angle_vec.push_back(match_Ds_DIRA_angle);
-    match_Ds_DIRA_vec.push_back(match_Ds_DIRA);
-    match_Kp_IP_vec.push_back(match_Kp_IP);
-    match_Kp_IP_Err_vec.push_back(match_Kp_IP_Err);
-    match_Kp_IP_Chi2_vec.push_back(match_Kp_IP_Chi2);
-    match_Km_IP_vec.push_back(match_Km_IP);
-    match_Km_IP_Err_vec.push_back(match_Km_IP_Err);
-    match_Km_IP_Chi2_vec.push_back(match_Km_IP_Chi2);
-    match_pi_IP_vec.push_back(match_pi_IP);
-    match_pi_IP_Err_vec.push_back(match_pi_IP_Err);
-    match_pi_IP_Chi2_vec.push_back(match_pi_IP_Chi2);
-}
-
-void RecoTree::Best_Fill_Vector(int idxmax)
-{
-    best_Kp_ETA_vec.push_back(Kp_ETA_vec[idxmax]);
-    best_Kp_PHI_vec.push_back(Kp_PHI_vec[idxmax]);
-    best_Kp_ORIVX_X_vec.push_back(Kp_ORIVX_X_vec[idxmax]);
-    best_Kp_ORIVX_Y_vec.push_back(Kp_ORIVX_Y_vec[idxmax]);
-    best_Kp_ORIVX_Z_vec.push_back(Kp_ORIVX_Z_vec[idxmax]);
-    best_Kp_P_vec.push_back(Kp_P_vec[idxmax]);
-    best_Kp_PT_vec.push_back(Kp_PT_vec[idxmax]);
-    best_Kp_PX_vec.push_back(Kp_PX_vec[idxmax]);
-    best_Kp_PY_vec.push_back(Kp_PY_vec[idxmax]);
-    best_Kp_PZ_vec.push_back(Kp_PZ_vec[idxmax]);
-
-    best_Km_ETA_vec.push_back(Km_ETA_vec[idxmax]);
-    best_Km_PHI_vec.push_back(Km_PHI_vec[idxmax]);
-    best_Km_ORIVX_X_vec.push_back(Km_ORIVX_X_vec[idxmax]);
-    best_Km_ORIVX_Y_vec.push_back(Km_ORIVX_Y_vec[idxmax]);
-    best_Km_ORIVX_Z_vec.push_back(Km_ORIVX_Z_vec[idxmax]);
-    best_Km_P_vec.push_back(Km_P_vec[idxmax]);
-    best_Km_PT_vec.push_back(Km_PT_vec[idxmax]);
-    best_Km_PX_vec.push_back(Km_PX_vec[idxmax]);
-    best_Km_PY_vec.push_back(Km_PY_vec[idxmax]);
-    best_Km_PZ_vec.push_back(Km_PZ_vec[idxmax]);
-
-    best_pi_ETA_vec.push_back(pi_ETA_vec[idxmax]);
-    best_pi_PHI_vec.push_back(pi_PHI_vec[idxmax]);
-    best_pi_ORIVX_X_vec.push_back(pi_ORIVX_X_vec[idxmax]);
-    best_pi_ORIVX_Y_vec.push_back(pi_ORIVX_Y_vec[idxmax]);
-    best_pi_ORIVX_Z_vec.push_back(pi_ORIVX_Z_vec[idxmax]);
-    best_pi_P_vec.push_back(pi_P_vec[idxmax]);
-    best_pi_PT_vec.push_back(pi_PT_vec[idxmax]);
-    best_pi_PX_vec.push_back(pi_PX_vec[idxmax]);
-    best_pi_PY_vec.push_back(pi_PY_vec[idxmax]);
-    best_pi_PZ_vec.push_back(pi_PZ_vec[idxmax]);
-
-    best_phi_ETA_vec.push_back(phi_ETA_vec[idxmax]);
-    best_phi_PHI_vec.push_back(phi_PHI_vec[idxmax]);
-    best_phi_P_vec.push_back(phi_P_vec[idxmax]);
-    best_phi_PT_vec.push_back(phi_PT_vec[idxmax]);
-    best_phi_PX_vec.push_back(phi_PX_vec[idxmax]);
-    best_phi_PY_vec.push_back(phi_PY_vec[idxmax]);
-    best_phi_PZ_vec.push_back(phi_PZ_vec[idxmax]);
-    best_phi_M_vec.push_back(phi_M_vec[idxmax]);
-
-    best_Ds_ETA_vec.push_back(Ds_ETA_vec[idxmax]);
-    best_Ds_PHI_vec.push_back(Ds_PHI_vec[idxmax]);
-    best_Ds_P_vec.push_back(Ds_P_vec[idxmax]);
-    best_Ds_PT_vec.push_back(Ds_PT_vec[idxmax]);
-    best_Ds_PX_vec.push_back(Ds_PX_vec[idxmax]);
-    best_Ds_PY_vec.push_back(Ds_PY_vec[idxmax]);
-    best_Ds_PZ_vec.push_back(Ds_PZ_vec[idxmax]);
-    best_Ds_M_vec.push_back(Ds_M_vec[idxmax]);
-
-    best_Kp_PP_vec.push_back(Kp_PP_vec[idxmax]);
-    best_Kp_PL_vec.push_back(Kp_PL_vec[idxmax]);
-    best_Km_PP_vec.push_back(Km_PP_vec[idxmax]);
-    best_Km_PL_vec.push_back(Km_PL_vec[idxmax]);
-
-    best_phi_PP_vec.push_back(phi_PP_vec[idxmax]);
-    best_phi_PL_vec.push_back(phi_PL_vec[idxmax]);
-    best_pi_PP_vec.push_back(pi_PP_vec[idxmax]);
-    best_pi_PL_vec.push_back(pi_PL_vec[idxmax]);
-
-    best_dR_Kp_Km_vec.push_back(dR_Kp_Km_vec[idxmax]);
-    best_dR_Kp_phi_vec.push_back(dR_Kp_phi_vec[idxmax]);
-    best_dR_Km_phi_vec.push_back(dR_Km_phi_vec[idxmax]);
-    best_dR_Kp_pi_vec.push_back(dR_Kp_pi_vec[idxmax]);
-    best_dR_Km_pi_vec.push_back(dR_Km_pi_vec[idxmax]);
-    best_dR_pi_phi_vec.push_back(dR_pi_phi_vec[idxmax]);
-    best_dR_Kp_Ds_vec.push_back(dR_Kp_Ds_vec[idxmax]);
-    best_dR_Km_Ds_vec.push_back(dR_Km_Ds_vec[idxmax]);
-    best_dR_phi_Ds_vec.push_back(dR_phi_Ds_vec[idxmax]);
-    best_dR_pi_Ds_vec.push_back(dR_pi_Ds_vec[idxmax]);
-
-    best_dxy_Kp_Km_vec.push_back(dxy_Kp_Km_vec[idxmax]);
-    best_dxy_Kp_phi_vec.push_back(dxy_Kp_phi_vec[idxmax]);
-    best_dxy_Km_phi_vec.push_back(dxy_Km_phi_vec[idxmax]);
-    best_dxy_Kp_pi_vec.push_back(dxy_Kp_pi_vec[idxmax]);
-    best_dxy_Km_pi_vec.push_back(dxy_Km_pi_vec[idxmax]);
-    best_dxy_pi_phi_vec.push_back(dxy_pi_phi_vec[idxmax]);
-    best_dxy_Kp_Ds_vec.push_back(dxy_Kp_Ds_vec[idxmax]);
-    best_dxy_Km_Ds_vec.push_back(dxy_Km_Ds_vec[idxmax]);
-    best_dxy_phi_Ds_vec.push_back(dxy_phi_Ds_vec[idxmax]);
-    best_dxy_pi_Ds_vec.push_back(dxy_pi_Ds_vec[idxmax]);
-
-    best_dz_Kp_Km_vec.push_back(dz_Kp_Km_vec[idxmax]);
-    best_dz_Kp_phi_vec.push_back(dz_Kp_phi_vec[idxmax]);
-    best_dz_Km_phi_vec.push_back(dz_Km_phi_vec[idxmax]);
-    best_dz_Kp_pi_vec.push_back(dz_Kp_pi_vec[idxmax]);
-    best_dz_Km_pi_vec.push_back(dz_Km_pi_vec[idxmax]);
-    best_dz_pi_phi_vec.push_back(dz_pi_phi_vec[idxmax]);
-    best_dz_Kp_Ds_vec.push_back(dz_Kp_Ds_vec[idxmax]);
-    best_dz_Km_Ds_vec.push_back(dz_Km_Ds_vec[idxmax]);
-    best_dz_phi_Ds_vec.push_back(dz_phi_Ds_vec[idxmax]);
-    best_dz_pi_Ds_vec.push_back(dz_pi_Ds_vec[idxmax]);
-
-
-    // Fit on phi
-    best_phiFit_CHI2_vec.push_back(phiFit_CHI2_vec[idxmax]);
-    best_phiFit_NDOF_vec.push_back(phiFit_NDOF_vec[idxmax]);
-    best_phiFit_CHI2NDOF_vec.push_back(phiFit_CHI2NDOF_vec[idxmax]);
-    best_phiFit_ENDVX_X_vec.push_back(phiFit_ENDVX_X_vec[idxmax]);
-    best_phiFit_ENDVX_Y_vec.push_back(phiFit_ENDVX_Y_vec[idxmax]);
-    best_phiFit_ENDVX_Z_vec.push_back(phiFit_ENDVX_Z_vec[idxmax]);
-    best_phiFit_ENDVX_XERR_vec.push_back(phiFit_ENDVX_XERR_vec[idxmax]);
-    best_phiFit_ENDVX_YERR_vec.push_back(phiFit_ENDVX_YERR_vec[idxmax]);
-    best_phiFit_ENDVX_ZERR_vec.push_back(phiFit_ENDVX_ZERR_vec[idxmax]);
-
-    best_phiFit_Kp_ETA_vec.push_back(phiFit_Kp_ETA_vec[idxmax]);
-    best_phiFit_Kp_PHI_vec.push_back(phiFit_Kp_PHI_vec[idxmax]);
-    best_phiFit_Kp_P_vec.push_back(phiFit_Kp_P_vec[idxmax]);
-    best_phiFit_Kp_PT_vec.push_back(phiFit_Kp_PT_vec[idxmax]);
-    best_phiFit_Kp_PX_vec.push_back(phiFit_Kp_PX_vec[idxmax]);
-    best_phiFit_Kp_PY_vec.push_back(phiFit_Kp_PY_vec[idxmax]);
-    best_phiFit_Kp_PZ_vec.push_back(phiFit_Kp_PZ_vec[idxmax]);
-
-    best_phiFit_Km_ETA_vec.push_back(phiFit_Km_ETA_vec[idxmax]);
-    best_phiFit_Km_PHI_vec.push_back(phiFit_Km_PHI_vec[idxmax]);
-    best_phiFit_Km_P_vec.push_back(phiFit_Km_P_vec[idxmax]);
-    best_phiFit_Km_PT_vec.push_back(phiFit_Km_PT_vec[idxmax]);
-    best_phiFit_Km_PX_vec.push_back(phiFit_Km_PX_vec[idxmax]);
-    best_phiFit_Km_PY_vec.push_back(phiFit_Km_PY_vec[idxmax]);
-    best_phiFit_Km_PZ_vec.push_back(phiFit_Km_PZ_vec[idxmax]);
-
-    best_phiFit_pi_ETA_vec.push_back(phiFit_pi_ETA_vec[idxmax]);
-    best_phiFit_pi_PHI_vec.push_back(phiFit_pi_PHI_vec[idxmax]);
-    best_phiFit_pi_P_vec.push_back(phiFit_pi_P_vec[idxmax]);
-    best_phiFit_pi_PT_vec.push_back(phiFit_pi_PT_vec[idxmax]);
-    best_phiFit_pi_PX_vec.push_back(phiFit_pi_PX_vec[idxmax]);
-    best_phiFit_pi_PY_vec.push_back(phiFit_pi_PY_vec[idxmax]);
-    best_phiFit_pi_PZ_vec.push_back(phiFit_pi_PZ_vec[idxmax]);
-
-    best_phiFit_phi_ETA_vec.push_back(phiFit_phi_ETA_vec[idxmax]);
-    best_phiFit_phi_PHI_vec.push_back(phiFit_phi_PHI_vec[idxmax]);
-    best_phiFit_phi_P_vec.push_back(phiFit_phi_P_vec[idxmax]);
-    best_phiFit_phi_PT_vec.push_back(phiFit_phi_PT_vec[idxmax]);
-    best_phiFit_phi_PX_vec.push_back(phiFit_phi_PX_vec[idxmax]);
-    best_phiFit_phi_PY_vec.push_back(phiFit_phi_PY_vec[idxmax]);
-    best_phiFit_phi_PZ_vec.push_back(phiFit_phi_PZ_vec[idxmax]);
-    best_phiFit_phi_M_vec.push_back(phiFit_phi_M_vec[idxmax]);
-
-    best_phiFit_Ds_ETA_vec.push_back(phiFit_Ds_ETA_vec[idxmax]);
-    best_phiFit_Ds_PHI_vec.push_back(phiFit_Ds_PHI_vec[idxmax]);
-    best_phiFit_Ds_P_vec.push_back(phiFit_Ds_P_vec[idxmax]);
-    best_phiFit_Ds_PT_vec.push_back(phiFit_Ds_PT_vec[idxmax]);
-    best_phiFit_Ds_PX_vec.push_back(phiFit_Ds_PX_vec[idxmax]);
-    best_phiFit_Ds_PY_vec.push_back(phiFit_Ds_PY_vec[idxmax]);
-    best_phiFit_Ds_PZ_vec.push_back(phiFit_Ds_PZ_vec[idxmax]);
-    best_phiFit_Ds_M_vec.push_back(phiFit_Ds_M_vec[idxmax]);
-
-    best_phiFit_Kp_PP_vec.push_back(phiFit_Kp_PP_vec[idxmax]);
-    best_phiFit_Kp_PL_vec.push_back(phiFit_Kp_PL_vec[idxmax]);
-    best_phiFit_Km_PP_vec.push_back(phiFit_Km_PP_vec[idxmax]);
-    best_phiFit_Km_PL_vec.push_back(phiFit_Km_PL_vec[idxmax]);
-
-    best_phiFit_phi_PP_vec.push_back(phiFit_phi_PP_vec[idxmax]);
-    best_phiFit_phi_PL_vec.push_back(phiFit_phi_PL_vec[idxmax]);
-    best_phiFit_pi_PP_vec.push_back(phiFit_pi_PP_vec[idxmax]);
-    best_phiFit_pi_PL_vec.push_back(phiFit_pi_PL_vec[idxmax]);
-
-    best_phiFit_dR_Kp_Km_vec.push_back(phiFit_dR_Kp_Km_vec[idxmax]);
-    best_phiFit_dR_Kp_phi_vec.push_back(phiFit_dR_Kp_phi_vec[idxmax]);
-    best_phiFit_dR_Km_phi_vec.push_back(phiFit_dR_Km_phi_vec[idxmax]);
-    best_phiFit_dR_Kp_pi_vec.push_back(phiFit_dR_Kp_pi_vec[idxmax]);
-    best_phiFit_dR_Km_pi_vec.push_back(phiFit_dR_Km_pi_vec[idxmax]);
-    best_phiFit_dR_pi_phi_vec.push_back(phiFit_dR_pi_phi_vec[idxmax]);
-    best_phiFit_dR_Kp_Ds_vec.push_back(phiFit_dR_Kp_Ds_vec[idxmax]);
-    best_phiFit_dR_Km_Ds_vec.push_back(phiFit_dR_Km_Ds_vec[idxmax]);
-    best_phiFit_dR_phi_Ds_vec.push_back(phiFit_dR_phi_Ds_vec[idxmax]);
-    best_phiFit_dR_pi_Ds_vec.push_back(phiFit_dR_pi_Ds_vec[idxmax]);
-
-    // Fit on Ds 
-    best_DsFit_CHI2_vec.push_back(DsFit_CHI2_vec[idxmax]);
-    best_DsFit_NDOF_vec.push_back(DsFit_NDOF_vec[idxmax]);
-    best_DsFit_CHI2NDOF_vec.push_back(DsFit_CHI2NDOF_vec[idxmax]);
-    best_DsFit_ENDVX_X_vec.push_back(DsFit_ENDVX_X_vec[idxmax]);
-    best_DsFit_ENDVX_Y_vec.push_back(DsFit_ENDVX_Y_vec[idxmax]);
-    best_DsFit_ENDVX_Z_vec.push_back(DsFit_ENDVX_Z_vec[idxmax]);
-    best_DsFit_ENDVX_XERR_vec.push_back(DsFit_ENDVX_XERR_vec[idxmax]);
-    best_DsFit_ENDVX_YERR_vec.push_back(DsFit_ENDVX_YERR_vec[idxmax]);
-    best_DsFit_ENDVX_ZERR_vec.push_back(DsFit_ENDVX_ZERR_vec[idxmax]);
-
-    best_DsFit_Kp_ETA_vec.push_back(DsFit_Kp_ETA_vec[idxmax]);
-    best_DsFit_Kp_PHI_vec.push_back(DsFit_Kp_PHI_vec[idxmax]);
-    best_DsFit_Kp_P_vec.push_back(DsFit_Kp_P_vec[idxmax]);
-    best_DsFit_Kp_PT_vec.push_back(DsFit_Kp_PT_vec[idxmax]);
-    best_DsFit_Kp_PX_vec.push_back(DsFit_Kp_PX_vec[idxmax]);
-    best_DsFit_Kp_PY_vec.push_back(DsFit_Kp_PY_vec[idxmax]);
-    best_DsFit_Kp_PZ_vec.push_back(DsFit_Kp_PZ_vec[idxmax]);
-
-    best_DsFit_Km_ETA_vec.push_back(DsFit_Km_ETA_vec[idxmax]);
-    best_DsFit_Km_PHI_vec.push_back(DsFit_Km_PHI_vec[idxmax]);
-    best_DsFit_Km_P_vec.push_back(DsFit_Km_P_vec[idxmax]);
-    best_DsFit_Km_PT_vec.push_back(DsFit_Km_PT_vec[idxmax]);
-    best_DsFit_Km_PX_vec.push_back(DsFit_Km_PX_vec[idxmax]);
-    best_DsFit_Km_PY_vec.push_back(DsFit_Km_PY_vec[idxmax]);
-    best_DsFit_Km_PZ_vec.push_back(DsFit_Km_PZ_vec[idxmax]);
-
-    best_DsFit_pi_ETA_vec.push_back(DsFit_pi_ETA_vec[idxmax]);
-    best_DsFit_pi_PHI_vec.push_back(DsFit_pi_PHI_vec[idxmax]);
-    best_DsFit_pi_P_vec.push_back(DsFit_pi_P_vec[idxmax]);
-    best_DsFit_pi_PT_vec.push_back(DsFit_pi_PT_vec[idxmax]);
-    best_DsFit_pi_PX_vec.push_back(DsFit_pi_PX_vec[idxmax]);
-    best_DsFit_pi_PY_vec.push_back(DsFit_pi_PY_vec[idxmax]);
-    best_DsFit_pi_PZ_vec.push_back(DsFit_pi_PZ_vec[idxmax]);
-
-    best_DsFit_phi_ETA_vec.push_back(DsFit_phi_ETA_vec[idxmax]);
-    best_DsFit_phi_PHI_vec.push_back(DsFit_phi_PHI_vec[idxmax]);
-    best_DsFit_phi_P_vec.push_back(DsFit_phi_P_vec[idxmax]);
-    best_DsFit_phi_PT_vec.push_back(DsFit_phi_PT_vec[idxmax]);
-    best_DsFit_phi_PX_vec.push_back(DsFit_phi_PX_vec[idxmax]);
-    best_DsFit_phi_PY_vec.push_back(DsFit_phi_PY_vec[idxmax]);
-    best_DsFit_phi_PZ_vec.push_back(DsFit_phi_PZ_vec[idxmax]);
-    best_DsFit_phi_M_vec.push_back(DsFit_phi_M_vec[idxmax]);
-
-    best_DsFit_Ds_ETA_vec.push_back(DsFit_Ds_ETA_vec[idxmax]);
-    best_DsFit_Ds_PHI_vec.push_back(DsFit_Ds_PHI_vec[idxmax]);
-    best_DsFit_Ds_P_vec.push_back(DsFit_Ds_P_vec[idxmax]);
-    best_DsFit_Ds_PT_vec.push_back(DsFit_Ds_PT_vec[idxmax]);
-    best_DsFit_Ds_PX_vec.push_back(DsFit_Ds_PX_vec[idxmax]);
-    best_DsFit_Ds_PY_vec.push_back(DsFit_Ds_PY_vec[idxmax]);
-    best_DsFit_Ds_PZ_vec.push_back(DsFit_Ds_PZ_vec[idxmax]);
-    best_DsFit_Ds_M_vec.push_back(DsFit_Ds_M_vec[idxmax]);
-
-    best_DsFit_Kp_PP_vec.push_back(DsFit_Kp_PP_vec[idxmax]);
-    best_DsFit_Kp_PL_vec.push_back(DsFit_Kp_PL_vec[idxmax]);
-    best_DsFit_Km_PP_vec.push_back(DsFit_Km_PP_vec[idxmax]);
-    best_DsFit_Km_PL_vec.push_back(DsFit_Km_PL_vec[idxmax]);
-
-    best_DsFit_phi_PP_vec.push_back(DsFit_phi_PP_vec[idxmax]);
-    best_DsFit_phi_PL_vec.push_back(DsFit_phi_PL_vec[idxmax]);
-    best_DsFit_pi_PP_vec.push_back(DsFit_pi_PP_vec[idxmax]);
-    best_DsFit_pi_PL_vec.push_back(DsFit_pi_PL_vec[idxmax]);
-
-    best_DsFit_dR_Kp_Km_vec.push_back(DsFit_dR_Kp_Km_vec[idxmax]);
-    best_DsFit_dR_Kp_phi_vec.push_back(DsFit_dR_Kp_phi_vec[idxmax]);
-    best_DsFit_dR_Km_phi_vec.push_back(DsFit_dR_Km_phi_vec[idxmax]);
-    best_DsFit_dR_Kp_pi_vec.push_back(DsFit_dR_Kp_pi_vec[idxmax]);
-    best_DsFit_dR_Km_pi_vec.push_back(DsFit_dR_Km_pi_vec[idxmax]);
-    best_DsFit_dR_pi_phi_vec.push_back(DsFit_dR_pi_phi_vec[idxmax]);
-    best_DsFit_dR_Kp_Ds_vec.push_back(DsFit_dR_Kp_Ds_vec[idxmax]);
-    best_DsFit_dR_Km_Ds_vec.push_back(DsFit_dR_Km_Ds_vec[idxmax]);
-    best_DsFit_dR_phi_Ds_vec.push_back(DsFit_dR_phi_Ds_vec[idxmax]);
-    best_DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds_vec[idxmax]);
-
-    best_DsFit_Mconstraint_Ds_M_vec.push_back(DsFit_Mconstraint_Ds_M_vec[idxmax]);
-
-    best_match_entry_vec.push_back(match_entry_vec[idxmax]);
+    tree->Branch("phiFit_dR_Kp_Km", &best_phiFit_dR_Kp_Km_vec);
+    tree->Branch("phiFit_dR_Kp_phi", &best_phiFit_dR_Kp_phi_vec);
+    tree->Branch("phiFit_dR_Km_phi", &best_phiFit_dR_Km_phi_vec);
+    tree->Branch("phiFit_dR_Kp_pi", &best_phiFit_dR_Kp_pi_vec);
+    tree->Branch("phiFit_dR_Km_pi", &best_phiFit_dR_Km_pi_vec);
+    tree->Branch("phiFit_dR_pi_phi", &best_phiFit_dR_pi_phi_vec);
+    tree->Branch("phiFit_dR_Kp_Ds", &best_phiFit_dR_Kp_Ds_vec);
+    tree->Branch("phiFit_dR_Km_Ds", &best_phiFit_dR_Km_Ds_vec);
+    tree->Branch("phiFit_dR_phi_Ds", &best_phiFit_dR_phi_Ds_vec);
+    tree->Branch("phiFit_dR_pi_Ds", &best_phiFit_dR_pi_Ds_vec);
     
-    best_Ds_FDxy_vec.push_back(Ds_FDxy_vec[idxmax]);
-    best_Ds_FDxy_Err_vec.push_back(Ds_FDxy_Err_vec[idxmax]);
-    best_Ds_FDxy_Chi2_vec.push_back(Ds_FDxy_Chi2_vec[idxmax]);
-    best_Ds_FDz_vec.push_back(Ds_FDz_vec[idxmax]);
-    best_Ds_FDz_Err_vec.push_back(Ds_FDz_Err_vec[idxmax]);
-    best_Ds_FDz_Chi2_vec.push_back(Ds_FDz_Chi2_vec[idxmax]);
-    best_Ds_FD_vec.push_back(Ds_FD_vec[idxmax]);
-    best_Ds_FD_Err_vec.push_back(Ds_FD_Err_vec[idxmax]);
-    best_Ds_FD_Chi2_vec.push_back(Ds_FD_Chi2_vec[idxmax]);
-    best_Ds_DIRA_angle_vec.push_back(Ds_DIRA_angle_vec[idxmax]);
-    best_Ds_DIRA_vec.push_back(Ds_DIRA_vec[idxmax]);
-    best_Kp_IP_vec.push_back(Kp_IP_vec[idxmax]);
-    best_Kp_IP_Err_vec.push_back(Kp_IP_Err_vec[idxmax]);
-    best_Kp_IP_Chi2_vec.push_back(Kp_IP_Chi2_vec[idxmax]);
-    best_Km_IP_vec.push_back(Km_IP_vec[idxmax]);
-    best_Km_IP_Err_vec.push_back(Km_IP_Err_vec[idxmax]);
-    best_Km_IP_Chi2_vec.push_back(Km_IP_Chi2_vec[idxmax]);
-    best_pi_IP_vec.push_back(pi_IP_vec[idxmax]);
-    best_pi_IP_Err_vec.push_back(pi_IP_Err_vec[idxmax]);
-    best_pi_IP_Chi2_vec.push_back(pi_IP_Chi2_vec[idxmax]);
+    tree->Branch("alpha_phi", &best_alpha_phi_vec);
+    tree->Branch("beta_phi", &best_beta_phi_vec);
+    tree->Branch("APvar_phi", &best_APvar_phi_vec);
+
+    // Fit on Ds 
+    tree->Branch("DsFit_chi2", &best_DsFit_chi2_vec);
+    tree->Branch("DsFit_ndof", &best_DsFit_ndof_vec);
+    tree->Branch("DsFit_chi2ndof", &best_DsFit_chi2ndof_vec);
+    tree->Branch("DsFit_vx", &best_DsFit_vx_vec);
+    tree->Branch("DsFit_vy", &best_DsFit_vy_vec);
+    tree->Branch("DsFit_vz", &best_DsFit_vz_vec);
+    tree->Branch("DsFit_vxerr", &best_DsFit_vxerr_vec);
+    tree->Branch("DsFit_vyerr", &best_DsFit_vyerr_vec);
+    tree->Branch("DsFit_vzerr", &best_DsFit_vzerr_vec);
+
+    tree->Branch("DsFit_Kp_eta", &best_DsFit_Kp_eta_vec);
+    tree->Branch("DsFit_Kp_phi", &best_DsFit_Kp_phi_vec);
+    tree->Branch("DsFit_Kp_p", &best_DsFit_Kp_p_vec);
+    tree->Branch("DsFit_Kp_pt", &best_DsFit_Kp_pt_vec);
+    tree->Branch("DsFit_Kp_px", &best_DsFit_Kp_px_vec);
+    tree->Branch("DsFit_Kp_py", &best_DsFit_Kp_py_vec);
+    tree->Branch("DsFit_Kp_pz", &best_DsFit_Kp_pz_vec);
+
+    tree->Branch("DsFit_Km_eta", &best_DsFit_Km_eta_vec);
+    tree->Branch("DsFit_Km_phi", &best_DsFit_Km_phi_vec);
+    tree->Branch("DsFit_Km_p", &best_DsFit_Km_p_vec);
+    tree->Branch("DsFit_Km_pt", &best_DsFit_Km_pt_vec);
+    tree->Branch("DsFit_Km_px", &best_DsFit_Km_px_vec);
+    tree->Branch("DsFit_Km_py", &best_DsFit_Km_py_vec);
+    tree->Branch("DsFit_Km_pz", &best_DsFit_Km_pz_vec);
+
+    tree->Branch("DsFit_pi_eta", &best_DsFit_pi_eta_vec);
+    tree->Branch("DsFit_pi_phi", &best_DsFit_pi_phi_vec);
+    tree->Branch("DsFit_pi_p", &best_DsFit_pi_p_vec);
+    tree->Branch("DsFit_pi_pt", &best_DsFit_pi_pt_vec);
+    tree->Branch("DsFit_pi_px", &best_DsFit_pi_px_vec);
+    tree->Branch("DsFit_pi_py", &best_DsFit_pi_py_vec);
+    tree->Branch("DsFit_pi_pz", &best_DsFit_pi_pz_vec);
+
+    tree->Branch("DsFit_phi_eta", &best_DsFit_phi_eta_vec);
+    tree->Branch("DsFit_phi_phi", &best_DsFit_phi_phi_vec);
+    tree->Branch("DsFit_phi_p", &best_DsFit_phi_p_vec);
+    tree->Branch("DsFit_phi_pt", &best_DsFit_phi_pt_vec);
+    tree->Branch("DsFit_phi_px", &best_DsFit_phi_px_vec);
+    tree->Branch("DsFit_phi_py", &best_DsFit_phi_py_vec);
+    tree->Branch("DsFit_phi_pz", &best_DsFit_phi_pz_vec);
+    tree->Branch("DsFit_phi_invm", &best_DsFit_phi_invm_vec);
+
+    tree->Branch("DsFit_Ds_eta", &best_DsFit_Ds_eta_vec);
+    tree->Branch("DsFit_Ds_phi", &best_DsFit_Ds_phi_vec);
+    tree->Branch("DsFit_Ds_p", &best_DsFit_Ds_p_vec);
+    tree->Branch("DsFit_Ds_pt", &best_DsFit_Ds_pt_vec);
+    tree->Branch("DsFit_Ds_px", &best_DsFit_Ds_px_vec);
+    tree->Branch("DsFit_Ds_py", &best_DsFit_Ds_py_vec);
+    tree->Branch("DsFit_Ds_pz", &best_DsFit_Ds_pz_vec);
+    tree->Branch("DsFit_Ds_invm", &best_DsFit_Ds_invm_vec);
+
+    tree->Branch("DsFit_Kp_pp", &best_DsFit_Kp_pp_vec);
+    tree->Branch("DsFit_Kp_pl", &best_DsFit_Kp_pl_vec);
+    tree->Branch("DsFit_Km_pp", &best_DsFit_Km_pp_vec);
+    tree->Branch("DsFit_Km_pl", &best_DsFit_Km_pl_vec);
+
+    tree->Branch("DsFit_phi_pp", &best_DsFit_phi_pp_vec);
+    tree->Branch("DsFit_phi_pl", &best_DsFit_phi_pl_vec);
+    tree->Branch("DsFit_pi_pp", &best_DsFit_pi_pp_vec);
+    tree->Branch("DsFit_pi_pl", &best_DsFit_pi_pl_vec);
+
+    tree->Branch("DsFit_dR_Kp_Km", &best_DsFit_dR_Kp_Km_vec);
+    tree->Branch("DsFit_dR_Kp_phi", &best_DsFit_dR_Kp_phi_vec);
+    tree->Branch("DsFit_dR_Km_phi", &best_DsFit_dR_Km_phi_vec);
+    tree->Branch("DsFit_dR_Kp_pi", &best_DsFit_dR_Kp_pi_vec);
+    tree->Branch("DsFit_dR_Km_pi", &best_DsFit_dR_Km_pi_vec);
+    tree->Branch("DsFit_dR_pi_phi", &best_DsFit_dR_pi_phi_vec);
+    tree->Branch("DsFit_dR_Kp_Ds", &best_DsFit_dR_Kp_Ds_vec);
+    tree->Branch("DsFit_dR_Km_Ds", &best_DsFit_dR_Km_Ds_vec);
+    tree->Branch("DsFit_dR_phi_Ds", &best_DsFit_dR_phi_Ds_vec);
+    tree->Branch("DsFit_dR_pi_Ds", &best_DsFit_dR_pi_Ds_vec);
+
+    tree->Branch("DsFit_Mconstraint_Ds_invm", &best_DsFit_Mconstraint_Ds_invm_vec);
+    
+    tree->Branch("alpha_Ds", &best_alpha_Ds_vec);
+    tree->Branch("beta_Ds", &best_beta_Ds_vec);
+    tree->Branch("APvar_Ds", &best_APvar_Ds_vec);
+
+    tree->Branch("Ds_primvtx_FDxy", &best_Ds_primvtx_FDxy_vec);
+    tree->Branch("Ds_primvtx_FDz", &best_Ds_primvtx_FDz_vec);
+    tree->Branch("Ds_primvtx_FD", &best_Ds_primvtx_FD_vec);
+    tree->Branch("Ds_primvtx_FDxyerr", &best_Ds_primvtx_FDxyerr_vec);
+    tree->Branch("Ds_primvtx_FDxychi2", &best_Ds_primvtx_FDxychi2_vec);
+    tree->Branch("Ds_primvtx_FDzerr", &best_Ds_primvtx_FDzerr_vec);
+    tree->Branch("Ds_primvtx_FDzchi2", &best_Ds_primvtx_FDzchi2_vec);
+    tree->Branch("Ds_primvtx_FDerr", &best_Ds_primvtx_FDerr_vec);
+    tree->Branch("Ds_primvtx_FDchi2", &best_Ds_primvtx_FDchi2_vec);
+    tree->Branch("Ds_primvtx_dira", &best_Ds_primvtx_dira_vec);
+    tree->Branch("Ds_primvtx_dira_angle", &best_Ds_primvtx_dira_angle_vec);
+    tree->Branch("Kp_primvtx_ip", &best_Kp_primvtx_ip_vec);
+    tree->Branch("Kp_primvtx_iperr", &best_Kp_primvtx_iperr_vec);
+    tree->Branch("Kp_primvtx_ipchi2", &best_Kp_primvtx_ipchi2_vec);
+    tree->Branch("Km_primvtx_ip", &best_Km_primvtx_ip_vec);
+    tree->Branch("Km_primvtx_iperr", &best_Km_primvtx_iperr_vec);
+    tree->Branch("Km_primvtx_ipchi2", &best_Km_primvtx_ipchi2_vec);
+    tree->Branch("pi_primvtx_ip", &best_pi_primvtx_ip_vec);
+    tree->Branch("pi_primvtx_iperr", &best_pi_primvtx_iperr_vec);
+    tree->Branch("pi_primvtx_ipchi2", &best_pi_primvtx_ipchi2_vec);
+
+    tree->Branch("Ds_Iso_R0p3", &best_Ds_Iso_R0p3_vec);
+    tree->Branch("Ds_Iso_R0p4", &best_Ds_Iso_R0p4_vec);
+    tree->Branch("Ds_IsoRel_R0p3", &best_Ds_IsoRel_R0p3_vec);
+    tree->Branch("Ds_IsoRel_R0p4", &best_Ds_IsoRel_R0p4_vec);
+
+    tree->Branch("PV_noDs_withBS_IsValid", &best_PV_noDs_withBS_IsValid_vec);
+    tree->Branch("PV_noDs_withBS_IsFake", &best_PV_noDs_withBS_IsFake_vec);
+    tree->Branch("PV_noDs_withBS_chi2", &best_PV_noDs_withBS_chi2_vec);
+    tree->Branch("PV_noDs_withBS_ndof", &best_PV_noDs_withBS_ndof_vec);
+    tree->Branch("PV_noDs_withBS_chi2ndof", &best_PV_noDs_withBS_chi2ndof_vec);
+    tree->Branch("PV_noDs_withBS_x", &best_PV_noDs_withBS_x_vec);
+    tree->Branch("PV_noDs_withBS_y", &best_PV_noDs_withBS_y_vec);
+    tree->Branch("PV_noDs_withBS_z", &best_PV_noDs_withBS_z_vec);
+    tree->Branch("PV_noDs_withBS_xerr", &best_PV_noDs_withBS_xerr_vec);
+    tree->Branch("PV_noDs_withBS_yerr", &best_PV_noDs_withBS_yerr_vec);
+    tree->Branch("PV_noDs_withBS_zerr", &best_PV_noDs_withBS_zerr_vec);
+
+    tree->Branch("PV_noDs_noBS_IsValid", &best_PV_noDs_noBS_IsValid_vec);
+    tree->Branch("PV_noDs_noBS_IsFake", &best_PV_noDs_noBS_IsFake_vec);
+    tree->Branch("PV_noDs_noBS_chi2", &best_PV_noDs_noBS_chi2_vec);
+    tree->Branch("PV_noDs_noBS_ndof", &best_PV_noDs_noBS_ndof_vec);
+    tree->Branch("PV_noDs_noBS_chi2ndof", &best_PV_noDs_noBS_chi2ndof_vec);
+    tree->Branch("PV_noDs_noBS_x", &best_PV_noDs_noBS_x_vec);
+    tree->Branch("PV_noDs_noBS_y", &best_PV_noDs_noBS_y_vec);
+    tree->Branch("PV_noDs_noBS_z", &best_PV_noDs_noBS_z_vec);
+    tree->Branch("PV_noDs_noBS_xerr", &best_PV_noDs_noBS_xerr_vec);
+    tree->Branch("PV_noDs_noBS_yerr", &best_PV_noDs_noBS_yerr_vec);
+    tree->Branch("PV_noDs_noBS_zerr", &best_PV_noDs_noBS_zerr_vec);
+
+    tree->Branch("Ds_PVnoDs_FDxy", &best_Ds_PVnoDs_FDxy_vec);
+    tree->Branch("Ds_PVnoDs_FDz", &best_Ds_PVnoDs_FDz_vec);
+    tree->Branch("Ds_PVnoDs_FD", &best_Ds_PVnoDs_FD_vec);
+    tree->Branch("Ds_PVnoDs_FDxyerr", &best_Ds_PVnoDs_FDxyerr_vec);
+    tree->Branch("Ds_PVnoDs_FDxychi2", &best_Ds_PVnoDs_FDxychi2_vec);
+    tree->Branch("Ds_PVnoDs_FDzerr", &best_Ds_PVnoDs_FDzerr_vec);
+    tree->Branch("Ds_PVnoDs_FDzchi2", &best_Ds_PVnoDs_FDzchi2_vec);
+    tree->Branch("Ds_PVnoDs_FDerr", &best_Ds_PVnoDs_FDerr_vec);
+    tree->Branch("Ds_PVnoDs_FDchi2", &best_Ds_PVnoDs_FDchi2_vec);
+    tree->Branch("Ds_PVnoDs_dira", &best_Ds_PVnoDs_dira_vec);
+    tree->Branch("Ds_PVnoDs_dira_angle", &best_Ds_PVnoDs_dira_angle_vec);
+    tree->Branch("Kp_PVnoDs_ip", &best_Kp_PVnoDs_ip_vec);
+    tree->Branch("Kp_PVnoDs_iperr", &best_Kp_PVnoDs_iperr_vec);
+    tree->Branch("Kp_PVnoDs_ipchi2", &best_Kp_PVnoDs_ipchi2_vec);
+    tree->Branch("Km_PVnoDs_ip", &best_Km_PVnoDs_ip_vec);
+    tree->Branch("Km_PVnoDs_iperr", &best_Km_PVnoDs_iperr_vec);
+    tree->Branch("Km_PVnoDs_ipchi2", &best_Km_PVnoDs_ipchi2_vec);
+    tree->Branch("pi_PVnoDs_ip", &best_pi_PVnoDs_ip_vec);
+    tree->Branch("pi_PVnoDs_iperr", &best_pi_PVnoDs_iperr_vec);
+    tree->Branch("pi_PVnoDs_ipchi2", &best_pi_PVnoDs_ipchi2_vec);
+}
+
+void RecoTree::BS_Reset()
+{
+    BS_type = null; 
+    BS_x0 = null;
+    BS_y0 = null;
+    BS_z0 = null;
+    BS_sigmaZ = null;
+    BS_dxdz = null;
+    BS_dydz = null;
+    BS_BWX = null;
+    BS_BWY = null;
+    BS_x0err = null;
+    BS_y0err = null;
+    BS_z0err = null;
+    BS_sigmaZ0err = null;
+    BS_dxdzerr = null;
+    BS_dydzerr = null;
+    BS_BWXerr = null;
+    BS_BWYerr = null;
+    BS_emitX = null;
+    BS_emitY = null;
+    BS_betaStar = null;
+}
+
+void RecoTree::PV_Reset()
+{
+    PV_vx = null;
+    PV_vy = null;
+    PV_vz = null;
+    PV_vxerr = null;
+    PV_vyerr = null;
+    PV_vzerr = null;
+}
+
+void RecoTree::Kp_Reset()
+{
+    Kp_isIsolatedChargedHadron = false;
+    Kp_charge = null;
+    Kp_eta = null;
+    Kp_phi = null;
+    Kp_vx = null;
+    Kp_vy = null;
+    Kp_vz = null;
+    Kp_p = null;
+    Kp_pt = null;
+    Kp_px = null;
+    Kp_py = null;
+    Kp_pz = null;
+}
+
+void RecoTree::Km_Reset()
+{
+    Km_isIsolatedChargedHadron = false;
+    Km_charge = null;
+    Km_eta = null;
+    Km_phi = null;
+    Km_vx = null;
+    Km_vy = null;
+    Km_vz = null;
+    Km_p = null;
+    Km_pt = null;
+    Km_px = null;
+    Km_py = null;
+    Km_pz = null;
+
+    phi_eta = null;
+    phi_phi = null;
+    phi_p = null;
+    phi_pt = null;
+    phi_px = null;
+    phi_py = null;
+    phi_pz = null;
+    phi_invm = null;
+
+    Kp_pp = null;
+    Kp_pl = null;
+    Km_pp = null;
+    Km_pl = null;
+
+    dR_Kp_Km = null;
+    dR_Kp_phi = null;
+    dR_Km_phi = null;
+    
+    dxy_Kp_Km = null;
+    dz_Kp_Km = null;
+}
+
+void RecoTree::phi_Reset()
+{
+    phiFit_chi2 = null;
+    phiFit_ndof = null;
+    phiFit_chi2ndof = null;
+    phiFit_vx = null;
+    phiFit_vy = null;
+    phiFit_vz = null;
+    phiFit_vxerr = null;
+    phiFit_vyerr = null;
+    phiFit_vzerr = null;
+
+    phiFit_Kp_eta = null;
+    phiFit_Kp_phi = null;
+    phiFit_Kp_p = null;
+    phiFit_Kp_pt = null;
+    phiFit_Kp_px = null;
+    phiFit_Kp_py = null;
+    phiFit_Kp_pz = null;
+
+    phiFit_Km_eta = null;
+    phiFit_Km_phi = null;
+    phiFit_Km_p = null;
+    phiFit_Km_pt = null;
+    phiFit_Km_px = null;
+    phiFit_Km_py = null;
+    phiFit_Km_pz = null;
+
+    phiFit_phi_eta = null;
+    phiFit_phi_phi = null;
+    phiFit_phi_p = null;
+    phiFit_phi_pt = null;
+    phiFit_phi_px = null;
+    phiFit_phi_py = null;
+    phiFit_phi_pz = null;
+    phiFit_phi_invm = null;
+
+    phiFit_Kp_pp = null;
+    phiFit_Kp_pl = null;
+    phiFit_Km_pp = null;
+    phiFit_Km_pl = null;
+
+    phiFit_dR_Kp_Km = null;
+    phiFit_dR_Kp_phi = null;
+    phiFit_dR_Km_phi = null;
+
+    dxy_Kp_phi = null;
+    dxy_Km_phi = null;
+
+    dz_Kp_phi = null;
+    dz_Km_phi = null;
+
+    alpha_phi = null;
+    beta_phi = null;
+    APvar_phi = null;
+}
+
+void RecoTree::pi_Reset()
+{
+    pi_isIsolatedChargedHadron = false;
+    pi_charge = null;
+    pi_eta = null;
+    pi_phi = null;
+    pi_vx = null;
+    pi_vy = null;
+    pi_vz = null;
+    pi_p = null;
+    pi_pt = null;
+    pi_px = null;
+    pi_py = null;
+    pi_pz = null;
+
+    Ds_eta = null;
+    Ds_phi = null;
+    Ds_p = null;
+    Ds_pt = null;
+    Ds_px = null;
+    Ds_py = null;
+    Ds_pz = null;
+    Ds_invm = null;
+
+    phi_pp = null;
+    phi_pl = null;
+    pi_pp = null;
+    pi_pl = null;
+
+    dR_Kp_pi = null;
+    dR_Km_pi = null;
+    dR_pi_phi = null;
+    dR_Kp_Ds = null;
+    dR_Km_Ds = null;
+    dR_pi_Ds = null;
+    dR_phi_Ds = null;
+
+    phiFit_pi_eta = null;
+    phiFit_pi_phi = null;
+    phiFit_pi_p = null;
+    phiFit_pi_pt = null;
+    phiFit_pi_px = null;
+    phiFit_pi_py = null;
+    phiFit_pi_pz = null;
+
+    phiFit_Ds_eta = null;
+    phiFit_Ds_phi = null;
+    phiFit_Ds_p = null;
+    phiFit_Ds_pt = null;
+    phiFit_Ds_px = null;
+    phiFit_Ds_py = null;
+    phiFit_Ds_pz = null;
+    phiFit_Ds_invm = null;
+
+    phiFit_phi_pp = null;
+    phiFit_phi_pl = null;
+    phiFit_pi_pp = null;
+    phiFit_pi_pl = null;
+
+    phiFit_dR_Kp_pi = null;
+    phiFit_dR_Km_pi = null;
+    phiFit_dR_pi_phi = null;
+    phiFit_dR_Kp_Ds = null;
+    phiFit_dR_Km_Ds = null;
+    phiFit_dR_pi_Ds = null;
+    phiFit_dR_phi_Ds = null;
+    
+    dxy_Kp_pi = null;
+    dxy_Km_pi = null;
+    dxy_pi_phi = null;
+
+    dz_Kp_pi = null;
+    dz_Km_pi = null;
+    dz_pi_phi = null;
+}
+
+void RecoTree::Ds_Reset()
+{
+    DsFit_chi2 = null;
+    DsFit_ndof = null;
+    DsFit_chi2ndof = null;
+    DsFit_vx = null;
+    DsFit_vy = null;
+    DsFit_vz = null;
+    DsFit_vxerr = null;
+    DsFit_vyerr = null;
+    DsFit_vzerr = null;
+
+    DsFit_Kp_eta = null;
+    DsFit_Kp_phi = null;
+    DsFit_Kp_p = null;
+    DsFit_Kp_pt = null;
+    DsFit_Kp_px = null;
+    DsFit_Kp_py = null;
+    DsFit_Kp_pz = null;
+
+    DsFit_Km_eta = null;
+    DsFit_Km_phi = null;
+    DsFit_Km_p = null;
+    DsFit_Km_pt = null;
+    DsFit_Km_px = null;
+    DsFit_Km_py = null;
+    DsFit_Km_pz = null;
+
+    DsFit_pi_eta = null;
+    DsFit_pi_phi = null;
+    DsFit_pi_p = null;
+    DsFit_pi_pt = null;
+    DsFit_pi_px = null;
+    DsFit_pi_py = null;
+    DsFit_pi_pz = null;
+
+    DsFit_phi_eta = null;
+    DsFit_phi_phi = null;
+    DsFit_phi_p = null;
+    DsFit_phi_pt = null;
+    DsFit_phi_px = null;
+    DsFit_phi_py = null;
+    DsFit_phi_pz = null;
+    DsFit_phi_invm = null;
+
+    DsFit_Ds_eta = null;
+    DsFit_Ds_phi = null;
+    DsFit_Ds_p = null;
+    DsFit_Ds_pt = null;
+    DsFit_Ds_px = null;
+    DsFit_Ds_py = null;
+    DsFit_Ds_pz = null;
+    DsFit_Ds_invm = null;
+
+    DsFit_Mconstraint_Ds_invm = null;
+
+    DsFit_Kp_pp = null;
+    DsFit_Kp_pl = null;
+    DsFit_Km_pp = null;
+    DsFit_Km_pl = null;
+
+    DsFit_phi_pp = null;
+    DsFit_phi_pl = null;
+    DsFit_pi_pp = null;
+    DsFit_pi_pl = null;
+
+    DsFit_dR_Kp_Km = null;
+    DsFit_dR_Kp_pi = null;
+    DsFit_dR_Km_pi = null;
+    DsFit_dR_Kp_phi = null;
+    DsFit_dR_Km_phi = null;
+    DsFit_dR_pi_phi = null;
+    DsFit_dR_Kp_Ds = null;
+    DsFit_dR_Km_Ds = null;
+    DsFit_dR_pi_Ds = null;
+    DsFit_dR_phi_Ds = null;
+
+    dxy_Kp_Ds = null;
+    dxy_Km_Ds = null;
+    dxy_pi_Ds = null;
+    dxy_phi_Ds = null;
+
+    dz_Kp_Ds = null;
+    dz_Km_Ds = null;
+    dz_pi_Ds = null;
+    dz_phi_Ds = null;
+
+    alpha_Ds = null;
+    beta_Ds = null;
+    APvar_Ds = null;
+
+    Ds_primvtx_FDxy = null;
+    Ds_primvtx_FDz = null;
+    Ds_primvtx_FD = null;
+    Ds_primvtx_FDxyerr = null;
+    Ds_primvtx_FDxychi2 = null;
+    Ds_primvtx_FDzerr = null;
+    Ds_primvtx_FDzchi2 = null;
+    Ds_primvtx_FDerr = null;
+    Ds_primvtx_FDchi2 = null;
+    Ds_primvtx_dira = null;
+    Ds_primvtx_dira_angle = null;
+    Kp_primvtx_ip = null;
+    Kp_primvtx_iperr = null;
+    Kp_primvtx_ipchi2 = null;
+    Km_primvtx_ip = null;
+    Km_primvtx_iperr = null;
+    Km_primvtx_ipchi2 = null;
+    pi_primvtx_ip = null;
+    pi_primvtx_iperr = null;
+    pi_primvtx_ipchi2 = null;
+
+    Ds_Iso_R0p3 = 0.;
+    Ds_Iso_R0p4 = 0.;
+    Ds_IsoRel_R0p3 = 0.;
+    Ds_IsoRel_R0p4 = 0.;
+}
+
+void RecoTree::PV_noDs_Reset()
+{
+    PV_noDs_withBS_IsValid = false;
+    PV_noDs_withBS_IsFake = true;
+    PV_noDs_withBS_chi2 = null;
+    PV_noDs_withBS_ndof = null;
+    PV_noDs_withBS_chi2ndof = null;
+    PV_noDs_withBS_x = null;
+    PV_noDs_withBS_y = null;
+    PV_noDs_withBS_z = null;
+    PV_noDs_withBS_xerr = null;
+    PV_noDs_withBS_yerr = null;
+    PV_noDs_withBS_zerr = null;
+
+    PV_noDs_noBS_IsValid = false;
+    PV_noDs_noBS_IsFake = true;
+    PV_noDs_noBS_chi2 = null;
+    PV_noDs_noBS_ndof = null;
+    PV_noDs_noBS_chi2ndof = null;
+    PV_noDs_noBS_x = null;
+    PV_noDs_noBS_y = null;
+    PV_noDs_noBS_z = null;
+    PV_noDs_noBS_xerr = null;
+    PV_noDs_noBS_yerr = null;
+    PV_noDs_noBS_zerr = null;
+
+    Ds_PVnoDs_FDxy = null;
+    Ds_PVnoDs_FDz = null;
+    Ds_PVnoDs_FD = null;
+    Ds_PVnoDs_FDxyerr = null;
+    Ds_PVnoDs_FDxychi2 = null;
+    Ds_PVnoDs_FDzerr = null;
+    Ds_PVnoDs_FDzchi2 = null;
+    Ds_PVnoDs_FDerr = null;
+    Ds_PVnoDs_FDchi2 = null;
+    Ds_PVnoDs_dira = null;
+    Ds_PVnoDs_dira_angle = null;
+    Kp_PVnoDs_ip = null;
+    Kp_PVnoDs_iperr = null;
+    Kp_PVnoDs_ipchi2 = null;
+    Km_PVnoDs_ip = null;
+    Km_PVnoDs_iperr = null;
+    Km_PVnoDs_ipchi2 = null;
+    pi_PVnoDs_ip = null;
+    pi_PVnoDs_iperr = null;
+    pi_PVnoDs_ipchi2 = null;
 }
 
 void RecoTree::Fill_Vector()
 {
-    Kp_ETA_vec.push_back(Kp_ETA);
-    Kp_PHI_vec.push_back(Kp_PHI);
-    Kp_ORIVX_X_vec.push_back(Kp_ORIVX_X);
-    Kp_ORIVX_Y_vec.push_back(Kp_ORIVX_Y);
-    Kp_ORIVX_Z_vec.push_back(Kp_ORIVX_Z);
-    Kp_P_vec.push_back(Kp_P);
-    Kp_PT_vec.push_back(Kp_PT);
-    Kp_PX_vec.push_back(Kp_PX);
-    Kp_PY_vec.push_back(Kp_PY);
-    Kp_PZ_vec.push_back(Kp_PZ);
+    Kp_isIsolatedChargedHadron_vec.push_back(Kp_isIsolatedChargedHadron);
+    Kp_charge_vec.push_back(Kp_charge);
+    Kp_eta_vec.push_back(Kp_eta);
+    Kp_phi_vec.push_back(Kp_phi);
+    Kp_vx_vec.push_back(Kp_vx);
+    Kp_vy_vec.push_back(Kp_vy);
+    Kp_vz_vec.push_back(Kp_vz);
+    Kp_p_vec.push_back(Kp_p);
+    Kp_pt_vec.push_back(Kp_pt);
+    Kp_px_vec.push_back(Kp_px);
+    Kp_py_vec.push_back(Kp_py);
+    Kp_pz_vec.push_back(Kp_pz);
 
-    Km_ETA_vec.push_back(Km_ETA);
-    Km_PHI_vec.push_back(Km_PHI);
-    Km_ORIVX_X_vec.push_back(Km_ORIVX_X);
-    Km_ORIVX_Y_vec.push_back(Km_ORIVX_Y);
-    Km_ORIVX_Z_vec.push_back(Km_ORIVX_Z);
-    Km_P_vec.push_back(Km_P);
-    Km_PT_vec.push_back(Km_PT);
-    Km_PX_vec.push_back(Km_PX);
-    Km_PY_vec.push_back(Km_PY);
-    Km_PZ_vec.push_back(Km_PZ);
+    Km_isIsolatedChargedHadron_vec.push_back(Km_isIsolatedChargedHadron);
+    Km_charge_vec.push_back(Km_charge);
+    Km_eta_vec.push_back(Km_eta);
+    Km_phi_vec.push_back(Km_phi);
+    Km_vx_vec.push_back(Km_vx);
+    Km_vy_vec.push_back(Km_vy);
+    Km_vz_vec.push_back(Km_vz);
+    Km_p_vec.push_back(Km_p);
+    Km_pt_vec.push_back(Km_pt);
+    Km_px_vec.push_back(Km_px);
+    Km_py_vec.push_back(Km_py);
+    Km_pz_vec.push_back(Km_pz);
 
-    pi_ETA_vec.push_back(pi_ETA);
-    pi_PHI_vec.push_back(pi_PHI);
-    pi_ORIVX_X_vec.push_back(pi_ORIVX_X);
-    pi_ORIVX_Y_vec.push_back(pi_ORIVX_Y);
-    pi_ORIVX_Z_vec.push_back(pi_ORIVX_Z);
-    pi_P_vec.push_back(pi_P);
-    pi_PT_vec.push_back(pi_PT);
-    pi_PX_vec.push_back(pi_PX);
-    pi_PY_vec.push_back(pi_PY);
-    pi_PZ_vec.push_back(pi_PZ);
+    pi_isIsolatedChargedHadron_vec.push_back(pi_isIsolatedChargedHadron);
+    pi_charge_vec.push_back(pi_charge);
+    pi_eta_vec.push_back(pi_eta);
+    pi_phi_vec.push_back(pi_phi);
+    pi_vx_vec.push_back(pi_vx);
+    pi_vy_vec.push_back(pi_vy);
+    pi_vz_vec.push_back(pi_vz);
+    pi_p_vec.push_back(pi_p);
+    pi_pt_vec.push_back(pi_pt);
+    pi_px_vec.push_back(pi_px);
+    pi_py_vec.push_back(pi_py);
+    pi_pz_vec.push_back(pi_pz);
 
-    phi_ETA_vec.push_back(phi_ETA);
-    phi_PHI_vec.push_back(phi_PHI);
-    phi_P_vec.push_back(phi_P);
-    phi_PT_vec.push_back(phi_PT);
-    phi_PX_vec.push_back(phi_PX);
-    phi_PY_vec.push_back(phi_PY);
-    phi_PZ_vec.push_back(phi_PZ);
-    phi_M_vec.push_back(phi_M);
+    phi_eta_vec.push_back(phi_eta);
+    phi_phi_vec.push_back(phi_phi);
+    phi_p_vec.push_back(phi_p);
+    phi_pt_vec.push_back(phi_pt);
+    phi_px_vec.push_back(phi_px);
+    phi_py_vec.push_back(phi_py);
+    phi_pz_vec.push_back(phi_pz);
+    phi_invm_vec.push_back(phi_invm);
 
-    Ds_ETA_vec.push_back(Ds_ETA);
-    Ds_PHI_vec.push_back(Ds_PHI);
-    Ds_P_vec.push_back(Ds_P);
-    Ds_PT_vec.push_back(Ds_PT);
-    Ds_PX_vec.push_back(Ds_PX);
-    Ds_PY_vec.push_back(Ds_PY);
-    Ds_PZ_vec.push_back(Ds_PZ);
-    Ds_M_vec.push_back(Ds_M);
+    Ds_eta_vec.push_back(Ds_eta);
+    Ds_phi_vec.push_back(Ds_phi);
+    Ds_p_vec.push_back(Ds_p);
+    Ds_pt_vec.push_back(Ds_pt);
+    Ds_px_vec.push_back(Ds_px);
+    Ds_py_vec.push_back(Ds_py);
+    Ds_pz_vec.push_back(Ds_pz);
+    Ds_invm_vec.push_back(Ds_invm);
 
-    Kp_PP_vec.push_back(Kp_PP);
-    Kp_PL_vec.push_back(Kp_PL);
-    Km_PP_vec.push_back(Km_PP);
-    Km_PL_vec.push_back(Km_PL);
+    Kp_pp_vec.push_back(Kp_pp);
+    Kp_pl_vec.push_back(Kp_pl);
+    Km_pp_vec.push_back(Km_pp);
+    Km_pl_vec.push_back(Km_pl);
 
-    phi_PP_vec.push_back(phi_PP);
-    phi_PL_vec.push_back(phi_PL);
-    pi_PP_vec.push_back(pi_PP);
-    pi_PL_vec.push_back(pi_PL);
+    phi_pp_vec.push_back(phi_pp);
+    phi_pl_vec.push_back(phi_pl);
+    pi_pp_vec.push_back(pi_pp);
+    pi_pl_vec.push_back(pi_pl);
 
     dR_Kp_Km_vec.push_back(dR_Kp_Km);
     dR_Kp_phi_vec.push_back(dR_Kp_phi);
@@ -1502,67 +1515,67 @@ void RecoTree::Fill_Vector()
 
 
     // Fit on phi
-    phiFit_CHI2_vec.push_back(phiFit_CHI2);
-    phiFit_NDOF_vec.push_back(phiFit_NDOF);
-    phiFit_CHI2NDOF_vec.push_back(phiFit_CHI2NDOF);
-    phiFit_ENDVX_X_vec.push_back(phiFit_ENDVX_X);
-    phiFit_ENDVX_Y_vec.push_back(phiFit_ENDVX_Y);
-    phiFit_ENDVX_Z_vec.push_back(phiFit_ENDVX_Z);
-    phiFit_ENDVX_XERR_vec.push_back(phiFit_ENDVX_XERR);
-    phiFit_ENDVX_YERR_vec.push_back(phiFit_ENDVX_YERR);
-    phiFit_ENDVX_ZERR_vec.push_back(phiFit_ENDVX_ZERR);
+    phiFit_chi2_vec.push_back(phiFit_chi2);
+    phiFit_ndof_vec.push_back(phiFit_ndof);
+    phiFit_chi2ndof_vec.push_back(phiFit_chi2ndof);
+    phiFit_vx_vec.push_back(phiFit_vx);
+    phiFit_vy_vec.push_back(phiFit_vy);
+    phiFit_vz_vec.push_back(phiFit_vz);
+    phiFit_vxerr_vec.push_back(phiFit_vxerr);
+    phiFit_vyerr_vec.push_back(phiFit_vyerr);
+    phiFit_vzerr_vec.push_back(phiFit_vzerr);
 
-    phiFit_Kp_ETA_vec.push_back(phiFit_Kp_ETA);
-    phiFit_Kp_PHI_vec.push_back(phiFit_Kp_PHI);
-    phiFit_Kp_P_vec.push_back(phiFit_Kp_P);
-    phiFit_Kp_PT_vec.push_back(phiFit_Kp_PT);
-    phiFit_Kp_PX_vec.push_back(phiFit_Kp_PX);
-    phiFit_Kp_PY_vec.push_back(phiFit_Kp_PY);
-    phiFit_Kp_PZ_vec.push_back(phiFit_Kp_PZ);
+    phiFit_Kp_eta_vec.push_back(phiFit_Kp_eta);
+    phiFit_Kp_phi_vec.push_back(phiFit_Kp_phi);
+    phiFit_Kp_p_vec.push_back(phiFit_Kp_p);
+    phiFit_Kp_pt_vec.push_back(phiFit_Kp_pt);
+    phiFit_Kp_px_vec.push_back(phiFit_Kp_px);
+    phiFit_Kp_py_vec.push_back(phiFit_Kp_py);
+    phiFit_Kp_pz_vec.push_back(phiFit_Kp_pz);
 
-    phiFit_Km_ETA_vec.push_back(phiFit_Km_ETA);
-    phiFit_Km_PHI_vec.push_back(phiFit_Km_PHI);
-    phiFit_Km_P_vec.push_back(phiFit_Km_P);
-    phiFit_Km_PT_vec.push_back(phiFit_Km_PT);
-    phiFit_Km_PX_vec.push_back(phiFit_Km_PX);
-    phiFit_Km_PY_vec.push_back(phiFit_Km_PY);
-    phiFit_Km_PZ_vec.push_back(phiFit_Km_PZ);
+    phiFit_Km_eta_vec.push_back(phiFit_Km_eta);
+    phiFit_Km_phi_vec.push_back(phiFit_Km_phi);
+    phiFit_Km_p_vec.push_back(phiFit_Km_p);
+    phiFit_Km_pt_vec.push_back(phiFit_Km_pt);
+    phiFit_Km_px_vec.push_back(phiFit_Km_px);
+    phiFit_Km_py_vec.push_back(phiFit_Km_py);
+    phiFit_Km_pz_vec.push_back(phiFit_Km_pz);
 
-    phiFit_pi_ETA_vec.push_back(phiFit_pi_ETA);
-    phiFit_pi_PHI_vec.push_back(phiFit_pi_PHI);
-    phiFit_pi_P_vec.push_back(phiFit_pi_P);
-    phiFit_pi_PT_vec.push_back(phiFit_pi_PT);
-    phiFit_pi_PX_vec.push_back(phiFit_pi_PX);
-    phiFit_pi_PY_vec.push_back(phiFit_pi_PY);
-    phiFit_pi_PZ_vec.push_back(phiFit_pi_PZ);
+    phiFit_pi_eta_vec.push_back(phiFit_pi_eta);
+    phiFit_pi_phi_vec.push_back(phiFit_pi_phi);
+    phiFit_pi_p_vec.push_back(phiFit_pi_p);
+    phiFit_pi_pt_vec.push_back(phiFit_pi_pt);
+    phiFit_pi_px_vec.push_back(phiFit_pi_px);
+    phiFit_pi_py_vec.push_back(phiFit_pi_py);
+    phiFit_pi_pz_vec.push_back(phiFit_pi_pz);
 
-    phiFit_phi_ETA_vec.push_back(phiFit_phi_ETA);
-    phiFit_phi_PHI_vec.push_back(phiFit_phi_PHI);
-    phiFit_phi_P_vec.push_back(phiFit_phi_P);
-    phiFit_phi_PT_vec.push_back(phiFit_phi_PT);
-    phiFit_phi_PX_vec.push_back(phiFit_phi_PX);
-    phiFit_phi_PY_vec.push_back(phiFit_phi_PY);
-    phiFit_phi_PZ_vec.push_back(phiFit_phi_PZ);
-    phiFit_phi_M_vec.push_back(phiFit_phi_M);
+    phiFit_phi_eta_vec.push_back(phiFit_phi_eta);
+    phiFit_phi_phi_vec.push_back(phiFit_phi_phi);
+    phiFit_phi_p_vec.push_back(phiFit_phi_p);
+    phiFit_phi_pt_vec.push_back(phiFit_phi_pt);
+    phiFit_phi_px_vec.push_back(phiFit_phi_px);
+    phiFit_phi_py_vec.push_back(phiFit_phi_py);
+    phiFit_phi_pz_vec.push_back(phiFit_phi_pz);
+    phiFit_phi_invm_vec.push_back(phiFit_phi_invm);
 
-    phiFit_Ds_ETA_vec.push_back(phiFit_Ds_ETA);
-    phiFit_Ds_PHI_vec.push_back(phiFit_Ds_PHI);
-    phiFit_Ds_P_vec.push_back(phiFit_Ds_P);
-    phiFit_Ds_PT_vec.push_back(phiFit_Ds_PT);
-    phiFit_Ds_PX_vec.push_back(phiFit_Ds_PX);
-    phiFit_Ds_PY_vec.push_back(phiFit_Ds_PY);
-    phiFit_Ds_PZ_vec.push_back(phiFit_Ds_PZ);
-    phiFit_Ds_M_vec.push_back(phiFit_Ds_M);
+    phiFit_Ds_eta_vec.push_back(phiFit_Ds_eta);
+    phiFit_Ds_phi_vec.push_back(phiFit_Ds_phi);
+    phiFit_Ds_p_vec.push_back(phiFit_Ds_p);
+    phiFit_Ds_pt_vec.push_back(phiFit_Ds_pt);
+    phiFit_Ds_px_vec.push_back(phiFit_Ds_px);
+    phiFit_Ds_py_vec.push_back(phiFit_Ds_py);
+    phiFit_Ds_pz_vec.push_back(phiFit_Ds_pz);
+    phiFit_Ds_invm_vec.push_back(phiFit_Ds_invm);
 
-    phiFit_Kp_PP_vec.push_back(phiFit_Kp_PP);
-    phiFit_Kp_PL_vec.push_back(phiFit_Kp_PL);
-    phiFit_Km_PP_vec.push_back(phiFit_Km_PP);
-    phiFit_Km_PL_vec.push_back(phiFit_Km_PL);
+    phiFit_Kp_pp_vec.push_back(phiFit_Kp_pp);
+    phiFit_Kp_pl_vec.push_back(phiFit_Kp_pl);
+    phiFit_Km_pp_vec.push_back(phiFit_Km_pp);
+    phiFit_Km_pl_vec.push_back(phiFit_Km_pl);
 
-    phiFit_phi_PP_vec.push_back(phiFit_phi_PP);
-    phiFit_phi_PL_vec.push_back(phiFit_phi_PL);
-    phiFit_pi_PP_vec.push_back(phiFit_pi_PP);
-    phiFit_pi_PL_vec.push_back(phiFit_pi_PL);
+    phiFit_phi_pp_vec.push_back(phiFit_phi_pp);
+    phiFit_phi_pl_vec.push_back(phiFit_phi_pl);
+    phiFit_pi_pp_vec.push_back(phiFit_pi_pp);
+    phiFit_pi_pl_vec.push_back(phiFit_pi_pl);
 
     phiFit_dR_Kp_Km_vec.push_back(phiFit_dR_Kp_Km);
     phiFit_dR_Kp_phi_vec.push_back(phiFit_dR_Kp_phi);
@@ -1575,68 +1588,72 @@ void RecoTree::Fill_Vector()
     phiFit_dR_phi_Ds_vec.push_back(phiFit_dR_phi_Ds);
     phiFit_dR_pi_Ds_vec.push_back(phiFit_dR_pi_Ds);
 
+    alpha_phi_vec.push_back(alpha_phi);
+    beta_phi_vec.push_back(beta_phi);
+    APvar_phi_vec.push_back(APvar_phi);
+
     // Fit on Ds 
-    DsFit_CHI2_vec.push_back(DsFit_CHI2);
-    DsFit_NDOF_vec.push_back(DsFit_NDOF);
-    DsFit_CHI2NDOF_vec.push_back(DsFit_CHI2NDOF);
-    DsFit_ENDVX_X_vec.push_back(DsFit_ENDVX_X);
-    DsFit_ENDVX_Y_vec.push_back(DsFit_ENDVX_Y);
-    DsFit_ENDVX_Z_vec.push_back(DsFit_ENDVX_Z);
-    DsFit_ENDVX_XERR_vec.push_back(DsFit_ENDVX_XERR);
-    DsFit_ENDVX_YERR_vec.push_back(DsFit_ENDVX_YERR);
-    DsFit_ENDVX_ZERR_vec.push_back(DsFit_ENDVX_ZERR);
+    DsFit_chi2_vec.push_back(DsFit_chi2);
+    DsFit_ndof_vec.push_back(DsFit_ndof);
+    DsFit_chi2ndof_vec.push_back(DsFit_chi2ndof);
+    DsFit_vx_vec.push_back(DsFit_vx);
+    DsFit_vy_vec.push_back(DsFit_vy);
+    DsFit_vz_vec.push_back(DsFit_vz);
+    DsFit_vxerr_vec.push_back(DsFit_vxerr);
+    DsFit_vyerr_vec.push_back(DsFit_vyerr);
+    DsFit_vzerr_vec.push_back(DsFit_vzerr);
 
-    DsFit_Kp_ETA_vec.push_back(DsFit_Kp_ETA);
-    DsFit_Kp_PHI_vec.push_back(DsFit_Kp_PHI);
-    DsFit_Kp_P_vec.push_back(DsFit_Kp_P);
-    DsFit_Kp_PT_vec.push_back(DsFit_Kp_PT);
-    DsFit_Kp_PX_vec.push_back(DsFit_Kp_PX);
-    DsFit_Kp_PY_vec.push_back(DsFit_Kp_PY);
-    DsFit_Kp_PZ_vec.push_back(DsFit_Kp_PZ);
+    DsFit_Kp_eta_vec.push_back(DsFit_Kp_eta);
+    DsFit_Kp_phi_vec.push_back(DsFit_Kp_phi);
+    DsFit_Kp_p_vec.push_back(DsFit_Kp_p);
+    DsFit_Kp_pt_vec.push_back(DsFit_Kp_pt);
+    DsFit_Kp_px_vec.push_back(DsFit_Kp_px);
+    DsFit_Kp_py_vec.push_back(DsFit_Kp_py);
+    DsFit_Kp_pz_vec.push_back(DsFit_Kp_pz);
 
-    DsFit_Km_ETA_vec.push_back(DsFit_Km_ETA);
-    DsFit_Km_PHI_vec.push_back(DsFit_Km_PHI);
-    DsFit_Km_P_vec.push_back(DsFit_Km_P);
-    DsFit_Km_PT_vec.push_back(DsFit_Km_PT);
-    DsFit_Km_PX_vec.push_back(DsFit_Km_PX);
-    DsFit_Km_PY_vec.push_back(DsFit_Km_PY);
-    DsFit_Km_PZ_vec.push_back(DsFit_Km_PZ);
+    DsFit_Km_eta_vec.push_back(DsFit_Km_eta);
+    DsFit_Km_phi_vec.push_back(DsFit_Km_phi);
+    DsFit_Km_p_vec.push_back(DsFit_Km_p);
+    DsFit_Km_pt_vec.push_back(DsFit_Km_pt);
+    DsFit_Km_px_vec.push_back(DsFit_Km_px);
+    DsFit_Km_py_vec.push_back(DsFit_Km_py);
+    DsFit_Km_pz_vec.push_back(DsFit_Km_pz);
 
-    DsFit_pi_ETA_vec.push_back(DsFit_pi_ETA);
-    DsFit_pi_PHI_vec.push_back(DsFit_pi_PHI);
-    DsFit_pi_P_vec.push_back(DsFit_pi_P);
-    DsFit_pi_PT_vec.push_back(DsFit_pi_PT);
-    DsFit_pi_PX_vec.push_back(DsFit_pi_PX);
-    DsFit_pi_PY_vec.push_back(DsFit_pi_PY);
-    DsFit_pi_PZ_vec.push_back(DsFit_pi_PZ);
+    DsFit_pi_eta_vec.push_back(DsFit_pi_eta);
+    DsFit_pi_phi_vec.push_back(DsFit_pi_phi);
+    DsFit_pi_p_vec.push_back(DsFit_pi_p);
+    DsFit_pi_pt_vec.push_back(DsFit_pi_pt);
+    DsFit_pi_px_vec.push_back(DsFit_pi_px);
+    DsFit_pi_py_vec.push_back(DsFit_pi_py);
+    DsFit_pi_pz_vec.push_back(DsFit_pi_pz);
 
-    DsFit_phi_ETA_vec.push_back(DsFit_phi_ETA);
-    DsFit_phi_PHI_vec.push_back(DsFit_phi_PHI);
-    DsFit_phi_P_vec.push_back(DsFit_phi_P);
-    DsFit_phi_PT_vec.push_back(DsFit_phi_PT);
-    DsFit_phi_PX_vec.push_back(DsFit_phi_PX);
-    DsFit_phi_PY_vec.push_back(DsFit_phi_PY);
-    DsFit_phi_PZ_vec.push_back(DsFit_phi_PZ);
-    DsFit_phi_M_vec.push_back(DsFit_phi_M);
+    DsFit_phi_eta_vec.push_back(DsFit_phi_eta);
+    DsFit_phi_phi_vec.push_back(DsFit_phi_phi);
+    DsFit_phi_p_vec.push_back(DsFit_phi_p);
+    DsFit_phi_pt_vec.push_back(DsFit_phi_pt);
+    DsFit_phi_px_vec.push_back(DsFit_phi_px);
+    DsFit_phi_py_vec.push_back(DsFit_phi_py);
+    DsFit_phi_pz_vec.push_back(DsFit_phi_pz);
+    DsFit_phi_invm_vec.push_back(DsFit_phi_invm);
 
-    DsFit_Ds_ETA_vec.push_back(DsFit_Ds_ETA);
-    DsFit_Ds_PHI_vec.push_back(DsFit_Ds_PHI);
-    DsFit_Ds_P_vec.push_back(DsFit_Ds_P);
-    DsFit_Ds_PT_vec.push_back(DsFit_Ds_PT);
-    DsFit_Ds_PX_vec.push_back(DsFit_Ds_PX);
-    DsFit_Ds_PY_vec.push_back(DsFit_Ds_PY);
-    DsFit_Ds_PZ_vec.push_back(DsFit_Ds_PZ);
-    DsFit_Ds_M_vec.push_back(DsFit_Ds_M);
+    DsFit_Ds_eta_vec.push_back(DsFit_Ds_eta);
+    DsFit_Ds_phi_vec.push_back(DsFit_Ds_phi);
+    DsFit_Ds_p_vec.push_back(DsFit_Ds_p);
+    DsFit_Ds_pt_vec.push_back(DsFit_Ds_pt);
+    DsFit_Ds_px_vec.push_back(DsFit_Ds_px);
+    DsFit_Ds_py_vec.push_back(DsFit_Ds_py);
+    DsFit_Ds_pz_vec.push_back(DsFit_Ds_pz);
+    DsFit_Ds_invm_vec.push_back(DsFit_Ds_invm);
 
-    DsFit_Kp_PP_vec.push_back(DsFit_Kp_PP);
-    DsFit_Kp_PL_vec.push_back(DsFit_Kp_PL);
-    DsFit_Km_PP_vec.push_back(DsFit_Km_PP);
-    DsFit_Km_PL_vec.push_back(DsFit_Km_PL);
+    DsFit_Kp_pp_vec.push_back(DsFit_Kp_pp);
+    DsFit_Kp_pl_vec.push_back(DsFit_Kp_pl);
+    DsFit_Km_pp_vec.push_back(DsFit_Km_pp);
+    DsFit_Km_pl_vec.push_back(DsFit_Km_pl);
 
-    DsFit_phi_PP_vec.push_back(DsFit_phi_PP);
-    DsFit_phi_PL_vec.push_back(DsFit_phi_PL);
-    DsFit_pi_PP_vec.push_back(DsFit_pi_PP);
-    DsFit_pi_PL_vec.push_back(DsFit_pi_PL);
+    DsFit_phi_pp_vec.push_back(DsFit_phi_pp);
+    DsFit_phi_pl_vec.push_back(DsFit_phi_pl);
+    DsFit_pi_pp_vec.push_back(DsFit_pi_pp);
+    DsFit_pi_pl_vec.push_back(DsFit_pi_pl);
 
     DsFit_dR_Kp_Km_vec.push_back(DsFit_dR_Kp_Km);
     DsFit_dR_Kp_phi_vec.push_back(DsFit_dR_Kp_phi);
@@ -1649,1801 +1666,413 @@ void RecoTree::Fill_Vector()
     DsFit_dR_phi_Ds_vec.push_back(DsFit_dR_phi_Ds);
     DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds);
 
-    DsFit_Mconstraint_Ds_M_vec.push_back(DsFit_Mconstraint_Ds_M);
+    DsFit_Mconstraint_Ds_invm_vec.push_back(DsFit_Mconstraint_Ds_invm);
 
-    Kp_match_vec.push_back(Kp_match);
-    Km_match_vec.push_back(Km_match);
-    pi_match_vec.push_back(pi_match);
-    match_entry_vec.push_back(match_entry);
-    non_match_entry_vec.push_back(non_match_entry);
-    
-    Ds_FDxy_vec.push_back(Ds_FDxy);
-    Ds_FDxy_Err_vec.push_back(Ds_FDxy_Err);
-    Ds_FDxy_Chi2_vec.push_back(Ds_FDxy_Chi2);
-    Ds_FDz_vec.push_back(Ds_FDz);
-    Ds_FDz_Err_vec.push_back(Ds_FDz_Err);
-    Ds_FDz_Chi2_vec.push_back(Ds_FDz_Chi2);
-    Ds_FD_vec.push_back(Ds_FD);
-    Ds_FD_Err_vec.push_back(Ds_FD_Err);
-    Ds_FD_Chi2_vec.push_back(Ds_FD_Chi2);
-    Ds_DIRA_angle_vec.push_back(Ds_DIRA_angle);
-    Ds_DIRA_vec.push_back(Ds_DIRA);
-    Kp_IP_vec.push_back(Kp_IP);
-    Kp_IP_Err_vec.push_back(Kp_IP_Err);
-    Kp_IP_Chi2_vec.push_back(Kp_IP_Chi2);
-    Km_IP_vec.push_back(Km_IP);
-    Km_IP_Err_vec.push_back(Km_IP_Err);
-    Km_IP_Chi2_vec.push_back(Km_IP_Chi2);
-    pi_IP_vec.push_back(pi_IP);
-    pi_IP_Err_vec.push_back(pi_IP_Err);
-    pi_IP_Chi2_vec.push_back(pi_IP_Chi2);
+    alpha_Ds_vec.push_back(alpha_Ds);
+    beta_Ds_vec.push_back(beta_Ds);
+    APvar_Ds_vec.push_back(APvar_Ds);
+
+    Ds_primvtx_FDxy_vec.push_back(Ds_primvtx_FDxy);
+    Ds_primvtx_FDz_vec.push_back(Ds_primvtx_FDz);
+    Ds_primvtx_FD_vec.push_back(Ds_primvtx_FD);
+    Ds_primvtx_FDxyerr_vec.push_back(Ds_primvtx_FDxyerr);
+    Ds_primvtx_FDxychi2_vec.push_back(Ds_primvtx_FDxychi2);
+    Ds_primvtx_FDzerr_vec.push_back(Ds_primvtx_FDzerr);
+    Ds_primvtx_FDzchi2_vec.push_back(Ds_primvtx_FDzchi2);
+    Ds_primvtx_FDerr_vec.push_back(Ds_primvtx_FDerr);
+    Ds_primvtx_FDchi2_vec.push_back(Ds_primvtx_FDchi2);
+    Ds_primvtx_dira_vec.push_back(Ds_primvtx_dira);
+    Ds_primvtx_dira_angle_vec.push_back(Ds_primvtx_dira_angle);
+    Kp_primvtx_ip_vec.push_back(Kp_primvtx_ip);
+    Kp_primvtx_iperr_vec.push_back(Kp_primvtx_iperr);
+    Kp_primvtx_ipchi2_vec.push_back(Kp_primvtx_ipchi2);
+    Km_primvtx_ip_vec.push_back(Km_primvtx_ip);
+    Km_primvtx_iperr_vec.push_back(Km_primvtx_iperr);
+    Km_primvtx_ipchi2_vec.push_back(Km_primvtx_ipchi2);
+    pi_primvtx_ip_vec.push_back(pi_primvtx_ip);
+    pi_primvtx_iperr_vec.push_back(pi_primvtx_iperr);
+    pi_primvtx_ipchi2_vec.push_back(pi_primvtx_ipchi2);
+
+    Ds_Iso_R0p3_vec.push_back(Ds_Iso_R0p3);
+    Ds_Iso_R0p4_vec.push_back(Ds_Iso_R0p4);
+    Ds_IsoRel_R0p3_vec.push_back(Ds_IsoRel_R0p3);
+    Ds_IsoRel_R0p4_vec.push_back(Ds_IsoRel_R0p4);
+
+    PV_noDs_withBS_IsValid_vec.push_back(PV_noDs_withBS_IsValid);
+    PV_noDs_withBS_IsFake_vec.push_back(PV_noDs_withBS_IsFake);
+    PV_noDs_withBS_chi2_vec.push_back(PV_noDs_withBS_chi2);
+    PV_noDs_withBS_ndof_vec.push_back(PV_noDs_withBS_ndof);
+    PV_noDs_withBS_chi2ndof_vec.push_back(PV_noDs_withBS_chi2ndof);
+    PV_noDs_withBS_x_vec.push_back(PV_noDs_withBS_x);
+    PV_noDs_withBS_y_vec.push_back(PV_noDs_withBS_y);
+    PV_noDs_withBS_z_vec.push_back(PV_noDs_withBS_z);
+    PV_noDs_withBS_xerr_vec.push_back(PV_noDs_withBS_xerr);
+    PV_noDs_withBS_yerr_vec.push_back(PV_noDs_withBS_yerr);
+    PV_noDs_withBS_zerr_vec.push_back(PV_noDs_withBS_zerr);
+
+    PV_noDs_noBS_IsValid_vec.push_back(PV_noDs_noBS_IsValid);
+    PV_noDs_noBS_IsFake_vec.push_back(PV_noDs_noBS_IsFake);
+    PV_noDs_noBS_chi2_vec.push_back(PV_noDs_noBS_chi2);
+    PV_noDs_noBS_ndof_vec.push_back(PV_noDs_noBS_ndof);
+    PV_noDs_noBS_chi2ndof_vec.push_back(PV_noDs_noBS_chi2ndof);
+    PV_noDs_noBS_x_vec.push_back(PV_noDs_noBS_x);
+    PV_noDs_noBS_y_vec.push_back(PV_noDs_noBS_y);
+    PV_noDs_noBS_z_vec.push_back(PV_noDs_noBS_z);
+    PV_noDs_noBS_xerr_vec.push_back(PV_noDs_noBS_xerr);
+    PV_noDs_noBS_yerr_vec.push_back(PV_noDs_noBS_yerr);
+    PV_noDs_noBS_zerr_vec.push_back(PV_noDs_noBS_zerr);
+
+    Ds_PVnoDs_FDxy_vec.push_back(Ds_PVnoDs_FDxy);
+    Ds_PVnoDs_FDz_vec.push_back(Ds_PVnoDs_FDz);
+    Ds_PVnoDs_FD_vec.push_back(Ds_PVnoDs_FD);
+    Ds_PVnoDs_FDxyerr_vec.push_back(Ds_PVnoDs_FDxyerr);
+    Ds_PVnoDs_FDxychi2_vec.push_back(Ds_PVnoDs_FDxychi2);
+    Ds_PVnoDs_FDzerr_vec.push_back(Ds_PVnoDs_FDzerr);
+    Ds_PVnoDs_FDzchi2_vec.push_back(Ds_PVnoDs_FDzchi2);
+    Ds_PVnoDs_FDerr_vec.push_back(Ds_PVnoDs_FDerr);
+    Ds_PVnoDs_FDchi2_vec.push_back(Ds_PVnoDs_FDchi2);
+    Ds_PVnoDs_dira_vec.push_back(Ds_PVnoDs_dira);
+    Ds_PVnoDs_dira_angle_vec.push_back(Ds_PVnoDs_dira_angle);
+    Kp_PVnoDs_ip_vec.push_back(Kp_PVnoDs_ip);
+    Kp_PVnoDs_iperr_vec.push_back(Kp_PVnoDs_iperr);
+    Kp_PVnoDs_ipchi2_vec.push_back(Kp_PVnoDs_ipchi2);
+    Km_PVnoDs_ip_vec.push_back(Km_PVnoDs_ip);
+    Km_PVnoDs_iperr_vec.push_back(Km_PVnoDs_iperr);
+    Km_PVnoDs_ipchi2_vec.push_back(Km_PVnoDs_ipchi2);
+    pi_PVnoDs_ip_vec.push_back(pi_PVnoDs_ip);
+    pi_PVnoDs_iperr_vec.push_back(pi_PVnoDs_iperr);
+    pi_PVnoDs_ipchi2_vec.push_back(pi_PVnoDs_ipchi2);
 }
 
-void RecoTree::PV_withBS_Fill_Vector()
+void RecoTree::Best_Fill_Vector(int idxmax)
 {
-    PV_withBS_IsValid_vec.push_back(PV_withBS_IsValid);
-    PV_withBS_IsFake_vec.push_back(PV_withBS_IsFake);
-    PV_withBS_CHI2_vec.push_back(PV_withBS_CHI2);
-    PV_withBS_NDOF_vec.push_back(PV_withBS_NDOF);
-    PV_withBS_CHI2NDOF_vec.push_back(PV_withBS_CHI2NDOF);
-    PV_withBS_X_vec.push_back(PV_withBS_X);
-    PV_withBS_Y_vec.push_back(PV_withBS_Y);
-    PV_withBS_Z_vec.push_back(PV_withBS_Z);
-    PV_withBS_XERR_vec.push_back(PV_withBS_XERR);
-    PV_withBS_YERR_vec.push_back(PV_withBS_YERR);
-    PV_withBS_ZERR_vec.push_back(PV_withBS_ZERR);
-}
+    best_Kp_isIsolatedChargedHadron_vec.push_back(Kp_isIsolatedChargedHadron_vec[idxmax]);
+    best_Kp_charge_vec.push_back(Kp_charge_vec[idxmax]);
+    best_Kp_eta_vec.push_back(Kp_eta_vec[idxmax]);
+    best_Kp_phi_vec.push_back(Kp_phi_vec[idxmax]);
+    best_Kp_vx_vec.push_back(Kp_vx_vec[idxmax]);
+    best_Kp_vy_vec.push_back(Kp_vy_vec[idxmax]);
+    best_Kp_vz_vec.push_back(Kp_vz_vec[idxmax]);
+    best_Kp_p_vec.push_back(Kp_p_vec[idxmax]);
+    best_Kp_pt_vec.push_back(Kp_pt_vec[idxmax]);
+    best_Kp_px_vec.push_back(Kp_px_vec[idxmax]);
+    best_Kp_py_vec.push_back(Kp_py_vec[idxmax]);
+    best_Kp_pz_vec.push_back(Kp_pz_vec[idxmax]);
+
+    best_Km_isIsolatedChargedHadron_vec.push_back(Km_isIsolatedChargedHadron_vec[idxmax]);
+    best_Km_charge_vec.push_back(Km_charge_vec[idxmax]);
+    best_Km_eta_vec.push_back(Km_eta_vec[idxmax]);
+    best_Km_phi_vec.push_back(Km_phi_vec[idxmax]);
+    best_Km_vx_vec.push_back(Km_vx_vec[idxmax]);
+    best_Km_vy_vec.push_back(Km_vy_vec[idxmax]);
+    best_Km_vz_vec.push_back(Km_vz_vec[idxmax]);
+    best_Km_p_vec.push_back(Km_p_vec[idxmax]);
+    best_Km_pt_vec.push_back(Km_pt_vec[idxmax]);
+    best_Km_px_vec.push_back(Km_px_vec[idxmax]);
+    best_Km_py_vec.push_back(Km_py_vec[idxmax]);
+    best_Km_pz_vec.push_back(Km_pz_vec[idxmax]);
+
+    best_pi_isIsolatedChargedHadron_vec.push_back(pi_isIsolatedChargedHadron_vec[idxmax]);
+    best_pi_charge_vec.push_back(pi_charge_vec[idxmax]);
+    best_pi_eta_vec.push_back(pi_eta_vec[idxmax]);
+    best_pi_phi_vec.push_back(pi_phi_vec[idxmax]);
+    best_pi_vx_vec.push_back(pi_vx_vec[idxmax]);
+    best_pi_vy_vec.push_back(pi_vy_vec[idxmax]);
+    best_pi_vz_vec.push_back(pi_vz_vec[idxmax]);
+    best_pi_p_vec.push_back(pi_p_vec[idxmax]);
+    best_pi_pt_vec.push_back(pi_pt_vec[idxmax]);
+    best_pi_px_vec.push_back(pi_px_vec[idxmax]);
+    best_pi_py_vec.push_back(pi_py_vec[idxmax]);
+    best_pi_pz_vec.push_back(pi_pz_vec[idxmax]);
+
+    best_phi_eta_vec.push_back(phi_eta_vec[idxmax]);
+    best_phi_phi_vec.push_back(phi_phi_vec[idxmax]);
+    best_phi_p_vec.push_back(phi_p_vec[idxmax]);
+    best_phi_pt_vec.push_back(phi_pt_vec[idxmax]);
+    best_phi_px_vec.push_back(phi_px_vec[idxmax]);
+    best_phi_py_vec.push_back(phi_py_vec[idxmax]);
+    best_phi_pz_vec.push_back(phi_pz_vec[idxmax]);
+    best_phi_invm_vec.push_back(phi_invm_vec[idxmax]);
+
+    best_Ds_eta_vec.push_back(Ds_eta_vec[idxmax]);
+    best_Ds_phi_vec.push_back(Ds_phi_vec[idxmax]);
+    best_Ds_p_vec.push_back(Ds_p_vec[idxmax]);
+    best_Ds_pt_vec.push_back(Ds_pt_vec[idxmax]);
+    best_Ds_px_vec.push_back(Ds_px_vec[idxmax]);
+    best_Ds_py_vec.push_back(Ds_py_vec[idxmax]);
+    best_Ds_pz_vec.push_back(Ds_pz_vec[idxmax]);
+    best_Ds_invm_vec.push_back(Ds_invm_vec[idxmax]);
+
+    best_Kp_pp_vec.push_back(Kp_pp_vec[idxmax]);
+    best_Kp_pl_vec.push_back(Kp_pl_vec[idxmax]);
+    best_Km_pp_vec.push_back(Km_pp_vec[idxmax]);
+    best_Km_pl_vec.push_back(Km_pl_vec[idxmax]);
+
+    best_phi_pp_vec.push_back(phi_pp_vec[idxmax]);
+    best_phi_pl_vec.push_back(phi_pl_vec[idxmax]);
+    best_pi_pp_vec.push_back(pi_pp_vec[idxmax]);
+    best_pi_pl_vec.push_back(pi_pl_vec[idxmax]);
+
+    best_dR_Kp_Km_vec.push_back(dR_Kp_Km_vec[idxmax]);
+    best_dR_Kp_phi_vec.push_back(dR_Kp_phi_vec[idxmax]);
+    best_dR_Km_phi_vec.push_back(dR_Km_phi_vec[idxmax]);
+    best_dR_Kp_pi_vec.push_back(dR_Kp_pi_vec[idxmax]);
+    best_dR_Km_pi_vec.push_back(dR_Km_pi_vec[idxmax]);
+    best_dR_pi_phi_vec.push_back(dR_pi_phi_vec[idxmax]);
+    best_dR_Kp_Ds_vec.push_back(dR_Kp_Ds_vec[idxmax]);
+    best_dR_Km_Ds_vec.push_back(dR_Km_Ds_vec[idxmax]);
+    best_dR_phi_Ds_vec.push_back(dR_phi_Ds_vec[idxmax]);
+    best_dR_pi_Ds_vec.push_back(dR_pi_Ds_vec[idxmax]);
+
+    best_dxy_Kp_Km_vec.push_back(dxy_Kp_Km_vec[idxmax]);
+    best_dxy_Kp_phi_vec.push_back(dxy_Kp_phi_vec[idxmax]);
+    best_dxy_Km_phi_vec.push_back(dxy_Km_phi_vec[idxmax]);
+    best_dxy_Kp_pi_vec.push_back(dxy_Kp_pi_vec[idxmax]);
+    best_dxy_Km_pi_vec.push_back(dxy_Km_pi_vec[idxmax]);
+    best_dxy_pi_phi_vec.push_back(dxy_pi_phi_vec[idxmax]);
+    best_dxy_Kp_Ds_vec.push_back(dxy_Kp_Ds_vec[idxmax]);
+    best_dxy_Km_Ds_vec.push_back(dxy_Km_Ds_vec[idxmax]);
+    best_dxy_phi_Ds_vec.push_back(dxy_phi_Ds_vec[idxmax]);
+    best_dxy_pi_Ds_vec.push_back(dxy_pi_Ds_vec[idxmax]);
+
+    best_dz_Kp_Km_vec.push_back(dz_Kp_Km_vec[idxmax]);
+    best_dz_Kp_phi_vec.push_back(dz_Kp_phi_vec[idxmax]);
+    best_dz_Km_phi_vec.push_back(dz_Km_phi_vec[idxmax]);
+    best_dz_Kp_pi_vec.push_back(dz_Kp_pi_vec[idxmax]);
+    best_dz_Km_pi_vec.push_back(dz_Km_pi_vec[idxmax]);
+    best_dz_pi_phi_vec.push_back(dz_pi_phi_vec[idxmax]);
+    best_dz_Kp_Ds_vec.push_back(dz_Kp_Ds_vec[idxmax]);
+    best_dz_Km_Ds_vec.push_back(dz_Km_Ds_vec[idxmax]);
+    best_dz_phi_Ds_vec.push_back(dz_phi_Ds_vec[idxmax]);
+    best_dz_pi_Ds_vec.push_back(dz_pi_Ds_vec[idxmax]);
 
-void RecoTree::PV_noBS_Fill_Vector()
-{
-    PV_noBS_IsValid_vec.push_back(PV_noBS_IsValid);
-    PV_noBS_IsFake_vec.push_back(PV_noBS_IsFake);
-    PV_noBS_CHI2_vec.push_back(PV_noBS_CHI2);
-    PV_noBS_NDOF_vec.push_back(PV_noBS_NDOF);
-    PV_noBS_CHI2NDOF_vec.push_back(PV_noBS_CHI2NDOF);
-    PV_noBS_X_vec.push_back(PV_noBS_X);
-    PV_noBS_Y_vec.push_back(PV_noBS_Y);
-    PV_noBS_Z_vec.push_back(PV_noBS_Z);
-    PV_noBS_XERR_vec.push_back(PV_noBS_XERR);
-    PV_noBS_YERR_vec.push_back(PV_noBS_YERR);
-    PV_noBS_ZERR_vec.push_back(PV_noBS_ZERR);
-}
-
-void RecoTree::CreateBranches()
-{
-    tree->Branch("BS_type", &BS_type); 
-    tree->Branch("BS_X0", &BS_X0);
-    tree->Branch("BS_Y0", &BS_Y0);
-    tree->Branch("BS_Z0", &BS_Z0);
-    tree->Branch("BS_SigmaZ", &BS_SigmaZ);
-    tree->Branch("BS_dXdZ", &BS_dXdZ);
-    tree->Branch("BS_dYdZ", &BS_dYdZ);
-    tree->Branch("BS_BWX", &BS_BWX);
-    tree->Branch("BS_BWY", &BS_BWY);
-    tree->Branch("BS_X0ERR", &BS_X0ERR);
-    tree->Branch("BS_Y0ERR", &BS_Y0ERR);
-    tree->Branch("BS_Z0ERR", &BS_Z0ERR);
-    tree->Branch("BS_SigmaZ0ERR", &BS_SigmaZ0ERR);
-    tree->Branch("BS_dXdZERR", &BS_dXdZERR);
-    tree->Branch("BS_dYdZERR", &BS_dYdZERR);
-    tree->Branch("BS_BWXERR", &BS_BWXERR);
-    tree->Branch("BS_BWYERR", &BS_BWYERR);
-    tree->Branch("BS_EmitX", &BS_EmitX);
-    tree->Branch("BS_EmitY", &BS_EmitY);
-    tree->Branch("BS_BetaStar", &BS_BetaStar);
-    
-    tree->Branch("PV_withBS_IsValid", &PV_withBS_IsValid_vec);
-    tree->Branch("PV_withBS_IsFake", &PV_withBS_IsFake_vec);
-    tree->Branch("PV_withBS_CHI2", &PV_withBS_CHI2_vec);
-    tree->Branch("PV_withBS_NDOF", &PV_withBS_NDOF_vec);
-    tree->Branch("PV_withBS_CHI2NDOF", &PV_withBS_CHI2NDOF_vec);
-    tree->Branch("PV_withBS_X", &PV_withBS_X_vec);
-    tree->Branch("PV_withBS_Y", &PV_withBS_Y_vec);
-    tree->Branch("PV_withBS_Z", &PV_withBS_Z_vec);
-    tree->Branch("PV_withBS_XERR", &PV_withBS_XERR_vec);
-    tree->Branch("PV_withBS_YERR", &PV_withBS_YERR_vec);
-    tree->Branch("PV_withBS_ZERR", &PV_withBS_ZERR_vec);
-    tree->Branch("PV_noBS_IsValid", &PV_noBS_IsValid_vec);
-    tree->Branch("PV_noBS_IsFake", &PV_noBS_IsFake_vec);
-    tree->Branch("PV_noBS_CHI2", &PV_noBS_CHI2_vec);
-    tree->Branch("PV_noBS_NDOF", &PV_noBS_NDOF_vec);
-    tree->Branch("PV_noBS_CHI2NDOF", &PV_noBS_CHI2NDOF_vec);
-    tree->Branch("PV_noBS_X", &PV_noBS_X_vec);
-    tree->Branch("PV_noBS_Y", &PV_noBS_Y_vec);
-    tree->Branch("PV_noBS_Z", &PV_noBS_Z_vec);
-    tree->Branch("PV_noBS_XERR", &PV_noBS_XERR_vec);
-    tree->Branch("PV_noBS_YERR", &PV_noBS_YERR_vec);
-    tree->Branch("PV_noBS_ZERR", &PV_noBS_ZERR_vec);
-
-    tree->Branch("num_Gen_Kp", &num_Gen_Kp);
-    tree->Branch("num_Gen_Km", &num_Gen_Km);
-    tree->Branch("num_Gen_pi", &num_Gen_pi);
-    tree->Branch("num_Gen_phi", &num_Gen_phi);
-    tree->Branch("num_Gen_Ds", &num_Gen_Ds);
-    tree->Branch("num_Gen_mu", &num_Gen_mu);
-    tree->Branch("num_Gen_nu", &num_Gen_nu);
-    tree->Branch("num_Gen_W", &num_Gen_W);
-    tree->Branch("num_Gen_H", &num_Gen_H);
-
-    tree->Branch("Gen_Kp_ETA", &Gen_Kp_ETA);
-    tree->Branch("Gen_Kp_PHI", &Gen_Kp_PHI);
-    tree->Branch("Gen_Kp_ORIVX_X", &Gen_Kp_ORIVX_X);
-    tree->Branch("Gen_Kp_ORIVX_Y", &Gen_Kp_ORIVX_Y);
-    tree->Branch("Gen_Kp_ORIVX_Z", &Gen_Kp_ORIVX_Z);
-    tree->Branch("Gen_Kp_P", &Gen_Kp_P);
-    tree->Branch("Gen_Kp_PT", &Gen_Kp_PT);
-    tree->Branch("Gen_Kp_PX", &Gen_Kp_PX);
-    tree->Branch("Gen_Kp_PY", &Gen_Kp_PY);
-    tree->Branch("Gen_Kp_PZ", &Gen_Kp_PZ);
-    tree->Branch("Gen_Kp_PP", &Gen_Kp_PP);
-    tree->Branch("Gen_Kp_PL", &Gen_Kp_PL);
-
-    tree->Branch("Gen_Km_ETA", &Gen_Km_ETA);
-    tree->Branch("Gen_Km_PHI", &Gen_Km_PHI);
-    tree->Branch("Gen_Km_ORIVX_X", &Gen_Km_ORIVX_X);
-    tree->Branch("Gen_Km_ORIVX_Y", &Gen_Km_ORIVX_Y);
-    tree->Branch("Gen_Km_ORIVX_Z", &Gen_Km_ORIVX_Z);
-    tree->Branch("Gen_Km_P", &Gen_Km_P);
-    tree->Branch("Gen_Km_PT", &Gen_Km_PT);
-    tree->Branch("Gen_Km_PX", &Gen_Km_PX);
-    tree->Branch("Gen_Km_PY", &Gen_Km_PY);
-    tree->Branch("Gen_Km_PZ", &Gen_Km_PZ);
-    tree->Branch("Gen_Km_PP", &Gen_Km_PP);
-    tree->Branch("Gen_Km_PL", &Gen_Km_PL);
-
-    tree->Branch("Gen_pi_ETA", &Gen_pi_ETA);
-    tree->Branch("Gen_pi_PHI", &Gen_pi_PHI);
-    tree->Branch("Gen_pi_ORIVX_X", &Gen_pi_ORIVX_X);
-    tree->Branch("Gen_pi_ORIVX_Y", &Gen_pi_ORIVX_Y);
-    tree->Branch("Gen_pi_ORIVX_Z", &Gen_pi_ORIVX_Z);
-    tree->Branch("Gen_pi_P", &Gen_pi_P);
-    tree->Branch("Gen_pi_PT", &Gen_pi_PT);
-    tree->Branch("Gen_pi_PX", &Gen_pi_PX);
-    tree->Branch("Gen_pi_PY", &Gen_pi_PY);
-    tree->Branch("Gen_pi_PZ", &Gen_pi_PZ);
-    tree->Branch("Gen_pi_PP", &Gen_pi_PP);
-    tree->Branch("Gen_pi_PL", &Gen_pi_PL);
-
-    tree->Branch("Gen_phi_ETA", &Gen_phi_ETA);
-    tree->Branch("Gen_phi_PHI", &Gen_phi_PHI);
-    tree->Branch("Gen_phi_ORIVX_X", &Gen_phi_ORIVX_X);
-    tree->Branch("Gen_phi_ORIVX_Y", &Gen_phi_ORIVX_Y);
-    tree->Branch("Gen_phi_ORIVX_Z", &Gen_phi_ORIVX_Z);
-    tree->Branch("Gen_phi_P", &Gen_phi_P);
-    tree->Branch("Gen_phi_PT", &Gen_phi_PT);
-    tree->Branch("Gen_phi_PX", &Gen_phi_PX);
-    tree->Branch("Gen_phi_PY", &Gen_phi_PY);
-    tree->Branch("Gen_phi_PZ", &Gen_phi_PZ);
-    tree->Branch("Gen_phi_PP", &Gen_phi_PP);
-    tree->Branch("Gen_phi_PL", &Gen_phi_PL);
-
-    tree->Branch("Gen_Ds_ETA", &Gen_Ds_ETA);
-    tree->Branch("Gen_Ds_PHI", &Gen_Ds_PHI);
-    tree->Branch("Gen_Ds_ORIVX_X", &Gen_Ds_ORIVX_X);
-    tree->Branch("Gen_Ds_ORIVX_Y", &Gen_Ds_ORIVX_Y);
-    tree->Branch("Gen_Ds_ORIVX_Z", &Gen_Ds_ORIVX_Z);
-    tree->Branch("Gen_Ds_P", &Gen_Ds_P);
-    tree->Branch("Gen_Ds_PT", &Gen_Ds_PT);
-    tree->Branch("Gen_Ds_PX", &Gen_Ds_PX);
-    tree->Branch("Gen_Ds_PY", &Gen_Ds_PY);
-    tree->Branch("Gen_Ds_PZ", &Gen_Ds_PZ);
-
-    tree->Branch("Gen_mu_ETA", &Gen_mu_ETA);
-    tree->Branch("Gen_mu_PHI", &Gen_mu_PHI);
-    tree->Branch("Gen_mu_ORIVX_X", &Gen_mu_ORIVX_X);
-    tree->Branch("Gen_mu_ORIVX_Y", &Gen_mu_ORIVX_Y);
-    tree->Branch("Gen_mu_ORIVX_Z", &Gen_mu_ORIVX_Z);
-    tree->Branch("Gen_mu_P", &Gen_mu_P);
-    tree->Branch("Gen_mu_PT", &Gen_mu_PT);
-    tree->Branch("Gen_mu_PX", &Gen_mu_PX);
-    tree->Branch("Gen_mu_PY", &Gen_mu_PY);
-    tree->Branch("Gen_mu_PZ", &Gen_mu_PZ);
-
-    tree->Branch("Gen_nu_ETA", &Gen_nu_ETA);
-    tree->Branch("Gen_nu_PHI", &Gen_nu_PHI);
-    tree->Branch("Gen_nu_ORIVX_X", &Gen_nu_ORIVX_X);
-    tree->Branch("Gen_nu_ORIVX_Y", &Gen_nu_ORIVX_Y);
-    tree->Branch("Gen_nu_ORIVX_Z", &Gen_nu_ORIVX_Z);
-    tree->Branch("Gen_nu_P", &Gen_nu_P);
-    tree->Branch("Gen_nu_PT", &Gen_nu_PT);
-    tree->Branch("Gen_nu_PX", &Gen_nu_PX);
-    tree->Branch("Gen_nu_PY", &Gen_nu_PY);
-    tree->Branch("Gen_nu_PZ", &Gen_nu_PZ);
-
-    tree->Branch("Gen_W_ETA", &Gen_W_ETA);
-    tree->Branch("Gen_W_PHI", &Gen_W_PHI);
-    tree->Branch("Gen_W_ORIVX_X", &Gen_W_ORIVX_X);
-    tree->Branch("Gen_W_ORIVX_Y", &Gen_W_ORIVX_Y);
-    tree->Branch("Gen_W_ORIVX_Z", &Gen_W_ORIVX_Z);
-    tree->Branch("Gen_W_P", &Gen_W_P);
-    tree->Branch("Gen_W_PT", &Gen_W_PT);
-    tree->Branch("Gen_W_PX", &Gen_W_PX);
-    tree->Branch("Gen_W_PY", &Gen_W_PY);
-    tree->Branch("Gen_W_PZ", &Gen_W_PZ);
-
-    tree->Branch("Gen_H_ETA", &Gen_H_ETA);
-    tree->Branch("Gen_H_PHI", &Gen_H_PHI);
-    tree->Branch("Gen_H_ORIVX_X", &Gen_H_ORIVX_X);
-    tree->Branch("Gen_H_ORIVX_Y", &Gen_H_ORIVX_Y);
-    tree->Branch("Gen_H_ORIVX_Z", &Gen_H_ORIVX_Z);
-    tree->Branch("Gen_H_P", &Gen_H_P);
-    tree->Branch("Gen_H_PT", &Gen_H_PT);
-    tree->Branch("Gen_H_PX", &Gen_H_PX);
-    tree->Branch("Gen_H_PY", &Gen_H_PY);
-    tree->Branch("Gen_H_PZ", &Gen_H_PZ);
-
-    tree->Branch("Gen_dR_Kp_Km", &Gen_dR_Kp_Km);
-    tree->Branch("Gen_dR_Kp_phi", &Gen_dR_Kp_phi);
-    tree->Branch("Gen_dR_Km_phi", &Gen_dR_Km_phi);
-    tree->Branch("Gen_dR_Kp_pi", &Gen_dR_Kp_pi);
-    tree->Branch("Gen_dR_Km_pi", &Gen_dR_Km_pi);
-    tree->Branch("Gen_dR_pi_phi", &Gen_dR_pi_phi);
-    tree->Branch("Gen_dR_Kp_Ds", &Gen_dR_Kp_Ds);
-    tree->Branch("Gen_dR_Km_Ds", &Gen_dR_Km_Ds);
-    tree->Branch("Gen_dR_phi_Ds", &Gen_dR_phi_Ds);
-    tree->Branch("Gen_dR_pi_Ds", &Gen_dR_pi_Ds);
-
-    tree->Branch("Gen_dxy_Kp_Km", &Gen_dxy_Kp_Km);
-    tree->Branch("Gen_dxy_Kp_pi", &Gen_dxy_Kp_pi);
-    tree->Branch("Gen_dxy_Km_pi", &Gen_dxy_Km_pi);
-    tree->Branch("Gen_dz_Kp_Km", &Gen_dz_Kp_Km);
-    tree->Branch("Gen_dz_Kp_pi", &Gen_dz_Kp_pi);
-    tree->Branch("Gen_dz_Km_pi", &Gen_dz_Km_pi);
-
-    tree->Branch("Gen_Ds_FDxy", &Gen_Ds_FDxy);
-    tree->Branch("Gen_Ds_FDz", &Gen_Ds_FDz);
-    tree->Branch("Gen_Ds_FD", &Gen_Ds_FD);
-    tree->Branch("Gen_Ds_DIRA_angle", &Gen_Ds_DIRA_angle);
-    tree->Branch("Gen_Ds_DIRA", &Gen_Ds_DIRA);
-    tree->Branch("Gen_Kp_IP", &Gen_Kp_IP);
-    tree->Branch("Gen_Km_IP", &Gen_Km_IP);
-    tree->Branch("Gen_pi_IP", &Gen_pi_IP);
-
-    tree->Branch("num_match_Kp", &num_match_Kp);
-    tree->Branch("num_match_Km", &num_match_Km);
-    tree->Branch("num_match_pi", &num_match_pi);
-    tree->Branch("match_Kp_idx", &match_Kp_idx);
-    tree->Branch("match_Km_idx", &match_Km_idx);
-    tree->Branch("match_pi_idx", &match_pi_idx);
-
-    tree->Branch("match_Kp_ETA", &match_Kp_ETA_vec);
-    tree->Branch("match_Kp_PHI", &match_Kp_PHI_vec);
-    tree->Branch("match_Kp_ORIVX_X", &match_Kp_ORIVX_X_vec);
-    tree->Branch("match_Kp_ORIVX_Y", &match_Kp_ORIVX_Y_vec);
-    tree->Branch("match_Kp_ORIVX_Z", &match_Kp_ORIVX_Z_vec);
-    tree->Branch("match_Kp_P", &match_Kp_P_vec);
-    tree->Branch("match_Kp_PT", &match_Kp_PT_vec);
-    tree->Branch("match_Kp_PX", &match_Kp_PX_vec);
-    tree->Branch("match_Kp_PY", &match_Kp_PY_vec);
-    tree->Branch("match_Kp_PZ", &match_Kp_PZ_vec);
-
-    tree->Branch("match_Km_ETA", &match_Km_ETA_vec);
-    tree->Branch("match_Km_PHI", &match_Km_PHI_vec);
-    tree->Branch("match_Km_ORIVX_X", &match_Km_ORIVX_X_vec);
-    tree->Branch("match_Km_ORIVX_Y", &match_Km_ORIVX_Y_vec);
-    tree->Branch("match_Km_ORIVX_Z", &match_Km_ORIVX_Z_vec);
-    tree->Branch("match_Km_P", &match_Km_P_vec);
-    tree->Branch("match_Km_PT", &match_Km_PT_vec);
-    tree->Branch("match_Km_PX", &match_Km_PX_vec);
-    tree->Branch("match_Km_PY", &match_Km_PY_vec);
-    tree->Branch("match_Km_PZ", &match_Km_PZ_vec);
-
-    tree->Branch("match_pi_ETA", &match_pi_ETA_vec);
-    tree->Branch("match_pi_PHI", &match_pi_PHI_vec);
-    tree->Branch("match_pi_ORIVX_X", &match_pi_ORIVX_X_vec);
-    tree->Branch("match_pi_ORIVX_Y", &match_pi_ORIVX_Y_vec);
-    tree->Branch("match_pi_ORIVX_Z", &match_pi_ORIVX_Z_vec);
-    tree->Branch("match_pi_P", &match_pi_P_vec);
-    tree->Branch("match_pi_PT", &match_pi_PT_vec);
-    tree->Branch("match_pi_PX", &match_pi_PX_vec);
-    tree->Branch("match_pi_PY", &match_pi_PY_vec);
-    tree->Branch("match_pi_PZ", &match_pi_PZ_vec);
-
-    tree->Branch("match_phi_ETA", &match_phi_ETA_vec);
-    tree->Branch("match_phi_PHI", &match_phi_PHI_vec);
-    tree->Branch("match_phi_P", &match_phi_P_vec);
-    tree->Branch("match_phi_PT", &match_phi_PT_vec);
-    tree->Branch("match_phi_PX", &match_phi_PX_vec);
-    tree->Branch("match_phi_PY", &match_phi_PY_vec);
-    tree->Branch("match_phi_PZ", &match_phi_PZ_vec);
-    tree->Branch("match_phi_M", &match_phi_M_vec);
-
-    tree->Branch("match_Ds_ETA", &match_Ds_ETA_vec);
-    tree->Branch("match_Ds_PHI", &match_Ds_PHI_vec);
-    tree->Branch("match_Ds_P", &match_Ds_P_vec);
-    tree->Branch("match_Ds_PT", &match_Ds_PT_vec);
-    tree->Branch("match_Ds_PX", &match_Ds_PX_vec);
-    tree->Branch("match_Ds_PY", &match_Ds_PY_vec);
-    tree->Branch("match_Ds_PZ", &match_Ds_PZ_vec);
-    tree->Branch("match_Ds_M", &match_Ds_M_vec);
-
-    tree->Branch("match_Kp_PP", &match_Kp_PP_vec);
-    tree->Branch("match_Kp_PL", &match_Kp_PL_vec);
-    tree->Branch("match_Km_PP", &match_Km_PP_vec);
-    tree->Branch("match_Km_PL", &match_Km_PL_vec);
-
-    tree->Branch("match_phi_PP", &match_phi_PP_vec);
-    tree->Branch("match_phi_PL", &match_phi_PL_vec);
-    tree->Branch("match_pi_PP", &match_pi_PP_vec);
-    tree->Branch("match_pi_PL", &match_pi_PL_vec);
-
-    tree->Branch("match_dR_Kp_Km", &match_dR_Kp_Km_vec);
-    tree->Branch("match_dR_Kp_phi", &match_dR_Kp_phi_vec);
-    tree->Branch("match_dR_Km_phi", &match_dR_Km_phi_vec);
-    tree->Branch("match_dR_Kp_pi", &match_dR_Kp_pi_vec);
-    tree->Branch("match_dR_Km_pi", &match_dR_Km_pi_vec);
-    tree->Branch("match_dR_pi_phi", &match_dR_pi_phi_vec);
-    tree->Branch("match_dR_Kp_Ds", &match_dR_Kp_Ds_vec);
-    tree->Branch("match_dR_Km_Ds", &match_dR_Km_Ds_vec);
-    tree->Branch("match_dR_phi_Ds", &match_dR_phi_Ds_vec);
-    tree->Branch("match_dR_pi_Ds", &match_dR_pi_Ds_vec);
-
-    tree->Branch("match_dxy_Kp_Km", &match_dxy_Kp_Km_vec);
-    tree->Branch("match_dxy_Kp_phi", &match_dxy_Kp_phi_vec);
-    tree->Branch("match_dxy_Km_phi", &match_dxy_Km_phi_vec);
-    tree->Branch("match_dxy_Kp_pi", &match_dxy_Kp_pi_vec);
-    tree->Branch("match_dxy_Km_pi", &match_dxy_Km_pi_vec);
-    tree->Branch("match_dxy_pi_phi", &match_dxy_pi_phi_vec);
-    tree->Branch("match_dxy_Kp_Ds", &match_dxy_Kp_Ds_vec);
-    tree->Branch("match_dxy_Km_Ds", &match_dxy_Km_Ds_vec);
-    tree->Branch("match_dxy_phi_Ds", &match_dxy_phi_Ds_vec);
-    tree->Branch("match_dxy_pi_Ds", &match_dxy_pi_Ds_vec);
-
-    tree->Branch("match_dz_Kp_Km", &match_dz_Kp_Km_vec);
-    tree->Branch("match_dz_Kp_phi", &match_dz_Kp_phi_vec);
-    tree->Branch("match_dz_Km_phi", &match_dz_Km_phi_vec);
-    tree->Branch("match_dz_Kp_pi", &match_dz_Kp_pi_vec);
-    tree->Branch("match_dz_Km_pi", &match_dz_Km_pi_vec);
-    tree->Branch("match_dz_pi_phi", &match_dz_pi_phi_vec);
-    tree->Branch("match_dz_Kp_Ds", &match_dz_Kp_Ds_vec);
-    tree->Branch("match_dz_Km_Ds", &match_dz_Km_Ds_vec);
-    tree->Branch("match_dz_phi_Ds", &match_dz_phi_Ds_vec);
-    tree->Branch("match_dz_pi_Ds", &match_dz_pi_Ds_vec);
-
-    tree->Branch("match_phiFit_CHI2", &match_phiFit_CHI2_vec);
-    tree->Branch("match_phiFit_NDOF", &match_phiFit_NDOF_vec);
-    tree->Branch("match_phiFit_CHI2NDOF", &match_phiFit_CHI2NDOF_vec);
-    tree->Branch("match_phiFit_ENDVX_X", &match_phiFit_ENDVX_X_vec);
-    tree->Branch("match_phiFit_ENDVX_Y", &match_phiFit_ENDVX_Y_vec);
-    tree->Branch("match_phiFit_ENDVX_Z", &match_phiFit_ENDVX_Z_vec);
-    tree->Branch("match_phiFit_ENDVX_XERR", &match_phiFit_ENDVX_XERR_vec);
-    tree->Branch("match_phiFit_ENDVX_YERR", &match_phiFit_ENDVX_YERR_vec);
-    tree->Branch("match_phiFit_ENDVX_ZERR", &match_phiFit_ENDVX_ZERR_vec);
-
-    tree->Branch("match_phiFit_Kp_ETA", &match_phiFit_Kp_ETA_vec);
-    tree->Branch("match_phiFit_Kp_PHI", &match_phiFit_Kp_PHI_vec);
-    tree->Branch("match_phiFit_Kp_P", &match_phiFit_Kp_P_vec);
-    tree->Branch("match_phiFit_Kp_PT", &match_phiFit_Kp_PT_vec);
-    tree->Branch("match_phiFit_Kp_PX", &match_phiFit_Kp_PX_vec);
-    tree->Branch("match_phiFit_Kp_PY", &match_phiFit_Kp_PY_vec);
-    tree->Branch("match_phiFit_Kp_PZ", &match_phiFit_Kp_PZ_vec);
-
-    tree->Branch("match_phiFit_Km_ETA", &match_phiFit_Km_ETA_vec);
-    tree->Branch("match_phiFit_Km_PHI", &match_phiFit_Km_PHI_vec);
-    tree->Branch("match_phiFit_Km_P", &match_phiFit_Km_P_vec);
-    tree->Branch("match_phiFit_Km_PT", &match_phiFit_Km_PT_vec);
-    tree->Branch("match_phiFit_Km_PX", &match_phiFit_Km_PX_vec);
-    tree->Branch("match_phiFit_Km_PY", &match_phiFit_Km_PY_vec);
-    tree->Branch("match_phiFit_Km_PZ", &match_phiFit_Km_PZ_vec);
-
-    tree->Branch("match_phiFit_pi_ETA", &match_phiFit_pi_ETA_vec);
-    tree->Branch("match_phiFit_pi_PHI", &match_phiFit_pi_PHI_vec);
-    tree->Branch("match_phiFit_pi_P", &match_phiFit_pi_P_vec);
-    tree->Branch("match_phiFit_pi_PT", &match_phiFit_pi_PT_vec);
-    tree->Branch("match_phiFit_pi_PX", &match_phiFit_pi_PX_vec);
-    tree->Branch("match_phiFit_pi_PY", &match_phiFit_pi_PY_vec);
-    tree->Branch("match_phiFit_pi_PZ", &match_phiFit_pi_PZ_vec);
-
-    tree->Branch("match_phiFit_phi_ETA", &match_phiFit_phi_ETA_vec);
-    tree->Branch("match_phiFit_phi_PHI", &match_phiFit_phi_PHI_vec);
-    tree->Branch("match_phiFit_phi_P", &match_phiFit_phi_P_vec);
-    tree->Branch("match_phiFit_phi_PT", &match_phiFit_phi_PT_vec);
-    tree->Branch("match_phiFit_phi_PX", &match_phiFit_phi_PX_vec);
-    tree->Branch("match_phiFit_phi_PY", &match_phiFit_phi_PY_vec);
-    tree->Branch("match_phiFit_phi_PZ", &match_phiFit_phi_PZ_vec);
-    tree->Branch("match_phiFit_phi_M", &match_phiFit_phi_M_vec);
-
-    tree->Branch("match_phiFit_Ds_ETA", &match_phiFit_Ds_ETA_vec);
-    tree->Branch("match_phiFit_Ds_PHI", &match_phiFit_Ds_PHI_vec);
-    tree->Branch("match_phiFit_Ds_P", &match_phiFit_Ds_P_vec);
-    tree->Branch("match_phiFit_Ds_PT", &match_phiFit_Ds_PT_vec);
-    tree->Branch("match_phiFit_Ds_PX", &match_phiFit_Ds_PX_vec);
-    tree->Branch("match_phiFit_Ds_PY", &match_phiFit_Ds_PY_vec);
-    tree->Branch("match_phiFit_Ds_PZ", &match_phiFit_Ds_PZ_vec);
-    tree->Branch("match_phiFit_Ds_M", &match_phiFit_Ds_M_vec);
-
-    tree->Branch("match_phiFit_Kp_PP", &match_phiFit_Kp_PP_vec);
-    tree->Branch("match_phiFit_Kp_PL", &match_phiFit_Kp_PL_vec);
-    tree->Branch("match_phiFit_Km_PP", &match_phiFit_Km_PP_vec);
-    tree->Branch("match_phiFit_Km_PL", &match_phiFit_Km_PL_vec);
-
-    tree->Branch("match_phiFit_phi_PP", &match_phiFit_phi_PP_vec);
-    tree->Branch("match_phiFit_phi_PL", &match_phiFit_phi_PL_vec);
-    tree->Branch("match_phiFit_pi_PP", &match_phiFit_pi_PP_vec);
-    tree->Branch("match_phiFit_pi_PL", &match_phiFit_pi_PL_vec);
-
-    tree->Branch("match_phiFit_dR_Kp_Km", &match_phiFit_dR_Kp_Km_vec);
-    tree->Branch("match_phiFit_dR_Kp_phi", &match_phiFit_dR_Kp_phi_vec);
-    tree->Branch("match_phiFit_dR_Km_phi", &match_phiFit_dR_Km_phi_vec);
-    tree->Branch("match_phiFit_dR_Kp_pi", &match_phiFit_dR_Kp_pi_vec);
-    tree->Branch("match_phiFit_dR_Km_pi", &match_phiFit_dR_Km_pi_vec);
-    tree->Branch("match_phiFit_dR_pi_phi", &match_phiFit_dR_pi_phi_vec);
-    tree->Branch("match_phiFit_dR_Kp_Ds", &match_phiFit_dR_Kp_Ds_vec);
-    tree->Branch("match_phiFit_dR_Km_Ds", &match_phiFit_dR_Km_Ds_vec);
-    tree->Branch("match_phiFit_dR_phi_Ds", &match_phiFit_dR_phi_Ds_vec);
-    tree->Branch("match_phiFit_dR_pi_Ds", &match_phiFit_dR_pi_Ds_vec);
-
-    // Fit on Ds 
-    tree->Branch("match_DsFit_CHI2", &match_DsFit_CHI2_vec);
-    tree->Branch("match_DsFit_NDOF", &match_DsFit_NDOF_vec);
-    tree->Branch("match_DsFit_CHI2NDOF", &match_DsFit_CHI2NDOF_vec);
-    tree->Branch("match_DsFit_ENDVX_X", &match_DsFit_ENDVX_X_vec);
-    tree->Branch("match_DsFit_ENDVX_Y", &match_DsFit_ENDVX_Y_vec);
-    tree->Branch("match_DsFit_ENDVX_Z", &match_DsFit_ENDVX_Z_vec);
-    tree->Branch("match_DsFit_ENDVX_XERR", &match_DsFit_ENDVX_XERR_vec);
-    tree->Branch("match_DsFit_ENDVX_YERR", &match_DsFit_ENDVX_YERR_vec);
-    tree->Branch("match_DsFit_ENDVX_ZERR", &match_DsFit_ENDVX_ZERR_vec);
-
-    tree->Branch("match_DsFit_Kp_ETA", &match_DsFit_Kp_ETA_vec);
-    tree->Branch("match_DsFit_Kp_PHI", &match_DsFit_Kp_PHI_vec);
-    tree->Branch("match_DsFit_Kp_P", &match_DsFit_Kp_P_vec);
-    tree->Branch("match_DsFit_Kp_PT", &match_DsFit_Kp_PT_vec);
-    tree->Branch("match_DsFit_Kp_PX", &match_DsFit_Kp_PX_vec);
-    tree->Branch("match_DsFit_Kp_PY", &match_DsFit_Kp_PY_vec);
-    tree->Branch("match_DsFit_Kp_PZ", &match_DsFit_Kp_PZ_vec);
-
-    tree->Branch("match_DsFit_Km_ETA", &match_DsFit_Km_ETA_vec);
-    tree->Branch("match_DsFit_Km_PHI", &match_DsFit_Km_PHI_vec);
-    tree->Branch("match_DsFit_Km_P", &match_DsFit_Km_P_vec);
-    tree->Branch("match_DsFit_Km_PT", &match_DsFit_Km_PT_vec);
-    tree->Branch("match_DsFit_Km_PX", &match_DsFit_Km_PX_vec);
-    tree->Branch("match_DsFit_Km_PY", &match_DsFit_Km_PY_vec);
-    tree->Branch("match_DsFit_Km_PZ", &match_DsFit_Km_PZ_vec);
-
-    tree->Branch("match_DsFit_pi_ETA", &match_DsFit_pi_ETA_vec);
-    tree->Branch("match_DsFit_pi_PHI", &match_DsFit_pi_PHI_vec);
-    tree->Branch("match_DsFit_pi_P", &match_DsFit_pi_P_vec);
-    tree->Branch("match_DsFit_pi_PT", &match_DsFit_pi_PT_vec);
-    tree->Branch("match_DsFit_pi_PX", &match_DsFit_pi_PX_vec);
-    tree->Branch("match_DsFit_pi_PY", &match_DsFit_pi_PY_vec);
-    tree->Branch("match_DsFit_pi_PZ", &match_DsFit_pi_PZ_vec);
-
-    tree->Branch("match_DsFit_phi_ETA", &match_DsFit_phi_ETA_vec);
-    tree->Branch("match_DsFit_phi_PHI", &match_DsFit_phi_PHI_vec);
-    tree->Branch("match_DsFit_phi_P", &match_DsFit_phi_P_vec);
-    tree->Branch("match_DsFit_phi_PT", &match_DsFit_phi_PT_vec);
-    tree->Branch("match_DsFit_phi_PX", &match_DsFit_phi_PX_vec);
-    tree->Branch("match_DsFit_phi_PY", &match_DsFit_phi_PY_vec);
-    tree->Branch("match_DsFit_phi_PZ", &match_DsFit_phi_PZ_vec);
-    tree->Branch("match_DsFit_phi_M", &match_DsFit_phi_M_vec);
-
-    tree->Branch("match_DsFit_Ds_ETA", &match_DsFit_Ds_ETA_vec);
-    tree->Branch("match_DsFit_Ds_PHI", &match_DsFit_Ds_PHI_vec);
-    tree->Branch("match_DsFit_Ds_P", &match_DsFit_Ds_P_vec);
-    tree->Branch("match_DsFit_Ds_PT", &match_DsFit_Ds_PT_vec);
-    tree->Branch("match_DsFit_Ds_PX", &match_DsFit_Ds_PX_vec);
-    tree->Branch("match_DsFit_Ds_PY", &match_DsFit_Ds_PY_vec);
-    tree->Branch("match_DsFit_Ds_PZ", &match_DsFit_Ds_PZ_vec);
-    tree->Branch("match_DsFit_Ds_M", &match_DsFit_Ds_M_vec);
-
-    tree->Branch("match_DsFit_Kp_PP", &match_DsFit_Kp_PP_vec);
-    tree->Branch("match_DsFit_Kp_PL", &match_DsFit_Kp_PL_vec);
-    tree->Branch("match_DsFit_Km_PP", &match_DsFit_Km_PP_vec);
-    tree->Branch("match_DsFit_Km_PL", &match_DsFit_Km_PL_vec);
-
-    tree->Branch("match_DsFit_phi_PP", &match_DsFit_phi_PP_vec);
-    tree->Branch("match_DsFit_phi_PL", &match_DsFit_phi_PL_vec);
-    tree->Branch("match_DsFit_pi_PP", &match_DsFit_pi_PP_vec);
-    tree->Branch("match_DsFit_pi_PL", &match_DsFit_pi_PL_vec);
-
-    tree->Branch("match_DsFit_dR_Kp_Km", &match_DsFit_dR_Kp_Km_vec);
-    tree->Branch("match_DsFit_dR_Kp_phi", &match_DsFit_dR_Kp_phi_vec);
-    tree->Branch("match_DsFit_dR_Km_phi", &match_DsFit_dR_Km_phi_vec);
-    tree->Branch("match_DsFit_dR_Kp_pi", &match_DsFit_dR_Kp_pi_vec);
-    tree->Branch("match_DsFit_dR_Km_pi", &match_DsFit_dR_Km_pi_vec);
-    tree->Branch("match_DsFit_dR_pi_phi", &match_DsFit_dR_pi_phi_vec);
-    tree->Branch("match_DsFit_dR_Kp_Ds", &match_DsFit_dR_Kp_Ds_vec);
-    tree->Branch("match_DsFit_dR_Km_Ds", &match_DsFit_dR_Km_Ds_vec);
-    tree->Branch("match_DsFit_dR_phi_Ds", &match_DsFit_dR_phi_Ds_vec);
-    tree->Branch("match_DsFit_dR_pi_Ds", &match_DsFit_dR_pi_Ds_vec);
-
-    tree->Branch("match_DsFit_Mconstraint_Ds_M", &match_DsFit_Mconstraint_Ds_M_vec);
-
-    tree->Branch("match_Ds_FDxy", &match_Ds_FDxy_vec);
-    tree->Branch("match_Ds_FDxy_Err", &match_Ds_FDxy_Err_vec);
-    tree->Branch("match_Ds_FDxy_Chi2", &match_Ds_FDxy_Chi2_vec);
-    tree->Branch("match_Ds_FDz", &match_Ds_FDz_vec);
-    tree->Branch("match_Ds_FDz_Err", &match_Ds_FDz_Err_vec);
-    tree->Branch("match_Ds_FDz_Chi2", &match_Ds_FDz_Chi2_vec);
-    tree->Branch("match_Ds_FD", &match_Ds_FD_vec);
-    tree->Branch("match_Ds_FD_Err", &match_Ds_FD_Err_vec);
-    tree->Branch("match_Ds_FD_Chi2", &match_Ds_FD_Chi2_vec);
-    tree->Branch("match_Ds_DIRA_angle", &match_Ds_DIRA_angle_vec);
-    tree->Branch("match_Ds_DIRA", &match_Ds_DIRA_vec);
-    tree->Branch("match_Kp_IP", &match_Kp_IP_vec);
-    tree->Branch("match_Kp_IP_Err", &match_Kp_IP_Err_vec);
-    tree->Branch("match_Kp_IP_Chi2", &match_Kp_IP_Chi2_vec);
-    tree->Branch("match_Km_IP", &match_Km_IP_vec);
-    tree->Branch("match_Km_IP_Err", &match_Km_IP_Err_vec);
-    tree->Branch("match_Km_IP_Chi2", &match_Km_IP_Chi2_vec);
-    tree->Branch("match_pi_IP", &match_pi_IP_vec);
-    tree->Branch("match_pi_IP_Err", &match_pi_IP_Err_vec);
-    tree->Branch("match_pi_IP_Chi2", &match_pi_IP_Chi2_vec);
-
-    tree->Branch("num_reco_phi", &num_reco_phi);
-    tree->Branch("num_reco_Ds", &num_reco_Ds);
-
-    tree->Branch("Kp_ETA", &Kp_ETA_vec);
-    tree->Branch("Kp_PHI", &Kp_PHI_vec);
-    tree->Branch("Kp_ORIVX_X", &Kp_ORIVX_X_vec);
-    tree->Branch("Kp_ORIVX_Y", &Kp_ORIVX_Y_vec);
-    tree->Branch("Kp_ORIVX_Z", &Kp_ORIVX_Z_vec);
-    tree->Branch("Kp_P", &Kp_P_vec);
-    tree->Branch("Kp_PT", &Kp_PT_vec);
-    tree->Branch("Kp_PX", &Kp_PX_vec);
-    tree->Branch("Kp_PY", &Kp_PY_vec);
-    tree->Branch("Kp_PZ", &Kp_PZ_vec);
-
-    tree->Branch("Km_ETA", &Km_ETA_vec);
-    tree->Branch("Km_PHI", &Km_PHI_vec);
-    tree->Branch("Km_ORIVX_X", &Km_ORIVX_X_vec);
-    tree->Branch("Km_ORIVX_Y", &Km_ORIVX_Y_vec);
-    tree->Branch("Km_ORIVX_Z", &Km_ORIVX_Z_vec);
-    tree->Branch("Km_P", &Km_P_vec);
-    tree->Branch("Km_PT", &Km_PT_vec);
-    tree->Branch("Km_PX", &Km_PX_vec);
-    tree->Branch("Km_PY", &Km_PY_vec);
-    tree->Branch("Km_PZ", &Km_PZ_vec);
-
-    tree->Branch("pi_ETA", &pi_ETA_vec);
-    tree->Branch("pi_PHI", &pi_PHI_vec);
-    tree->Branch("pi_ORIVX_X", &pi_ORIVX_X_vec);
-    tree->Branch("pi_ORIVX_Y", &pi_ORIVX_Y_vec);
-    tree->Branch("pi_ORIVX_Z", &pi_ORIVX_Z_vec);
-    tree->Branch("pi_P", &pi_P_vec);
-    tree->Branch("pi_PT", &pi_PT_vec);
-    tree->Branch("pi_PX", &pi_PX_vec);
-    tree->Branch("pi_PY", &pi_PY_vec);
-    tree->Branch("pi_PZ", &pi_PZ_vec);
-
-    tree->Branch("phi_ETA", &phi_ETA_vec);
-    tree->Branch("phi_PHI", &phi_PHI_vec);
-    tree->Branch("phi_P", &phi_P_vec);
-    tree->Branch("phi_PT", &phi_PT_vec);
-    tree->Branch("phi_PX", &phi_PX_vec);
-    tree->Branch("phi_PY", &phi_PY_vec);
-    tree->Branch("phi_PZ", &phi_PZ_vec);
-    tree->Branch("phi_M", &phi_M_vec);
-
-    tree->Branch("Ds_ETA", &Ds_ETA_vec);
-    tree->Branch("Ds_PHI", &Ds_PHI_vec);
-    tree->Branch("Ds_P", &Ds_P_vec);
-    tree->Branch("Ds_PT", &Ds_PT_vec);
-    tree->Branch("Ds_PX", &Ds_PX_vec);
-    tree->Branch("Ds_PY", &Ds_PY_vec);
-    tree->Branch("Ds_PZ", &Ds_PZ_vec);
-    tree->Branch("Ds_M", &Ds_M_vec);
-
-    tree->Branch("Kp_PP", &Kp_PP_vec);
-    tree->Branch("Kp_PL", &Kp_PL_vec);
-    tree->Branch("Km_PP", &Km_PP_vec);
-    tree->Branch("Km_PL", &Km_PL_vec);
-
-    tree->Branch("phi_PP", &phi_PP_vec);
-    tree->Branch("phi_PL", &phi_PL_vec);
-    tree->Branch("pi_PP", &pi_PP_vec);
-    tree->Branch("pi_PL", &pi_PL_vec);
-
-    tree->Branch("dR_Kp_Km", &dR_Kp_Km_vec);
-    tree->Branch("dR_Kp_phi", &dR_Kp_phi_vec);
-    tree->Branch("dR_Km_phi", &dR_Km_phi_vec);
-    tree->Branch("dR_Kp_pi", &dR_Kp_pi_vec);
-    tree->Branch("dR_Km_pi", &dR_Km_pi_vec);
-    tree->Branch("dR_pi_phi", &dR_pi_phi_vec);
-    tree->Branch("dR_Kp_Ds", &dR_Kp_Ds_vec);
-    tree->Branch("dR_Km_Ds", &dR_Km_Ds_vec);
-    tree->Branch("dR_phi_Ds", &dR_phi_Ds_vec);
-    tree->Branch("dR_pi_Ds", &dR_pi_Ds_vec);
-
-    tree->Branch("dxy_Kp_Km", &dxy_Kp_Km_vec);
-    tree->Branch("dxy_Kp_phi", &dxy_Kp_phi_vec);
-    tree->Branch("dxy_Km_phi", &dxy_Km_phi_vec);
-    tree->Branch("dxy_Kp_pi", &dxy_Kp_pi_vec);
-    tree->Branch("dxy_Km_pi", &dxy_Km_pi_vec);
-    tree->Branch("dxy_pi_phi", &dxy_pi_phi_vec);
-    tree->Branch("dxy_Kp_Ds", &dxy_Kp_Ds_vec);
-    tree->Branch("dxy_Km_Ds", &dxy_Km_Ds_vec);
-    tree->Branch("dxy_phi_Ds", &dxy_phi_Ds_vec);
-    tree->Branch("dxy_pi_Ds", &dxy_pi_Ds_vec);
-
-    tree->Branch("dz_Kp_Km", &dz_Kp_Km_vec);
-    tree->Branch("dz_Kp_phi", &dz_Kp_phi_vec);
-    tree->Branch("dz_Km_phi", &dz_Km_phi_vec);
-    tree->Branch("dz_Kp_pi", &dz_Kp_pi_vec);
-    tree->Branch("dz_Km_pi", &dz_Km_pi_vec);
-    tree->Branch("dz_pi_phi", &dz_pi_phi_vec);
-    tree->Branch("dz_Kp_Ds", &dz_Kp_Ds_vec);
-    tree->Branch("dz_Km_Ds", &dz_Km_Ds_vec);
-    tree->Branch("dz_phi_Ds", &dz_phi_Ds_vec);
-    tree->Branch("dz_pi_Ds", &dz_pi_Ds_vec);
-
-    tree->Branch("phiFit_CHI2", &phiFit_CHI2_vec);
-    tree->Branch("phiFit_NDOF", &phiFit_NDOF_vec);
-    tree->Branch("phiFit_CHI2NDOF", &phiFit_CHI2NDOF_vec);
-    tree->Branch("phiFit_ENDVX_X", &phiFit_ENDVX_X_vec);
-    tree->Branch("phiFit_ENDVX_Y", &phiFit_ENDVX_Y_vec);
-    tree->Branch("phiFit_ENDVX_Z", &phiFit_ENDVX_Z_vec);
-    tree->Branch("phiFit_ENDVX_XERR", &phiFit_ENDVX_XERR_vec);
-    tree->Branch("phiFit_ENDVX_YERR", &phiFit_ENDVX_YERR_vec);
-    tree->Branch("phiFit_ENDVX_ZERR", &phiFit_ENDVX_ZERR_vec);
-
-    tree->Branch("phiFit_Kp_ETA", &phiFit_Kp_ETA_vec);
-    tree->Branch("phiFit_Kp_PHI", &phiFit_Kp_PHI_vec);
-    tree->Branch("phiFit_Kp_P", &phiFit_Kp_P_vec);
-    tree->Branch("phiFit_Kp_PT", &phiFit_Kp_PT_vec);
-    tree->Branch("phiFit_Kp_PX", &phiFit_Kp_PX_vec);
-    tree->Branch("phiFit_Kp_PY", &phiFit_Kp_PY_vec);
-    tree->Branch("phiFit_Kp_PZ", &phiFit_Kp_PZ_vec);
-
-    tree->Branch("phiFit_Km_ETA", &phiFit_Km_ETA_vec);
-    tree->Branch("phiFit_Km_PHI", &phiFit_Km_PHI_vec);
-    tree->Branch("phiFit_Km_P", &phiFit_Km_P_vec);
-    tree->Branch("phiFit_Km_PT", &phiFit_Km_PT_vec);
-    tree->Branch("phiFit_Km_PX", &phiFit_Km_PX_vec);
-    tree->Branch("phiFit_Km_PY", &phiFit_Km_PY_vec);
-    tree->Branch("phiFit_Km_PZ", &phiFit_Km_PZ_vec);
-
-    tree->Branch("phiFit_pi_ETA", &phiFit_pi_ETA_vec);
-    tree->Branch("phiFit_pi_PHI", &phiFit_pi_PHI_vec);
-    tree->Branch("phiFit_pi_P", &phiFit_pi_P_vec);
-    tree->Branch("phiFit_pi_PT", &phiFit_pi_PT_vec);
-    tree->Branch("phiFit_pi_PX", &phiFit_pi_PX_vec);
-    tree->Branch("phiFit_pi_PY", &phiFit_pi_PY_vec);
-    tree->Branch("phiFit_pi_PZ", &phiFit_pi_PZ_vec);
-
-    tree->Branch("phiFit_phi_ETA", &phiFit_phi_ETA_vec);
-    tree->Branch("phiFit_phi_PHI", &phiFit_phi_PHI_vec);
-    tree->Branch("phiFit_phi_P", &phiFit_phi_P_vec);
-    tree->Branch("phiFit_phi_PT", &phiFit_phi_PT_vec);
-    tree->Branch("phiFit_phi_PX", &phiFit_phi_PX_vec);
-    tree->Branch("phiFit_phi_PY", &phiFit_phi_PY_vec);
-    tree->Branch("phiFit_phi_PZ", &phiFit_phi_PZ_vec);
-    tree->Branch("phiFit_phi_M", &phiFit_phi_M_vec);
-
-    tree->Branch("phiFit_Ds_ETA", &phiFit_Ds_ETA_vec);
-    tree->Branch("phiFit_Ds_PHI", &phiFit_Ds_PHI_vec);
-    tree->Branch("phiFit_Ds_P", &phiFit_Ds_P_vec);
-    tree->Branch("phiFit_Ds_PT", &phiFit_Ds_PT_vec);
-    tree->Branch("phiFit_Ds_PX", &phiFit_Ds_PX_vec);
-    tree->Branch("phiFit_Ds_PY", &phiFit_Ds_PY_vec);
-    tree->Branch("phiFit_Ds_PZ", &phiFit_Ds_PZ_vec);
-    tree->Branch("phiFit_Ds_M", &phiFit_Ds_M_vec);
-
-    tree->Branch("phiFit_Kp_PP", &phiFit_Kp_PP_vec);
-    tree->Branch("phiFit_Kp_PL", &phiFit_Kp_PL_vec);
-    tree->Branch("phiFit_Km_PP", &phiFit_Km_PP_vec);
-    tree->Branch("phiFit_Km_PL", &phiFit_Km_PL_vec);
-
-    tree->Branch("phiFit_phi_PP", &phiFit_phi_PP_vec);
-    tree->Branch("phiFit_phi_PL", &phiFit_phi_PL_vec);
-    tree->Branch("phiFit_pi_PP", &phiFit_pi_PP_vec);
-    tree->Branch("phiFit_pi_PL", &phiFit_pi_PL_vec);
-
-    tree->Branch("phiFit_dR_Kp_Km", &phiFit_dR_Kp_Km_vec);
-    tree->Branch("phiFit_dR_Kp_phi", &phiFit_dR_Kp_phi_vec);
-    tree->Branch("phiFit_dR_Km_phi", &phiFit_dR_Km_phi_vec);
-    tree->Branch("phiFit_dR_Kp_pi", &phiFit_dR_Kp_pi_vec);
-    tree->Branch("phiFit_dR_Km_pi", &phiFit_dR_Km_pi_vec);
-    tree->Branch("phiFit_dR_pi_phi", &phiFit_dR_pi_phi_vec);
-    tree->Branch("phiFit_dR_Kp_Ds", &phiFit_dR_Kp_Ds_vec);
-    tree->Branch("phiFit_dR_Km_Ds", &phiFit_dR_Km_Ds_vec);
-    tree->Branch("phiFit_dR_phi_Ds", &phiFit_dR_phi_Ds_vec);
-    tree->Branch("phiFit_dR_pi_Ds", &phiFit_dR_pi_Ds_vec);
-
-    // Fit on Ds 
-    tree->Branch("DsFit_CHI2", &DsFit_CHI2_vec);
-    tree->Branch("DsFit_NDOF", &DsFit_NDOF_vec);
-    tree->Branch("DsFit_CHI2NDOF", &DsFit_CHI2NDOF_vec);
-    tree->Branch("DsFit_ENDVX_X", &DsFit_ENDVX_X_vec);
-    tree->Branch("DsFit_ENDVX_Y", &DsFit_ENDVX_Y_vec);
-    tree->Branch("DsFit_ENDVX_Z", &DsFit_ENDVX_Z_vec);
-    tree->Branch("DsFit_ENDVX_XERR", &DsFit_ENDVX_XERR_vec);
-    tree->Branch("DsFit_ENDVX_YERR", &DsFit_ENDVX_YERR_vec);
-    tree->Branch("DsFit_ENDVX_ZERR", &DsFit_ENDVX_ZERR_vec);
-
-    tree->Branch("DsFit_Kp_ETA", &DsFit_Kp_ETA_vec);
-    tree->Branch("DsFit_Kp_PHI", &DsFit_Kp_PHI_vec);
-    tree->Branch("DsFit_Kp_P", &DsFit_Kp_P_vec);
-    tree->Branch("DsFit_Kp_PT", &DsFit_Kp_PT_vec);
-    tree->Branch("DsFit_Kp_PX", &DsFit_Kp_PX_vec);
-    tree->Branch("DsFit_Kp_PY", &DsFit_Kp_PY_vec);
-    tree->Branch("DsFit_Kp_PZ", &DsFit_Kp_PZ_vec);
-
-    tree->Branch("DsFit_Km_ETA", &DsFit_Km_ETA_vec);
-    tree->Branch("DsFit_Km_PHI", &DsFit_Km_PHI_vec);
-    tree->Branch("DsFit_Km_P", &DsFit_Km_P_vec);
-    tree->Branch("DsFit_Km_PT", &DsFit_Km_PT_vec);
-    tree->Branch("DsFit_Km_PX", &DsFit_Km_PX_vec);
-    tree->Branch("DsFit_Km_PY", &DsFit_Km_PY_vec);
-    tree->Branch("DsFit_Km_PZ", &DsFit_Km_PZ_vec);
-
-    tree->Branch("DsFit_pi_ETA", &DsFit_pi_ETA_vec);
-    tree->Branch("DsFit_pi_PHI", &DsFit_pi_PHI_vec);
-    tree->Branch("DsFit_pi_P", &DsFit_pi_P_vec);
-    tree->Branch("DsFit_pi_PT", &DsFit_pi_PT_vec);
-    tree->Branch("DsFit_pi_PX", &DsFit_pi_PX_vec);
-    tree->Branch("DsFit_pi_PY", &DsFit_pi_PY_vec);
-    tree->Branch("DsFit_pi_PZ", &DsFit_pi_PZ_vec);
-
-    tree->Branch("DsFit_phi_ETA", &DsFit_phi_ETA_vec);
-    tree->Branch("DsFit_phi_PHI", &DsFit_phi_PHI_vec);
-    tree->Branch("DsFit_phi_P", &DsFit_phi_P_vec);
-    tree->Branch("DsFit_phi_PT", &DsFit_phi_PT_vec);
-    tree->Branch("DsFit_phi_PX", &DsFit_phi_PX_vec);
-    tree->Branch("DsFit_phi_PY", &DsFit_phi_PY_vec);
-    tree->Branch("DsFit_phi_PZ", &DsFit_phi_PZ_vec);
-    tree->Branch("DsFit_phi_M", &DsFit_phi_M_vec);
-
-    tree->Branch("DsFit_Ds_ETA", &DsFit_Ds_ETA_vec);
-    tree->Branch("DsFit_Ds_PHI", &DsFit_Ds_PHI_vec);
-    tree->Branch("DsFit_Ds_P", &DsFit_Ds_P_vec);
-    tree->Branch("DsFit_Ds_PT", &DsFit_Ds_PT_vec);
-    tree->Branch("DsFit_Ds_PX", &DsFit_Ds_PX_vec);
-    tree->Branch("DsFit_Ds_PY", &DsFit_Ds_PY_vec);
-    tree->Branch("DsFit_Ds_PZ", &DsFit_Ds_PZ_vec);
-    tree->Branch("DsFit_Ds_M", &DsFit_Ds_M_vec);
-
-    tree->Branch("DsFit_Kp_PP", &DsFit_Kp_PP_vec);
-    tree->Branch("DsFit_Kp_PL", &DsFit_Kp_PL_vec);
-    tree->Branch("DsFit_Km_PP", &DsFit_Km_PP_vec);
-    tree->Branch("DsFit_Km_PL", &DsFit_Km_PL_vec);
-
-    tree->Branch("DsFit_phi_PP", &DsFit_phi_PP_vec);
-    tree->Branch("DsFit_phi_PL", &DsFit_phi_PL_vec);
-    tree->Branch("DsFit_pi_PP", &DsFit_pi_PP_vec);
-    tree->Branch("DsFit_pi_PL", &DsFit_pi_PL_vec);
-
-    tree->Branch("DsFit_dR_Kp_Km", &DsFit_dR_Kp_Km_vec);
-    tree->Branch("DsFit_dR_Kp_phi", &DsFit_dR_Kp_phi_vec);
-    tree->Branch("DsFit_dR_Km_phi", &DsFit_dR_Km_phi_vec);
-    tree->Branch("DsFit_dR_Kp_pi", &DsFit_dR_Kp_pi_vec);
-    tree->Branch("DsFit_dR_Km_pi", &DsFit_dR_Km_pi_vec);
-    tree->Branch("DsFit_dR_pi_phi", &DsFit_dR_pi_phi_vec);
-    tree->Branch("DsFit_dR_Kp_Ds", &DsFit_dR_Kp_Ds_vec);
-    tree->Branch("DsFit_dR_Km_Ds", &DsFit_dR_Km_Ds_vec);
-    tree->Branch("DsFit_dR_phi_Ds", &DsFit_dR_phi_Ds_vec);
-    tree->Branch("DsFit_dR_pi_Ds", &DsFit_dR_pi_Ds_vec);
-
-    tree->Branch("DsFit_Mconstraint_Ds_M", &DsFit_Mconstraint_Ds_M_vec);
-
-    tree->Branch("Kp_match", &Kp_match_vec);
-    tree->Branch("Km_match", &Km_match_vec);
-    tree->Branch("pi_match", &pi_match_vec);
-    tree->Branch("match_entry", &match_entry_vec);
-    tree->Branch("non_match_entry", &non_match_entry_vec); 
-
-    tree->Branch("Ds_FDxy", &Ds_FDxy_vec);
-    tree->Branch("Ds_FDxy_Err", &Ds_FDxy_Err_vec);
-    tree->Branch("Ds_FDxy_Chi2", &Ds_FDxy_Chi2_vec);
-    tree->Branch("Ds_FDz", &Ds_FDz_vec);
-    tree->Branch("Ds_FDz_Err", &Ds_FDz_Err_vec);
-    tree->Branch("Ds_FDz_Chi2", &Ds_FDz_Chi2_vec);
-    tree->Branch("Ds_FD", &Ds_FD_vec);
-    tree->Branch("Ds_FD_Err", &Ds_FD_Err_vec);
-    tree->Branch("Ds_FD_Chi2", &Ds_FD_Chi2_vec);
-    tree->Branch("Ds_DIRA_angle", &Ds_DIRA_angle_vec);
-    tree->Branch("Ds_DIRA", &Ds_DIRA_vec);
-    tree->Branch("Kp_IP", &Kp_IP_vec);
-    tree->Branch("Kp_IP_Err", &Kp_IP_Err_vec);
-    tree->Branch("Kp_IP_Chi2", &Kp_IP_Chi2_vec);
-    tree->Branch("Km_IP", &Km_IP_vec);
-    tree->Branch("Km_IP_Err", &Km_IP_Err_vec);
-    tree->Branch("Km_IP_Chi2", &Km_IP_Chi2_vec);
-    tree->Branch("pi_IP", &pi_IP_vec);
-    tree->Branch("pi_IP_Err", &pi_IP_Err_vec);
-    tree->Branch("pi_IP_Chi2", &pi_IP_Chi2_vec);
-    
-    tree->Branch("best_Kp_ETA", &best_Kp_ETA_vec);
-    tree->Branch("best_Kp_PHI", &best_Kp_PHI_vec);
-    tree->Branch("best_Kp_ORIVX_X", &best_Kp_ORIVX_X_vec);
-    tree->Branch("best_Kp_ORIVX_Y", &best_Kp_ORIVX_Y_vec);
-    tree->Branch("best_Kp_ORIVX_Z", &best_Kp_ORIVX_Z_vec);
-    tree->Branch("best_Kp_P", &best_Kp_P_vec);
-    tree->Branch("best_Kp_PT", &best_Kp_PT_vec);
-    tree->Branch("best_Kp_PX", &best_Kp_PX_vec);
-    tree->Branch("best_Kp_PY", &best_Kp_PY_vec);
-    tree->Branch("best_Kp_PZ", &best_Kp_PZ_vec);
-
-    tree->Branch("best_Km_ETA", &best_Km_ETA_vec);
-    tree->Branch("best_Km_PHI", &best_Km_PHI_vec);
-    tree->Branch("best_Km_ORIVX_X", &best_Km_ORIVX_X_vec);
-    tree->Branch("best_Km_ORIVX_Y", &best_Km_ORIVX_Y_vec);
-    tree->Branch("best_Km_ORIVX_Z", &best_Km_ORIVX_Z_vec);
-    tree->Branch("best_Km_P", &best_Km_P_vec);
-    tree->Branch("best_Km_PT", &best_Km_PT_vec);
-    tree->Branch("best_Km_PX", &best_Km_PX_vec);
-    tree->Branch("best_Km_PY", &best_Km_PY_vec);
-    tree->Branch("best_Km_PZ", &best_Km_PZ_vec);
-
-    tree->Branch("best_pi_ETA", &best_pi_ETA_vec);
-    tree->Branch("best_pi_PHI", &best_pi_PHI_vec);
-    tree->Branch("best_pi_ORIVX_X", &best_pi_ORIVX_X_vec);
-    tree->Branch("best_pi_ORIVX_Y", &best_pi_ORIVX_Y_vec);
-    tree->Branch("best_pi_ORIVX_Z", &best_pi_ORIVX_Z_vec);
-    tree->Branch("best_pi_P", &best_pi_P_vec);
-    tree->Branch("best_pi_PT", &best_pi_PT_vec);
-    tree->Branch("best_pi_PX", &best_pi_PX_vec);
-    tree->Branch("best_pi_PY", &best_pi_PY_vec);
-    tree->Branch("best_pi_PZ", &best_pi_PZ_vec);
-
-    tree->Branch("best_phi_ETA", &best_phi_ETA_vec);
-    tree->Branch("best_phi_PHI", &best_phi_PHI_vec);
-    tree->Branch("best_phi_P", &best_phi_P_vec);
-    tree->Branch("best_phi_PT", &best_phi_PT_vec);
-    tree->Branch("best_phi_PX", &best_phi_PX_vec);
-    tree->Branch("best_phi_PY", &best_phi_PY_vec);
-    tree->Branch("best_phi_PZ", &best_phi_PZ_vec);
-    tree->Branch("best_phi_M", &best_phi_M_vec);
-
-    tree->Branch("best_Ds_ETA", &best_Ds_ETA_vec);
-    tree->Branch("best_Ds_PHI", &best_Ds_PHI_vec);
-    tree->Branch("best_Ds_P", &best_Ds_P_vec);
-    tree->Branch("best_Ds_PT", &best_Ds_PT_vec);
-    tree->Branch("best_Ds_PX", &best_Ds_PX_vec);
-    tree->Branch("best_Ds_PY", &best_Ds_PY_vec);
-    tree->Branch("best_Ds_PZ", &best_Ds_PZ_vec);
-    tree->Branch("best_Ds_M", &best_Ds_M_vec);
-
-    tree->Branch("best_Kp_PP", &best_Kp_PP_vec);
-    tree->Branch("best_Kp_PL", &best_Kp_PL_vec);
-    tree->Branch("best_Km_PP", &best_Km_PP_vec);
-    tree->Branch("best_Km_PL", &best_Km_PL_vec);
-
-    tree->Branch("best_phi_PP", &best_phi_PP_vec);
-    tree->Branch("best_phi_PL", &best_phi_PL_vec);
-    tree->Branch("best_pi_PP", &best_pi_PP_vec);
-    tree->Branch("best_pi_PL", &best_pi_PL_vec);
-
-    tree->Branch("best_dR_Kp_Km", &best_dR_Kp_Km_vec);
-    tree->Branch("best_dR_Kp_phi", &best_dR_Kp_phi_vec);
-    tree->Branch("best_dR_Km_phi", &best_dR_Km_phi_vec);
-    tree->Branch("best_dR_Kp_pi", &best_dR_Kp_pi_vec);
-    tree->Branch("best_dR_Km_pi", &best_dR_Km_pi_vec);
-    tree->Branch("best_dR_pi_phi", &best_dR_pi_phi_vec);
-    tree->Branch("best_dR_Kp_Ds", &best_dR_Kp_Ds_vec);
-    tree->Branch("best_dR_Km_Ds", &best_dR_Km_Ds_vec);
-    tree->Branch("best_dR_phi_Ds", &best_dR_phi_Ds_vec);
-    tree->Branch("best_dR_pi_Ds", &best_dR_pi_Ds_vec);
-
-    tree->Branch("best_dxy_Kp_Km", &best_dxy_Kp_Km_vec);
-    tree->Branch("best_dxy_Kp_phi", &best_dxy_Kp_phi_vec);
-    tree->Branch("best_dxy_Km_phi", &best_dxy_Km_phi_vec);
-    tree->Branch("best_dxy_Kp_pi", &best_dxy_Kp_pi_vec);
-    tree->Branch("best_dxy_Km_pi", &best_dxy_Km_pi_vec);
-    tree->Branch("best_dxy_pi_phi", &best_dxy_pi_phi_vec);
-    tree->Branch("best_dxy_Kp_Ds", &best_dxy_Kp_Ds_vec);
-    tree->Branch("best_dxy_Km_Ds", &best_dxy_Km_Ds_vec);
-    tree->Branch("best_dxy_phi_Ds", &best_dxy_phi_Ds_vec);
-    tree->Branch("best_dxy_pi_Ds", &best_dxy_pi_Ds_vec);
-
-    tree->Branch("best_dz_Kp_Km", &best_dz_Kp_Km_vec);
-    tree->Branch("best_dz_Kp_phi", &best_dz_Kp_phi_vec);
-    tree->Branch("best_dz_Km_phi", &best_dz_Km_phi_vec);
-    tree->Branch("best_dz_Kp_pi", &best_dz_Kp_pi_vec);
-    tree->Branch("best_dz_Km_pi", &best_dz_Km_pi_vec);
-    tree->Branch("best_dz_pi_phi", &best_dz_pi_phi_vec);
-    tree->Branch("best_dz_Kp_Ds", &best_dz_Kp_Ds_vec);
-    tree->Branch("best_dz_Km_Ds", &best_dz_Km_Ds_vec);
-    tree->Branch("best_dz_phi_Ds", &best_dz_phi_Ds_vec);
-    tree->Branch("best_dz_pi_Ds", &best_dz_pi_Ds_vec);
-
-    tree->Branch("best_phiFit_CHI2", &best_phiFit_CHI2_vec);
-    tree->Branch("best_phiFit_NDOF", &best_phiFit_NDOF_vec);
-    tree->Branch("best_phiFit_CHI2NDOF", &best_phiFit_CHI2NDOF_vec);
-    tree->Branch("best_phiFit_ENDVX_X", &best_phiFit_ENDVX_X_vec);
-    tree->Branch("best_phiFit_ENDVX_Y", &best_phiFit_ENDVX_Y_vec);
-    tree->Branch("best_phiFit_ENDVX_Z", &best_phiFit_ENDVX_Z_vec);
-    tree->Branch("best_phiFit_ENDVX_XERR", &best_phiFit_ENDVX_XERR_vec);
-    tree->Branch("best_phiFit_ENDVX_YERR", &best_phiFit_ENDVX_YERR_vec);
-    tree->Branch("best_phiFit_ENDVX_ZERR", &best_phiFit_ENDVX_ZERR_vec);
-
-    tree->Branch("best_phiFit_Kp_ETA", &best_phiFit_Kp_ETA_vec);
-    tree->Branch("best_phiFit_Kp_PHI", &best_phiFit_Kp_PHI_vec);
-    tree->Branch("best_phiFit_Kp_P", &best_phiFit_Kp_P_vec);
-    tree->Branch("best_phiFit_Kp_PT", &best_phiFit_Kp_PT_vec);
-    tree->Branch("best_phiFit_Kp_PX", &best_phiFit_Kp_PX_vec);
-    tree->Branch("best_phiFit_Kp_PY", &best_phiFit_Kp_PY_vec);
-    tree->Branch("best_phiFit_Kp_PZ", &best_phiFit_Kp_PZ_vec);
-
-    tree->Branch("best_phiFit_Km_ETA", &best_phiFit_Km_ETA_vec);
-    tree->Branch("best_phiFit_Km_PHI", &best_phiFit_Km_PHI_vec);
-    tree->Branch("best_phiFit_Km_P", &best_phiFit_Km_P_vec);
-    tree->Branch("best_phiFit_Km_PT", &best_phiFit_Km_PT_vec);
-    tree->Branch("best_phiFit_Km_PX", &best_phiFit_Km_PX_vec);
-    tree->Branch("best_phiFit_Km_PY", &best_phiFit_Km_PY_vec);
-    tree->Branch("best_phiFit_Km_PZ", &best_phiFit_Km_PZ_vec);
-
-    tree->Branch("best_phiFit_pi_ETA", &best_phiFit_pi_ETA_vec);
-    tree->Branch("best_phiFit_pi_PHI", &best_phiFit_pi_PHI_vec);
-    tree->Branch("best_phiFit_pi_P", &best_phiFit_pi_P_vec);
-    tree->Branch("best_phiFit_pi_PT", &best_phiFit_pi_PT_vec);
-    tree->Branch("best_phiFit_pi_PX", &best_phiFit_pi_PX_vec);
-    tree->Branch("best_phiFit_pi_PY", &best_phiFit_pi_PY_vec);
-    tree->Branch("best_phiFit_pi_PZ", &best_phiFit_pi_PZ_vec);
-
-    tree->Branch("best_phiFit_phi_ETA", &best_phiFit_phi_ETA_vec);
-    tree->Branch("best_phiFit_phi_PHI", &best_phiFit_phi_PHI_vec);
-    tree->Branch("best_phiFit_phi_P", &best_phiFit_phi_P_vec);
-    tree->Branch("best_phiFit_phi_PT", &best_phiFit_phi_PT_vec);
-    tree->Branch("best_phiFit_phi_PX", &best_phiFit_phi_PX_vec);
-    tree->Branch("best_phiFit_phi_PY", &best_phiFit_phi_PY_vec);
-    tree->Branch("best_phiFit_phi_PZ", &best_phiFit_phi_PZ_vec);
-    tree->Branch("best_phiFit_phi_M", &best_phiFit_phi_M_vec);
-
-    tree->Branch("best_phiFit_Ds_ETA", &best_phiFit_Ds_ETA_vec);
-    tree->Branch("best_phiFit_Ds_PHI", &best_phiFit_Ds_PHI_vec);
-    tree->Branch("best_phiFit_Ds_P", &best_phiFit_Ds_P_vec);
-    tree->Branch("best_phiFit_Ds_PT", &best_phiFit_Ds_PT_vec);
-    tree->Branch("best_phiFit_Ds_PX", &best_phiFit_Ds_PX_vec);
-    tree->Branch("best_phiFit_Ds_PY", &best_phiFit_Ds_PY_vec);
-    tree->Branch("best_phiFit_Ds_PZ", &best_phiFit_Ds_PZ_vec);
-    tree->Branch("best_phiFit_Ds_M", &best_phiFit_Ds_M_vec);
-
-    tree->Branch("best_phiFit_Kp_PP", &best_phiFit_Kp_PP_vec);
-    tree->Branch("best_phiFit_Kp_PL", &best_phiFit_Kp_PL_vec);
-    tree->Branch("best_phiFit_Km_PP", &best_phiFit_Km_PP_vec);
-    tree->Branch("best_phiFit_Km_PL", &best_phiFit_Km_PL_vec);
-
-    tree->Branch("best_phiFit_phi_PP", &best_phiFit_phi_PP_vec);
-    tree->Branch("best_phiFit_phi_PL", &best_phiFit_phi_PL_vec);
-    tree->Branch("best_phiFit_pi_PP", &best_phiFit_pi_PP_vec);
-    tree->Branch("best_phiFit_pi_PL", &best_phiFit_pi_PL_vec);
-
-    tree->Branch("best_phiFit_dR_Kp_Km", &best_phiFit_dR_Kp_Km_vec);
-    tree->Branch("best_phiFit_dR_Kp_phi", &best_phiFit_dR_Kp_phi_vec);
-    tree->Branch("best_phiFit_dR_Km_phi", &best_phiFit_dR_Km_phi_vec);
-    tree->Branch("best_phiFit_dR_Kp_pi", &best_phiFit_dR_Kp_pi_vec);
-    tree->Branch("best_phiFit_dR_Km_pi", &best_phiFit_dR_Km_pi_vec);
-    tree->Branch("best_phiFit_dR_pi_phi", &best_phiFit_dR_pi_phi_vec);
-    tree->Branch("best_phiFit_dR_Kp_Ds", &best_phiFit_dR_Kp_Ds_vec);
-    tree->Branch("best_phiFit_dR_Km_Ds", &best_phiFit_dR_Km_Ds_vec);
-    tree->Branch("best_phiFit_dR_phi_Ds", &best_phiFit_dR_phi_Ds_vec);
-    tree->Branch("best_phiFit_dR_pi_Ds", &best_phiFit_dR_pi_Ds_vec);
-
-    // Fit on Ds 
-    tree->Branch("best_DsFit_CHI2", &best_DsFit_CHI2_vec);
-    tree->Branch("best_DsFit_NDOF", &best_DsFit_NDOF_vec);
-    tree->Branch("best_DsFit_CHI2NDOF", &best_DsFit_CHI2NDOF_vec);
-    tree->Branch("best_DsFit_ENDVX_X", &best_DsFit_ENDVX_X_vec);
-    tree->Branch("best_DsFit_ENDVX_Y", &best_DsFit_ENDVX_Y_vec);
-    tree->Branch("best_DsFit_ENDVX_Z", &best_DsFit_ENDVX_Z_vec);
-    tree->Branch("best_DsFit_ENDVX_XERR", &best_DsFit_ENDVX_XERR_vec);
-    tree->Branch("best_DsFit_ENDVX_YERR", &best_DsFit_ENDVX_YERR_vec);
-    tree->Branch("best_DsFit_ENDVX_ZERR", &best_DsFit_ENDVX_ZERR_vec);
-
-    tree->Branch("best_DsFit_Kp_ETA", &best_DsFit_Kp_ETA_vec);
-    tree->Branch("best_DsFit_Kp_PHI", &best_DsFit_Kp_PHI_vec);
-    tree->Branch("best_DsFit_Kp_P", &best_DsFit_Kp_P_vec);
-    tree->Branch("best_DsFit_Kp_PT", &best_DsFit_Kp_PT_vec);
-    tree->Branch("best_DsFit_Kp_PX", &best_DsFit_Kp_PX_vec);
-    tree->Branch("best_DsFit_Kp_PY", &best_DsFit_Kp_PY_vec);
-    tree->Branch("best_DsFit_Kp_PZ", &best_DsFit_Kp_PZ_vec);
-
-    tree->Branch("best_DsFit_Km_ETA", &best_DsFit_Km_ETA_vec);
-    tree->Branch("best_DsFit_Km_PHI", &best_DsFit_Km_PHI_vec);
-    tree->Branch("best_DsFit_Km_P", &best_DsFit_Km_P_vec);
-    tree->Branch("best_DsFit_Km_PT", &best_DsFit_Km_PT_vec);
-    tree->Branch("best_DsFit_Km_PX", &best_DsFit_Km_PX_vec);
-    tree->Branch("best_DsFit_Km_PY", &best_DsFit_Km_PY_vec);
-    tree->Branch("best_DsFit_Km_PZ", &best_DsFit_Km_PZ_vec);
-
-    tree->Branch("best_DsFit_pi_ETA", &best_DsFit_pi_ETA_vec);
-    tree->Branch("best_DsFit_pi_PHI", &best_DsFit_pi_PHI_vec);
-    tree->Branch("best_DsFit_pi_P", &best_DsFit_pi_P_vec);
-    tree->Branch("best_DsFit_pi_PT", &best_DsFit_pi_PT_vec);
-    tree->Branch("best_DsFit_pi_PX", &best_DsFit_pi_PX_vec);
-    tree->Branch("best_DsFit_pi_PY", &best_DsFit_pi_PY_vec);
-    tree->Branch("best_DsFit_pi_PZ", &best_DsFit_pi_PZ_vec);
-
-    tree->Branch("best_DsFit_phi_ETA", &best_DsFit_phi_ETA_vec);
-    tree->Branch("best_DsFit_phi_PHI", &best_DsFit_phi_PHI_vec);
-    tree->Branch("best_DsFit_phi_P", &best_DsFit_phi_P_vec);
-    tree->Branch("best_DsFit_phi_PT", &best_DsFit_phi_PT_vec);
-    tree->Branch("best_DsFit_phi_PX", &best_DsFit_phi_PX_vec);
-    tree->Branch("best_DsFit_phi_PY", &best_DsFit_phi_PY_vec);
-    tree->Branch("best_DsFit_phi_PZ", &best_DsFit_phi_PZ_vec);
-    tree->Branch("best_DsFit_phi_M", &best_DsFit_phi_M_vec);
-
-    tree->Branch("best_DsFit_Ds_ETA", &best_DsFit_Ds_ETA_vec);
-    tree->Branch("best_DsFit_Ds_PHI", &best_DsFit_Ds_PHI_vec);
-    tree->Branch("best_DsFit_Ds_P", &best_DsFit_Ds_P_vec);
-    tree->Branch("best_DsFit_Ds_PT", &best_DsFit_Ds_PT_vec);
-    tree->Branch("best_DsFit_Ds_PX", &best_DsFit_Ds_PX_vec);
-    tree->Branch("best_DsFit_Ds_PY", &best_DsFit_Ds_PY_vec);
-    tree->Branch("best_DsFit_Ds_PZ", &best_DsFit_Ds_PZ_vec);
-    tree->Branch("best_DsFit_Ds_M", &best_DsFit_Ds_M_vec);
-
-    tree->Branch("best_DsFit_Kp_PP", &best_DsFit_Kp_PP_vec);
-    tree->Branch("best_DsFit_Kp_PL", &best_DsFit_Kp_PL_vec);
-    tree->Branch("best_DsFit_Km_PP", &best_DsFit_Km_PP_vec);
-    tree->Branch("best_DsFit_Km_PL", &best_DsFit_Km_PL_vec);
-
-    tree->Branch("best_DsFit_phi_PP", &best_DsFit_phi_PP_vec);
-    tree->Branch("best_DsFit_phi_PL", &best_DsFit_phi_PL_vec);
-    tree->Branch("best_DsFit_pi_PP", &best_DsFit_pi_PP_vec);
-    tree->Branch("best_DsFit_pi_PL", &best_DsFit_pi_PL_vec);
-
-    tree->Branch("best_DsFit_dR_Kp_Km", &best_DsFit_dR_Kp_Km_vec);
-    tree->Branch("best_DsFit_dR_Kp_phi", &best_DsFit_dR_Kp_phi_vec);
-    tree->Branch("best_DsFit_dR_Km_phi", &best_DsFit_dR_Km_phi_vec);
-    tree->Branch("best_DsFit_dR_Kp_pi", &best_DsFit_dR_Kp_pi_vec);
-    tree->Branch("best_DsFit_dR_Km_pi", &best_DsFit_dR_Km_pi_vec);
-    tree->Branch("best_DsFit_dR_pi_phi", &best_DsFit_dR_pi_phi_vec);
-    tree->Branch("best_DsFit_dR_Kp_Ds", &best_DsFit_dR_Kp_Ds_vec);
-    tree->Branch("best_DsFit_dR_Km_Ds", &best_DsFit_dR_Km_Ds_vec);
-    tree->Branch("best_DsFit_dR_phi_Ds", &best_DsFit_dR_phi_Ds_vec);
-    tree->Branch("best_DsFit_dR_pi_Ds", &best_DsFit_dR_pi_Ds_vec);
-
-    tree->Branch("best_DsFit_Mconstraint_Ds_M", &best_DsFit_Mconstraint_Ds_M_vec);
-
-    tree->Branch("best_match_entry", &best_match_entry_vec);
-    
-    tree->Branch("best_Ds_FDxy", &best_Ds_FDxy_vec);
-    tree->Branch("best_Ds_FDxy_Err", &best_Ds_FDxy_Err_vec);
-    tree->Branch("best_Ds_FDxy_Chi2", &best_Ds_FDxy_Chi2_vec);
-    tree->Branch("best_Ds_FDz", &best_Ds_FDz_vec);
-    tree->Branch("best_Ds_FDz_Err", &best_Ds_FDz_Err_vec);
-    tree->Branch("best_Ds_FDz_Chi2", &best_Ds_FDz_Chi2_vec);
-    tree->Branch("best_Ds_FD", &best_Ds_FD_vec);
-    tree->Branch("best_Ds_FD_Err", &best_Ds_FD_Err_vec);
-    tree->Branch("best_Ds_FD_Chi2", &best_Ds_FD_Chi2_vec);
-    tree->Branch("best_Ds_DIRA_angle", &best_Ds_DIRA_angle_vec);
-    tree->Branch("best_Ds_DIRA", &best_Ds_DIRA_vec);
-    tree->Branch("best_Kp_IP", &best_Kp_IP_vec);
-    tree->Branch("best_Kp_IP_Err", &best_Kp_IP_Err_vec);
-    tree->Branch("best_Kp_IP_Chi2", &best_Kp_IP_Chi2_vec);
-    tree->Branch("best_Km_IP", &best_Km_IP_vec);
-    tree->Branch("best_Km_IP_Err", &best_Km_IP_Err_vec);
-    tree->Branch("best_Km_IP_Chi2", &best_Km_IP_Chi2_vec);
-    tree->Branch("best_pi_IP", &best_pi_IP_vec);
-    tree->Branch("best_pi_IP_Err", &best_pi_IP_Err_vec);
-    tree->Branch("best_pi_IP_Chi2", &best_pi_IP_Chi2_vec);
-}
-
-void RecoTree::Gen_Reset()
-{
-    Gen_Kp_ETA = null;
-    Gen_Kp_PHI = null;
-    Gen_Kp_ORIVX_X = null;
-    Gen_Kp_ORIVX_Y = null;
-    Gen_Kp_ORIVX_Z = null;
-    Gen_Kp_P = null;
-    Gen_Kp_PT = null;
-    Gen_Kp_PX = null;
-    Gen_Kp_PY = null;
-    Gen_Kp_PZ = null;
-    Gen_Kp_PP = null;
-    Gen_Kp_PL = null;
-
-    Gen_Km_ETA = null;
-    Gen_Km_PHI = null;
-    Gen_Km_ORIVX_X = null;
-    Gen_Km_ORIVX_Y = null;
-    Gen_Km_ORIVX_Z = null;
-    Gen_Km_P = null;
-    Gen_Km_PT = null;
-    Gen_Km_PX = null;
-    Gen_Km_PY = null;
-    Gen_Km_PZ = null;
-    Gen_Km_PP = null;
-    Gen_Km_PL = null;
-
-    Gen_pi_ETA = null;
-    Gen_pi_PHI = null;
-    Gen_pi_ORIVX_X = null;
-    Gen_pi_ORIVX_Y = null;
-    Gen_pi_ORIVX_Z = null;
-    Gen_pi_P = null;
-    Gen_pi_PT = null;
-    Gen_pi_PX = null;
-    Gen_pi_PY = null;
-    Gen_pi_PZ = null;
-    Gen_pi_PP = null;
-    Gen_pi_PL = null;
-
-    Gen_phi_ETA = null;
-    Gen_phi_PHI = null;
-    Gen_phi_ORIVX_X = null;
-    Gen_phi_ORIVX_Y = null;
-    Gen_phi_ORIVX_Z = null;
-    Gen_phi_P = null;
-    Gen_phi_PT = null;
-    Gen_phi_PX = null;
-    Gen_phi_PY = null;
-    Gen_phi_PZ = null;
-    Gen_phi_PP = null;
-    Gen_phi_PL = null;
-
-    Gen_Ds_ETA = null;
-    Gen_Ds_PHI = null;
-    Gen_Ds_ORIVX_X = null;
-    Gen_Ds_ORIVX_Y = null;
-    Gen_Ds_ORIVX_Z = null;
-    Gen_Ds_P = null;
-    Gen_Ds_PT = null;
-    Gen_Ds_PX = null;
-    Gen_Ds_PY = null;
-    Gen_Ds_PZ = null;
-
-    Gen_mu_ETA = null;
-    Gen_mu_PHI = null;
-    Gen_mu_ORIVX_X = null;
-    Gen_mu_ORIVX_Y = null;
-    Gen_mu_ORIVX_Z = null;
-    Gen_mu_P = null;
-    Gen_mu_PT = null;
-    Gen_mu_PX = null;
-    Gen_mu_PY = null;
-    Gen_mu_PZ = null;
-
-    Gen_nu_ETA = null;
-    Gen_nu_PHI = null;
-    Gen_nu_ORIVX_X = null;
-    Gen_nu_ORIVX_Y = null;
-    Gen_nu_ORIVX_Z = null;
-    Gen_nu_P = null;
-    Gen_nu_PT = null;
-    Gen_nu_PX = null;
-    Gen_nu_PY = null;
-    Gen_nu_PZ = null;
-
-    Gen_W_ETA = null;
-    Gen_W_PHI = null;
-    Gen_W_ORIVX_X = null;
-    Gen_W_ORIVX_Y = null;
-    Gen_W_ORIVX_Z = null;
-    Gen_W_P = null;
-    Gen_W_PT = null;
-    Gen_W_PX = null;
-    Gen_W_PY = null;
-    Gen_W_PZ = null;
-
-    Gen_H_ETA = null;
-    Gen_H_PHI = null;
-    Gen_H_ORIVX_X = null;
-    Gen_H_ORIVX_Y = null;
-    Gen_H_ORIVX_Z = null;
-    Gen_H_P = null;
-    Gen_H_PT = null;
-    Gen_H_PX = null;
-    Gen_H_PY = null;
-    Gen_H_PZ = null;
-
-    Gen_dR_Kp_Km = null;
-    Gen_dR_Kp_phi = null;
-    Gen_dR_Km_phi = null;
-    Gen_dR_Kp_pi = null;
-    Gen_dR_Km_pi = null;
-    Gen_dR_pi_phi = null;
-    Gen_dR_Kp_Ds = null;
-    Gen_dR_Km_Ds = null;
-    Gen_dR_phi_Ds = null;
-    Gen_dR_pi_Ds = null;
-
-    Gen_dxy_Kp_Km = null;
-    Gen_dxy_Kp_pi = null;
-    Gen_dxy_Km_pi = null;
-    Gen_dz_Kp_Km = null;
-    Gen_dz_Kp_pi = null;
-    Gen_dz_Km_pi = null;
-    
-    Gen_Ds_FDxy = null;
-    Gen_Ds_FDz = null;
-    Gen_Ds_FD = null;
-    Gen_Ds_DIRA_angle = null;
-    Gen_Ds_DIRA = null;
-    Gen_Kp_IP = null;
-    Gen_Km_IP = null;
-    Gen_pi_IP = null;
-}
-
-void RecoTree::Match_Reset()
-{
-    // Original info
-    match_Kp_ETA = null;
-    match_Kp_PHI = null;
-    match_Kp_ORIVX_X = null;
-    match_Kp_ORIVX_Y = null;
-    match_Kp_ORIVX_Z = null;
-    match_Kp_P = null;
-    match_Kp_PT = null;
-    match_Kp_PX = null;
-    match_Kp_PY = null;
-    match_Kp_PZ = null;
-
-    match_Km_ETA = null;
-    match_Km_PHI = null;
-    match_Km_ORIVX_X = null;
-    match_Km_ORIVX_Y = null;
-    match_Km_ORIVX_Z = null;
-    match_Km_P = null;
-    match_Km_PT = null;
-    match_Km_PX = null;
-    match_Km_PY = null;
-    match_Km_PZ = null;
-
-    match_pi_ETA = null;
-    match_pi_PHI = null;
-    match_pi_ORIVX_X = null;
-    match_pi_ORIVX_Y = null;
-    match_pi_ORIVX_Z = null;
-    match_pi_P = null;
-    match_pi_PT = null;
-    match_pi_PX = null;
-    match_pi_PY = null;
-    match_pi_PZ = null;
-
-    match_phi_ETA = null;
-    match_phi_PHI = null;
-    match_phi_P = null;
-    match_phi_PT = null;
-    match_phi_PX = null;
-    match_phi_PY = null;
-    match_phi_PZ = null;
-    match_phi_M = null;
-
-    match_Ds_ETA = null;
-    match_Ds_PHI = null;
-    match_Ds_P = null;
-    match_Ds_PT = null;
-    match_Ds_PX = null;
-    match_Ds_PY = null;
-    match_Ds_PZ = null;
-    match_Ds_M = null;
-
-    match_Kp_PP = null;
-    match_Kp_PL = null;
-    match_Km_PP = null;
-    match_Km_PL = null;
-
-    match_phi_PP = null;
-    match_phi_PL = null;
-    match_pi_PP = null;
-    match_pi_PL = null;
-
-    match_dR_Kp_Km = null;
-    match_dR_Kp_phi = null;
-    match_dR_Km_phi = null;
-    match_dR_Kp_pi = null;
-    match_dR_Km_pi = null;
-    match_dR_pi_phi = null;
-    match_dR_Kp_Ds = null;
-    match_dR_Km_Ds = null;
-    match_dR_phi_Ds = null;
-    match_dR_pi_Ds = null;
-
-    match_dxy_Kp_Km = null;
-    match_dxy_Kp_phi = null;
-    match_dxy_Km_phi = null;
-    match_dxy_Kp_pi = null;
-    match_dxy_Km_pi = null;
-    match_dxy_pi_phi = null;
-    match_dxy_Kp_Ds = null;
-    match_dxy_Km_Ds = null;
-    match_dxy_phi_Ds = null;
-    match_dxy_pi_Ds = null;
-
-    match_dz_Kp_Km = null;
-    match_dz_Kp_phi = null;
-    match_dz_Km_phi = null;
-    match_dz_Kp_pi = null;
-    match_dz_Km_pi = null;
-    match_dz_pi_phi = null;
-    match_dz_Kp_Ds = null;
-    match_dz_Km_Ds = null;
-    match_dz_phi_Ds = null;
-    match_dz_pi_Ds = null;
 
     // Fit on phi
-    match_phiFit_CHI2 = null;
-    match_phiFit_NDOF = null;
-    match_phiFit_CHI2NDOF = null;
-    match_phiFit_ENDVX_X = null;
-    match_phiFit_ENDVX_Y = null;
-    match_phiFit_ENDVX_Z = null;
-    match_phiFit_ENDVX_XERR = null;
-    match_phiFit_ENDVX_YERR = null;
-    match_phiFit_ENDVX_ZERR = null;
+    best_phiFit_chi2_vec.push_back(phiFit_chi2_vec[idxmax]);
+    best_phiFit_ndof_vec.push_back(phiFit_ndof_vec[idxmax]);
+    best_phiFit_chi2ndof_vec.push_back(phiFit_chi2ndof_vec[idxmax]);
+    best_phiFit_vx_vec.push_back(phiFit_vx_vec[idxmax]);
+    best_phiFit_vy_vec.push_back(phiFit_vy_vec[idxmax]);
+    best_phiFit_vz_vec.push_back(phiFit_vz_vec[idxmax]);
+    best_phiFit_vxerr_vec.push_back(phiFit_vxerr_vec[idxmax]);
+    best_phiFit_vyerr_vec.push_back(phiFit_vyerr_vec[idxmax]);
+    best_phiFit_vzerr_vec.push_back(phiFit_vzerr_vec[idxmax]);
 
-    match_phiFit_Kp_ETA = null;
-    match_phiFit_Kp_PHI = null;
-    match_phiFit_Kp_P = null;
-    match_phiFit_Kp_PT = null;
-    match_phiFit_Kp_PX = null;
-    match_phiFit_Kp_PY = null;
-    match_phiFit_Kp_PZ = null;
+    best_phiFit_Kp_eta_vec.push_back(phiFit_Kp_eta_vec[idxmax]);
+    best_phiFit_Kp_phi_vec.push_back(phiFit_Kp_phi_vec[idxmax]);
+    best_phiFit_Kp_p_vec.push_back(phiFit_Kp_p_vec[idxmax]);
+    best_phiFit_Kp_pt_vec.push_back(phiFit_Kp_pt_vec[idxmax]);
+    best_phiFit_Kp_px_vec.push_back(phiFit_Kp_px_vec[idxmax]);
+    best_phiFit_Kp_py_vec.push_back(phiFit_Kp_py_vec[idxmax]);
+    best_phiFit_Kp_pz_vec.push_back(phiFit_Kp_pz_vec[idxmax]);
 
-    match_phiFit_Km_ETA = null;
-    match_phiFit_Km_PHI = null;
-    match_phiFit_Km_P = null;
-    match_phiFit_Km_PT = null;
-    match_phiFit_Km_PX = null;
-    match_phiFit_Km_PY = null;
-    match_phiFit_Km_PZ = null;
+    best_phiFit_Km_eta_vec.push_back(phiFit_Km_eta_vec[idxmax]);
+    best_phiFit_Km_phi_vec.push_back(phiFit_Km_phi_vec[idxmax]);
+    best_phiFit_Km_p_vec.push_back(phiFit_Km_p_vec[idxmax]);
+    best_phiFit_Km_pt_vec.push_back(phiFit_Km_pt_vec[idxmax]);
+    best_phiFit_Km_px_vec.push_back(phiFit_Km_px_vec[idxmax]);
+    best_phiFit_Km_py_vec.push_back(phiFit_Km_py_vec[idxmax]);
+    best_phiFit_Km_pz_vec.push_back(phiFit_Km_pz_vec[idxmax]);
 
-    match_phiFit_pi_ETA = null;
-    match_phiFit_pi_PHI = null;
-    match_phiFit_pi_P = null;
-    match_phiFit_pi_PT = null;
-    match_phiFit_pi_PX = null;
-    match_phiFit_pi_PY = null;
-    match_phiFit_pi_PZ = null;
+    best_phiFit_pi_eta_vec.push_back(phiFit_pi_eta_vec[idxmax]);
+    best_phiFit_pi_phi_vec.push_back(phiFit_pi_phi_vec[idxmax]);
+    best_phiFit_pi_p_vec.push_back(phiFit_pi_p_vec[idxmax]);
+    best_phiFit_pi_pt_vec.push_back(phiFit_pi_pt_vec[idxmax]);
+    best_phiFit_pi_px_vec.push_back(phiFit_pi_px_vec[idxmax]);
+    best_phiFit_pi_py_vec.push_back(phiFit_pi_py_vec[idxmax]);
+    best_phiFit_pi_pz_vec.push_back(phiFit_pi_pz_vec[idxmax]);
 
-    match_phiFit_phi_ETA = null;
-    match_phiFit_phi_PHI = null;
-    match_phiFit_phi_P = null;
-    match_phiFit_phi_PT = null;
-    match_phiFit_phi_PX = null;
-    match_phiFit_phi_PY = null;
-    match_phiFit_phi_PZ = null;
-    match_phiFit_phi_M = null;
+    best_phiFit_phi_eta_vec.push_back(phiFit_phi_eta_vec[idxmax]);
+    best_phiFit_phi_phi_vec.push_back(phiFit_phi_phi_vec[idxmax]);
+    best_phiFit_phi_p_vec.push_back(phiFit_phi_p_vec[idxmax]);
+    best_phiFit_phi_pt_vec.push_back(phiFit_phi_pt_vec[idxmax]);
+    best_phiFit_phi_px_vec.push_back(phiFit_phi_px_vec[idxmax]);
+    best_phiFit_phi_py_vec.push_back(phiFit_phi_py_vec[idxmax]);
+    best_phiFit_phi_pz_vec.push_back(phiFit_phi_pz_vec[idxmax]);
+    best_phiFit_phi_invm_vec.push_back(phiFit_phi_invm_vec[idxmax]);
 
-    match_phiFit_Ds_ETA = null;
-    match_phiFit_Ds_PHI = null;
-    match_phiFit_Ds_P = null;
-    match_phiFit_Ds_PT = null;
-    match_phiFit_Ds_PX = null;
-    match_phiFit_Ds_PY = null;
-    match_phiFit_Ds_PZ = null;
-    match_phiFit_Ds_M = null;
+    best_phiFit_Ds_eta_vec.push_back(phiFit_Ds_eta_vec[idxmax]);
+    best_phiFit_Ds_phi_vec.push_back(phiFit_Ds_phi_vec[idxmax]);
+    best_phiFit_Ds_p_vec.push_back(phiFit_Ds_p_vec[idxmax]);
+    best_phiFit_Ds_pt_vec.push_back(phiFit_Ds_pt_vec[idxmax]);
+    best_phiFit_Ds_px_vec.push_back(phiFit_Ds_px_vec[idxmax]);
+    best_phiFit_Ds_py_vec.push_back(phiFit_Ds_py_vec[idxmax]);
+    best_phiFit_Ds_pz_vec.push_back(phiFit_Ds_pz_vec[idxmax]);
+    best_phiFit_Ds_invm_vec.push_back(phiFit_Ds_invm_vec[idxmax]);
 
-    match_phiFit_Kp_PP = null;
-    match_phiFit_Kp_PL = null;
-    match_phiFit_Km_PP = null;
-    match_phiFit_Km_PL = null;
+    best_phiFit_Kp_pp_vec.push_back(phiFit_Kp_pp_vec[idxmax]);
+    best_phiFit_Kp_pl_vec.push_back(phiFit_Kp_pl_vec[idxmax]);
+    best_phiFit_Km_pp_vec.push_back(phiFit_Km_pp_vec[idxmax]);
+    best_phiFit_Km_pl_vec.push_back(phiFit_Km_pl_vec[idxmax]);
 
-    match_phiFit_phi_PP = null;
-    match_phiFit_phi_PL = null;
-    match_phiFit_pi_PP = null;
-    match_phiFit_pi_PL = null;
+    best_phiFit_phi_pp_vec.push_back(phiFit_phi_pp_vec[idxmax]);
+    best_phiFit_phi_pl_vec.push_back(phiFit_phi_pl_vec[idxmax]);
+    best_phiFit_pi_pp_vec.push_back(phiFit_pi_pp_vec[idxmax]);
+    best_phiFit_pi_pl_vec.push_back(phiFit_pi_pl_vec[idxmax]);
 
-    match_phiFit_dR_Kp_Km = null;
-    match_phiFit_dR_Kp_phi = null;
-    match_phiFit_dR_Km_phi = null;
-    match_phiFit_dR_Kp_pi = null;
-    match_phiFit_dR_Km_pi = null;
-    match_phiFit_dR_pi_phi = null;
-    match_phiFit_dR_Kp_Ds = null;
-    match_phiFit_dR_Km_Ds = null;
-    match_phiFit_dR_phi_Ds = null;
-    match_phiFit_dR_pi_Ds = null;
+    best_phiFit_dR_Kp_Km_vec.push_back(phiFit_dR_Kp_Km_vec[idxmax]);
+    best_phiFit_dR_Kp_phi_vec.push_back(phiFit_dR_Kp_phi_vec[idxmax]);
+    best_phiFit_dR_Km_phi_vec.push_back(phiFit_dR_Km_phi_vec[idxmax]);
+    best_phiFit_dR_Kp_pi_vec.push_back(phiFit_dR_Kp_pi_vec[idxmax]);
+    best_phiFit_dR_Km_pi_vec.push_back(phiFit_dR_Km_pi_vec[idxmax]);
+    best_phiFit_dR_pi_phi_vec.push_back(phiFit_dR_pi_phi_vec[idxmax]);
+    best_phiFit_dR_Kp_Ds_vec.push_back(phiFit_dR_Kp_Ds_vec[idxmax]);
+    best_phiFit_dR_Km_Ds_vec.push_back(phiFit_dR_Km_Ds_vec[idxmax]);
+    best_phiFit_dR_phi_Ds_vec.push_back(phiFit_dR_phi_Ds_vec[idxmax]);
+    best_phiFit_dR_pi_Ds_vec.push_back(phiFit_dR_pi_Ds_vec[idxmax]);
+
+    best_alpha_phi_vec.push_back(alpha_phi_vec[idxmax]);
+    best_beta_phi_vec.push_back(beta_phi_vec[idxmax]);
+    best_APvar_phi_vec.push_back(APvar_phi_vec[idxmax]);
 
     // Fit on Ds 
-    match_DsFit_CHI2 = null;
-    match_DsFit_NDOF = null;
-    match_DsFit_CHI2NDOF = null;
-    match_DsFit_ENDVX_X = null;
-    match_DsFit_ENDVX_Y = null;
-    match_DsFit_ENDVX_Z = null;
-    match_DsFit_ENDVX_XERR = null;
-    match_DsFit_ENDVX_YERR = null;
-    match_DsFit_ENDVX_ZERR = null;
+    best_DsFit_chi2_vec.push_back(DsFit_chi2_vec[idxmax]);
+    best_DsFit_ndof_vec.push_back(DsFit_ndof_vec[idxmax]);
+    best_DsFit_chi2ndof_vec.push_back(DsFit_chi2ndof_vec[idxmax]);
+    best_DsFit_vx_vec.push_back(DsFit_vx_vec[idxmax]);
+    best_DsFit_vy_vec.push_back(DsFit_vy_vec[idxmax]);
+    best_DsFit_vz_vec.push_back(DsFit_vz_vec[idxmax]);
+    best_DsFit_vxerr_vec.push_back(DsFit_vxerr_vec[idxmax]);
+    best_DsFit_vyerr_vec.push_back(DsFit_vyerr_vec[idxmax]);
+    best_DsFit_vzerr_vec.push_back(DsFit_vzerr_vec[idxmax]);
 
-    match_DsFit_Kp_ETA = null;
-    match_DsFit_Kp_PHI = null;
-    match_DsFit_Kp_P = null;
-    match_DsFit_Kp_PT = null;
-    match_DsFit_Kp_PX = null;
-    match_DsFit_Kp_PY = null;
-    match_DsFit_Kp_PZ = null;
+    best_DsFit_Kp_eta_vec.push_back(DsFit_Kp_eta_vec[idxmax]);
+    best_DsFit_Kp_phi_vec.push_back(DsFit_Kp_phi_vec[idxmax]);
+    best_DsFit_Kp_p_vec.push_back(DsFit_Kp_p_vec[idxmax]);
+    best_DsFit_Kp_pt_vec.push_back(DsFit_Kp_pt_vec[idxmax]);
+    best_DsFit_Kp_px_vec.push_back(DsFit_Kp_px_vec[idxmax]);
+    best_DsFit_Kp_py_vec.push_back(DsFit_Kp_py_vec[idxmax]);
+    best_DsFit_Kp_pz_vec.push_back(DsFit_Kp_pz_vec[idxmax]);
 
-    match_DsFit_Km_ETA = null;
-    match_DsFit_Km_PHI = null;
-    match_DsFit_Km_P = null;
-    match_DsFit_Km_PT = null;
-    match_DsFit_Km_PX = null;
-    match_DsFit_Km_PY = null;
-    match_DsFit_Km_PZ = null;
+    best_DsFit_Km_eta_vec.push_back(DsFit_Km_eta_vec[idxmax]);
+    best_DsFit_Km_phi_vec.push_back(DsFit_Km_phi_vec[idxmax]);
+    best_DsFit_Km_p_vec.push_back(DsFit_Km_p_vec[idxmax]);
+    best_DsFit_Km_pt_vec.push_back(DsFit_Km_pt_vec[idxmax]);
+    best_DsFit_Km_px_vec.push_back(DsFit_Km_px_vec[idxmax]);
+    best_DsFit_Km_py_vec.push_back(DsFit_Km_py_vec[idxmax]);
+    best_DsFit_Km_pz_vec.push_back(DsFit_Km_pz_vec[idxmax]);
 
-    match_DsFit_pi_ETA = null;
-    match_DsFit_pi_PHI = null;
-    match_DsFit_pi_P = null;
-    match_DsFit_pi_PT = null;
-    match_DsFit_pi_PX = null;
-    match_DsFit_pi_PY = null;
-    match_DsFit_pi_PZ = null;
+    best_DsFit_pi_eta_vec.push_back(DsFit_pi_eta_vec[idxmax]);
+    best_DsFit_pi_phi_vec.push_back(DsFit_pi_phi_vec[idxmax]);
+    best_DsFit_pi_p_vec.push_back(DsFit_pi_p_vec[idxmax]);
+    best_DsFit_pi_pt_vec.push_back(DsFit_pi_pt_vec[idxmax]);
+    best_DsFit_pi_px_vec.push_back(DsFit_pi_px_vec[idxmax]);
+    best_DsFit_pi_py_vec.push_back(DsFit_pi_py_vec[idxmax]);
+    best_DsFit_pi_pz_vec.push_back(DsFit_pi_pz_vec[idxmax]);
 
-    match_DsFit_phi_ETA = null;
-    match_DsFit_phi_PHI = null;
-    match_DsFit_phi_P = null;
-    match_DsFit_phi_PT = null;
-    match_DsFit_phi_PX = null;
-    match_DsFit_phi_PY = null;
-    match_DsFit_phi_PZ = null;
-    match_DsFit_phi_M = null;
+    best_DsFit_phi_eta_vec.push_back(DsFit_phi_eta_vec[idxmax]);
+    best_DsFit_phi_phi_vec.push_back(DsFit_phi_phi_vec[idxmax]);
+    best_DsFit_phi_p_vec.push_back(DsFit_phi_p_vec[idxmax]);
+    best_DsFit_phi_pt_vec.push_back(DsFit_phi_pt_vec[idxmax]);
+    best_DsFit_phi_px_vec.push_back(DsFit_phi_px_vec[idxmax]);
+    best_DsFit_phi_py_vec.push_back(DsFit_phi_py_vec[idxmax]);
+    best_DsFit_phi_pz_vec.push_back(DsFit_phi_pz_vec[idxmax]);
+    best_DsFit_phi_invm_vec.push_back(DsFit_phi_invm_vec[idxmax]);
 
-    match_DsFit_Ds_ETA = null;
-    match_DsFit_Ds_PHI = null;
-    match_DsFit_Ds_P = null;
-    match_DsFit_Ds_PT = null;
-    match_DsFit_Ds_PX = null;
-    match_DsFit_Ds_PY = null;
-    match_DsFit_Ds_PZ = null;
-    match_DsFit_Ds_M = null;
+    best_DsFit_Ds_eta_vec.push_back(DsFit_Ds_eta_vec[idxmax]);
+    best_DsFit_Ds_phi_vec.push_back(DsFit_Ds_phi_vec[idxmax]);
+    best_DsFit_Ds_p_vec.push_back(DsFit_Ds_p_vec[idxmax]);
+    best_DsFit_Ds_pt_vec.push_back(DsFit_Ds_pt_vec[idxmax]);
+    best_DsFit_Ds_px_vec.push_back(DsFit_Ds_px_vec[idxmax]);
+    best_DsFit_Ds_py_vec.push_back(DsFit_Ds_py_vec[idxmax]);
+    best_DsFit_Ds_pz_vec.push_back(DsFit_Ds_pz_vec[idxmax]);
+    best_DsFit_Ds_invm_vec.push_back(DsFit_Ds_invm_vec[idxmax]);
 
-    match_DsFit_Kp_PP = null;
-    match_DsFit_Kp_PL = null;
-    match_DsFit_Km_PP = null;
-    match_DsFit_Km_PL = null;
+    best_DsFit_Kp_pp_vec.push_back(DsFit_Kp_pp_vec[idxmax]);
+    best_DsFit_Kp_pl_vec.push_back(DsFit_Kp_pl_vec[idxmax]);
+    best_DsFit_Km_pp_vec.push_back(DsFit_Km_pp_vec[idxmax]);
+    best_DsFit_Km_pl_vec.push_back(DsFit_Km_pl_vec[idxmax]);
 
-    match_DsFit_phi_PP = null;
-    match_DsFit_phi_PL = null;
-    match_DsFit_pi_PP = null;
-    match_DsFit_pi_PL = null;
+    best_DsFit_phi_pp_vec.push_back(DsFit_phi_pp_vec[idxmax]);
+    best_DsFit_phi_pl_vec.push_back(DsFit_phi_pl_vec[idxmax]);
+    best_DsFit_pi_pp_vec.push_back(DsFit_pi_pp_vec[idxmax]);
+    best_DsFit_pi_pl_vec.push_back(DsFit_pi_pl_vec[idxmax]);
 
-    match_DsFit_dR_Kp_Km = null;
-    match_DsFit_dR_Kp_phi = null;
-    match_DsFit_dR_Km_phi = null;
-    match_DsFit_dR_Kp_pi = null;
-    match_DsFit_dR_Km_pi = null;
-    match_DsFit_dR_pi_phi = null;
-    match_DsFit_dR_Kp_Ds = null;
-    match_DsFit_dR_Km_Ds = null;
-    match_DsFit_dR_phi_Ds = null;
-    match_DsFit_dR_pi_Ds = null;
+    best_DsFit_dR_Kp_Km_vec.push_back(DsFit_dR_Kp_Km_vec[idxmax]);
+    best_DsFit_dR_Kp_phi_vec.push_back(DsFit_dR_Kp_phi_vec[idxmax]);
+    best_DsFit_dR_Km_phi_vec.push_back(DsFit_dR_Km_phi_vec[idxmax]);
+    best_DsFit_dR_Kp_pi_vec.push_back(DsFit_dR_Kp_pi_vec[idxmax]);
+    best_DsFit_dR_Km_pi_vec.push_back(DsFit_dR_Km_pi_vec[idxmax]);
+    best_DsFit_dR_pi_phi_vec.push_back(DsFit_dR_pi_phi_vec[idxmax]);
+    best_DsFit_dR_Kp_Ds_vec.push_back(DsFit_dR_Kp_Ds_vec[idxmax]);
+    best_DsFit_dR_Km_Ds_vec.push_back(DsFit_dR_Km_Ds_vec[idxmax]);
+    best_DsFit_dR_phi_Ds_vec.push_back(DsFit_dR_phi_Ds_vec[idxmax]);
+    best_DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds_vec[idxmax]);
 
-    match_DsFit_Mconstraint_Ds_M = null;
-    
-    match_Ds_FDxy = null;
-    match_Ds_FDxy_Err = null;
-    match_Ds_FDxy_Chi2 = null;
-    match_Ds_FDz = null;
-    match_Ds_FDz_Err = null;
-    match_Ds_FDz_Chi2 = null;
-    match_Ds_FD = null;
-    match_Ds_FD_Err = null;
-    match_Ds_FD_Chi2 = null;
-    match_Ds_DIRA_angle = null;
-    match_Ds_DIRA = null;
-    match_Kp_IP = null;
-    match_Kp_IP_Err = null;
-    match_Kp_IP_Chi2 = null;
-    match_Km_IP = null;
-    match_Km_IP_Err = null;
-    match_Km_IP_Chi2 = null;
-    match_pi_IP = null;
-    match_pi_IP_Err = null;
-    match_pi_IP_Chi2 = null;
-}
+    best_DsFit_Mconstraint_Ds_invm_vec.push_back(DsFit_Mconstraint_Ds_invm_vec[idxmax]);
 
-void RecoTree::Kp_Reset()
-{
-    Kp_ETA = null;
-    Kp_PHI = null;
-    Kp_ORIVX_X = null;
-    Kp_ORIVX_Y = null;
-    Kp_ORIVX_Z = null;
-    Kp_P = null;
-    Kp_PT = null;
-    Kp_PX = null;
-    Kp_PY = null;
-    Kp_PZ = null;
-}
+    best_alpha_Ds_vec.push_back(alpha_Ds_vec[idxmax]);
+    best_beta_Ds_vec.push_back(beta_Ds_vec[idxmax]);
+    best_APvar_Ds_vec.push_back(APvar_Ds_vec[idxmax]);
 
-void RecoTree::Km_Reset()
-{
-    Km_ETA = null;
-    Km_PHI = null;
-    Km_ORIVX_X = null;
-    Km_ORIVX_Y = null;
-    Km_ORIVX_Z = null;
-    Km_P = null;
-    Km_PT = null;
-    Km_PX = null;
-    Km_PY = null;
-    Km_PZ = null;
+    best_Ds_primvtx_FDxy_vec.push_back(Ds_primvtx_FDxy_vec[idxmax]);
+    best_Ds_primvtx_FDz_vec.push_back(Ds_primvtx_FDz_vec[idxmax]);
+    best_Ds_primvtx_FD_vec.push_back(Ds_primvtx_FD_vec[idxmax]);
+    best_Ds_primvtx_FDxyerr_vec.push_back(Ds_primvtx_FDxyerr_vec[idxmax]);
+    best_Ds_primvtx_FDxychi2_vec.push_back(Ds_primvtx_FDxychi2_vec[idxmax]);
+    best_Ds_primvtx_FDzerr_vec.push_back(Ds_primvtx_FDzerr_vec[idxmax]);
+    best_Ds_primvtx_FDzchi2_vec.push_back(Ds_primvtx_FDzchi2_vec[idxmax]);
+    best_Ds_primvtx_FDerr_vec.push_back(Ds_primvtx_FDerr_vec[idxmax]);
+    best_Ds_primvtx_FDchi2_vec.push_back(Ds_primvtx_FDchi2_vec[idxmax]);
+    best_Ds_primvtx_dira_vec.push_back(Ds_primvtx_dira_vec[idxmax]);
+    best_Ds_primvtx_dira_angle_vec.push_back(Ds_primvtx_dira_angle_vec[idxmax]);
+    best_Kp_primvtx_ip_vec.push_back(Kp_primvtx_ip_vec[idxmax]);
+    best_Kp_primvtx_iperr_vec.push_back(Kp_primvtx_iperr_vec[idxmax]);
+    best_Kp_primvtx_ipchi2_vec.push_back(Kp_primvtx_ipchi2_vec[idxmax]);
+    best_Km_primvtx_ip_vec.push_back(Km_primvtx_ip_vec[idxmax]);
+    best_Km_primvtx_iperr_vec.push_back(Km_primvtx_iperr_vec[idxmax]);
+    best_Km_primvtx_ipchi2_vec.push_back(Km_primvtx_ipchi2_vec[idxmax]);
+    best_pi_primvtx_ip_vec.push_back(pi_primvtx_ip_vec[idxmax]);
+    best_pi_primvtx_iperr_vec.push_back(pi_primvtx_iperr_vec[idxmax]);
+    best_pi_primvtx_ipchi2_vec.push_back(pi_primvtx_ipchi2_vec[idxmax]);
 
-    phi_ETA = null;
-    phi_PHI = null;
-    phi_P = null;
-    phi_PT = null;
-    phi_PX = null;
-    phi_PY = null;
-    phi_PZ = null;
-    phi_M = null;
+    best_Ds_Iso_R0p3_vec.push_back(Ds_Iso_R0p3_vec[idxmax]);
+    best_Ds_Iso_R0p4_vec.push_back(Ds_Iso_R0p4_vec[idxmax]);
+    best_Ds_IsoRel_R0p3_vec.push_back(Ds_IsoRel_R0p3_vec[idxmax]);
+    best_Ds_IsoRel_R0p4_vec.push_back(Ds_IsoRel_R0p4_vec[idxmax]);
 
-    Kp_PP = null;
-    Kp_PL = null;
-    Km_PP = null;
-    Km_PL = null;
+    best_PV_noDs_withBS_IsValid_vec.push_back(PV_noDs_withBS_IsValid_vec[idxmax]);
+    best_PV_noDs_withBS_IsFake_vec.push_back(PV_noDs_withBS_IsFake_vec[idxmax]);
+    best_PV_noDs_withBS_chi2_vec.push_back(PV_noDs_withBS_chi2_vec[idxmax]);
+    best_PV_noDs_withBS_ndof_vec.push_back(PV_noDs_withBS_ndof_vec[idxmax]);
+    best_PV_noDs_withBS_chi2ndof_vec.push_back(PV_noDs_withBS_chi2ndof_vec[idxmax]);
+    best_PV_noDs_withBS_x_vec.push_back(PV_noDs_withBS_x_vec[idxmax]);
+    best_PV_noDs_withBS_y_vec.push_back(PV_noDs_withBS_y_vec[idxmax]);
+    best_PV_noDs_withBS_z_vec.push_back(PV_noDs_withBS_z_vec[idxmax]);
+    best_PV_noDs_withBS_xerr_vec.push_back(PV_noDs_withBS_xerr_vec[idxmax]);
+    best_PV_noDs_withBS_yerr_vec.push_back(PV_noDs_withBS_yerr_vec[idxmax]);
+    best_PV_noDs_withBS_zerr_vec.push_back(PV_noDs_withBS_zerr_vec[idxmax]);
 
-    dR_Kp_Km = null;
-    dR_Kp_phi = null;
-    dR_Km_phi = null;
+    best_PV_noDs_noBS_IsValid_vec.push_back(PV_noDs_noBS_IsValid_vec[idxmax]);
+    best_PV_noDs_noBS_IsFake_vec.push_back(PV_noDs_noBS_IsFake_vec[idxmax]);
+    best_PV_noDs_noBS_chi2_vec.push_back(PV_noDs_noBS_chi2_vec[idxmax]);
+    best_PV_noDs_noBS_ndof_vec.push_back(PV_noDs_noBS_ndof_vec[idxmax]);
+    best_PV_noDs_noBS_chi2ndof_vec.push_back(PV_noDs_noBS_chi2ndof_vec[idxmax]);
+    best_PV_noDs_noBS_x_vec.push_back(PV_noDs_noBS_x_vec[idxmax]);
+    best_PV_noDs_noBS_y_vec.push_back(PV_noDs_noBS_y_vec[idxmax]);
+    best_PV_noDs_noBS_z_vec.push_back(PV_noDs_noBS_z_vec[idxmax]);
+    best_PV_noDs_noBS_xerr_vec.push_back(PV_noDs_noBS_xerr_vec[idxmax]);
+    best_PV_noDs_noBS_yerr_vec.push_back(PV_noDs_noBS_yerr_vec[idxmax]);
+    best_PV_noDs_noBS_zerr_vec.push_back(PV_noDs_noBS_zerr_vec[idxmax]);
 
-    phiFit_CHI2 = null;
-    phiFit_NDOF = null;
-    phiFit_CHI2NDOF = null;
-    phiFit_ENDVX_X = null;
-    phiFit_ENDVX_Y = null;
-    phiFit_ENDVX_Z = null;
-    phiFit_ENDVX_XERR = null;
-    phiFit_ENDVX_YERR = null;
-    phiFit_ENDVX_ZERR = null;
-
-    phiFit_Kp_ETA = null;
-    phiFit_Kp_PHI = null;
-    phiFit_Kp_P = null;
-    phiFit_Kp_PT = null;
-    phiFit_Kp_PX = null;
-    phiFit_Kp_PY = null;
-    phiFit_Kp_PZ = null;
-
-    phiFit_Km_ETA = null;
-    phiFit_Km_PHI = null;
-    phiFit_Km_P = null;
-    phiFit_Km_PT = null;
-    phiFit_Km_PX = null;
-    phiFit_Km_PY = null;
-    phiFit_Km_PZ = null;
-
-    phiFit_phi_ETA = null;
-    phiFit_phi_PHI = null;
-    phiFit_phi_P = null;
-    phiFit_phi_PT = null;
-    phiFit_phi_PX = null;
-    phiFit_phi_PY = null;
-    phiFit_phi_PZ = null;
-    phiFit_phi_M = null;
-
-    phiFit_Kp_PP = null;
-    phiFit_Kp_PL = null;
-    phiFit_Km_PP = null;
-    phiFit_Km_PL = null;
-
-    phiFit_dR_Kp_Km = null;
-    phiFit_dR_Kp_phi = null;
-    phiFit_dR_Km_phi = null;
-
-    dxy_Kp_Km = null;
-    dxy_Kp_phi = null;
-    dxy_Km_phi = null;
-
-    dz_Kp_Km = null;
-    dz_Kp_phi = null;
-    dz_Km_phi = null;
-}
-
-void RecoTree::pi_Reset()
-{
-    pi_ETA = null;
-    pi_PHI = null;
-    pi_ORIVX_X = null;
-    pi_ORIVX_Y = null;
-    pi_ORIVX_Z = null;
-    pi_P = null;
-    pi_PT = null;
-    pi_PX = null;
-    pi_PY = null;
-    pi_PZ = null;
-
-    Ds_ETA = null;
-    Ds_PHI = null;
-    Ds_P = null;
-    Ds_PT = null;
-    Ds_PX = null;
-    Ds_PY = null;
-    Ds_PZ = null;
-    Ds_M = null;
-
-    phi_PP = null;
-    phi_PL = null;
-    pi_PP = null;
-    pi_PL = null;
-
-    dR_Kp_pi = null;
-    dR_Km_pi = null;
-    dR_pi_phi = null;
-    dR_Kp_Ds = null;
-    dR_Km_Ds = null;
-    dR_pi_Ds = null;
-    dR_phi_Ds = null;
-
-    phiFit_pi_ETA = null;
-    phiFit_pi_PHI = null;
-    phiFit_pi_P = null;
-    phiFit_pi_PT = null;
-    phiFit_pi_PX = null;
-    phiFit_pi_PY = null;
-    phiFit_pi_PZ = null;
-
-    phiFit_Ds_ETA = null;
-    phiFit_Ds_PHI = null;
-    phiFit_Ds_P = null;
-    phiFit_Ds_PT = null;
-    phiFit_Ds_PX = null;
-    phiFit_Ds_PY = null;
-    phiFit_Ds_PZ = null;
-    phiFit_Ds_M = null;
-
-    phiFit_phi_PP = null;
-    phiFit_phi_PL = null;
-    phiFit_pi_PP = null;
-    phiFit_pi_PL = null;
-
-    phiFit_dR_Kp_pi = null;
-    phiFit_dR_Km_pi = null;
-    phiFit_dR_pi_phi = null;
-    phiFit_dR_Kp_Ds = null;
-    phiFit_dR_Km_Ds = null;
-    phiFit_dR_pi_Ds = null;
-    phiFit_dR_phi_Ds = null;
-
-    DsFit_CHI2 = null;
-    DsFit_NDOF = null;
-    DsFit_CHI2NDOF = null;
-    DsFit_ENDVX_X = null;
-    DsFit_ENDVX_Y = null;
-    DsFit_ENDVX_Z = null;
-    DsFit_ENDVX_XERR = null;
-    DsFit_ENDVX_YERR = null;
-    DsFit_ENDVX_ZERR = null;
-
-    DsFit_Kp_ETA = null;
-    DsFit_Kp_PHI = null;
-    DsFit_Kp_P = null;
-    DsFit_Kp_PT = null;
-    DsFit_Kp_PX = null;
-    DsFit_Kp_PY = null;
-    DsFit_Kp_PZ = null;
-
-    DsFit_Km_ETA = null;
-    DsFit_Km_PHI = null;
-    DsFit_Km_P = null;
-    DsFit_Km_PT = null;
-    DsFit_Km_PX = null;
-    DsFit_Km_PY = null;
-    DsFit_Km_PZ = null;
-
-    DsFit_pi_ETA = null;
-    DsFit_pi_PHI = null;
-    DsFit_pi_P = null;
-    DsFit_pi_PT = null;
-    DsFit_pi_PX = null;
-    DsFit_pi_PY = null;
-    DsFit_pi_PZ = null;
-
-    DsFit_phi_ETA = null;
-    DsFit_phi_PHI = null;
-    DsFit_phi_P = null;
-    DsFit_phi_PT = null;
-    DsFit_phi_PX = null;
-    DsFit_phi_PY = null;
-    DsFit_phi_PZ = null;
-    DsFit_phi_M = null;
-
-    DsFit_Ds_ETA = null;
-    DsFit_Ds_PHI = null;
-    DsFit_Ds_P = null;
-    DsFit_Ds_PT = null;
-    DsFit_Ds_PX = null;
-    DsFit_Ds_PY = null;
-    DsFit_Ds_PZ = null;
-    DsFit_Ds_M = null;
-
-    DsFit_Mconstraint_Ds_M = null;
-
-    DsFit_Kp_PP = null;
-    DsFit_Kp_PL = null;
-    DsFit_Km_PP = null;
-    DsFit_Km_PL = null;
-
-    DsFit_phi_PP = null;
-    DsFit_phi_PL = null;
-    DsFit_pi_PP = null;
-    DsFit_pi_PL = null;
-
-    DsFit_dR_Kp_Km = null;
-    DsFit_dR_Kp_pi = null;
-    DsFit_dR_Km_pi = null;
-    DsFit_dR_Kp_phi = null;
-    DsFit_dR_Km_phi = null;
-    DsFit_dR_pi_phi = null;
-    DsFit_dR_Kp_Ds = null;
-    DsFit_dR_Km_Ds = null;
-    DsFit_dR_pi_Ds = null;
-    DsFit_dR_phi_Ds = null;
-
-    dxy_Kp_pi = null;
-    dxy_Km_pi = null;
-    dxy_pi_phi = null;
-    dxy_Kp_Ds = null;
-    dxy_Km_Ds = null;
-    dxy_pi_Ds = null;
-    dxy_phi_Ds = null;
-
-    dz_Kp_pi = null;
-    dz_Km_pi = null;
-    dz_pi_phi = null;
-    dz_Kp_Ds = null;
-    dz_Km_Ds = null;
-    dz_pi_Ds = null;
-    dz_phi_Ds = null;
-
-    Kp_match = false;
-    Km_match = false;
-    pi_match = false;
-    match_entry = false;
-    non_match_entry = false; 
-    
-    Ds_FDxy = null;
-    Ds_FDxy_Err = null;
-    Ds_FDxy_Chi2 = null;
-    Ds_FDz = null;
-    Ds_FDz_Err = null;
-    Ds_FDz_Chi2 = null;
-    Ds_FD = null;
-    Ds_FD_Err = null;
-    Ds_FD_Chi2 = null;
-    Ds_DIRA_angle = null;
-    Ds_DIRA = null;
-    Kp_IP = null;
-    Kp_IP_Err = null;
-    Kp_IP_Chi2 = null;
-    Km_IP = null;
-    Km_IP_Err = null;
-    Km_IP_Chi2 = null;
-    pi_IP = null;
-    pi_IP_Err = null;
-    pi_IP_Chi2 = null;
-}
-
-void RecoTree::BS_Reset()
-{
-    BS_type = null; 
-    BS_X0 = null;
-    BS_Y0 = null;
-    BS_Z0 = null;
-    BS_SigmaZ = null;
-    BS_dXdZ = null;
-    BS_dYdZ = null;
-    BS_BWX = null;
-    BS_BWY = null;
-    BS_X0ERR = null;
-    BS_Y0ERR = null;
-    BS_Z0ERR = null;
-    BS_SigmaZ0ERR = null;
-    BS_dXdZERR = null;
-    BS_dYdZERR = null;
-    BS_BWXERR = null;
-    BS_BWYERR = null;
-    BS_EmitX = null;
-    BS_EmitY = null;
-    BS_BetaStar = null;
-}
-
-void RecoTree::PV_Reset()
-{
-    PV_withBS_IsValid = false;
-    PV_withBS_IsFake = false;
-    PV_withBS_CHI2 = null;
-    PV_withBS_NDOF = null;
-    PV_withBS_CHI2NDOF = null;
-    PV_withBS_X = null;
-    PV_withBS_Y = null;
-    PV_withBS_Z = null;
-    PV_withBS_XERR = null;
-    PV_withBS_YERR = null;
-    PV_withBS_ZERR = null;
-    PV_noBS_IsValid = false;
-    PV_noBS_IsFake = false;
-    PV_noBS_CHI2 = null;
-    PV_noBS_NDOF = null;
-    PV_noBS_CHI2NDOF = null;
-    PV_noBS_X = null;
-    PV_noBS_Y = null;
-    PV_noBS_Z = null;
-    PV_noBS_XERR = null;
-    PV_noBS_YERR = null;
-    PV_noBS_ZERR = null;
+    best_Ds_PVnoDs_FDxy_vec.push_back(Ds_PVnoDs_FDxy_vec[idxmax]);
+    best_Ds_PVnoDs_FDz_vec.push_back(Ds_PVnoDs_FDz_vec[idxmax]);
+    best_Ds_PVnoDs_FD_vec.push_back(Ds_PVnoDs_FD_vec[idxmax]);
+    best_Ds_PVnoDs_FDxyerr_vec.push_back(Ds_PVnoDs_FDxyerr_vec[idxmax]);
+    best_Ds_PVnoDs_FDxychi2_vec.push_back(Ds_PVnoDs_FDxychi2_vec[idxmax]);
+    best_Ds_PVnoDs_FDzerr_vec.push_back(Ds_PVnoDs_FDzerr_vec[idxmax]);
+    best_Ds_PVnoDs_FDzchi2_vec.push_back(Ds_PVnoDs_FDzchi2_vec[idxmax]);
+    best_Ds_PVnoDs_FDerr_vec.push_back(Ds_PVnoDs_FDerr_vec[idxmax]);
+    best_Ds_PVnoDs_FDchi2_vec.push_back(Ds_PVnoDs_FDchi2_vec[idxmax]);
+    best_Ds_PVnoDs_dira_vec.push_back(Ds_PVnoDs_dira_vec[idxmax]);
+    best_Ds_PVnoDs_dira_angle_vec.push_back(Ds_PVnoDs_dira_angle_vec[idxmax]);
+    best_Kp_PVnoDs_ip_vec.push_back(Kp_PVnoDs_ip_vec[idxmax]);
+    best_Kp_PVnoDs_iperr_vec.push_back(Kp_PVnoDs_iperr_vec[idxmax]);
+    best_Kp_PVnoDs_ipchi2_vec.push_back(Kp_PVnoDs_ipchi2_vec[idxmax]);
+    best_Km_PVnoDs_ip_vec.push_back(Km_PVnoDs_ip_vec[idxmax]);
+    best_Km_PVnoDs_iperr_vec.push_back(Km_PVnoDs_iperr_vec[idxmax]);
+    best_Km_PVnoDs_ipchi2_vec.push_back(Km_PVnoDs_ipchi2_vec[idxmax]);
+    best_pi_PVnoDs_ip_vec.push_back(pi_PVnoDs_ip_vec[idxmax]);
+    best_pi_PVnoDs_iperr_vec.push_back(pi_PVnoDs_iperr_vec[idxmax]);
+    best_pi_PVnoDs_ipchi2_vec.push_back(pi_PVnoDs_ipchi2_vec[idxmax]);
 }

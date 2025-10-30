@@ -18,7 +18,7 @@ process.load('RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi')
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
 
-# myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_1.root"
+# myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_425.root"
 # myoutfile = "file:test.root"
 myinfile = sys.argv[2]
 myoutfile = sys.argv[3]
@@ -28,8 +28,9 @@ process.source = cms.Source("PoolSource",
 )
 
 process.PVStudy = cms.EDAnalyzer('PVStudy',
-    prunedGenParticles = cms.InputTag('prunedGenParticles'),
-    packedPFCandidates = cms.InputTag('packedPFCandidates'),
+    genPart = cms.InputTag('prunedGenParticles'),
+    pfCands = cms.InputTag('packedPFCandidates'),
+    primvtx = cms.InputTag('offlineSlimmedPrimaryVertices'),
     beamspot = cms.InputTag("offlineBeamSpot"),
 
     TkFilterParameters = cms.PSet(
@@ -68,6 +69,8 @@ process.PVStudy = cms.EDAnalyzer('PVStudy',
     ),
 )
 
-process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
+process.TFileService = cms.Service(
+    "TFileService", fileName=cms.string(myoutfile), closeFileFast = cms.untracked.bool(True)
+)
 
 process.p = cms.Path(process.PVStudy)

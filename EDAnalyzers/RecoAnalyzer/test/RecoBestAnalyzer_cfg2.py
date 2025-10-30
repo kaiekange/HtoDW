@@ -68,7 +68,11 @@ process.RecoBestAnalyzer = cms.EDAnalyzer('RecoBestAnalyzer',
     ),
 )
 
-process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile), closeFileFast = cms.untracked.bool(True))
-# process.TFileService = cms.Service("TFileService", fileName=cms.string("output.root"), closeFileFast = cms.untracked.bool(True))
+process.TFileService = cms.Service(
+    "TFileService", fileName=cms.string(myoutfile),
+    compressionAlgorithm = cms.untracked.string("ZSTD"),
+    compressionLevel = cms.untracked.int32(5),
+    closeFileFast = cms.untracked.bool(True)
+)
 
 process.p = cms.Path(process.RecoBestAnalyzer)

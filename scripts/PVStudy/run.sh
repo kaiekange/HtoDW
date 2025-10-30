@@ -5,16 +5,18 @@ export HOME=/user/kakang/
 
 ver=20250417
 year=2017UL
-pnfspath="/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/${ver}/${year}"
+# pnfspath="/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/${ver}/${year}"
+pnfspath="/user/kakang/Analysis/CMSSW_10_6_30_patch1/src"
 
 mode="PVStudy"
 
 mkdir -p "${pnfspath}/tuples/${mode}/log"
 
-infile="${pnfspath}/FullGEN/PAT/output_${process}.root"
+# infile="${pnfspath}/FullGEN/PAT/output_${process}.root"
+infile="/user/kakang/Analysis/CMSSW_10_6_30_patch1/src/tuples/PAT/output_${process}.root"
+cfgfile="EDAnalyzers/RecoAnalyzer/test/${mode}_cfg.py"
 outfile="${pnfspath}/tuples/${mode}/output_${process}.root"
 logfile="${pnfspath}/tuples/${mode}/log/output_${process}.log"
-cfgfile="EDAnalyzers/RecoAnalyzer/test/${mode}_cfg.py"
 
 if [ ! -f "${logfile}" ] || [ ! -f "${outfile}" ] || ! grep -q "Begin processing the 200th record" "${logfile}" || ! grep -q "dropped waiting message count 0" "${logfile}"; then
 

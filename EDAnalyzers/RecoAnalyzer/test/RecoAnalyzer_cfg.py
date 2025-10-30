@@ -16,20 +16,22 @@ process.load("Configuration.StandardSequences.Services_cff")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 process.load('RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi')
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5) ) 
+# process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) ) 
 
-# myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_1.root"
-# myoutfile = "file:test.root"
-myinfile = sys.argv[2]
-myoutfile = sys.argv[3]
+myinfile = "file:/pnfs/iihe/cms/store/user/kakang/Analysis/Simulation/20250417/2017UL/FullGEN/PAT/output_53.root"
+myoutfile = "file:test.root"
+# myinfile = sys.argv[2]
+# myoutfile = sys.argv[3]
 
 process.source = cms.Source("PoolSource",
+    # fileNames = cms.untracked.vstring()
     fileNames = cms.untracked.vstring(myinfile)
 )
 
 process.RecoAnalyzer = cms.EDAnalyzer('RecoAnalyzer',
-    prunedGenParticles = cms.InputTag('prunedGenParticles'),
-    packedPFCandidates = cms.InputTag('packedPFCandidates'),
+    pfCands = cms.InputTag('packedPFCandidates'),
+    primvtx = cms.InputTag('offlineSlimmedPrimaryVertices'),
     beamspot = cms.InputTag("offlineBeamSpot"),
 
     TkFilterParameters = cms.PSet(
@@ -68,7 +70,6 @@ process.RecoAnalyzer = cms.EDAnalyzer('RecoAnalyzer',
     ),
 )
 
-# process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
-process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile), closeFileFast = cms.untracked.bool(True))
+process.TFileService = cms.Service( "TFileService", fileName=cms.string(myoutfile), closeFileFast = cms.untracked.bool(True) )
 
 process.p = cms.Path(process.RecoAnalyzer)

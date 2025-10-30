@@ -8,3 +8,4 @@ run.log
 *.out
 *.png
 scripts/figures
+scripts/*/crab_*

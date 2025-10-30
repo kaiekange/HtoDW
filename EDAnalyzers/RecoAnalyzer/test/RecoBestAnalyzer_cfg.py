@@ -69,6 +69,6 @@ process.RecoBestAnalyzer = cms.EDAnalyzer('RecoBestAnalyzer',
 )
 
 # process.TFileService = cms.Service("TFileService", fileName=cms.string(myoutfile))
-process.TFileService = cms.Service("TFileService", fileName=cms.string("output.root"), closeFileFast = cms.untracked.bool(True))
+process.TFileService = cms.Service( "TFileService", fileName=cms.string("output.root"), closeFileFast = cms.untracked.bool(True) )
 
 process.p = cms.Path(process.RecoBestAnalyzer)
