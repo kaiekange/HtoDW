@@ -25,25 +25,29 @@ Implementation:
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
-#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/TrackReco/interface/Track.h"
-#include "DataFormats/TrackReco/interface/TrackFwd.h"
-#include "DataFormats/Math/interface/Point3D.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
+
+#include "DataFormats/Math/interface/deltaR.h"
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 #include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
-#include "TrackingTools/IPTools/interface/IPTools.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/Math/interface/Point3D.h"
 #include "DataFormats/GeometryVector/interface/GlobalPoint.h"
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/GlobalError.h"
-#include "DataFormats/Math/interface/deltaR.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+
 #include "TLorentzVector.h"
 #include "TTree.h"
 #include "TFile.h"
@@ -67,6 +71,7 @@ class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
 
         edm::EDGetTokenT<reco::GenParticleCollection> prunedToken;
         edm::EDGetTokenT<pat::PackedCandidateCollection> packedToken;
+        edm::EDGetTokenT<pat::MuonCollection> muonToken;
         edm::EDGetTokenT<reco::VertexCollection> pvToken;
         edm::EDGetTokenT<reco::BeamSpot> bsToken;
 
@@ -77,13 +82,6 @@ class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
 
         const edm::Service<TFileService> fs;
         PVTree *ftree;
-
-        std::vector<float> all_dR_Kp;
-        std::vector<float> all_dR_Km;
-        std::vector<float> all_dR_pi;
-        std::vector<float> dR_Kp;
-        std::vector<float> dR_Km;
-        std::vector<float> dR_pi;
 
         std::vector<int> Gen_Kp_idx;
         std::vector<int> Gen_Km_idx;
@@ -98,16 +96,19 @@ class PVStudy : public edm::one::EDAnalyzer<edm::one::SharedResources>
         std::vector<int> idx_Kp_vec;
         std::vector<int> idx_Km_vec;
         std::vector<int> idx_pi_vec;
+        std::vector<int> idx_mu_vec;
 
         const double Mass_Ds = 1.96835;
         const double Mass_phi = 1.019460;
         const double Mass_K = 0.493677;
         const double Mass_pi = 0.13957039;
+        const double Mass_mu = 0.1056583755;
 };
 
 PVStudy::PVStudy(const edm::ParameterSet& iConfig) :
     prunedToken(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("genPart"))),
     packedToken(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("pfCands"))),
+    muonToken(consumes<pat::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"))),
     pvToken(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("primvtx"))),
     bsToken(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamspot"))),
     KVFitter(true)
@@ -127,13 +128,6 @@ void PVStudy::beginJob()
 
 void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-    all_dR_Kp.clear();
-    all_dR_Km.clear();
-    all_dR_pi.clear();
-    dR_Kp.clear();
-    dR_Km.clear();
-    dR_pi.clear();
-
     Gen_Kp_idx.clear();
     Gen_Km_idx.clear();
     Gen_pi_idx.clear();
@@ -148,19 +142,17 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     edm::Handle<reco::GenParticleCollection> prunedHandle;
     iEvent.getByToken(prunedToken, prunedHandle);
-
     edm::Handle<pat::PackedCandidateCollection> packedHandle;
     iEvent.getByToken(packedToken, packedHandle);
-
+    edm::Handle<pat::MuonCollection> muonHandle;
+    iEvent.getByToken(muonToken, muonHandle);
     edm::Handle<reco::VertexCollection> pvHandle;
     iEvent.getByToken(pvToken, pvHandle);
-
     edm::Handle<reco::BeamSpot> bsHandle;
     iEvent.getByToken(bsToken, bsHandle);
 
     edm::ESHandle<MagneticField> magField;
     iSetup.get<IdealMagneticFieldRecord>().get(magField);
-
     edm::ESHandle<TransientTrackBuilder> ttBuilder;
     iSetup.get<TransientTrackRecord>().get("TransientTrackBuilder",ttBuilder);
 
@@ -331,32 +323,27 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     ftree->Gen_H_pz = H_GP.pz();
     TVector3 Gen_H_P3(H_GP.px(), H_GP.py(), H_GP.pz());
 
-    ftree->Gen_Kp_pp = Gen_Kp_P3.Pt(Gen_phi_P3);
-    ftree->Gen_Kp_pl = Gen_Kp_P3.Dot(Gen_phi_P3)/Gen_phi_P3.Mag();
-    ftree->Gen_Km_pp = Gen_Km_P3.Pt(Gen_phi_P3);
-    ftree->Gen_Km_pl = Gen_Km_P3.Dot(Gen_phi_P3)/Gen_phi_P3.Mag();
-    ftree->Gen_pi_pp = Gen_pi_P3.Pt(Gen_Ds_P3);
-    ftree->Gen_pi_pl = Gen_pi_P3.Dot(Gen_Ds_P3)/Gen_Ds_P3.Mag();
-    ftree->Gen_phi_pp = Gen_phi_P3.Pt(Gen_Ds_P3);
-    ftree->Gen_phi_pl = Gen_phi_P3.Dot(Gen_Ds_P3)/Gen_Ds_P3.Mag();
-
     ftree->Gen_dR_Kp_Km = reco::deltaR(Kp_GP, Km_GP);
     ftree->Gen_dR_Kp_phi = reco::deltaR(Kp_GP, phi_GP);
     ftree->Gen_dR_Km_phi = reco::deltaR(Km_GP, phi_GP);
     ftree->Gen_dR_Kp_pi = reco::deltaR(Kp_GP, pi_GP);
     ftree->Gen_dR_Km_pi = reco::deltaR(Km_GP, pi_GP);
-    ftree->Gen_dR_pi_phi = reco::deltaR(phi_GP, pi_GP);
+    ftree->Gen_dR_pi_phi = reco::deltaR(pi_GP, phi_GP);
     ftree->Gen_dR_Kp_Ds = reco::deltaR(Kp_GP, Ds_GP);
     ftree->Gen_dR_Km_Ds = reco::deltaR(Km_GP, Ds_GP);
     ftree->Gen_dR_phi_Ds = reco::deltaR(phi_GP, Ds_GP);
     ftree->Gen_dR_pi_Ds = reco::deltaR(pi_GP, Ds_GP);
+    ftree->Gen_dR_Kp_mu = reco::deltaR(Kp_GP, mu_GP);
+    ftree->Gen_dR_Km_mu = reco::deltaR(Km_GP, mu_GP);
+    ftree->Gen_dR_phi_mu = reco::deltaR(phi_GP, mu_GP);
+    ftree->Gen_dR_pi_mu = reco::deltaR(pi_GP, mu_GP);
+    ftree->Gen_dR_Ds_mu = reco::deltaR(Ds_GP, mu_GP);
 
-    ftree->Gen_dxy_Kp_Km = sqrt(pow(ftree->Gen_Kp_vx-ftree->Gen_Km_vx,2) + pow(ftree->Gen_Kp_vy-ftree->Gen_Km_vy,2));
-    ftree->Gen_dxy_Kp_pi = sqrt(pow(ftree->Gen_Kp_vx-ftree->Gen_pi_vx,2) + pow(ftree->Gen_Kp_vy-ftree->Gen_pi_vy,2));
-    ftree->Gen_dxy_Km_pi = sqrt(pow(ftree->Gen_Km_vx-ftree->Gen_pi_vx,2) + pow(ftree->Gen_Km_vy-ftree->Gen_pi_vy,2));
-    ftree->Gen_dz_Kp_Km = abs(ftree->Gen_Kp_vz-ftree->Gen_Km_vz);
-    ftree->Gen_dz_Kp_pi = abs(ftree->Gen_Kp_vz-ftree->Gen_pi_vz);
-    ftree->Gen_dz_Km_pi = abs(ftree->Gen_Km_vz-ftree->Gen_pi_vz);
+    ftree->Gen_Ds_dx = ftree->Gen_Kp_vx-ftree->Gen_H_vx;
+    ftree->Gen_Ds_dy = ftree->Gen_Kp_vy-ftree->Gen_H_vy;
+    ftree->Gen_Ds_dz = ftree->Gen_Kp_vz-ftree->Gen_H_vz;
+    ftree->Gen_Ds_FDxy = std::hypot(ftree->Gen_Ds_dx, ftree->Gen_Ds_dy);
+    ftree->Gen_Ds_FD = std::hypot(ftree->Gen_Ds_FDxy, ftree->Gen_Ds_dz);
 
     ftree->BS_Reset();
     ftree->BS_type = bsHandle->type();
@@ -388,38 +375,53 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     ftree->PV_vxerr = primaryvertex.xError();
     ftree->PV_vyerr = primaryvertex.yError();
     ftree->PV_vzerr = primaryvertex.zError();
-    GlobalPoint primaryvertex_pos(primaryvertex.x(), primaryvertex.y(), primaryvertex.z());
-    GlobalError primaryvertex_cov(
-        primaryvertex.covariance(0,0), primaryvertex.covariance(0,1), primaryvertex.covariance(0,2),
-        primaryvertex.covariance(1,1), primaryvertex.covariance(1,2),
-        primaryvertex.covariance(2,2)
-    );
+    GlobalPoint primaryvertex_pos( primaryvertex.x(), primaryvertex.y(), primaryvertex.z() );
+    GlobalError primaryvertex_cov( primaryvertex.covariance(0,0), primaryvertex.covariance(0,1), primaryvertex.covariance(0,2), primaryvertex.covariance(1,1), primaryvertex.covariance(1,2), primaryvertex.covariance(2,2) );
 
     ftree->Match_Reset();
+    reco::Track::CovarianceMatrix dummy_track_cov;
+    for (unsigned int ic = 0; ic < 5; ++ic) {
+        dummy_track_cov(ic,ic) = 1.0;
+    }
 
     struct MatchInfo {int index; float dr;};
-    std::vector<MatchInfo> MatchKp, MatchKm, Matchpi;
+    std::vector<MatchInfo> MatchKp, MatchKm, Matchpi, Matchmu;
 
     for(size_t i=0; i<packedHandle->size(); i++){
+
         const auto& pf = (*packedHandle)[i];
+        if( !pf.trackHighPurity() ) continue;
+        if( !pf.hasTrackDetails() ) continue;
+        if( abs(pf.pdgId()) != 211 ) continue;
 
-        const float dr_Kp = reco::deltaR(pf.eta(), pf.phi(), Kp_GP.eta(), Kp_GP.phi());
-        const float dr_Km = reco::deltaR(pf.eta(), pf.phi(), Km_GP.eta(), Km_GP.phi());
-        const float dr_pi = reco::deltaR(pf.eta(), pf.phi(), pi_GP.eta(), pi_GP.phi());
+        float dpt_Kp = abs( pf.pt() - Kp_GP.pt() ) / Kp_GP.pt();
+        float dpt_Km = abs( pf.pt() - Km_GP.pt() ) / Km_GP.pt();
+        float dpt_pi = abs( pf.pt() - pi_GP.pt() ) / pi_GP.pt();
 
-        all_dR_Kp.push_back(dr_Kp);
-        all_dR_Km.push_back(dr_Km);
-        all_dR_pi.push_back(dr_pi);
+        float dr_Kp = reco::deltaR( pf.eta(), pf.phi(), Kp_GP.eta(), Kp_GP.phi() );
+        float dr_Km = reco::deltaR( pf.eta(), pf.phi(), Km_GP.eta(), Km_GP.phi() );
+        float dr_pi = reco::deltaR( pf.eta(), pf.phi(), pi_GP.eta(), pi_GP.phi() );
 
-        if(pf.pdgId() == 211 && pf.trackHighPurity()){
-            dR_Kp.push_back(dr_Kp);
-            dR_pi.push_back(dr_pi);
-            MatchKp.push_back({static_cast<int>(i), dr_Kp});
-            Matchpi.push_back({static_cast<int>(i), dr_pi});
-        } else if(pf.pdgId() == -211 && pf.trackHighPurity()){
-            dR_Km.push_back(dr_Km);
-            MatchKm.push_back({static_cast<int>(i), dr_Km});
+        if( pf.charge() == 1 ){
+            if( (dpt_Kp < 0.3) && (dr_Kp < 0.1) ) MatchKp.push_back( {static_cast<int>(i), dr_Kp} );
+            if( (dpt_pi < 0.3) && (dr_pi < 0.1) ) Matchpi.push_back( {static_cast<int>(i), dr_pi} );
         }
+        else if( pf.charge() == -1 ){
+            if( (dpt_Km < 0.3) && (dr_Km < 0.1) ) MatchKm.push_back( {static_cast<int>(i), dr_Km} );
+        }
+    }
+
+    for(size_t i=0; i<muonHandle->size(); i++){
+
+        const auto& muon = (*muonHandle)[i];
+        if (!muon.genParticle()) continue;
+
+        const reco::GenParticle& genMuon = *(muon.genParticle());
+        if( !hasAncestor(genMuon, -24, -14) ) continue;
+        if( !hasAncestor(genMuon, 25, 431) ) continue;
+
+        float dr_mu = reco::deltaR(muon.eta(), muon.phi(), mu_GP.eta(), mu_GP.phi());
+        Matchmu.push_back({static_cast<int>(i), dr_mu});
     }
 
     auto findBestMatch = [](const std::vector<MatchInfo>& matches) -> MatchInfo {
@@ -441,40 +443,49 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     auto bestKp = findBestMatch(MatchKp);
     auto bestKm = findBestMatch(MatchKm);
     auto bestpi = findBestMatch(Matchpi);
+    auto bestmu = findBestMatch(Matchmu);
 
     if (bestKp.index == bestpi.index && bestKp.index != -1){
         if (bestKp.dr <= bestpi.dr) {
             bestpi = findBestMatchExcluding(Matchpi, bestKp.index);
-        } else{
+        }
+        else{
             const auto altKp = findBestMatchExcluding(MatchKp, bestpi.index);
             if (altKp.index != -1) {
                 bestKp = altKp;
-            } else {
+            }
+            else {
                 bestpi = findBestMatchExcluding(Matchpi, bestKp.index);
             }
         }
     }
 
-    if(bestKp.dr < 0.03){
+    if(bestKp.dr < 0.1){
         ftree->num_match_Kp++;
-        ftree->match_Kp_idx = bestKp.index;
+        ftree->match_dR_Kp = bestKp.dr; 
+        if(bestKp.dr < 0.03) ftree->num_tight_match_Kp++;
     }
-    if(bestKm.dr < 0.03){
+    if(bestKm.dr < 0.1){
         ftree->num_match_Km++;
-        ftree->match_Km_idx = bestKm.index;
+        ftree->match_dR_Km = bestKm.dr; 
+        if(bestKm.dr < 0.03) ftree->num_tight_match_Km++;
     }
-    if(bestpi.dr < 0.03){
+    if(bestpi.dr < 0.1){
         ftree->num_match_pi++;
-        ftree->match_pi_idx = bestpi.index;
+        ftree->match_dR_pi = bestpi.dr; 
+        if(bestpi.dr < 0.03) ftree->num_tight_match_pi++;
+    }
+    if(bestmu.dr < 100){
+        ftree->num_match_mu++;
+        ftree->match_dR_mu = bestmu.dr; 
     }
 
-    if( bestKp.dr < 0.03 && bestKm.dr < 0.03 && bestpi.dr < 0.03 && (*packedHandle)[bestKp.index].hasTrackDetails() && (*packedHandle)[bestKm.index].hasTrackDetails() && (*packedHandle)[bestpi.index].hasTrackDetails() && (*packedHandle)[bestKp.index].trackHighPurity() && (*packedHandle)[bestKm.index].trackHighPurity() && (*packedHandle)[bestpi.index].trackHighPurity() ){
+    if( (ftree->num_match_Kp > 0) && (ftree->num_match_Km > 0) && (ftree->num_match_pi > 0) ){
 
         const auto& match_Kp_PF = (*packedHandle)[bestKp.index];
         const auto& match_Km_PF = (*packedHandle)[bestKm.index];
         const auto& match_pi_PF = (*packedHandle)[bestpi.index];
 
-        // Original Kp
         ftree->match_Kp_isIsolatedChargedHadron = match_Kp_PF.isIsolatedChargedHadron();
         ftree->match_Kp_charge = match_Kp_PF.charge();
         ftree->match_Kp_eta = match_Kp_PF.eta();
@@ -490,7 +501,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         TLorentzVector match_Kp_P4;
         match_Kp_P4.SetXYZM(match_Kp_PF.px(), match_Kp_PF.py(), match_Kp_PF.pz(), Mass_K);
 
-        // Original Km
         ftree->match_Km_isIsolatedChargedHadron = match_Km_PF.isIsolatedChargedHadron();
         ftree->match_Km_charge = match_Km_PF.charge();
         ftree->match_Km_eta = match_Km_PF.eta();
@@ -506,7 +516,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         TLorentzVector match_Km_P4;
         match_Km_P4.SetXYZM(match_Km_PF.px(), match_Km_PF.py(), match_Km_PF.pz(), Mass_K);
 
-        // Original pi
         ftree->match_pi_isIsolatedChargedHadron = match_pi_PF.isIsolatedChargedHadron();
         ftree->match_pi_charge = match_pi_PF.charge();
         ftree->match_pi_eta = match_pi_PF.eta();
@@ -522,7 +531,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         TLorentzVector match_pi_P4;
         match_pi_P4.SetXYZM(match_pi_PF.px(), match_pi_PF.py(), match_pi_PF.pz(), Mass_pi);
 
-        // Original phi
         TLorentzVector match_phi_P4 = match_Kp_P4 + match_Km_P4;
         ftree->match_phi_eta = match_phi_P4.Eta();
         ftree->match_phi_phi = match_phi_P4.Phi();
@@ -533,7 +541,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         ftree->match_phi_pz = match_phi_P4.Pz();
         ftree->match_phi_invm = match_phi_P4.M();
 
-        // Original Ds
         TLorentzVector match_Ds_P4 = match_Kp_P4 + match_Km_P4 + match_pi_P4;
         ftree->match_Ds_eta = match_Ds_P4.Eta();
         ftree->match_Ds_phi = match_Ds_P4.Phi();
@@ -544,27 +551,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         ftree->match_Ds_pz = match_Ds_P4.Pz();
         ftree->match_Ds_invm = match_Ds_P4.M();
 
-        // some dxy dz
-        ftree->match_dxy_Kp_Km = sqrt(pow(ftree->match_Kp_vx-ftree->match_Km_vx,2) + pow(ftree->match_Kp_vy-ftree->match_Km_vy,2));
-        ftree->match_dxy_Kp_pi = sqrt(pow(ftree->match_Kp_vx-ftree->match_pi_vx,2) + pow(ftree->match_Kp_vy-ftree->match_pi_vy,2));
-        ftree->match_dxy_Km_pi = sqrt(pow(ftree->match_Km_vx-ftree->match_pi_vx,2) + pow(ftree->match_Km_vy-ftree->match_pi_vy,2));
-
-        ftree->match_dz_Kp_Km = abs(ftree->match_Kp_vz-ftree->match_Km_vz);
-        ftree->match_dz_Kp_pi = abs(ftree->match_Kp_vz-ftree->match_pi_vz);
-        ftree->match_dz_Km_pi = abs(ftree->match_Km_vz-ftree->match_pi_vz);
-
-        // Original PP PL
-        ftree->match_Kp_pp = match_Kp_P4.Vect().Pt(match_phi_P4.Vect());
-        ftree->match_Kp_pl = match_Kp_P4.Vect().Dot(match_phi_P4.Vect())/match_phi_P4.P();
-        ftree->match_Km_pp = match_Km_P4.Vect().Pt(match_phi_P4.Vect());
-        ftree->match_Km_pl = match_Km_P4.Vect().Dot(match_phi_P4.Vect())/match_phi_P4.P();
-
-        ftree->match_phi_pp = match_phi_P4.Vect().Pt(match_Ds_P4.Vect());
-        ftree->match_phi_pl = match_phi_P4.Vect().Dot(match_Ds_P4.Vect())/match_Ds_P4.P();
-        ftree->match_pi_pp = match_pi_P4.Vect().Pt(match_Ds_P4.Vect());
-        ftree->match_pi_pl = match_pi_P4.Vect().Dot(match_Ds_P4.Vect())/match_Ds_P4.P();
-
-        // Original dR
         ftree->match_dR_Kp_Km = reco::deltaR(match_Kp_P4.Eta(), match_Kp_P4.Phi(), match_Km_P4.Eta(), match_Km_P4.Phi());
         ftree->match_dR_Kp_phi = reco::deltaR(match_Kp_P4.Eta(), match_Kp_P4.Phi(), match_phi_P4.Eta(), match_phi_P4.Phi());
         ftree->match_dR_Km_phi = reco::deltaR(match_Km_P4.Eta(), match_Km_P4.Phi(), match_phi_P4.Eta(), match_phi_P4.Phi());
@@ -576,7 +562,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         ftree->match_dR_phi_Ds = reco::deltaR(match_phi_P4.Eta(), match_phi_P4.Phi(), match_Ds_P4.Eta(), match_Ds_P4.Phi());
         ftree->match_dR_pi_Ds = reco::deltaR(match_pi_P4.Eta(), match_pi_P4.Phi(), match_Ds_P4.Eta(), match_Ds_P4.Phi());
 
-        // phi fit
         std::vector<reco::TransientTrack> match_phi_Tracks = {
             (*ttBuilder).build(match_Kp_PF.pseudoTrack()),
             (*ttBuilder).build(match_Km_PF.pseudoTrack())
@@ -586,7 +571,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         if( match_phi_Vertex.isValid() && match_phi_Vertex.hasRefittedTracks() ){
 
-            // phi fit variables 
             ftree->match_phiFit_chi2 = match_phi_Vertex.totalChiSquared();
             ftree->match_phiFit_ndof = match_phi_Vertex.degreesOfFreedom();
             ftree->match_phiFit_chi2ndof = match_phi_Vertex.normalisedChiSquared();
@@ -597,18 +581,8 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_vyerr = std::sqrt(match_phi_Vertex.positionError().cyy());
             ftree->match_phiFit_vzerr = std::sqrt(match_phi_Vertex.positionError().czz());
 
-            // some dxy dz
-            ftree->match_dxy_Kp_phi = sqrt(pow(ftree->match_Kp_vx-ftree->match_phiFit_vx,2) + pow(ftree->match_Kp_vy-ftree->match_phiFit_vy,2));
-            ftree->match_dxy_Km_phi = sqrt(pow(ftree->match_Km_vx-ftree->match_phiFit_vx,2) + pow(ftree->match_Km_vy-ftree->match_phiFit_vy,2));
-            ftree->match_dxy_pi_phi = sqrt(pow(ftree->match_pi_vx-ftree->match_phiFit_vx,2) + pow(ftree->match_pi_vy-ftree->match_phiFit_vy,2));
-
-            ftree->match_dz_Kp_phi = abs(ftree->match_Kp_vz-ftree->match_phiFit_vz);
-            ftree->match_dz_Km_phi = abs(ftree->match_Km_vz-ftree->match_phiFit_vz);
-            ftree->match_dz_pi_phi = abs(ftree->match_pi_vz-ftree->match_phiFit_vz);
-
             std::vector<reco::TransientTrack> match_phiFit_Tracks = match_phi_Vertex.refittedTracks();
 
-            // phi fit Kp
             TLorentzVector match_phiFit_Kp_P4;
             match_phiFit_Kp_P4.SetXYZM(match_phiFit_Tracks[0].track().px(), match_phiFit_Tracks[0].track().py(), match_phiFit_Tracks[0].track().pz(), Mass_K);
             ftree->match_phiFit_Kp_eta = match_phiFit_Kp_P4.Eta();
@@ -619,7 +593,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_Kp_py = match_phiFit_Kp_P4.Py();
             ftree->match_phiFit_Kp_pz = match_phiFit_Kp_P4.Pz();
 
-            // phi fit Km
             TLorentzVector match_phiFit_Km_P4;
             match_phiFit_Km_P4.SetXYZM(match_phiFit_Tracks[1].track().px(), match_phiFit_Tracks[1].track().py(), match_phiFit_Tracks[1].track().pz(), Mass_K);
             ftree->match_phiFit_Km_eta = match_phiFit_Km_P4.Eta();
@@ -630,7 +603,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_Km_py = match_phiFit_Km_P4.Py();
             ftree->match_phiFit_Km_pz = match_phiFit_Km_P4.Pz();
 
-            // phi fit pi = orignal pi
             TLorentzVector match_phiFit_pi_P4 = match_pi_P4;
             ftree->match_phiFit_pi_eta = match_phiFit_pi_P4.Eta();
             ftree->match_phiFit_pi_phi = match_phiFit_pi_P4.Phi();
@@ -640,7 +612,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_pi_py = match_phiFit_pi_P4.Py();
             ftree->match_phiFit_pi_pz = match_phiFit_pi_P4.Pz();
 
-            // phi fit phi
             TLorentzVector match_phiFit_phi_P4 = match_phiFit_Kp_P4 + match_phiFit_Km_P4;
             ftree->match_phiFit_phi_eta = match_phiFit_phi_P4.Eta();
             ftree->match_phiFit_phi_phi = match_phiFit_phi_P4.Phi();
@@ -651,7 +622,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_phi_pz = match_phiFit_phi_P4.Pz();
             ftree->match_phiFit_phi_invm = match_phiFit_phi_P4.M();
 
-            // phi fit Ds
             TLorentzVector match_phiFit_Ds_P4 = match_phiFit_Kp_P4 + match_phiFit_Km_P4 + match_phiFit_pi_P4;
             ftree->match_phiFit_Ds_eta = match_phiFit_Ds_P4.Eta();
             ftree->match_phiFit_Ds_phi = match_phiFit_Ds_P4.Phi();
@@ -662,18 +632,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_Ds_pz = match_phiFit_Ds_P4.Pz();
             ftree->match_phiFit_Ds_invm = match_phiFit_Ds_P4.M();
 
-            // phi fit PP PL 
-            ftree->match_phiFit_Kp_pp = match_phiFit_Kp_P4.Vect().Pt(match_phiFit_phi_P4.Vect());
-            ftree->match_phiFit_Kp_pl = match_phiFit_Kp_P4.Vect().Dot(match_phiFit_phi_P4.Vect())/match_phiFit_phi_P4.P();
-            ftree->match_phiFit_Km_pp = match_phiFit_Km_P4.Vect().Pt(match_phiFit_phi_P4.Vect());
-            ftree->match_phiFit_Km_pl = match_phiFit_Km_P4.Vect().Dot(match_phiFit_phi_P4.Vect())/match_phiFit_phi_P4.P();
-
-            ftree->match_phiFit_phi_pp = match_phiFit_phi_P4.Vect().Pt(match_phiFit_Ds_P4.Vect());
-            ftree->match_phiFit_phi_pl = match_phiFit_phi_P4.Vect().Dot(match_phiFit_Ds_P4.Vect())/match_phiFit_Ds_P4.P();
-            ftree->match_phiFit_pi_pp = match_phiFit_pi_P4.Vect().Pt(match_phiFit_Ds_P4.Vect());
-            ftree->match_phiFit_pi_pl = match_phiFit_pi_P4.Vect().Dot(match_phiFit_Ds_P4.Vect())/match_phiFit_Ds_P4.P();
-
-            // phi fit dR
             ftree->match_phiFit_dR_Kp_Km = reco::deltaR(match_phiFit_Kp_P4.Eta(), match_phiFit_Kp_P4.Phi(), match_phiFit_Km_P4.Eta(), match_phiFit_Km_P4.Phi());
             ftree->match_phiFit_dR_Kp_phi = reco::deltaR(match_phiFit_Kp_P4.Eta(), match_phiFit_Kp_P4.Phi(), match_phiFit_phi_P4.Eta(), match_phiFit_phi_P4.Phi());
             ftree->match_phiFit_dR_Km_phi = reco::deltaR(match_phiFit_Km_P4.Eta(), match_phiFit_Km_P4.Phi(), match_phiFit_phi_P4.Eta(), match_phiFit_phi_P4.Phi());
@@ -685,11 +643,8 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->match_phiFit_dR_phi_Ds = reco::deltaR(match_phiFit_phi_P4.Eta(), match_phiFit_phi_P4.Phi(), match_phiFit_Ds_P4.Eta(), match_phiFit_Ds_P4.Phi());
             ftree->match_phiFit_dR_pi_Ds = reco::deltaR(match_phiFit_pi_P4.Eta(), match_phiFit_pi_P4.Phi(), match_phiFit_Ds_P4.Eta(), match_phiFit_Ds_P4.Phi());
 
-            ftree->match_alpha_phi = (ftree->match_phiFit_Kp_pl - ftree->match_phiFit_Km_pl) / (ftree->match_phiFit_Kp_pl + ftree->match_phiFit_Km_pl);
-            ftree->match_beta_phi = std::sqrt(pow(ftree->match_phiFit_phi_p,2) / (pow(ftree->match_phiFit_phi_invm,2) + pow(ftree->match_phiFit_phi_p,2)));
-            ftree->match_APvar_phi = pow(ftree->match_phiFit_Kp_pp,2) + pow(ftree->match_alpha_phi*ftree->match_beta_phi*ftree->match_phiFit_phi_invm,2)/4;
+            reco::Track match_phi_dummy_track(0.0, 0.0, reco::Track::Point(match_phi_Vertex.position().x(), match_phi_Vertex.position().y(), match_phi_Vertex.position().z()), reco::Track::Vector(match_phiFit_phi_P4.Px(), match_phiFit_phi_P4.Py(), match_phiFit_phi_P4.Pz()), 0, dummy_track_cov);
 
-            // Ds fit
             std::vector<reco::TransientTrack> match_Ds_Tracks = {
                 match_phiFit_Tracks[0],
                 match_phiFit_Tracks[1],
@@ -700,7 +655,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
             if( match_Ds_Vertex.isValid() && match_Ds_Vertex.hasRefittedTracks() ){
 
-                // Ds fit variables 
                 ftree->match_DsFit_chi2 = match_Ds_Vertex.totalChiSquared();
                 ftree->match_DsFit_ndof = match_Ds_Vertex.degreesOfFreedom();
                 ftree->match_DsFit_chi2ndof = match_Ds_Vertex.normalisedChiSquared();
@@ -711,20 +665,11 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_vyerr = std::sqrt(match_Ds_Vertex.positionError().cyy());
                 ftree->match_DsFit_vzerr = std::sqrt(match_Ds_Vertex.positionError().czz());
 
-                // some dxy dz
-                ftree->match_dxy_Kp_Ds = sqrt(pow(ftree->match_Kp_vx-ftree->match_DsFit_vx,2) + pow(ftree->match_Kp_vy-ftree->match_DsFit_vy,2));
-                ftree->match_dxy_Km_Ds = sqrt(pow(ftree->match_Km_vx-ftree->match_DsFit_vx,2) + pow(ftree->match_Km_vy-ftree->match_DsFit_vy,2));
-                ftree->match_dxy_pi_Ds = sqrt(pow(ftree->match_pi_vx-ftree->match_DsFit_vx,2) + pow(ftree->match_pi_vy-ftree->match_DsFit_vy,2));
-                ftree->match_dxy_phi_Ds = sqrt(pow(ftree->match_phiFit_vx-ftree->match_DsFit_vx,2) + pow(ftree->match_phiFit_vy-ftree->match_DsFit_vy,2));
-
-                ftree->match_dz_Kp_Ds = abs(ftree->match_Kp_vz-ftree->match_DsFit_vz);
-                ftree->match_dz_Km_Ds = abs(ftree->match_Km_vz-ftree->match_DsFit_vz);
-                ftree->match_dz_pi_Ds = abs(ftree->match_pi_vz-ftree->match_DsFit_vz);
+                ftree->match_dxy_phi_Ds = std::hypot(ftree->match_phiFit_vx-ftree->match_DsFit_vx, ftree->match_phiFit_vy-ftree->match_DsFit_vy);
                 ftree->match_dz_phi_Ds = abs(ftree->match_phiFit_vz-ftree->match_DsFit_vz);
 
                 std::vector<reco::TransientTrack> match_DsFit_Tracks = match_Ds_Vertex.refittedTracks();
 
-                // Ds fit Kp
                 TLorentzVector match_DsFit_Kp_P4;
                 match_DsFit_Kp_P4.SetXYZM(match_DsFit_Tracks[0].track().px(), match_DsFit_Tracks[0].track().py(), match_DsFit_Tracks[0].track().pz(), Mass_K);
                 ftree->match_DsFit_Kp_eta = match_DsFit_Kp_P4.Eta();
@@ -735,7 +680,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_Kp_py = match_DsFit_Kp_P4.Py();
                 ftree->match_DsFit_Kp_pz = match_DsFit_Kp_P4.Pz();
 
-                // Ds fit Km
                 TLorentzVector match_DsFit_Km_P4;
                 match_DsFit_Km_P4.SetXYZM(match_DsFit_Tracks[1].track().px(), match_DsFit_Tracks[1].track().py(), match_DsFit_Tracks[1].track().pz(), Mass_K);
                 ftree->match_DsFit_Km_eta = match_DsFit_Km_P4.Eta();
@@ -746,7 +690,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_Km_py = match_DsFit_Km_P4.Py();
                 ftree->match_DsFit_Km_pz = match_DsFit_Km_P4.Pz();
 
-                // Ds fit pi
                 TLorentzVector match_DsFit_pi_P4;
                 match_DsFit_pi_P4.SetXYZM(match_DsFit_Tracks[2].track().px(), match_DsFit_Tracks[2].track().py(), match_DsFit_Tracks[2].track().pz(), Mass_pi);
                 ftree->match_DsFit_pi_eta = match_DsFit_pi_P4.Eta();
@@ -757,7 +700,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_pi_py = match_DsFit_pi_P4.Py();
                 ftree->match_DsFit_pi_pz = match_DsFit_pi_P4.Pz();
 
-                // Ds fit phi
                 TLorentzVector match_DsFit_phi_P4 = match_DsFit_Kp_P4 + match_DsFit_Km_P4;
                 ftree->match_DsFit_phi_eta = match_DsFit_phi_P4.Eta();
                 ftree->match_DsFit_phi_phi = match_DsFit_phi_P4.Phi();
@@ -768,7 +710,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_phi_pz = match_DsFit_phi_P4.Pz();
                 ftree->match_DsFit_phi_invm = match_DsFit_phi_P4.M();
 
-                // Ds fit Ds
                 TLorentzVector match_DsFit_Ds_P4 = match_DsFit_Kp_P4 + match_DsFit_Km_P4 + match_DsFit_pi_P4;
                 ftree->match_DsFit_Ds_eta = match_DsFit_Ds_P4.Eta();
                 ftree->match_DsFit_Ds_phi = match_DsFit_Ds_P4.Phi();
@@ -784,18 +725,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 TLorentzVector match_DsFit_Mconstraint_Ds_P4 = match_DsFit_Mconstraint_phi_P4 + match_DsFit_pi_P4;
                 ftree->match_DsFit_Mconstraint_Ds_invm = match_DsFit_Mconstraint_Ds_P4.M();
 
-                // Ds fit PP PL 
-                ftree->match_DsFit_Kp_pp = match_DsFit_Kp_P4.Vect().Pt(match_DsFit_phi_P4.Vect());
-                ftree->match_DsFit_Kp_pl = match_DsFit_Kp_P4.Vect().Dot(match_DsFit_phi_P4.Vect())/match_DsFit_phi_P4.P();
-                ftree->match_DsFit_Km_pp = match_DsFit_Km_P4.Vect().Pt(match_DsFit_phi_P4.Vect());
-                ftree->match_DsFit_Km_pl = match_DsFit_Km_P4.Vect().Dot(match_DsFit_phi_P4.Vect())/match_DsFit_phi_P4.P();
-
-                ftree->match_DsFit_phi_pp = match_DsFit_phi_P4.Vect().Pt(match_DsFit_Ds_P4.Vect());
-                ftree->match_DsFit_phi_pl = match_DsFit_phi_P4.Vect().Dot(match_DsFit_Ds_P4.Vect())/match_DsFit_Ds_P4.P();
-                ftree->match_DsFit_pi_pp = match_DsFit_pi_P4.Vect().Pt(match_DsFit_Ds_P4.Vect());
-                ftree->match_DsFit_pi_pl = match_DsFit_pi_P4.Vect().Dot(match_DsFit_Ds_P4.Vect())/match_DsFit_Ds_P4.P();
-
-                // Ds fit dR
                 ftree->match_DsFit_dR_Kp_Km = reco::deltaR(match_DsFit_Kp_P4.Eta(), match_DsFit_Kp_P4.Phi(), match_DsFit_Km_P4.Eta(), match_DsFit_Km_P4.Phi());
                 ftree->match_DsFit_dR_Kp_phi = reco::deltaR(match_DsFit_Kp_P4.Eta(), match_DsFit_Kp_P4.Phi(), match_DsFit_phi_P4.Eta(), match_DsFit_phi_P4.Phi());
                 ftree->match_DsFit_dR_Km_phi = reco::deltaR(match_DsFit_Km_P4.Eta(), match_DsFit_Km_P4.Phi(), match_DsFit_phi_P4.Eta(), match_DsFit_phi_P4.Phi());
@@ -807,12 +736,7 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->match_DsFit_dR_phi_Ds = reco::deltaR(match_DsFit_phi_P4.Eta(), match_DsFit_phi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
                 ftree->match_DsFit_dR_pi_Ds = reco::deltaR(match_DsFit_pi_P4.Eta(), match_DsFit_pi_P4.Phi(), match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi());
 
-                double match_pst_Ds = sqrt((pow(ftree->match_DsFit_Ds_invm,4)+pow(ftree->match_phiFit_phi_invm,4)+pow(Mass_pi,4)-2*pow(ftree->match_DsFit_Ds_invm*ftree->match_phiFit_phi_invm,2)-2*pow(ftree->match_DsFit_Ds_invm*Mass_pi,2)-2*pow(ftree->match_phiFit_phi_invm*Mass_pi,2))/(4*pow(ftree->match_DsFit_Ds_invm,2)));
-                double match_Estphi = std::sqrt(pow(ftree->match_phiFit_phi_invm,2) + pow(match_pst_Ds,2));
-                double match_Estpi = std::sqrt(pow(Mass_pi,2) + pow(match_pst_Ds,2));
-                ftree->match_alpha_Ds = (ftree->match_DsFit_phi_pl - ftree->match_DsFit_pi_pl) / (ftree->match_DsFit_phi_pl + ftree->match_DsFit_pi_pl);
-                ftree->match_beta_Ds = std::sqrt(pow(ftree->match_DsFit_Ds_p,2) / (pow(ftree->match_DsFit_Ds_invm,2) + pow(ftree->match_DsFit_Ds_p,2)));
-                ftree->match_APvar_Ds = pow(ftree->match_DsFit_phi_pp,2) + pow(ftree->match_beta_Ds*(match_Estphi-match_Estpi)-ftree->match_alpha_Ds*ftree->match_beta_Ds*(match_Estphi+match_Estpi),2)/4;
+                reco::Track match_Ds_dummy_track(0.0, 0.0, reco::Track::Point(match_Ds_Vertex.position().x(), match_Ds_Vertex.position().y(), match_Ds_Vertex.position().z()), reco::Track::Vector(match_DsFit_Ds_P4.Px(), match_DsFit_Ds_P4.Py(), match_DsFit_Ds_P4.Pz()), 1, dummy_track_cov);
 
                 GlobalPoint match_Ds_pos = match_Ds_Vertex.position();
                 GlobalError match_Ds_cov = match_Ds_Vertex.positionError();
@@ -846,7 +770,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 Measurement1D match_Ds_primvtx_FD_withErr(ftree->match_Ds_primvtx_FD, ftree->match_Ds_primvtx_FDerr);
                 ftree->match_Ds_primvtx_FDchi2 = match_Ds_primvtx_FD_withErr.significance();
 
-
                 ftree->match_Ds_primvtx_dira = match_Ds_primvtx_pos.dot(match_Ds_PDirec) / ( match_Ds_primvtx_pos.mag() * match_Ds_PDirec.mag() );
                 ftree->match_Ds_primvtx_dira_angle = std::acos(ftree->match_Ds_primvtx_dira);
 
@@ -868,68 +791,77 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     ftree->match_pi_primvtx_iperr = match_pi_primvtx_IPresult.second.error();
                     ftree->match_pi_primvtx_ipchi2 = match_pi_primvtx_IPresult.second.significance();
                 }
+                std::pair<bool, Measurement1D> match_phi_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_phi_dummy_track), primaryvertex);
+                if( match_phi_primvtx_IPresult.first ){
+                    ftree->match_phi_primvtx_ip = match_phi_primvtx_IPresult.second.value();
+                    ftree->match_phi_primvtx_iperr = match_phi_primvtx_IPresult.second.error();
+                    ftree->match_phi_primvtx_ipchi2 = match_phi_primvtx_IPresult.second.significance();
+                }
+                std::pair<bool, Measurement1D> match_Ds_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_Ds_dummy_track), primaryvertex);
+                if( match_Ds_primvtx_IPresult.first ){
+                    ftree->match_Ds_primvtx_ip = match_Ds_primvtx_IPresult.second.value();
+                    ftree->match_Ds_primvtx_iperr = match_Ds_primvtx_IPresult.second.error();
+                    ftree->match_Ds_primvtx_ipchi2 = match_Ds_primvtx_IPresult.second.significance();
+                }
 
                 reco::TrackCollection match_PVtracks_noDs;
+                reco::TrackCollection match_PVtracks_withDs;
 
                 for(size_t it=0; it<packedHandle->size(); it++){
-                    if(it==static_cast<size_t>(ftree->match_Kp_idx)) continue;
-                    if(it==static_cast<size_t>(ftree->match_Km_idx)) continue;
-                    if(it==static_cast<size_t>(ftree->match_pi_idx)) continue;
+                    if(it==static_cast<size_t>(bestKp.index)) continue;
+                    if(it==static_cast<size_t>(bestKm.index)) continue;
+                    if(it==static_cast<size_t>(bestpi.index)) continue;
                     const auto& pf = (*packedHandle)[it];
+
                     if(reco::deltaR(match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.3){
-                        ftree->match_Ds_Iso_R0p3 += pf.pt(); 
+                        if( abs(pf.pdgId()) == 211 ) ftree->match_Ds_IsoR03_sumChargedHadronPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR03_sumNeutralHadronPt += pf.pt();
+                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR03_sumPhotonPt += pf.pt();
+
+                        if( pf.fromPV() <= 1 ) ftree->match_Ds_IsoR03_sumPUPt += pf.pt();
                     }
+
                     if(reco::deltaR(match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.4){
-                        ftree->match_Ds_Iso_R0p4 += pf.pt(); 
+                        if( abs(pf.pdgId()) == 211 ) ftree->match_Ds_IsoR04_sumChargedHadronPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR04_sumNeutralHadronPt += pf.pt();
+                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR04_sumPhotonPt += pf.pt();
+
+                        if( pf.fromPV() <= 1 ) ftree->match_Ds_IsoR04_sumPUPt += pf.pt();
                     }
+
                     if( ! pf.hasTrackDetails() ) continue;
                     match_PVtracks_noDs.push_back(pf.pseudoTrack());
+                    match_PVtracks_withDs.push_back(pf.pseudoTrack());
                 }
+                match_PVtracks_withDs.push_back(match_Ds_dummy_track); 
 
-                ftree->match_Ds_IsoRel_R0p3 = ftree->match_Ds_Iso_R0p3 / ftree->match_DsFit_Ds_pt;
-                ftree->match_Ds_IsoRel_R0p4 = ftree->match_Ds_Iso_R0p4 / ftree->match_DsFit_Ds_pt;
+                ftree->match_Ds_PFIsoR03 = ( ftree->match_Ds_IsoR03_sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR03_sumNeutralHadronPt + ftree->match_Ds_IsoR03_sumPhotonPt - 0.5*ftree->match_Ds_IsoR03_sumPUPt) ) / ftree->match_DsFit_Ds_pt;
+                ftree->match_Ds_PFIsoR04 = ( ftree->match_Ds_IsoR04_sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR04_sumNeutralHadronPt + ftree->match_Ds_IsoR04_sumPhotonPt - 0.5*ftree->match_Ds_IsoR04_sumPUPt) ) / ftree->match_DsFit_Ds_pt;
 
-                std::vector<TransientVertex> match_pvs_noDs_withBS = revertex->makeVertices(match_PVtracks_noDs, *bsHandle, iSetup, "WithBS");
-                if( !(match_pvs_noDs_withBS.empty()) ){
-                    reco::Vertex match_pv_noDs_withBS = reco::Vertex(match_pvs_noDs_withBS.front());
+                std::vector<TransientVertex> match_pvs_noDs = revertex->makeVertices(match_PVtracks_noDs, *bsHandle, iSetup, "noBS");
+                if( !(match_pvs_noDs.empty()) ){
+                    reco::Vertex match_pv_noDs = reco::Vertex(match_pvs_noDs.front());
 
-                    ftree->match_PV_noDs_withBS_IsValid = match_pv_noDs_withBS.isValid();
-                    ftree->match_PV_noDs_withBS_IsFake = match_pv_noDs_withBS.isFake();
-                    ftree->match_PV_noDs_withBS_chi2 = match_pv_noDs_withBS.chi2();
-                    ftree->match_PV_noDs_withBS_ndof = match_pv_noDs_withBS.ndof();
-                    ftree->match_PV_noDs_withBS_chi2ndof = match_pv_noDs_withBS.chi2()/match_pv_noDs_withBS.ndof();
-                    ftree->match_PV_noDs_withBS_x = match_pv_noDs_withBS.x();
-                    ftree->match_PV_noDs_withBS_y = match_pv_noDs_withBS.y();
-                    ftree->match_PV_noDs_withBS_z = match_pv_noDs_withBS.z();
-                    ftree->match_PV_noDs_withBS_xerr = match_pv_noDs_withBS.xError();
-                    ftree->match_PV_noDs_withBS_yerr = match_pv_noDs_withBS.yError();
-                    ftree->match_PV_noDs_withBS_zerr = match_pv_noDs_withBS.zError();
-                }
+                    ftree->match_PV_noDs_IsValid = match_pv_noDs.isValid();
+                    ftree->match_PV_noDs_IsFake = match_pv_noDs.isFake();
+                    ftree->match_PV_noDs_chi2 = match_pv_noDs.chi2();
+                    ftree->match_PV_noDs_ndof = match_pv_noDs.ndof();
+                    ftree->match_PV_noDs_chi2ndof = match_pv_noDs.chi2()/match_pv_noDs.ndof();
+                    ftree->match_PV_noDs_x = match_pv_noDs.x();
+                    ftree->match_PV_noDs_y = match_pv_noDs.y();
+                    ftree->match_PV_noDs_z = match_pv_noDs.z();
+                    ftree->match_PV_noDs_xerr = match_pv_noDs.xError();
+                    ftree->match_PV_noDs_yerr = match_pv_noDs.yError();
+                    ftree->match_PV_noDs_zerr = match_pv_noDs.zError();
 
-                std::vector<TransientVertex> match_pvs_noDs_noBS = revertex->makeVertices(match_PVtracks_noDs, *bsHandle, iSetup, "noBS");
-                if( !(match_pvs_noDs_noBS.empty()) ){
-                    reco::Vertex match_pv_noDs_noBS = reco::Vertex(match_pvs_noDs_noBS.front());
+                    GlobalPoint match_PV_noDs_pos = match_pvs_noDs.front().position();
+                    GlobalError match_PV_noDs_cov = match_pvs_noDs.front().positionError();
 
-                    ftree->match_PV_noDs_noBS_IsValid = match_pv_noDs_noBS.isValid();
-                    ftree->match_PV_noDs_noBS_IsFake = match_pv_noDs_noBS.isFake();
-                    ftree->match_PV_noDs_noBS_chi2 = match_pv_noDs_noBS.chi2();
-                    ftree->match_PV_noDs_noBS_ndof = match_pv_noDs_noBS.ndof();
-                    ftree->match_PV_noDs_noBS_chi2ndof = match_pv_noDs_noBS.chi2()/match_pv_noDs_noBS.ndof();
-                    ftree->match_PV_noDs_noBS_x = match_pv_noDs_noBS.x();
-                    ftree->match_PV_noDs_noBS_y = match_pv_noDs_noBS.y();
-                    ftree->match_PV_noDs_noBS_z = match_pv_noDs_noBS.z();
-                    ftree->match_PV_noDs_noBS_xerr = match_pv_noDs_noBS.xError();
-                    ftree->match_PV_noDs_noBS_yerr = match_pv_noDs_noBS.yError();
-                    ftree->match_PV_noDs_noBS_zerr = match_pv_noDs_noBS.zError();
-
-                    GlobalPoint match_PV_noDs_noBS_pos = match_pvs_noDs_noBS.front().position();
-                    GlobalError match_PV_noDs_noBS_cov = match_pvs_noDs_noBS.front().positionError();
-
-                    GlobalVector match_Ds_PVnoDs_pos = match_Ds_pos - match_PV_noDs_noBS_pos;
+                    GlobalVector match_Ds_PVnoDs_pos = match_Ds_pos - match_PV_noDs_pos;
                     ftree->match_Ds_PVnoDs_FDxy = std::hypot(match_Ds_PVnoDs_pos.x(), match_Ds_PVnoDs_pos.y());
                     ftree->match_Ds_PVnoDs_FDz = std::abs(match_Ds_PVnoDs_pos.z());
                     ftree->match_Ds_PVnoDs_FD = std::hypot(ftree->match_Ds_PVnoDs_FDxy, ftree->match_Ds_PVnoDs_FDz);
-                    GlobalError match_Ds_PVnoDs_coverr = match_Ds_cov + match_PV_noDs_noBS_cov;
+                    GlobalError match_Ds_PVnoDs_coverr = match_Ds_cov + match_PV_noDs_cov;
                     AlgebraicSymMatrix33 match_Ds_PVnoDs_cov = match_Ds_PVnoDs_coverr.matrix();
 
                     ftree->match_Ds_PVnoDs_FDxyerr = std::sqrt(
@@ -956,28 +888,173 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     ftree->match_Ds_PVnoDs_dira = match_Ds_PVnoDs_pos.dot(match_Ds_PDirec) / ( match_Ds_PVnoDs_pos.mag() * match_Ds_PDirec.mag() );
                     ftree->match_Ds_PVnoDs_dira_angle = std::acos(ftree->match_Ds_PVnoDs_dira);
 
-                    std::pair<bool, Measurement1D> match_Kp_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[0], match_pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> match_Kp_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[0], match_pv_noDs);
                     if( match_Kp_PVnoDs_IPresult.first ){
                         ftree->match_Kp_PVnoDs_ip = match_Kp_PVnoDs_IPresult.second.value();
                         ftree->match_Kp_PVnoDs_iperr = match_Kp_PVnoDs_IPresult.second.error();
                         ftree->match_Kp_PVnoDs_ipchi2 = match_Kp_PVnoDs_IPresult.second.significance();
                     }
-                    std::pair<bool, Measurement1D> match_Km_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[1], match_pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> match_Km_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[1], match_pv_noDs);
                     if( match_Km_PVnoDs_IPresult.first ){
                         ftree->match_Km_PVnoDs_ip = match_Km_PVnoDs_IPresult.second.value();
                         ftree->match_Km_PVnoDs_iperr = match_Km_PVnoDs_IPresult.second.error();
                         ftree->match_Km_PVnoDs_ipchi2 = match_Km_PVnoDs_IPresult.second.significance();
                     }
-                    std::pair<bool, Measurement1D> match_pi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[2], match_pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> match_pi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[2], match_pv_noDs);
                     if( match_pi_PVnoDs_IPresult.first ){
                         ftree->match_pi_PVnoDs_ip = match_pi_PVnoDs_IPresult.second.value();
                         ftree->match_pi_PVnoDs_iperr = match_pi_PVnoDs_IPresult.second.error();
                         ftree->match_pi_PVnoDs_ipchi2 = match_pi_PVnoDs_IPresult.second.significance();
                     }
+                    std::pair<bool, Measurement1D> match_phi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_phi_dummy_track), primaryvertex);
+                    if( match_phi_PVnoDs_IPresult.first ){
+                        ftree->match_phi_PVnoDs_ip = match_phi_PVnoDs_IPresult.second.value();
+                        ftree->match_phi_PVnoDs_iperr = match_phi_PVnoDs_IPresult.second.error();
+                        ftree->match_phi_PVnoDs_ipchi2 = match_phi_PVnoDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> match_Ds_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_Ds_dummy_track), primaryvertex);
+                    if( match_Ds_PVnoDs_IPresult.first ){
+                        ftree->match_Ds_PVnoDs_ip = match_Ds_PVnoDs_IPresult.second.value();
+                        ftree->match_Ds_PVnoDs_iperr = match_Ds_PVnoDs_IPresult.second.error();
+                        ftree->match_Ds_PVnoDs_ipchi2 = match_Ds_PVnoDs_IPresult.second.significance();
+                    }
                 }
-                ftree->Match_Fill_Vector();
+
+                std::vector<TransientVertex> match_pvs_withDs = revertex->makeVertices(match_PVtracks_withDs, *bsHandle, iSetup, "noBS");
+                if( !(match_pvs_withDs.empty()) ){
+                    reco::Vertex match_pv_withDs = reco::Vertex(match_pvs_withDs.front());
+
+                    ftree->match_PV_withDs_IsValid = match_pv_withDs.isValid();
+                    ftree->match_PV_withDs_IsFake = match_pv_withDs.isFake();
+                    ftree->match_PV_withDs_chi2 = match_pv_withDs.chi2();
+                    ftree->match_PV_withDs_ndof = match_pv_withDs.ndof();
+                    ftree->match_PV_withDs_chi2ndof = match_pv_withDs.chi2()/match_pv_withDs.ndof();
+                    ftree->match_PV_withDs_x = match_pv_withDs.x();
+                    ftree->match_PV_withDs_y = match_pv_withDs.y();
+                    ftree->match_PV_withDs_z = match_pv_withDs.z();
+                    ftree->match_PV_withDs_xerr = match_pv_withDs.xError();
+                    ftree->match_PV_withDs_yerr = match_pv_withDs.yError();
+                    ftree->match_PV_withDs_zerr = match_pv_withDs.zError();
+
+                    GlobalPoint match_PV_withDs_pos = match_pvs_withDs.front().position();
+                    GlobalError match_PV_withDs_cov = match_pvs_withDs.front().positionError();
+
+                    GlobalVector match_Ds_PVwithDs_pos = match_Ds_pos - match_PV_withDs_pos;
+                    ftree->match_Ds_PVwithDs_FDxy = std::hypot(match_Ds_PVwithDs_pos.x(), match_Ds_PVwithDs_pos.y());
+                    ftree->match_Ds_PVwithDs_FDz = std::abs(match_Ds_PVwithDs_pos.z());
+                    ftree->match_Ds_PVwithDs_FD = std::hypot(ftree->match_Ds_PVwithDs_FDxy, ftree->match_Ds_PVwithDs_FDz);
+                    GlobalError match_Ds_PVwithDs_coverr = match_Ds_cov + match_PV_withDs_cov;
+                    AlgebraicSymMatrix33 match_Ds_PVwithDs_cov = match_Ds_PVwithDs_coverr.matrix();
+
+                    ftree->match_Ds_PVwithDs_FDxyerr = std::sqrt(
+                            match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_cov(0,0) +
+                            match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_cov(1,1) +
+                            2*match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_cov(0,1) ) / ftree->match_Ds_PVwithDs_FDxy;
+                    Measurement1D match_Ds_PVwithDs_FDxy_withErr(ftree->match_Ds_PVwithDs_FDxy, ftree->match_Ds_PVwithDs_FDxyerr);
+                    ftree->match_Ds_PVwithDs_FDxychi2 = match_Ds_PVwithDs_FDxy_withErr.significance();
+
+                    ftree->match_Ds_PVwithDs_FDzerr = std::sqrt( match_Ds_PVwithDs_cov(2,2) );
+                    Measurement1D match_Ds_PVwithDs_FDz_withErr(ftree->match_Ds_PVwithDs_FDz, ftree->match_Ds_PVwithDs_FDzerr);
+                    ftree->match_Ds_PVwithDs_FDzchi2 = match_Ds_PVwithDs_FDz_withErr.significance();
+
+                    ftree->match_Ds_PVwithDs_FDerr = std::sqrt(
+                            match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_cov(0,0) +
+                            match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_cov(1,1) +
+                            match_Ds_PVwithDs_pos.z()*match_Ds_PVwithDs_pos.z()*match_Ds_PVwithDs_cov(2,2) +
+                            2*match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_cov(0,1) +
+                            2*match_Ds_PVwithDs_pos.x()*match_Ds_PVwithDs_pos.z()*match_Ds_PVwithDs_cov(0,2) +
+                            2*match_Ds_PVwithDs_pos.y()*match_Ds_PVwithDs_pos.z()*match_Ds_PVwithDs_cov(1,2)) / ftree->match_Ds_PVwithDs_FD;
+                    Measurement1D match_Ds_PVwithDs_FD_withErr(ftree->match_Ds_PVwithDs_FD, ftree->match_Ds_PVwithDs_FDerr);
+                    ftree->match_Ds_PVwithDs_FDchi2 = match_Ds_PVwithDs_FD_withErr.significance();
+
+                    ftree->match_Ds_PVwithDs_dira = match_Ds_PVwithDs_pos.dot(match_Ds_PDirec) / ( match_Ds_PVwithDs_pos.mag() * match_Ds_PDirec.mag() );
+                    ftree->match_Ds_PVwithDs_dira_angle = std::acos(ftree->match_Ds_PVwithDs_dira);
+
+                    std::pair<bool, Measurement1D> match_Kp_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[0], match_pv_withDs);
+                    if( match_Kp_PVwithDs_IPresult.first ){
+                        ftree->match_Kp_PVwithDs_ip = match_Kp_PVwithDs_IPresult.second.value();
+                        ftree->match_Kp_PVwithDs_iperr = match_Kp_PVwithDs_IPresult.second.error();
+                        ftree->match_Kp_PVwithDs_ipchi2 = match_Kp_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> match_Km_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[1], match_pv_withDs);
+                    if( match_Km_PVwithDs_IPresult.first ){
+                        ftree->match_Km_PVwithDs_ip = match_Km_PVwithDs_IPresult.second.value();
+                        ftree->match_Km_PVwithDs_iperr = match_Km_PVwithDs_IPresult.second.error();
+                        ftree->match_Km_PVwithDs_ipchi2 = match_Km_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> match_pi_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(match_DsFit_Tracks[2], match_pv_withDs);
+                    if( match_pi_PVwithDs_IPresult.first ){
+                        ftree->match_pi_PVwithDs_ip = match_pi_PVwithDs_IPresult.second.value();
+                        ftree->match_pi_PVwithDs_iperr = match_pi_PVwithDs_IPresult.second.error();
+                        ftree->match_pi_PVwithDs_ipchi2 = match_pi_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> match_phi_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_phi_dummy_track), primaryvertex);
+                    if( match_phi_PVwithDs_IPresult.first ){
+                        ftree->match_phi_PVwithDs_ip = match_phi_PVwithDs_IPresult.second.value();
+                        ftree->match_phi_PVwithDs_iperr = match_phi_PVwithDs_IPresult.second.error();
+                        ftree->match_phi_PVwithDs_ipchi2 = match_phi_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> match_Ds_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_Ds_dummy_track), primaryvertex);
+                    if( match_Ds_PVwithDs_IPresult.first ){
+                        ftree->match_Ds_PVwithDs_ip = match_Ds_PVwithDs_IPresult.second.value();
+                        ftree->match_Ds_PVwithDs_iperr = match_Ds_PVwithDs_IPresult.second.error();
+                        ftree->match_Ds_PVwithDs_ipchi2 = match_Ds_PVwithDs_IPresult.second.significance();
+                    }
+                }
+
+                ftree->Match_Ds_Fill_Vector();
             }
         }
+    }
+    
+    if( ftree->num_match_mu > 0 ){
+
+        const auto& match_muon = (*muonHandle)[bestmu.index];
+
+        ftree->match_mu_charge = match_muon.charge();
+        ftree->match_mu_eta = match_muon.eta();
+        ftree->match_mu_phi = match_muon.phi();
+        ftree->match_mu_vx = match_muon.vx();
+        ftree->match_mu_vy = match_muon.vy();
+        ftree->match_mu_vz = match_muon.vz();
+        ftree->match_mu_p = match_muon.p();
+        ftree->match_mu_pt = match_muon.pt();
+        ftree->match_mu_px = match_muon.px();
+        ftree->match_mu_py = match_muon.py();
+        ftree->match_mu_pz = match_muon.pz();
+        ftree->match_mu_isHighPt = match_muon.isHighPtMuon(primaryvertex);
+        ftree->match_mu_isLoose = match_muon.isLooseMuon();
+        ftree->match_mu_isMedium = match_muon.isMediumMuon();
+        ftree->match_mu_isSoft = match_muon.isSoftMuon(primaryvertex);
+        ftree->match_mu_isTight = match_muon.isTightMuon(primaryvertex);
+        ftree->match_mu_isPF = match_muon.isPFMuon();
+        ftree->match_mu_isTracker = match_muon.isTrackerMuon();
+        ftree->match_mu_isGlobal = match_muon.isGlobalMuon();
+        ftree->match_mu_IsoR03_sumChargedHadronPt = match_muon.pfIsolationR03().sumChargedHadronPt;
+        ftree->match_mu_IsoR03_sumChargedParticlePt = match_muon.pfIsolationR03().sumChargedParticlePt;
+        ftree->match_mu_IsoR03_sumNeutralHadronEt = match_muon.pfIsolationR03().sumNeutralHadronEt;
+        ftree->match_mu_IsoR03_sumPhotonEt = match_muon.pfIsolationR03().sumPhotonEt;
+        ftree->match_mu_IsoR03_sumPUPt = match_muon.pfIsolationR03().sumPUPt;
+        ftree->match_mu_PFIsoR03 = (ftree->match_mu_IsoR03_sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR03_sumNeutralHadronEt + ftree->match_mu_IsoR03_sumPhotonEt - 0.5*ftree->match_mu_IsoR03_sumPUPt))/ftree->match_mu_pt;
+        ftree->match_mu_IsoR04_sumChargedHadronPt = match_muon.pfIsolationR04().sumChargedHadronPt;
+        ftree->match_mu_IsoR04_sumChargedParticlePt = match_muon.pfIsolationR04().sumChargedParticlePt;
+        ftree->match_mu_IsoR04_sumNeutralHadronEt = match_muon.pfIsolationR04().sumNeutralHadronEt;
+        ftree->match_mu_IsoR04_sumPhotonEt = match_muon.pfIsolationR04().sumPhotonEt;
+        ftree->match_mu_IsoR04_sumPUPt = match_muon.pfIsolationR04().sumPUPt;
+        ftree->match_mu_PFIsoR04 = (ftree->match_mu_IsoR04_sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR04_sumNeutralHadronEt + ftree->match_mu_IsoR04_sumPhotonEt - 0.5*ftree->match_mu_IsoR04_sumPUPt))/ftree->match_mu_pt;
+        ftree->match_mu_primvtx_dxy = match_muon.muonBestTrack()->dxy(primaryvertex.position());
+        ftree->match_mu_primvtx_dxyerr = match_muon.muonBestTrack()->dxyError();
+        ftree->match_mu_primvtx_dz = match_muon.muonBestTrack()->dz(primaryvertex.position());
+        ftree->match_mu_primvtx_dzerr = match_muon.muonBestTrack()->dzError();
+
+        std::pair<bool, Measurement1D> match_mu_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(match_muon.muonBestTrack()), primaryvertex);
+        if( match_mu_primvtx_IPresult.first ){
+            ftree->match_mu_primvtx_ip = match_mu_primvtx_IPresult.second.value();
+            ftree->match_mu_primvtx_iperr = match_mu_primvtx_IPresult.second.error();
+            ftree->match_mu_primvtx_ipchi2 = match_mu_primvtx_IPresult.second.significance();
+        }
+
+        ftree->Match_mu_Fill_Vector();
     }
 
     idx_Kp_vec.clear();
@@ -987,19 +1064,20 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     for(size_t i=0; i<packedHandle->size(); i++){
         const auto& pf = (*packedHandle)[i];
 
-        if(!(pf.trackHighPurity())) continue;
-        if(!(pf.hasTrackDetails())) continue;
-        if(pf.pt() < 0.5) continue;
-        if(pf.p() < 1) continue;
+        if( !(pf.trackHighPurity()) ) continue;
+        if( !(pf.hasTrackDetails()) ) continue;
+        if( pf.pt() < 0.5 ) continue;
+        if( pf.p() < 1 ) continue;
+        if( abs(pf.pdgId()) != 211 ) continue;
 
-        if(pf.pdgId() == 211){
+        if(pf.charge() == 1){
             idx_Kp_vec.push_back(i);
             idx_pi_vec.push_back(i);
-        } else if(pf.pdgId() == -211){
+        }
+        else if(pf.charge() == -1){
             idx_Km_vec.push_back(i);
         }
     }
-
     for(size_t i=0; i<idx_Kp_vec.size(); i++){
 
         const auto& Kp_PF = (*packedHandle)[idx_Kp_vec[i]];
@@ -1018,7 +1096,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         ftree->Kp_px                      = Kp_PF.px();
         ftree->Kp_py                      = Kp_PF.py();
         ftree->Kp_pz                      = Kp_PF.pz();
-
         TLorentzVector Kp_P4;
         Kp_P4.SetXYZM(Kp_PF.px(), Kp_PF.py(), Kp_PF.pz(), Mass_K);
 
@@ -1040,7 +1117,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->Km_px     = Km_PF.px();
             ftree->Km_py     = Km_PF.py();
             ftree->Km_pz     = Km_PF.pz();
-
             TLorentzVector Km_P4;
             Km_P4.SetXYZM(Km_PF.px(), Km_PF.py(), Km_PF.pz(), Mass_K);
 
@@ -1055,17 +1131,9 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->phi_pz = phi_P4.Pz();
             ftree->phi_invm = phi_P4.M();
 
-            ftree->Kp_pp = Kp_P4.Vect().Pt(phi_P4.Vect());
-            ftree->Kp_pl = Kp_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
-            ftree->Km_pp = Km_P4.Vect().Pt(phi_P4.Vect());
-            ftree->Km_pl = Km_P4.Vect().Dot(phi_P4.Vect())/phi_P4.P();
-
             ftree->dR_Kp_Km  = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), Km_P4.Eta(),  Km_P4.Phi());
             ftree->dR_Kp_phi = reco::deltaR(Kp_P4.Eta(), Kp_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
             ftree->dR_Km_phi = reco::deltaR(Km_P4.Eta(), Km_P4.Phi(), phi_P4.Eta(), phi_P4.Phi());
-
-            ftree->dxy_Kp_Km = sqrt( pow( Kp_PF.vx()-Km_PF.vx(), 2 ) + pow( Kp_PF.vy()-Km_PF.vy(), 2 ) );
-            ftree->dz_Kp_Km = abs( Kp_PF.vz()-Km_PF.vz() );
 
             if( abs( Kp_PF.pt() - Km_PF.pt() ) > 20 ) continue;
             if( ftree->dR_Kp_Km > 0.1 ) continue;
@@ -1125,31 +1193,16 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             ftree->phiFit_phi_pz   = phiFit_phi_P4.Pz();
             ftree->phiFit_phi_invm = phiFit_phi_P4.M();
 
-            ftree->phiFit_Kp_pp = phiFit_Kp_P4.Vect().Pt(phiFit_phi_P4.Vect());
-            ftree->phiFit_Kp_pl = phiFit_Kp_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
-            ftree->phiFit_Km_pp = phiFit_Km_P4.Vect().Pt(phiFit_phi_P4.Vect());
-            ftree->phiFit_Km_pl = phiFit_Km_P4.Vect().Dot(phiFit_phi_P4.Vect())/phiFit_phi_P4.P();
-
             ftree->phiFit_dR_Kp_Km  = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_Km_P4.Eta(),  phiFit_Km_P4.Phi());
             ftree->phiFit_dR_Kp_phi = reco::deltaR(phiFit_Kp_P4.Eta(), phiFit_Kp_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
             ftree->phiFit_dR_Km_phi = reco::deltaR(phiFit_Km_P4.Eta(), phiFit_Km_P4.Phi(), phiFit_phi_P4.Eta(), phiFit_phi_P4.Phi());
 
-            ftree->dxy_Kp_phi = sqrt( pow( Kp_PF.vx()-phi_Vertex.position().x(), 2 ) + pow( Kp_PF.vy()-phi_Vertex.position().y(), 2 ) );
-            ftree->dxy_Km_phi = sqrt( pow( Km_PF.vx()-phi_Vertex.position().x(), 2 ) + pow( Km_PF.vy()-phi_Vertex.position().y(), 2 ) );
-
-            ftree->dz_Kp_phi = abs( Kp_PF.vz()-phi_Vertex.position().z() );
-            ftree->dz_Km_phi = abs( Km_PF.vz()-phi_Vertex.position().z() );
+            reco::Track phi_dummy_track(0.0, 0.0, reco::Track::Point(phi_Vertex.position().x(), phi_Vertex.position().y(), phi_Vertex.position().z()), reco::Track::Vector(phiFit_phi_P4.Px(), phiFit_phi_P4.Py(), phiFit_phi_P4.Pz()), 0, dummy_track_cov);
 
             if( ftree->phiFit_dR_Kp_phi > 0.05 ) continue;
             if( ftree->phiFit_dR_Km_phi > 0.05 ) continue;
             if( ftree->phiFit_phi_invm < 0.99 ) continue;
             if( ftree->phiFit_phi_invm > 1.05 ) continue;
-
-            ftree->alpha_phi = (ftree->phiFit_Kp_pl - ftree->phiFit_Km_pl) / (ftree->phiFit_Kp_pl + ftree->phiFit_Km_pl);
-            ftree->beta_phi = std::sqrt(pow(ftree->phiFit_phi_p,2) / (pow(ftree->phiFit_phi_invm,2) + pow(ftree->phiFit_phi_p,2)));
-            ftree->APvar_phi = pow(ftree->phiFit_Kp_pp,2) + pow(ftree->alpha_phi*ftree->beta_phi*ftree->phiFit_phi_invm,2)/4;
-            /* if(APvar_phi < 0.006) continue; */
-            /* if(APvar_phi > 0.028) continue; */
 
             ftree->num_reco_phi++;
 
@@ -1194,11 +1247,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->dR_pi_Ds  = reco::deltaR(pi_P4.Eta(),  pi_P4.Phi(),  Ds_P4.Eta(), Ds_P4.Phi());
                 ftree->dR_phi_Ds = reco::deltaR(phi_P4.Eta(), phi_P4.Phi(), Ds_P4.Eta(), Ds_P4.Phi());
 
-                ftree->pi_pp  = pi_P4.Vect().Pt(Ds_P4.Vect());
-                ftree->pi_pl  = pi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
-                ftree->phi_pp = phi_P4.Vect().Pt(Ds_P4.Vect());
-                ftree->phi_pl = phi_P4.Vect().Dot(Ds_P4.Vect())/Ds_P4.P();
-
                 TLorentzVector phiFit_pi_P4 = pi_P4;
                 ftree->phiFit_pi_eta = phiFit_pi_P4.Eta();
                 ftree->phiFit_pi_phi = phiFit_pi_P4.Phi();
@@ -1222,11 +1270,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->phiFit_Ds_pz   = phiFit_Ds_P4.Pz();
                 ftree->phiFit_Ds_invm = phiFit_Ds_P4.M();
 
-                ftree->phiFit_pi_pp  = phiFit_pi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
-                ftree->phiFit_pi_pl  = phiFit_pi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
-                ftree->phiFit_phi_pp = phiFit_phi_P4.Vect().Pt(phiFit_Ds_P4.Vect());
-                ftree->phiFit_phi_pl = phiFit_phi_P4.Vect().Dot(phiFit_Ds_P4.Vect())/phiFit_Ds_P4.P();
-
                 ftree->phiFit_dR_Kp_Ds  = reco::deltaR(phiFit_Kp_P4.Eta(),  phiFit_Kp_P4.Phi(),  phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
                 ftree->phiFit_dR_Km_Ds  = reco::deltaR(phiFit_Km_P4.Eta(),  phiFit_Km_P4.Phi(),  phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
                 ftree->phiFit_dR_pi_Ds  = reco::deltaR(phiFit_pi_P4.Eta(),  phiFit_pi_P4.Phi(),  phiFit_Ds_P4.Eta(), phiFit_Ds_P4.Phi());
@@ -1235,14 +1278,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 if( ftree->dR_Kp_pi > 0.4 ) continue;
                 if( ftree->dR_Km_pi > 0.4 ) continue;
                 if( ftree->phiFit_dR_pi_phi > 0.4 ) continue;
-
-                ftree->dxy_Kp_pi  = sqrt( pow( Kp_PF.vx()-pi_PF.vx(), 2 ) + pow( Kp_PF.vy()-pi_PF.vy(), 2 ) );
-                ftree->dxy_Km_pi  = sqrt( pow( Km_PF.vx()-pi_PF.vx(), 2 ) + pow( Km_PF.vy()-pi_PF.vy(), 2 ) );
-                ftree->dxy_pi_phi = sqrt( pow( pi_PF.vx()-phi_Vertex.position().x(), 2 ) + pow( pi_PF.vy()-phi_Vertex.position().y(), 2 ) );
-
-                ftree->dz_Kp_pi  = abs( Kp_PF.vz()-pi_PF.vz() );
-                ftree->dz_Km_pi  = abs( Km_PF.vz()-pi_PF.vz() );
-                ftree->dz_pi_phi = abs( pi_PF.vz()-phi_Vertex.position().z() );
 
                 ftree->Ds_Reset();
                 std::vector<reco::TransientTrack> Ds_Tracks = {
@@ -1257,7 +1292,7 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 if( !(Ds_Vertex.hasRefittedTracks()) ) continue;
                 if( Ds_Vertex.normalisedChiSquared() < 0 ) continue;
                 if( Ds_Vertex.normalisedChiSquared() > 10 ) continue;
-
+                
                 ftree->DsFit_chi2     = Ds_Vertex.totalChiSquared();
                 ftree->DsFit_ndof     = Ds_Vertex.degreesOfFreedom();
                 ftree->DsFit_chi2ndof = Ds_Vertex.normalisedChiSquared();
@@ -1329,16 +1364,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 TLorentzVector DsFit_Mconstraint_Ds_P4 = DsFit_Mconstraint_phi_P4 + DsFit_pi_P4;
                 ftree->DsFit_Mconstraint_Ds_invm = DsFit_Mconstraint_Ds_P4.M();
 
-                ftree->DsFit_Kp_pp = DsFit_Kp_P4.Vect().Pt(DsFit_phi_P4.Vect());
-                ftree->DsFit_Kp_pl = DsFit_Kp_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
-                ftree->DsFit_Km_pp = DsFit_Km_P4.Vect().Pt(DsFit_phi_P4.Vect());
-                ftree->DsFit_Km_pl = DsFit_Km_P4.Vect().Dot(DsFit_phi_P4.Vect())/DsFit_phi_P4.P();
-
-                ftree->DsFit_phi_pp = DsFit_phi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
-                ftree->DsFit_phi_pl = DsFit_phi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
-                ftree->DsFit_pi_pp  = DsFit_pi_P4.Vect().Pt(DsFit_Ds_P4.Vect());
-                ftree->DsFit_pi_pl  = DsFit_pi_P4.Vect().Dot(DsFit_Ds_P4.Vect())/DsFit_Ds_P4.P();
-
                 ftree->DsFit_dR_Kp_Km  = reco::deltaR(DsFit_Kp_P4.Eta(),  DsFit_Kp_P4.Phi(),  DsFit_Km_P4.Eta(),  DsFit_Km_P4.Phi());
                 ftree->DsFit_dR_Kp_phi = reco::deltaR(DsFit_Kp_P4.Eta(),  DsFit_Kp_P4.Phi(),  DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
                 ftree->DsFit_dR_Km_phi = reco::deltaR(DsFit_Km_P4.Eta(),  DsFit_Km_P4.Phi(),  DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi());
@@ -1350,16 +1375,11 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 ftree->DsFit_dR_phi_Ds = reco::deltaR(DsFit_phi_P4.Eta(), DsFit_phi_P4.Phi(), DsFit_Ds_P4.Eta(),  DsFit_Ds_P4.Phi());
                 ftree->DsFit_dR_pi_Ds  = reco::deltaR(DsFit_pi_P4.Eta(),  DsFit_pi_P4.Phi(),  DsFit_Ds_P4.Eta(),  DsFit_Ds_P4.Phi());
 
-                ftree->dxy_Kp_Ds  = sqrt( pow( Kp_PF.vx()-Ds_Vertex.position().x(), 2 ) + pow( Kp_PF.vy()-Ds_Vertex.position().y(), 2 ) );
-                ftree->dxy_Km_Ds  = sqrt( pow( Km_PF.vx()-Ds_Vertex.position().x(), 2 ) + pow( Km_PF.vy()-Ds_Vertex.position().y(), 2 ) );
-                ftree->dxy_pi_Ds  = sqrt( pow( pi_PF.vx()-Ds_Vertex.position().x(), 2 ) + pow( pi_PF.vy()-Ds_Vertex.position().y(), 2 ) );
                 ftree->dxy_phi_Ds = sqrt( pow( phi_Vertex.position().x()-Ds_Vertex.position().x(), 2 ) + pow( phi_Vertex.position().y()-Ds_Vertex.position().y(), 2 ) );
-
-                ftree->dz_Kp_Ds  = abs( Kp_PF.vz()-Ds_Vertex.position().z() );
-                ftree->dz_Km_Ds  = abs( Km_PF.vz()-Ds_Vertex.position().z() );
-                ftree->dz_pi_Ds  = abs( pi_PF.vz()-Ds_Vertex.position().z() );
                 ftree->dz_phi_Ds = abs( phi_Vertex.position().z()-Ds_Vertex.position().z() );
 
+                reco::Track Ds_dummy_track(0.0, 0.0, reco::Track::Point(Ds_Vertex.position().x(), Ds_Vertex.position().y(), Ds_Vertex.position().z()), reco::Track::Vector(DsFit_Ds_P4.Px(), DsFit_Ds_P4.Py(), DsFit_Ds_P4.Pz()), 0, dummy_track_cov);
+                
                 if( ftree->DsFit_dR_Kp_Ds > 0.15 ) continue;
                 if( ftree->DsFit_dR_Km_Ds > 0.15 ) continue;
                 if( ftree->DsFit_dR_pi_Ds > 0.4 ) continue;
@@ -1367,14 +1387,7 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 if( ftree->DsFit_Ds_invm < 1.85) continue;
                 if( ftree->DsFit_Ds_invm > 2.1) continue;
 
-                double pst_Ds = sqrt((pow(ftree->DsFit_Ds_invm,4)+pow(ftree->phiFit_phi_invm,4)+pow(Mass_pi,4)-2*pow(ftree->DsFit_Ds_invm*ftree->phiFit_phi_invm,2)-2*pow(ftree->DsFit_Ds_invm*Mass_pi,2)-2*pow(ftree->phiFit_phi_invm*Mass_pi,2))/(4*pow(ftree->DsFit_Ds_invm,2)));
-                double Est_phi = std::sqrt(pow(ftree->phiFit_phi_invm,2) + pow(pst_Ds,2));
-                double Est_pi = std::sqrt(pow(Mass_pi,2) + pow(pst_Ds,2));
-                ftree->alpha_Ds = (ftree->DsFit_phi_pl - ftree->DsFit_pi_pl) / (ftree->DsFit_phi_pl + ftree->DsFit_pi_pl);
-                ftree->beta_Ds = std::sqrt(pow(ftree->DsFit_Ds_p,2) / (pow(ftree->DsFit_Ds_invm,2) + pow(ftree->DsFit_Ds_p,2)));
-                ftree->APvar_Ds = pow(ftree->DsFit_phi_pp,2) + pow(ftree->beta_Ds*(Est_phi-Est_pi)-ftree->alpha_Ds*ftree->beta_Ds*(Est_phi+Est_pi),2)/4;
-                /* if(ftree->APvar_Ds < 0.4) continue; */
-                /* if(ftree->APvar_Ds > 0.6) continue; */
+                ftree->num_reco_Ds++;
 
                 GlobalPoint Ds_pos = Ds_Vertex.position();
                 GlobalError Ds_cov = Ds_Vertex.positionError();
@@ -1408,7 +1421,6 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 Measurement1D Ds_primvtx_FD_withErr(ftree->Ds_primvtx_FD, ftree->Ds_primvtx_FDerr);
                 ftree->Ds_primvtx_FDchi2 = Ds_primvtx_FD_withErr.significance();
 
-
                 ftree->Ds_primvtx_dira = Ds_primvtx_pos.dot(Ds_PDirec) / ( Ds_primvtx_pos.mag() * Ds_PDirec.mag() );
                 ftree->Ds_primvtx_dira_angle = std::acos(ftree->Ds_primvtx_dira);
 
@@ -1430,73 +1442,79 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     ftree->pi_primvtx_iperr = pi_primvtx_IPresult.second.error();
                     ftree->pi_primvtx_ipchi2 = pi_primvtx_IPresult.second.significance();
                 }
-
-                ftree->num_reco_Ds++;
-
-
-
-                ftree->PV_noDs_Reset();
+                std::pair<bool, Measurement1D> phi_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(phi_dummy_track), primaryvertex);
+                if( phi_primvtx_IPresult.first ){
+                    ftree->phi_primvtx_ip = phi_primvtx_IPresult.second.value();
+                    ftree->phi_primvtx_iperr = phi_primvtx_IPresult.second.error();
+                    ftree->phi_primvtx_ipchi2 = phi_primvtx_IPresult.second.significance();
+                }
+                std::pair<bool, Measurement1D> Ds_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(Ds_dummy_track), primaryvertex);
+                if( Ds_primvtx_IPresult.first ){
+                    ftree->Ds_primvtx_ip = Ds_primvtx_IPresult.second.value();
+                    ftree->Ds_primvtx_iperr = Ds_primvtx_IPresult.second.error();
+                    ftree->Ds_primvtx_ipchi2 = Ds_primvtx_IPresult.second.significance();
+                }
 
                 reco::TrackCollection PVtracks_noDs;
+                reco::TrackCollection PVtracks_withDs;
+
                 for(size_t it=0; it<packedHandle->size(); it++){
                     if(it==static_cast<size_t>(idx_Kp_vec[i])) continue;
                     if(it==static_cast<size_t>(idx_Km_vec[j])) continue;
                     if(it==static_cast<size_t>(idx_pi_vec[k])) continue;
                     const auto& pf = (*packedHandle)[it];
+
                     if(reco::deltaR(DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.3){
-                        ftree->Ds_Iso_R0p3 += pf.pt(); 
+                        if( abs(pf.pdgId()) == 211 ) ftree->Ds_IsoR03_sumChargedHadronPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR03_sumNeutralHadronPt += pf.pt();
+                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR03_sumPhotonPt += pf.pt();
+
+                        if( pf.fromPV() <= 1 ) ftree->Ds_IsoR03_sumPUPt += pf.pt();
                     }
+
                     if(reco::deltaR(DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.4){
-                        ftree->Ds_Iso_R0p4 += pf.pt(); 
+                        if( abs(pf.pdgId()) == 211 ) ftree->Ds_IsoR04_sumChargedHadronPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR04_sumNeutralHadronPt += pf.pt();
+                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR04_sumPhotonPt += pf.pt();
+
+                        if( pf.fromPV() <= 1 ) ftree->Ds_IsoR04_sumPUPt += pf.pt();
                     }
+
                     if( ! pf.hasTrackDetails() ) continue;
                     PVtracks_noDs.push_back(pf.pseudoTrack());
+                    PVtracks_withDs.push_back(pf.pseudoTrack());
                 }
+                PVtracks_withDs.push_back(Ds_dummy_track);
 
-                ftree->Ds_IsoRel_R0p3 = ftree->Ds_Iso_R0p3 / ftree->DsFit_Ds_pt;
-                ftree->Ds_IsoRel_R0p4 = ftree->Ds_Iso_R0p4 / ftree->DsFit_Ds_pt;
+                ftree->Ds_PFIsoR03 = ( ftree->Ds_IsoR03_sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR03_sumNeutralHadronPt + ftree->Ds_IsoR03_sumPhotonPt - 0.5*ftree->Ds_IsoR03_sumPUPt) ) / ftree->DsFit_Ds_pt;
+                ftree->Ds_PFIsoR04 = ( ftree->Ds_IsoR04_sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR04_sumNeutralHadronPt + ftree->Ds_IsoR04_sumPhotonPt - 0.5*ftree->Ds_IsoR04_sumPUPt) ) / ftree->DsFit_Ds_pt;
 
-                std::vector<TransientVertex> pvs_noDs_withBS = revertex->makeVertices(PVtracks_noDs, *bsHandle, iSetup, "WithBS");
-                if( !(pvs_noDs_withBS.empty()) ){
-                    reco::Vertex pv_noDs_withBS = reco::Vertex(pvs_noDs_withBS.front());
+                ftree->PV_noDs_Reset();
 
-                    ftree->PV_noDs_withBS_IsValid = pv_noDs_withBS.isValid();
-                    ftree->PV_noDs_withBS_IsFake = pv_noDs_withBS.isFake();
-                    ftree->PV_noDs_withBS_chi2 = pv_noDs_withBS.chi2();
-                    ftree->PV_noDs_withBS_ndof = pv_noDs_withBS.ndof();
-                    ftree->PV_noDs_withBS_chi2ndof = pv_noDs_withBS.chi2()/pv_noDs_withBS.ndof();
-                    ftree->PV_noDs_withBS_x = pv_noDs_withBS.x();
-                    ftree->PV_noDs_withBS_y = pv_noDs_withBS.y();
-                    ftree->PV_noDs_withBS_z = pv_noDs_withBS.z();
-                    ftree->PV_noDs_withBS_xerr = pv_noDs_withBS.xError();
-                    ftree->PV_noDs_withBS_yerr = pv_noDs_withBS.yError();
-                    ftree->PV_noDs_withBS_zerr = pv_noDs_withBS.zError();
-                }
+                std::vector<TransientVertex> pvs_noDs = revertex->makeVertices(PVtracks_noDs, *bsHandle, iSetup, "noBS");
+                if( !(pvs_noDs.empty()) ){
+                    reco::Vertex pv_noDs = reco::Vertex(pvs_noDs.front());
 
-                std::vector<TransientVertex> pvs_noDs_noBS = revertex->makeVertices(PVtracks_noDs, *bsHandle, iSetup, "noBS");
-                if( !(pvs_noDs_noBS.empty()) ){
-                    reco::Vertex pv_noDs_noBS = reco::Vertex(pvs_noDs_noBS.front());
+                    ftree->PV_noDs_IsValid = pv_noDs.isValid();
+                    ftree->PV_noDs_IsFake = pv_noDs.isFake();
+                    ftree->PV_noDs_chi2 = pv_noDs.chi2();
+                    ftree->PV_noDs_ndof = pv_noDs.ndof();
+                    ftree->PV_noDs_chi2ndof = pv_noDs.chi2()/pv_noDs.ndof();
+                    ftree->PV_noDs_x = pv_noDs.x();
+                    ftree->PV_noDs_y = pv_noDs.y();
+                    ftree->PV_noDs_z = pv_noDs.z();
+                    ftree->PV_noDs_xerr = pv_noDs.xError();
+                    ftree->PV_noDs_yerr = pv_noDs.yError();
+                    ftree->PV_noDs_zerr = pv_noDs.zError();
 
-                    ftree->PV_noDs_noBS_IsValid = pv_noDs_noBS.isValid();
-                    ftree->PV_noDs_noBS_IsFake = pv_noDs_noBS.isFake();
-                    ftree->PV_noDs_noBS_chi2 = pv_noDs_noBS.chi2();
-                    ftree->PV_noDs_noBS_ndof = pv_noDs_noBS.ndof();
-                    ftree->PV_noDs_noBS_chi2ndof = pv_noDs_noBS.chi2()/pv_noDs_noBS.ndof();
-                    ftree->PV_noDs_noBS_x = pv_noDs_noBS.x();
-                    ftree->PV_noDs_noBS_y = pv_noDs_noBS.y();
-                    ftree->PV_noDs_noBS_z = pv_noDs_noBS.z();
-                    ftree->PV_noDs_noBS_xerr = pv_noDs_noBS.xError();
-                    ftree->PV_noDs_noBS_yerr = pv_noDs_noBS.yError();
-                    ftree->PV_noDs_noBS_zerr = pv_noDs_noBS.zError();
+                    GlobalPoint PV_noDs_pos = pvs_noDs.front().position();
+                    GlobalError PV_noDs_cov = pvs_noDs.front().positionError();
 
-                    GlobalPoint PV_noDs_noBS_pos = pvs_noDs_noBS.front().position();
-                    GlobalError PV_noDs_noBS_cov = pvs_noDs_noBS.front().positionError();
-
-                    GlobalVector Ds_PVnoDs_pos = Ds_pos - PV_noDs_noBS_pos;
+                    GlobalVector Ds_PVnoDs_pos = Ds_pos - PV_noDs_pos;
                     ftree->Ds_PVnoDs_FDxy = std::hypot(Ds_PVnoDs_pos.x(), Ds_PVnoDs_pos.y());
                     ftree->Ds_PVnoDs_FDz = std::abs(Ds_PVnoDs_pos.z());
                     ftree->Ds_PVnoDs_FD = std::hypot(ftree->Ds_PVnoDs_FDxy, ftree->Ds_PVnoDs_FDz);
-                    GlobalError Ds_PVnoDs_coverr = Ds_cov + PV_noDs_noBS_cov;
+                    GlobalError Ds_PVnoDs_coverr = Ds_cov + PV_noDs_cov;
                     AlgebraicSymMatrix33 Ds_PVnoDs_cov = Ds_PVnoDs_coverr.matrix();
 
                     ftree->Ds_PVnoDs_FDxyerr = std::sqrt(
@@ -1523,31 +1541,125 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     ftree->Ds_PVnoDs_dira = Ds_PVnoDs_pos.dot(Ds_PDirec) / ( Ds_PVnoDs_pos.mag() * Ds_PDirec.mag() );
                     ftree->Ds_PVnoDs_dira_angle = std::acos(ftree->Ds_PVnoDs_dira);
 
-                    std::pair<bool, Measurement1D> Kp_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[0], pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> Kp_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[0], pv_noDs);
                     if( Kp_PVnoDs_IPresult.first ){
                         ftree->Kp_PVnoDs_ip = Kp_PVnoDs_IPresult.second.value();
                         ftree->Kp_PVnoDs_iperr = Kp_PVnoDs_IPresult.second.error();
                         ftree->Kp_PVnoDs_ipchi2 = Kp_PVnoDs_IPresult.second.significance();
                     }
-                    std::pair<bool, Measurement1D> Km_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[1], pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> Km_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[1], pv_noDs);
                     if( Km_PVnoDs_IPresult.first ){
                         ftree->Km_PVnoDs_ip = Km_PVnoDs_IPresult.second.value();
                         ftree->Km_PVnoDs_iperr = Km_PVnoDs_IPresult.second.error();
                         ftree->Km_PVnoDs_ipchi2 = Km_PVnoDs_IPresult.second.significance();
                     }
-                    std::pair<bool, Measurement1D> pi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[2], pv_noDs_noBS);
+                    std::pair<bool, Measurement1D> pi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[2], pv_noDs);
                     if( pi_PVnoDs_IPresult.first ){
                         ftree->pi_PVnoDs_ip = pi_PVnoDs_IPresult.second.value();
                         ftree->pi_PVnoDs_iperr = pi_PVnoDs_IPresult.second.error();
                         ftree->pi_PVnoDs_ipchi2 = pi_PVnoDs_IPresult.second.significance();
                     }
+                    std::pair<bool, Measurement1D> phi_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(phi_dummy_track), primaryvertex);
+                    if( phi_PVnoDs_IPresult.first ){
+                        ftree->phi_PVnoDs_ip = phi_PVnoDs_IPresult.second.value();
+                        ftree->phi_PVnoDs_iperr = phi_PVnoDs_IPresult.second.error();
+                        ftree->phi_PVnoDs_ipchi2 = phi_PVnoDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> Ds_PVnoDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(Ds_dummy_track), primaryvertex);
+                    if( Ds_PVnoDs_IPresult.first ){
+                        ftree->Ds_PVnoDs_ip = Ds_PVnoDs_IPresult.second.value();
+                        ftree->Ds_PVnoDs_iperr = Ds_PVnoDs_IPresult.second.error();
+                        ftree->Ds_PVnoDs_ipchi2 = Ds_PVnoDs_IPresult.second.significance();
+                    }
                 }
 
-                if( idx_Kp_vec[i] == ftree->match_Kp_idx ) ftree->Kp_match = true;
+                std::vector<TransientVertex> pvs_withDs = revertex->makeVertices(PVtracks_withDs, *bsHandle, iSetup, "noBS");
+                if( !(pvs_withDs.empty()) ){
+                    reco::Vertex pv_withDs = reco::Vertex(pvs_withDs.front());
+
+                    ftree->PV_withDs_IsValid = pv_withDs.isValid();
+                    ftree->PV_withDs_IsFake = pv_withDs.isFake();
+                    ftree->PV_withDs_chi2 = pv_withDs.chi2();
+                    ftree->PV_withDs_ndof = pv_withDs.ndof();
+                    ftree->PV_withDs_chi2ndof = pv_withDs.chi2()/pv_withDs.ndof();
+                    ftree->PV_withDs_x = pv_withDs.x();
+                    ftree->PV_withDs_y = pv_withDs.y();
+                    ftree->PV_withDs_z = pv_withDs.z();
+                    ftree->PV_withDs_xerr = pv_withDs.xError();
+                    ftree->PV_withDs_yerr = pv_withDs.yError();
+                    ftree->PV_withDs_zerr = pv_withDs.zError();
+
+                    GlobalPoint PV_withDs_pos = pvs_withDs.front().position();
+                    GlobalError PV_withDs_cov = pvs_withDs.front().positionError();
+
+                    GlobalVector Ds_PVwithDs_pos = Ds_pos - PV_withDs_pos;
+                    ftree->Ds_PVwithDs_FDxy = std::hypot(Ds_PVwithDs_pos.x(), Ds_PVwithDs_pos.y());
+                    ftree->Ds_PVwithDs_FDz = std::abs(Ds_PVwithDs_pos.z());
+                    ftree->Ds_PVwithDs_FD = std::hypot(ftree->Ds_PVwithDs_FDxy, ftree->Ds_PVwithDs_FDz);
+                    GlobalError Ds_PVwithDs_coverr = Ds_cov + PV_withDs_cov;
+                    AlgebraicSymMatrix33 Ds_PVwithDs_cov = Ds_PVwithDs_coverr.matrix();
+
+                    ftree->Ds_PVwithDs_FDxyerr = std::sqrt(
+                            Ds_PVwithDs_pos.x()*Ds_PVwithDs_pos.x()*Ds_PVwithDs_cov(0,0) +
+                            Ds_PVwithDs_pos.y()*Ds_PVwithDs_pos.y()*Ds_PVwithDs_cov(1,1) +
+                            2*Ds_PVwithDs_pos.x()*Ds_PVwithDs_pos.y()*Ds_PVwithDs_cov(0,1) ) / ftree->Ds_PVwithDs_FDxy;
+                    Measurement1D Ds_PVwithDs_FDxy_withErr(ftree->Ds_PVwithDs_FDxy, ftree->Ds_PVwithDs_FDxyerr);
+                    ftree->Ds_PVwithDs_FDxychi2 = Ds_PVwithDs_FDxy_withErr.significance();
+
+                    ftree->Ds_PVwithDs_FDzerr = std::sqrt( Ds_PVwithDs_cov(2,2) );
+                    Measurement1D Ds_PVwithDs_FDz_withErr(ftree->Ds_PVwithDs_FDz, ftree->Ds_PVwithDs_FDzerr);
+                    ftree->Ds_PVwithDs_FDzchi2 = Ds_PVwithDs_FDz_withErr.significance();
+
+                    ftree->Ds_PVwithDs_FDerr = std::sqrt(
+                            Ds_PVwithDs_pos.x()*Ds_PVwithDs_pos.x()*Ds_PVwithDs_cov(0,0) +
+                            Ds_PVwithDs_pos.y()*Ds_PVwithDs_pos.y()*Ds_PVwithDs_cov(1,1) +
+                            Ds_PVwithDs_pos.z()*Ds_PVwithDs_pos.z()*Ds_PVwithDs_cov(2,2) +
+                            2*Ds_PVwithDs_pos.x()*Ds_PVwithDs_pos.y()*Ds_PVwithDs_cov(0,1) +
+                            2*Ds_PVwithDs_pos.x()*Ds_PVwithDs_pos.z()*Ds_PVwithDs_cov(0,2) +
+                            2*Ds_PVwithDs_pos.y()*Ds_PVwithDs_pos.z()*Ds_PVwithDs_cov(1,2)) / ftree->Ds_PVwithDs_FD;
+                    Measurement1D Ds_PVwithDs_FD_withErr(ftree->Ds_PVwithDs_FD, ftree->Ds_PVwithDs_FDerr);
+                    ftree->Ds_PVwithDs_FDchi2 = Ds_PVwithDs_FD_withErr.significance();
+
+                    ftree->Ds_PVwithDs_dira = Ds_PVwithDs_pos.dot(Ds_PDirec) / ( Ds_PVwithDs_pos.mag() * Ds_PDirec.mag() );
+                    ftree->Ds_PVwithDs_dira_angle = std::acos(ftree->Ds_PVwithDs_dira);
+
+                    std::pair<bool, Measurement1D> Kp_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[0], pv_withDs);
+                    if( Kp_PVwithDs_IPresult.first ){
+                        ftree->Kp_PVwithDs_ip = Kp_PVwithDs_IPresult.second.value();
+                        ftree->Kp_PVwithDs_iperr = Kp_PVwithDs_IPresult.second.error();
+                        ftree->Kp_PVwithDs_ipchi2 = Kp_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> Km_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[1], pv_withDs);
+                    if( Km_PVwithDs_IPresult.first ){
+                        ftree->Km_PVwithDs_ip = Km_PVwithDs_IPresult.second.value();
+                        ftree->Km_PVwithDs_iperr = Km_PVwithDs_IPresult.second.error();
+                        ftree->Km_PVwithDs_ipchi2 = Km_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> pi_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D(DsFit_Tracks[2], pv_withDs);
+                    if( pi_PVwithDs_IPresult.first ){
+                        ftree->pi_PVwithDs_ip = pi_PVwithDs_IPresult.second.value();
+                        ftree->pi_PVwithDs_iperr = pi_PVwithDs_IPresult.second.error();
+                        ftree->pi_PVwithDs_ipchi2 = pi_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> phi_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(phi_dummy_track), primaryvertex);
+                    if( phi_PVwithDs_IPresult.first ){
+                        ftree->phi_PVwithDs_ip = phi_PVwithDs_IPresult.second.value();
+                        ftree->phi_PVwithDs_iperr = phi_PVwithDs_IPresult.second.error();
+                        ftree->phi_PVwithDs_ipchi2 = phi_PVwithDs_IPresult.second.significance();
+                    }
+                    std::pair<bool, Measurement1D> Ds_PVwithDs_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(Ds_dummy_track), primaryvertex);
+                    if( Ds_PVwithDs_IPresult.first ){
+                        ftree->Ds_PVwithDs_ip = Ds_PVwithDs_IPresult.second.value();
+                        ftree->Ds_PVwithDs_iperr = Ds_PVwithDs_IPresult.second.error();
+                        ftree->Ds_PVwithDs_ipchi2 = Ds_PVwithDs_IPresult.second.significance();
+                    }
+                }
+
+                if( idx_Kp_vec[i] == bestKp.index ) ftree->Kp_match = true;
                 else ftree->Kp_match = false;
-                if( idx_Km_vec[j] == ftree->match_Km_idx ) ftree->Km_match = true;
+                if( idx_Km_vec[j] == bestKm.index ) ftree->Km_match = true;
                 else ftree->Km_match = false;
-                if( idx_pi_vec[k] == ftree->match_pi_idx ) ftree->pi_match = true;
+                if( idx_pi_vec[k] == bestpi.index ) ftree->pi_match = true;
                 else ftree->pi_match = false;
 
                 if(ftree->Kp_match && ftree->Km_match && ftree->pi_match) ftree->match_entry = true;
@@ -1555,24 +1667,95 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 if(!ftree->Kp_match && !ftree->Km_match && !ftree->pi_match) ftree->non_match_entry = true;
                 else ftree->non_match_entry = false;
 
-                ftree->Fill_Vector();
+                ftree->Ds_Fill_Vector();
             }
         }
     }
 
-    int num_candidates = ftree->num_reco_Ds;
+;
 
-    double maxPT = 0;
-    int maxidx = -1;
+    double max_Ds_pt = 0;
+    int maxidx_Ds_pt = -1;
 
-    for(int i=0; i<num_candidates; i++){
-        if(ftree->DsFit_Ds_pt_vec[i]>maxPT){
-            maxPT = ftree->DsFit_Ds_pt_vec[i];
-            maxidx = i;
+    for(int i=0; i<ftree->num_reco_Ds; i++){
+        if(ftree->DsFit_Ds_pt_vec[i]>max_Ds_pt){
+            max_Ds_pt = ftree->DsFit_Ds_pt_vec[i];
+            maxidx_Ds_pt = i;
         }
     }
-    if(maxidx > -1) {
-        ftree->Best_Fill_Vector(maxidx);
+    if(maxidx_Ds_pt > -1) {
+        ftree->Best_Ds_Fill_Vector(maxidx_Ds_pt);
+    }
+
+
+    double max_mu_pt = 0;
+    int maxidx_mu_pt = -1;
+
+    for(size_t i=0; i<muonHandle->size(); i++){
+        const auto& muon = (*muonHandle)[i];
+        if(muon.charge() != -1) continue;
+        if(muon.pt() < 0.5) continue;
+        if(muon.p() < 1) continue;
+        if(!muon.isTightMuon(primaryvertex)) continue;
+        
+        if(muon.pt()>max_mu_pt){
+            max_mu_pt = muon.pt();
+            maxidx_mu_pt = i;
+        }
+    }
+
+    ftree->mu_Reset();
+    if(maxidx_mu_pt > -1) {
+
+        const auto& best_muon = (*muonHandle)[maxidx_mu_pt];
+
+        ftree->best_mu_charge = best_muon.charge();
+        ftree->best_mu_eta = best_muon.eta();
+        ftree->best_mu_phi = best_muon.phi();
+        ftree->best_mu_vx = best_muon.vx();
+        ftree->best_mu_vy = best_muon.vy();
+        ftree->best_mu_vz = best_muon.vz();
+        ftree->best_mu_p = best_muon.p();
+        ftree->best_mu_pt = best_muon.pt();
+        ftree->best_mu_px = best_muon.px();
+        ftree->best_mu_py = best_muon.py();
+        ftree->best_mu_pz = best_muon.pz();
+        ftree->best_mu_isHighPt = best_muon.isHighPtMuon(primaryvertex);
+        ftree->best_mu_isLoose = best_muon.isLooseMuon();
+        ftree->best_mu_isMedium = best_muon.isMediumMuon();
+        ftree->best_mu_isSoft = best_muon.isSoftMuon(primaryvertex);
+        ftree->best_mu_isTight = best_muon.isTightMuon(primaryvertex);
+        ftree->best_mu_isPF = best_muon.isPFMuon();
+        ftree->best_mu_isTracker = best_muon.isTrackerMuon();
+        ftree->best_mu_isGlobal = best_muon.isGlobalMuon();
+        ftree->best_mu_IsoR03_sumChargedHadronPt = best_muon.pfIsolationR03().sumChargedHadronPt;
+        ftree->best_mu_IsoR03_sumChargedParticlePt = best_muon.pfIsolationR03().sumChargedParticlePt;
+        ftree->best_mu_IsoR03_sumNeutralHadronEt = best_muon.pfIsolationR03().sumNeutralHadronEt;
+        ftree->best_mu_IsoR03_sumPhotonEt = best_muon.pfIsolationR03().sumPhotonEt;
+        ftree->best_mu_IsoR03_sumPUPt = best_muon.pfIsolationR03().sumPUPt;
+        ftree->best_mu_PFIsoR03 = (ftree->best_mu_IsoR03_sumChargedHadronPt + std::max(0.0, ftree->best_mu_IsoR03_sumNeutralHadronEt + ftree->best_mu_IsoR03_sumPhotonEt - 0.5*ftree->best_mu_IsoR03_sumPUPt))/ftree->best_mu_pt;
+        ftree->best_mu_IsoR04_sumChargedHadronPt = best_muon.pfIsolationR04().sumChargedHadronPt;
+        ftree->best_mu_IsoR04_sumChargedParticlePt = best_muon.pfIsolationR04().sumChargedParticlePt;
+        ftree->best_mu_IsoR04_sumNeutralHadronEt = best_muon.pfIsolationR04().sumNeutralHadronEt;
+        ftree->best_mu_IsoR04_sumPhotonEt = best_muon.pfIsolationR04().sumPhotonEt;
+        ftree->best_mu_IsoR04_sumPUPt = best_muon.pfIsolationR04().sumPUPt;
+        ftree->best_mu_PFIsoR04 = (ftree->best_mu_IsoR04_sumChargedHadronPt + std::max(0.0, ftree->best_mu_IsoR04_sumNeutralHadronEt + ftree->best_mu_IsoR04_sumPhotonEt - 0.5*ftree->best_mu_IsoR04_sumPUPt))/ftree->best_mu_pt;
+        ftree->best_mu_primvtx_dxy = best_muon.muonBestTrack()->dxy(primaryvertex.position());
+        ftree->best_mu_primvtx_dxyerr = best_muon.muonBestTrack()->dxyError();
+        ftree->best_mu_primvtx_dz = best_muon.muonBestTrack()->dz(primaryvertex.position());
+        ftree->best_mu_primvtx_dzerr = best_muon.muonBestTrack()->dzError();
+
+        std::pair<bool, Measurement1D> best_mu_primvtx_IPresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(best_muon.muonBestTrack()), primaryvertex);
+        if( best_mu_primvtx_IPresult.first ){
+            ftree->best_mu_primvtx_ip = best_mu_primvtx_IPresult.second.value();
+            ftree->best_mu_primvtx_iperr = best_mu_primvtx_IPresult.second.error();
+            ftree->best_mu_primvtx_ipchi2 = best_mu_primvtx_IPresult.second.significance();
+        }
+
+        if( maxidx_mu_pt == bestmu.index ) ftree->best_mu_match = true;
+        else ftree->best_mu_match = false;
+
+        ftree->Best_mu_Fill_Vector();
     }
 
     ftree->tree->Fill();

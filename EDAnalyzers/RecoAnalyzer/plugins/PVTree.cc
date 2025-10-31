@@ -22,10 +22,15 @@ void PVTree::Init()
     num_match_Kp = 0;
     num_match_Km = 0;
     num_match_pi = 0;
+    num_match_mu = 0;
+    num_tight_match_Kp = 0;
+    num_tight_match_Km = 0;
+    num_tight_match_pi = 0;
 
-    match_Kp_idx = null;
-    match_Km_idx = null;
-    match_pi_idx = null;
+    match_dR_Kp = null;
+    match_dR_Km = null;
+    match_dR_pi = null;
+    match_dR_mu = null;
 
     // Original info
     match_Kp_isIsolatedChargedHadron_vec.clear();
@@ -85,16 +90,6 @@ void PVTree::Init()
     match_Ds_pz_vec.clear();
     match_Ds_invm_vec.clear();
 
-    match_Kp_pp_vec.clear();
-    match_Kp_pl_vec.clear();
-    match_Km_pp_vec.clear();
-    match_Km_pl_vec.clear();
-
-    match_phi_pp_vec.clear();
-    match_phi_pl_vec.clear();
-    match_pi_pp_vec.clear();
-    match_pi_pl_vec.clear();
-
     match_dR_Kp_Km_vec.clear();
     match_dR_Kp_phi_vec.clear();
     match_dR_Km_phi_vec.clear();
@@ -106,27 +101,8 @@ void PVTree::Init()
     match_dR_phi_Ds_vec.clear();
     match_dR_pi_Ds_vec.clear();
 
-    match_dxy_Kp_Km_vec.clear();
-    match_dxy_Kp_phi_vec.clear();
-    match_dxy_Km_phi_vec.clear();
-    match_dxy_Kp_pi_vec.clear();
-    match_dxy_Km_pi_vec.clear();
-    match_dxy_pi_phi_vec.clear();
-    match_dxy_Kp_Ds_vec.clear();
-    match_dxy_Km_Ds_vec.clear();
     match_dxy_phi_Ds_vec.clear();
-    match_dxy_pi_Ds_vec.clear();
-
-    match_dz_Kp_Km_vec.clear();
-    match_dz_Kp_phi_vec.clear();
-    match_dz_Km_phi_vec.clear();
-    match_dz_Kp_pi_vec.clear();
-    match_dz_Km_pi_vec.clear();
-    match_dz_pi_phi_vec.clear();
-    match_dz_Kp_Ds_vec.clear();
-    match_dz_Km_Ds_vec.clear();
     match_dz_phi_Ds_vec.clear();
-    match_dz_pi_Ds_vec.clear();
 
     // Fit on phi
     match_phiFit_chi2_vec.clear();
@@ -181,16 +157,6 @@ void PVTree::Init()
     match_phiFit_Ds_pz_vec.clear();
     match_phiFit_Ds_invm_vec.clear();
 
-    match_phiFit_Kp_pp_vec.clear();
-    match_phiFit_Kp_pl_vec.clear();
-    match_phiFit_Km_pp_vec.clear();
-    match_phiFit_Km_pl_vec.clear();
-
-    match_phiFit_phi_pp_vec.clear();
-    match_phiFit_phi_pl_vec.clear();
-    match_phiFit_pi_pp_vec.clear();
-    match_phiFit_pi_pl_vec.clear();
-
     match_phiFit_dR_Kp_Km_vec.clear();
     match_phiFit_dR_Kp_phi_vec.clear();
     match_phiFit_dR_Km_phi_vec.clear();
@@ -201,10 +167,6 @@ void PVTree::Init()
     match_phiFit_dR_Km_Ds_vec.clear();
     match_phiFit_dR_phi_Ds_vec.clear();
     match_phiFit_dR_pi_Ds_vec.clear();
-
-    match_alpha_phi_vec.clear();
-    match_beta_phi_vec.clear();
-    match_APvar_phi_vec.clear();
 
     // Fit on Ds 
     match_DsFit_chi2_vec.clear();
@@ -259,16 +221,6 @@ void PVTree::Init()
     match_DsFit_Ds_pz_vec.clear();
     match_DsFit_Ds_invm_vec.clear();
 
-    match_DsFit_Kp_pp_vec.clear();
-    match_DsFit_Kp_pl_vec.clear();
-    match_DsFit_Km_pp_vec.clear();
-    match_DsFit_Km_pl_vec.clear();
-
-    match_DsFit_phi_pp_vec.clear();
-    match_DsFit_phi_pl_vec.clear();
-    match_DsFit_pi_pp_vec.clear();
-    match_DsFit_pi_pl_vec.clear();
-
     match_DsFit_dR_Kp_Km_vec.clear();
     match_DsFit_dR_Kp_phi_vec.clear();
     match_DsFit_dR_Km_phi_vec.clear();
@@ -281,10 +233,6 @@ void PVTree::Init()
     match_DsFit_dR_pi_Ds_vec.clear();
 
     match_DsFit_Mconstraint_Ds_invm_vec.clear();
-
-    match_alpha_Ds_vec.clear();
-    match_beta_Ds_vec.clear();
-    match_APvar_Ds_vec.clear();
 
     match_Ds_primvtx_FDxy_vec.clear();
     match_Ds_primvtx_FDz_vec.clear();
@@ -306,35 +254,35 @@ void PVTree::Init()
     match_pi_primvtx_ip_vec.clear();
     match_pi_primvtx_iperr_vec.clear();
     match_pi_primvtx_ipchi2_vec.clear();
+    match_phi_primvtx_ip_vec.clear();
+    match_phi_primvtx_iperr_vec.clear();
+    match_phi_primvtx_ipchi2_vec.clear();
+    match_Ds_primvtx_ip_vec.clear();
+    match_Ds_primvtx_iperr_vec.clear();
+    match_Ds_primvtx_ipchi2_vec.clear();
 
-    match_Ds_Iso_R0p3_vec.clear();
-    match_Ds_Iso_R0p4_vec.clear();
-    match_Ds_IsoRel_R0p3_vec.clear();
-    match_Ds_IsoRel_R0p4_vec.clear();
+    match_Ds_IsoR03_sumChargedHadronPt_vec.clear();
+    match_Ds_IsoR03_sumNeutralHadronPt_vec.clear();
+    match_Ds_IsoR03_sumPhotonPt_vec.clear();
+    match_Ds_IsoR03_sumPUPt_vec.clear();
+    match_Ds_PFIsoR03_vec.clear();
+    match_Ds_IsoR04_sumChargedHadronPt_vec.clear();
+    match_Ds_IsoR04_sumNeutralHadronPt_vec.clear();
+    match_Ds_IsoR04_sumPhotonPt_vec.clear();
+    match_Ds_IsoR04_sumPUPt_vec.clear();
+    match_Ds_PFIsoR04_vec.clear();
 
-    match_PV_noDs_withBS_IsValid_vec.clear();
-    match_PV_noDs_withBS_IsFake_vec.clear();
-    match_PV_noDs_withBS_chi2_vec.clear();
-    match_PV_noDs_withBS_ndof_vec.clear();
-    match_PV_noDs_withBS_chi2ndof_vec.clear();
-    match_PV_noDs_withBS_x_vec.clear();
-    match_PV_noDs_withBS_y_vec.clear();
-    match_PV_noDs_withBS_z_vec.clear();
-    match_PV_noDs_withBS_xerr_vec.clear();
-    match_PV_noDs_withBS_yerr_vec.clear();
-    match_PV_noDs_withBS_zerr_vec.clear();
-
-    match_PV_noDs_noBS_IsValid_vec.clear();
-    match_PV_noDs_noBS_IsFake_vec.clear();
-    match_PV_noDs_noBS_chi2_vec.clear();
-    match_PV_noDs_noBS_ndof_vec.clear();
-    match_PV_noDs_noBS_chi2ndof_vec.clear();
-    match_PV_noDs_noBS_x_vec.clear();
-    match_PV_noDs_noBS_y_vec.clear();
-    match_PV_noDs_noBS_z_vec.clear();
-    match_PV_noDs_noBS_xerr_vec.clear();
-    match_PV_noDs_noBS_yerr_vec.clear();
-    match_PV_noDs_noBS_zerr_vec.clear();
+    match_PV_noDs_IsValid_vec.clear();
+    match_PV_noDs_IsFake_vec.clear();
+    match_PV_noDs_chi2_vec.clear();
+    match_PV_noDs_ndof_vec.clear();
+    match_PV_noDs_chi2ndof_vec.clear();
+    match_PV_noDs_x_vec.clear();
+    match_PV_noDs_y_vec.clear();
+    match_PV_noDs_z_vec.clear();
+    match_PV_noDs_xerr_vec.clear();
+    match_PV_noDs_yerr_vec.clear();
+    match_PV_noDs_zerr_vec.clear();
 
     match_Ds_PVnoDs_FDxy_vec.clear();
     match_Ds_PVnoDs_FDz_vec.clear();
@@ -356,7 +304,91 @@ void PVTree::Init()
     match_pi_PVnoDs_ip_vec.clear();
     match_pi_PVnoDs_iperr_vec.clear();
     match_pi_PVnoDs_ipchi2_vec.clear();
+    match_phi_PVnoDs_ip_vec.clear();
+    match_phi_PVnoDs_iperr_vec.clear();
+    match_phi_PVnoDs_ipchi2_vec.clear();
+    match_Ds_PVnoDs_ip_vec.clear();
+    match_Ds_PVnoDs_iperr_vec.clear();
+    match_Ds_PVnoDs_ipchi2_vec.clear();
 
+    match_PV_withDs_IsValid_vec.clear();
+    match_PV_withDs_IsFake_vec.clear();
+    match_PV_withDs_chi2_vec.clear();
+    match_PV_withDs_ndof_vec.clear();
+    match_PV_withDs_chi2ndof_vec.clear();
+    match_PV_withDs_x_vec.clear();
+    match_PV_withDs_y_vec.clear();
+    match_PV_withDs_z_vec.clear();
+    match_PV_withDs_xerr_vec.clear();
+    match_PV_withDs_yerr_vec.clear();
+    match_PV_withDs_zerr_vec.clear();
+
+    match_Ds_PVwithDs_FDxy_vec.clear();
+    match_Ds_PVwithDs_FDz_vec.clear();
+    match_Ds_PVwithDs_FD_vec.clear();
+    match_Ds_PVwithDs_FDxyerr_vec.clear();
+    match_Ds_PVwithDs_FDxychi2_vec.clear();
+    match_Ds_PVwithDs_FDzerr_vec.clear();
+    match_Ds_PVwithDs_FDzchi2_vec.clear();
+    match_Ds_PVwithDs_FDerr_vec.clear();
+    match_Ds_PVwithDs_FDchi2_vec.clear();
+    match_Ds_PVwithDs_dira_vec.clear();
+    match_Ds_PVwithDs_dira_angle_vec.clear();
+    match_Kp_PVwithDs_ip_vec.clear();
+    match_Kp_PVwithDs_iperr_vec.clear();
+    match_Kp_PVwithDs_ipchi2_vec.clear();
+    match_Km_PVwithDs_ip_vec.clear();
+    match_Km_PVwithDs_iperr_vec.clear();
+    match_Km_PVwithDs_ipchi2_vec.clear();
+    match_pi_PVwithDs_ip_vec.clear();
+    match_pi_PVwithDs_iperr_vec.clear();
+    match_pi_PVwithDs_ipchi2_vec.clear();
+    match_phi_PVwithDs_ip_vec.clear();
+    match_phi_PVwithDs_iperr_vec.clear();
+    match_phi_PVwithDs_ipchi2_vec.clear();
+    match_Ds_PVwithDs_ip_vec.clear();
+    match_Ds_PVwithDs_iperr_vec.clear();
+    match_Ds_PVwithDs_ipchi2_vec.clear();
+ 
+    match_mu_charge_vec.clear();
+    match_mu_eta_vec.clear();
+    match_mu_phi_vec.clear();
+    match_mu_vx_vec.clear();
+    match_mu_vy_vec.clear();
+    match_mu_vz_vec.clear();
+    match_mu_p_vec.clear();
+    match_mu_pt_vec.clear();
+    match_mu_px_vec.clear();
+    match_mu_py_vec.clear();
+    match_mu_pz_vec.clear();
+    match_mu_isHighPt_vec.clear();
+    match_mu_isLoose_vec.clear();
+    match_mu_isMedium_vec.clear();
+    match_mu_isSoft_vec.clear();
+    match_mu_isTight_vec.clear();
+    match_mu_isPF_vec.clear();
+    match_mu_isTracker_vec.clear();
+    match_mu_isGlobal_vec.clear();
+    match_mu_IsoR03_sumChargedHadronPt_vec.clear();
+    match_mu_IsoR03_sumChargedParticlePt_vec.clear();
+    match_mu_IsoR03_sumNeutralHadronEt_vec.clear();
+    match_mu_IsoR03_sumPhotonEt_vec.clear();
+    match_mu_IsoR03_sumPUPt_vec.clear();
+    match_mu_PFIsoR03_vec.clear();
+    match_mu_IsoR04_sumChargedHadronPt_vec.clear();
+    match_mu_IsoR04_sumChargedParticlePt_vec.clear();
+    match_mu_IsoR04_sumNeutralHadronEt_vec.clear();
+    match_mu_IsoR04_sumPhotonEt_vec.clear();
+    match_mu_IsoR04_sumPUPt_vec.clear();
+    match_mu_PFIsoR04_vec.clear();
+    match_mu_primvtx_dxy_vec.clear();
+    match_mu_primvtx_dxyerr_vec.clear();
+    match_mu_primvtx_dz_vec.clear();
+    match_mu_primvtx_dzerr_vec.clear();
+    match_mu_primvtx_ip_vec.clear();
+    match_mu_primvtx_iperr_vec.clear();
+    match_mu_primvtx_ipchi2_vec.clear();
+    
     num_reco_phi = 0;
     num_reco_Ds = 0;
 
@@ -417,16 +449,6 @@ void PVTree::Init()
     Ds_pz_vec.clear();
     Ds_invm_vec.clear();
 
-    Kp_pp_vec.clear();
-    Kp_pl_vec.clear();
-    Km_pp_vec.clear();
-    Km_pl_vec.clear();
-
-    phi_pp_vec.clear();
-    phi_pl_vec.clear();
-    pi_pp_vec.clear();
-    pi_pl_vec.clear();
-
     dR_Kp_Km_vec.clear();
     dR_Kp_phi_vec.clear();
     dR_Km_phi_vec.clear();
@@ -438,27 +460,8 @@ void PVTree::Init()
     dR_phi_Ds_vec.clear();
     dR_pi_Ds_vec.clear();
 
-    dxy_Kp_Km_vec.clear();
-    dxy_Kp_phi_vec.clear();
-    dxy_Km_phi_vec.clear();
-    dxy_Kp_pi_vec.clear();
-    dxy_Km_pi_vec.clear();
-    dxy_pi_phi_vec.clear();
-    dxy_Kp_Ds_vec.clear();
-    dxy_Km_Ds_vec.clear();
     dxy_phi_Ds_vec.clear();
-    dxy_pi_Ds_vec.clear();
-
-    dz_Kp_Km_vec.clear();
-    dz_Kp_phi_vec.clear();
-    dz_Km_phi_vec.clear();
-    dz_Kp_pi_vec.clear();
-    dz_Km_pi_vec.clear();
-    dz_pi_phi_vec.clear();
-    dz_Kp_Ds_vec.clear();
-    dz_Km_Ds_vec.clear();
     dz_phi_Ds_vec.clear();
-    dz_pi_Ds_vec.clear();
 
     // Fit on phi
     phiFit_chi2_vec.clear();
@@ -513,16 +516,6 @@ void PVTree::Init()
     phiFit_Ds_pz_vec.clear();
     phiFit_Ds_invm_vec.clear();
 
-    phiFit_Kp_pp_vec.clear();
-    phiFit_Kp_pl_vec.clear();
-    phiFit_Km_pp_vec.clear();
-    phiFit_Km_pl_vec.clear();
-
-    phiFit_phi_pp_vec.clear();
-    phiFit_phi_pl_vec.clear();
-    phiFit_pi_pp_vec.clear();
-    phiFit_pi_pl_vec.clear();
-
     phiFit_dR_Kp_Km_vec.clear();
     phiFit_dR_Kp_phi_vec.clear();
     phiFit_dR_Km_phi_vec.clear();
@@ -533,10 +526,6 @@ void PVTree::Init()
     phiFit_dR_Km_Ds_vec.clear();
     phiFit_dR_phi_Ds_vec.clear();
     phiFit_dR_pi_Ds_vec.clear();
-
-    alpha_phi_vec.clear();
-    beta_phi_vec.clear();
-    APvar_phi_vec.clear();
 
     // Fit on Ds 
     DsFit_chi2_vec.clear();
@@ -591,16 +580,6 @@ void PVTree::Init()
     DsFit_Ds_pz_vec.clear();
     DsFit_Ds_invm_vec.clear();
 
-    DsFit_Kp_pp_vec.clear();
-    DsFit_Kp_pl_vec.clear();
-    DsFit_Km_pp_vec.clear();
-    DsFit_Km_pl_vec.clear();
-
-    DsFit_phi_pp_vec.clear();
-    DsFit_phi_pl_vec.clear();
-    DsFit_pi_pp_vec.clear();
-    DsFit_pi_pl_vec.clear();
-
     DsFit_dR_Kp_Km_vec.clear();
     DsFit_dR_Kp_phi_vec.clear();
     DsFit_dR_Km_phi_vec.clear();
@@ -613,10 +592,6 @@ void PVTree::Init()
     DsFit_dR_pi_Ds_vec.clear();
 
     DsFit_Mconstraint_Ds_invm_vec.clear();
-    
-    alpha_Ds_vec.clear();
-    beta_Ds_vec.clear();
-    APvar_Ds_vec.clear();
 
     Ds_primvtx_FDxy_vec.clear();
     Ds_primvtx_FDz_vec.clear();
@@ -638,35 +613,35 @@ void PVTree::Init()
     pi_primvtx_ip_vec.clear();
     pi_primvtx_iperr_vec.clear();
     pi_primvtx_ipchi2_vec.clear();
+    phi_primvtx_ip_vec.clear();
+    phi_primvtx_iperr_vec.clear();
+    phi_primvtx_ipchi2_vec.clear();
+    Ds_primvtx_ip_vec.clear();
+    Ds_primvtx_iperr_vec.clear();
+    Ds_primvtx_ipchi2_vec.clear();
 
-    Ds_Iso_R0p3_vec.clear();
-    Ds_Iso_R0p4_vec.clear();
-    Ds_IsoRel_R0p3_vec.clear();
-    Ds_IsoRel_R0p4_vec.clear();
+    Ds_IsoR03_sumChargedHadronPt_vec.clear();
+    Ds_IsoR03_sumNeutralHadronPt_vec.clear();
+    Ds_IsoR03_sumPhotonPt_vec.clear();
+    Ds_IsoR03_sumPUPt_vec.clear();
+    Ds_PFIsoR03_vec.clear();
+    Ds_IsoR04_sumChargedHadronPt_vec.clear();
+    Ds_IsoR04_sumNeutralHadronPt_vec.clear();
+    Ds_IsoR04_sumPhotonPt_vec.clear();
+    Ds_IsoR04_sumPUPt_vec.clear();
+    Ds_PFIsoR04_vec.clear();
 
-    PV_noDs_withBS_IsValid_vec.clear();
-    PV_noDs_withBS_IsFake_vec.clear();
-    PV_noDs_withBS_chi2_vec.clear();
-    PV_noDs_withBS_ndof_vec.clear();
-    PV_noDs_withBS_chi2ndof_vec.clear();
-    PV_noDs_withBS_x_vec.clear();
-    PV_noDs_withBS_y_vec.clear();
-    PV_noDs_withBS_z_vec.clear();
-    PV_noDs_withBS_xerr_vec.clear();
-    PV_noDs_withBS_yerr_vec.clear();
-    PV_noDs_withBS_zerr_vec.clear();
-
-    PV_noDs_noBS_IsValid_vec.clear();
-    PV_noDs_noBS_IsFake_vec.clear();
-    PV_noDs_noBS_chi2_vec.clear();
-    PV_noDs_noBS_ndof_vec.clear();
-    PV_noDs_noBS_chi2ndof_vec.clear();
-    PV_noDs_noBS_x_vec.clear();
-    PV_noDs_noBS_y_vec.clear();
-    PV_noDs_noBS_z_vec.clear();
-    PV_noDs_noBS_xerr_vec.clear();
-    PV_noDs_noBS_yerr_vec.clear();
-    PV_noDs_noBS_zerr_vec.clear();
+    PV_noDs_IsValid_vec.clear();
+    PV_noDs_IsFake_vec.clear();
+    PV_noDs_chi2_vec.clear();
+    PV_noDs_ndof_vec.clear();
+    PV_noDs_chi2ndof_vec.clear();
+    PV_noDs_x_vec.clear();
+    PV_noDs_y_vec.clear();
+    PV_noDs_z_vec.clear();
+    PV_noDs_xerr_vec.clear();
+    PV_noDs_yerr_vec.clear();
+    PV_noDs_zerr_vec.clear();
 
     Ds_PVnoDs_FDxy_vec.clear();
     Ds_PVnoDs_FDz_vec.clear();
@@ -688,6 +663,51 @@ void PVTree::Init()
     pi_PVnoDs_ip_vec.clear();
     pi_PVnoDs_iperr_vec.clear();
     pi_PVnoDs_ipchi2_vec.clear();
+    phi_PVnoDs_ip_vec.clear();
+    phi_PVnoDs_iperr_vec.clear();
+    phi_PVnoDs_ipchi2_vec.clear();
+    Ds_PVnoDs_ip_vec.clear();
+    Ds_PVnoDs_iperr_vec.clear();
+    Ds_PVnoDs_ipchi2_vec.clear();
+
+    PV_withDs_IsValid_vec.clear();
+    PV_withDs_IsFake_vec.clear();
+    PV_withDs_chi2_vec.clear();
+    PV_withDs_ndof_vec.clear();
+    PV_withDs_chi2ndof_vec.clear();
+    PV_withDs_x_vec.clear();
+    PV_withDs_y_vec.clear();
+    PV_withDs_z_vec.clear();
+    PV_withDs_xerr_vec.clear();
+    PV_withDs_yerr_vec.clear();
+    PV_withDs_zerr_vec.clear();
+
+    Ds_PVwithDs_FDxy_vec.clear();
+    Ds_PVwithDs_FDz_vec.clear();
+    Ds_PVwithDs_FD_vec.clear();
+    Ds_PVwithDs_FDxyerr_vec.clear();
+    Ds_PVwithDs_FDxychi2_vec.clear();
+    Ds_PVwithDs_FDzerr_vec.clear();
+    Ds_PVwithDs_FDzchi2_vec.clear();
+    Ds_PVwithDs_FDerr_vec.clear();
+    Ds_PVwithDs_FDchi2_vec.clear();
+    Ds_PVwithDs_dira_vec.clear();
+    Ds_PVwithDs_dira_angle_vec.clear();
+    Kp_PVwithDs_ip_vec.clear();
+    Kp_PVwithDs_iperr_vec.clear();
+    Kp_PVwithDs_ipchi2_vec.clear();
+    Km_PVwithDs_ip_vec.clear();
+    Km_PVwithDs_iperr_vec.clear();
+    Km_PVwithDs_ipchi2_vec.clear();
+    pi_PVwithDs_ip_vec.clear();
+    pi_PVwithDs_iperr_vec.clear();
+    pi_PVwithDs_ipchi2_vec.clear();
+    phi_PVwithDs_ip_vec.clear();
+    phi_PVwithDs_iperr_vec.clear();
+    phi_PVwithDs_ipchi2_vec.clear();
+    Ds_PVwithDs_ip_vec.clear();
+    Ds_PVwithDs_iperr_vec.clear();
+    Ds_PVwithDs_ipchi2_vec.clear();
 
     Kp_match_vec.clear();
     Km_match_vec.clear();
@@ -752,16 +772,6 @@ void PVTree::Init()
     best_Ds_pz_vec.clear();
     best_Ds_invm_vec.clear();
 
-    best_Kp_pp_vec.clear();
-    best_Kp_pl_vec.clear();
-    best_Km_pp_vec.clear();
-    best_Km_pl_vec.clear();
-
-    best_phi_pp_vec.clear();
-    best_phi_pl_vec.clear();
-    best_pi_pp_vec.clear();
-    best_pi_pl_vec.clear();
-
     best_dR_Kp_Km_vec.clear();
     best_dR_Kp_phi_vec.clear();
     best_dR_Km_phi_vec.clear();
@@ -773,27 +783,8 @@ void PVTree::Init()
     best_dR_phi_Ds_vec.clear();
     best_dR_pi_Ds_vec.clear();
 
-    best_dxy_Kp_Km_vec.clear();
-    best_dxy_Kp_phi_vec.clear();
-    best_dxy_Km_phi_vec.clear();
-    best_dxy_Kp_pi_vec.clear();
-    best_dxy_Km_pi_vec.clear();
-    best_dxy_pi_phi_vec.clear();
-    best_dxy_Kp_Ds_vec.clear();
-    best_dxy_Km_Ds_vec.clear();
     best_dxy_phi_Ds_vec.clear();
-    best_dxy_pi_Ds_vec.clear();
-
-    best_dz_Kp_Km_vec.clear();
-    best_dz_Kp_phi_vec.clear();
-    best_dz_Km_phi_vec.clear();
-    best_dz_Kp_pi_vec.clear();
-    best_dz_Km_pi_vec.clear();
-    best_dz_pi_phi_vec.clear();
-    best_dz_Kp_Ds_vec.clear();
-    best_dz_Km_Ds_vec.clear();
     best_dz_phi_Ds_vec.clear();
-    best_dz_pi_Ds_vec.clear();
 
     // Fit on phi
     best_phiFit_chi2_vec.clear();
@@ -848,16 +839,6 @@ void PVTree::Init()
     best_phiFit_Ds_pz_vec.clear();
     best_phiFit_Ds_invm_vec.clear();
 
-    best_phiFit_Kp_pp_vec.clear();
-    best_phiFit_Kp_pl_vec.clear();
-    best_phiFit_Km_pp_vec.clear();
-    best_phiFit_Km_pl_vec.clear();
-
-    best_phiFit_phi_pp_vec.clear();
-    best_phiFit_phi_pl_vec.clear();
-    best_phiFit_pi_pp_vec.clear();
-    best_phiFit_pi_pl_vec.clear();
-
     best_phiFit_dR_Kp_Km_vec.clear();
     best_phiFit_dR_Kp_phi_vec.clear();
     best_phiFit_dR_Km_phi_vec.clear();
@@ -868,10 +849,6 @@ void PVTree::Init()
     best_phiFit_dR_Km_Ds_vec.clear();
     best_phiFit_dR_phi_Ds_vec.clear();
     best_phiFit_dR_pi_Ds_vec.clear();
-
-    best_alpha_phi_vec.clear();
-    best_beta_phi_vec.clear();
-    best_APvar_phi_vec.clear();
 
     // Fit on Ds 
     best_DsFit_chi2_vec.clear();
@@ -926,16 +903,6 @@ void PVTree::Init()
     best_DsFit_Ds_pz_vec.clear();
     best_DsFit_Ds_invm_vec.clear();
 
-    best_DsFit_Kp_pp_vec.clear();
-    best_DsFit_Kp_pl_vec.clear();
-    best_DsFit_Km_pp_vec.clear();
-    best_DsFit_Km_pl_vec.clear();
-
-    best_DsFit_phi_pp_vec.clear();
-    best_DsFit_phi_pl_vec.clear();
-    best_DsFit_pi_pp_vec.clear();
-    best_DsFit_pi_pl_vec.clear();
-
     best_DsFit_dR_Kp_Km_vec.clear();
     best_DsFit_dR_Kp_phi_vec.clear();
     best_DsFit_dR_Km_phi_vec.clear();
@@ -948,10 +915,6 @@ void PVTree::Init()
     best_DsFit_dR_pi_Ds_vec.clear();
 
     best_DsFit_Mconstraint_Ds_invm_vec.clear();
-
-    best_alpha_Ds_vec.clear();
-    best_beta_Ds_vec.clear();
-    best_APvar_Ds_vec.clear();
 
     best_Ds_primvtx_FDxy_vec.clear();
     best_Ds_primvtx_FDz_vec.clear();
@@ -973,35 +936,35 @@ void PVTree::Init()
     best_pi_primvtx_ip_vec.clear();
     best_pi_primvtx_iperr_vec.clear();
     best_pi_primvtx_ipchi2_vec.clear();
+    best_phi_primvtx_ip_vec.clear();
+    best_phi_primvtx_iperr_vec.clear();
+    best_phi_primvtx_ipchi2_vec.clear();
+    best_Ds_primvtx_ip_vec.clear();
+    best_Ds_primvtx_iperr_vec.clear();
+    best_Ds_primvtx_ipchi2_vec.clear();
 
-    best_Ds_Iso_R0p3_vec.clear();
-    best_Ds_Iso_R0p4_vec.clear();
-    best_Ds_IsoRel_R0p3_vec.clear();
-    best_Ds_IsoRel_R0p4_vec.clear();
+    best_Ds_IsoR03_sumChargedHadronPt_vec.clear();
+    best_Ds_IsoR03_sumNeutralHadronPt_vec.clear();
+    best_Ds_IsoR03_sumPhotonPt_vec.clear();
+    best_Ds_IsoR03_sumPUPt_vec.clear();
+    best_Ds_PFIsoR03_vec.clear();
+    best_Ds_IsoR04_sumChargedHadronPt_vec.clear();
+    best_Ds_IsoR04_sumNeutralHadronPt_vec.clear();
+    best_Ds_IsoR04_sumPhotonPt_vec.clear();
+    best_Ds_IsoR04_sumPUPt_vec.clear();
+    best_Ds_PFIsoR04_vec.clear();
 
-    best_PV_noDs_withBS_IsValid_vec.clear();
-    best_PV_noDs_withBS_IsFake_vec.clear();
-    best_PV_noDs_withBS_chi2_vec.clear();
-    best_PV_noDs_withBS_ndof_vec.clear();
-    best_PV_noDs_withBS_chi2ndof_vec.clear();
-    best_PV_noDs_withBS_x_vec.clear();
-    best_PV_noDs_withBS_y_vec.clear();
-    best_PV_noDs_withBS_z_vec.clear();
-    best_PV_noDs_withBS_xerr_vec.clear();
-    best_PV_noDs_withBS_yerr_vec.clear();
-    best_PV_noDs_withBS_zerr_vec.clear();
-
-    best_PV_noDs_noBS_IsValid_vec.clear();
-    best_PV_noDs_noBS_IsFake_vec.clear();
-    best_PV_noDs_noBS_chi2_vec.clear();
-    best_PV_noDs_noBS_ndof_vec.clear();
-    best_PV_noDs_noBS_chi2ndof_vec.clear();
-    best_PV_noDs_noBS_x_vec.clear();
-    best_PV_noDs_noBS_y_vec.clear();
-    best_PV_noDs_noBS_z_vec.clear();
-    best_PV_noDs_noBS_xerr_vec.clear();
-    best_PV_noDs_noBS_yerr_vec.clear();
-    best_PV_noDs_noBS_zerr_vec.clear();
+    best_PV_noDs_IsValid_vec.clear();
+    best_PV_noDs_IsFake_vec.clear();
+    best_PV_noDs_chi2_vec.clear();
+    best_PV_noDs_ndof_vec.clear();
+    best_PV_noDs_chi2ndof_vec.clear();
+    best_PV_noDs_x_vec.clear();
+    best_PV_noDs_y_vec.clear();
+    best_PV_noDs_z_vec.clear();
+    best_PV_noDs_xerr_vec.clear();
+    best_PV_noDs_yerr_vec.clear();
+    best_PV_noDs_zerr_vec.clear();
 
     best_Ds_PVnoDs_FDxy_vec.clear();
     best_Ds_PVnoDs_FDz_vec.clear();
@@ -1023,6 +986,51 @@ void PVTree::Init()
     best_pi_PVnoDs_ip_vec.clear();
     best_pi_PVnoDs_iperr_vec.clear();
     best_pi_PVnoDs_ipchi2_vec.clear();
+    best_phi_PVnoDs_ip_vec.clear();
+    best_phi_PVnoDs_iperr_vec.clear();
+    best_phi_PVnoDs_ipchi2_vec.clear();
+    best_Ds_PVnoDs_ip_vec.clear();
+    best_Ds_PVnoDs_iperr_vec.clear();
+    best_Ds_PVnoDs_ipchi2_vec.clear();
+
+    best_PV_withDs_IsValid_vec.clear();
+    best_PV_withDs_IsFake_vec.clear();
+    best_PV_withDs_chi2_vec.clear();
+    best_PV_withDs_ndof_vec.clear();
+    best_PV_withDs_chi2ndof_vec.clear();
+    best_PV_withDs_x_vec.clear();
+    best_PV_withDs_y_vec.clear();
+    best_PV_withDs_z_vec.clear();
+    best_PV_withDs_xerr_vec.clear();
+    best_PV_withDs_yerr_vec.clear();
+    best_PV_withDs_zerr_vec.clear();
+
+    best_Ds_PVwithDs_FDxy_vec.clear();
+    best_Ds_PVwithDs_FDz_vec.clear();
+    best_Ds_PVwithDs_FD_vec.clear();
+    best_Ds_PVwithDs_FDxyerr_vec.clear();
+    best_Ds_PVwithDs_FDxychi2_vec.clear();
+    best_Ds_PVwithDs_FDzerr_vec.clear();
+    best_Ds_PVwithDs_FDzchi2_vec.clear();
+    best_Ds_PVwithDs_FDerr_vec.clear();
+    best_Ds_PVwithDs_FDchi2_vec.clear();
+    best_Ds_PVwithDs_dira_vec.clear();
+    best_Ds_PVwithDs_dira_angle_vec.clear();
+    best_Kp_PVwithDs_ip_vec.clear();
+    best_Kp_PVwithDs_iperr_vec.clear();
+    best_Kp_PVwithDs_ipchi2_vec.clear();
+    best_Km_PVwithDs_ip_vec.clear();
+    best_Km_PVwithDs_iperr_vec.clear();
+    best_Km_PVwithDs_ipchi2_vec.clear();
+    best_pi_PVwithDs_ip_vec.clear();
+    best_pi_PVwithDs_iperr_vec.clear();
+    best_pi_PVwithDs_ipchi2_vec.clear();
+    best_phi_PVwithDs_ip_vec.clear();
+    best_phi_PVwithDs_iperr_vec.clear();
+    best_phi_PVwithDs_ipchi2_vec.clear();
+    best_Ds_PVwithDs_ip_vec.clear();
+    best_Ds_PVwithDs_iperr_vec.clear();
+    best_Ds_PVwithDs_ipchi2_vec.clear();
 
     best_match_entry_vec.clear();
 }
@@ -1156,13 +1164,17 @@ void PVTree::CreateBranches()
     tree->Branch("Gen_dR_Km_Ds", &Gen_dR_Km_Ds);
     tree->Branch("Gen_dR_phi_Ds", &Gen_dR_phi_Ds);
     tree->Branch("Gen_dR_pi_Ds", &Gen_dR_pi_Ds);
+    tree->Branch("Gen_dR_Kp_mu", &Gen_dR_Kp_mu);
+    tree->Branch("Gen_dR_Km_mu", &Gen_dR_Km_mu);
+    tree->Branch("Gen_dR_phi_mu", &Gen_dR_phi_mu);
+    tree->Branch("Gen_dR_pi_mu", &Gen_dR_pi_mu);
+    tree->Branch("Gen_dR_Ds_mu", &Gen_dR_Ds_mu);
 
-    tree->Branch("Gen_dxy_Kp_Km", &Gen_dxy_Kp_Km);
-    tree->Branch("Gen_dxy_Kp_pi", &Gen_dxy_Kp_pi);
-    tree->Branch("Gen_dxy_Km_pi", &Gen_dxy_Km_pi);
-    tree->Branch("Gen_dz_Kp_Km", &Gen_dz_Kp_Km);
-    tree->Branch("Gen_dz_Kp_pi", &Gen_dz_Kp_pi);
-    tree->Branch("Gen_dz_Km_pi", &Gen_dz_Km_pi);
+    tree->Branch("Gen_Ds_dx", &Gen_Ds_dx);
+    tree->Branch("Gen_Ds_dy", &Gen_Ds_dy);
+    tree->Branch("Gen_Ds_dz", &Gen_Ds_dz);
+    tree->Branch("Gen_Ds_FDxy", &Gen_Ds_FDxy);
+    tree->Branch("Gen_Ds_FD", &Gen_Ds_FD);
 
     tree->Branch("BS_type", &BS_type);
     tree->Branch("BS_x0", &BS_x0);
@@ -1195,9 +1207,14 @@ void PVTree::CreateBranches()
     tree->Branch("num_match_Kp", &num_match_Kp);
     tree->Branch("num_match_Km", &num_match_Km);
     tree->Branch("num_match_pi", &num_match_pi);
-    tree->Branch("match_Kp_idx", &match_Kp_idx);
-    tree->Branch("match_Km_idx", &match_Km_idx);
-    tree->Branch("match_pi_idx", &match_pi_idx);
+    tree->Branch("num_match_mu", &num_match_mu);
+    tree->Branch("num_tight_match_Kp", &num_tight_match_Kp);
+    tree->Branch("num_tight_match_Km", &num_tight_match_Km);
+    tree->Branch("num_tight_match_pi", &num_tight_match_pi);
+    tree->Branch("match_dR_Kp", &match_dR_Kp);
+    tree->Branch("match_dR_Km", &match_dR_Km);
+    tree->Branch("match_dR_pi", &match_dR_pi);
+    tree->Branch("match_dR_mu", &match_dR_mu);
 
     tree->Branch("match_Kp_isIsolatedChargedHadron", &match_Kp_isIsolatedChargedHadron_vec);
     tree->Branch("match_Kp_charge", &match_Kp_charge_vec);
@@ -1256,16 +1273,6 @@ void PVTree::CreateBranches()
     tree->Branch("match_Ds_pz", &match_Ds_pz_vec);
     tree->Branch("match_Ds_invm", &match_Ds_invm_vec);
 
-    tree->Branch("match_Kp_pp", &match_Kp_pp_vec);
-    tree->Branch("match_Kp_pl", &match_Kp_pl_vec);
-    tree->Branch("match_Km_pp", &match_Km_pp_vec);
-    tree->Branch("match_Km_pl", &match_Km_pl_vec);
-
-    tree->Branch("match_phi_pp", &match_phi_pp_vec);
-    tree->Branch("match_phi_pl", &match_phi_pl_vec);
-    tree->Branch("match_pi_pp", &match_pi_pp_vec);
-    tree->Branch("match_pi_pl", &match_pi_pl_vec);
-
     tree->Branch("match_dR_Kp_Km", &match_dR_Kp_Km_vec);
     tree->Branch("match_dR_Kp_phi", &match_dR_Kp_phi_vec);
     tree->Branch("match_dR_Km_phi", &match_dR_Km_phi_vec);
@@ -1277,28 +1284,10 @@ void PVTree::CreateBranches()
     tree->Branch("match_dR_phi_Ds", &match_dR_phi_Ds_vec);
     tree->Branch("match_dR_pi_Ds", &match_dR_pi_Ds_vec);
 
-    tree->Branch("match_dxy_Kp_Km", &match_dxy_Kp_Km_vec);
-    tree->Branch("match_dxy_Kp_phi", &match_dxy_Kp_phi_vec);
-    tree->Branch("match_dxy_Km_phi", &match_dxy_Km_phi_vec);
-    tree->Branch("match_dxy_Kp_pi", &match_dxy_Kp_pi_vec);
-    tree->Branch("match_dxy_Km_pi", &match_dxy_Km_pi_vec);
-    tree->Branch("match_dxy_pi_phi", &match_dxy_pi_phi_vec);
-    tree->Branch("match_dxy_Kp_Ds", &match_dxy_Kp_Ds_vec);
-    tree->Branch("match_dxy_Km_Ds", &match_dxy_Km_Ds_vec);
     tree->Branch("match_dxy_phi_Ds", &match_dxy_phi_Ds_vec);
-    tree->Branch("match_dxy_pi_Ds", &match_dxy_pi_Ds_vec);
-
-    tree->Branch("match_dz_Kp_Km", &match_dz_Kp_Km_vec);
-    tree->Branch("match_dz_Kp_phi", &match_dz_Kp_phi_vec);
-    tree->Branch("match_dz_Km_phi", &match_dz_Km_phi_vec);
-    tree->Branch("match_dz_Kp_pi", &match_dz_Kp_pi_vec);
-    tree->Branch("match_dz_Km_pi", &match_dz_Km_pi_vec);
-    tree->Branch("match_dz_pi_phi", &match_dz_pi_phi_vec);
-    tree->Branch("match_dz_Kp_Ds", &match_dz_Kp_Ds_vec);
-    tree->Branch("match_dz_Km_Ds", &match_dz_Km_Ds_vec);
     tree->Branch("match_dz_phi_Ds", &match_dz_phi_Ds_vec);
-    tree->Branch("match_dz_pi_Ds", &match_dz_pi_Ds_vec);
 
+    // Fit on phi
     tree->Branch("match_phiFit_chi2", &match_phiFit_chi2_vec);
     tree->Branch("match_phiFit_ndof", &match_phiFit_ndof_vec);
     tree->Branch("match_phiFit_chi2ndof", &match_phiFit_chi2ndof_vec);
@@ -1351,16 +1340,6 @@ void PVTree::CreateBranches()
     tree->Branch("match_phiFit_Ds_pz", &match_phiFit_Ds_pz_vec);
     tree->Branch("match_phiFit_Ds_invm", &match_phiFit_Ds_invm_vec);
 
-    tree->Branch("match_phiFit_Kp_pp", &match_phiFit_Kp_pp_vec);
-    tree->Branch("match_phiFit_Kp_pl", &match_phiFit_Kp_pl_vec);
-    tree->Branch("match_phiFit_Km_pp", &match_phiFit_Km_pp_vec);
-    tree->Branch("match_phiFit_Km_pl", &match_phiFit_Km_pl_vec);
-
-    tree->Branch("match_phiFit_phi_pp", &match_phiFit_phi_pp_vec);
-    tree->Branch("match_phiFit_phi_pl", &match_phiFit_phi_pl_vec);
-    tree->Branch("match_phiFit_pi_pp", &match_phiFit_pi_pp_vec);
-    tree->Branch("match_phiFit_pi_pl", &match_phiFit_pi_pl_vec);
-
     tree->Branch("match_phiFit_dR_Kp_Km", &match_phiFit_dR_Kp_Km_vec);
     tree->Branch("match_phiFit_dR_Kp_phi", &match_phiFit_dR_Kp_phi_vec);
     tree->Branch("match_phiFit_dR_Km_phi", &match_phiFit_dR_Km_phi_vec);
@@ -1371,10 +1350,6 @@ void PVTree::CreateBranches()
     tree->Branch("match_phiFit_dR_Km_Ds", &match_phiFit_dR_Km_Ds_vec);
     tree->Branch("match_phiFit_dR_phi_Ds", &match_phiFit_dR_phi_Ds_vec);
     tree->Branch("match_phiFit_dR_pi_Ds", &match_phiFit_dR_pi_Ds_vec);
-    
-    tree->Branch("match_alpha_phi", &match_alpha_phi_vec);
-    tree->Branch("match_beta_phi", &match_beta_phi_vec);
-    tree->Branch("match_APvar_phi", &match_APvar_phi_vec);
 
     // Fit on Ds 
     tree->Branch("match_DsFit_chi2", &match_DsFit_chi2_vec);
@@ -1429,16 +1404,6 @@ void PVTree::CreateBranches()
     tree->Branch("match_DsFit_Ds_pz", &match_DsFit_Ds_pz_vec);
     tree->Branch("match_DsFit_Ds_invm", &match_DsFit_Ds_invm_vec);
 
-    tree->Branch("match_DsFit_Kp_pp", &match_DsFit_Kp_pp_vec);
-    tree->Branch("match_DsFit_Kp_pl", &match_DsFit_Kp_pl_vec);
-    tree->Branch("match_DsFit_Km_pp", &match_DsFit_Km_pp_vec);
-    tree->Branch("match_DsFit_Km_pl", &match_DsFit_Km_pl_vec);
-
-    tree->Branch("match_DsFit_phi_pp", &match_DsFit_phi_pp_vec);
-    tree->Branch("match_DsFit_phi_pl", &match_DsFit_phi_pl_vec);
-    tree->Branch("match_DsFit_pi_pp", &match_DsFit_pi_pp_vec);
-    tree->Branch("match_DsFit_pi_pl", &match_DsFit_pi_pl_vec);
-
     tree->Branch("match_DsFit_dR_Kp_Km", &match_DsFit_dR_Kp_Km_vec);
     tree->Branch("match_DsFit_dR_Kp_phi", &match_DsFit_dR_Kp_phi_vec);
     tree->Branch("match_DsFit_dR_Km_phi", &match_DsFit_dR_Km_phi_vec);
@@ -1451,10 +1416,6 @@ void PVTree::CreateBranches()
     tree->Branch("match_DsFit_dR_pi_Ds", &match_DsFit_dR_pi_Ds_vec);
 
     tree->Branch("match_DsFit_Mconstraint_Ds_invm", &match_DsFit_Mconstraint_Ds_invm_vec);
-    
-    tree->Branch("match_alpha_Ds", &match_alpha_Ds_vec);
-    tree->Branch("match_beta_Ds", &match_beta_Ds_vec);
-    tree->Branch("match_APvar_Ds", &match_APvar_Ds_vec);
 
     tree->Branch("match_Ds_primvtx_FDxy", &match_Ds_primvtx_FDxy_vec);
     tree->Branch("match_Ds_primvtx_FDz", &match_Ds_primvtx_FDz_vec);
@@ -1476,35 +1437,35 @@ void PVTree::CreateBranches()
     tree->Branch("match_pi_primvtx_ip", &match_pi_primvtx_ip_vec);
     tree->Branch("match_pi_primvtx_iperr", &match_pi_primvtx_iperr_vec);
     tree->Branch("match_pi_primvtx_ipchi2", &match_pi_primvtx_ipchi2_vec);
+    tree->Branch("match_phi_primvtx_ip", &match_phi_primvtx_ip_vec);
+    tree->Branch("match_phi_primvtx_iperr", &match_phi_primvtx_iperr_vec);
+    tree->Branch("match_phi_primvtx_ipchi2", &match_phi_primvtx_ipchi2_vec);
+    tree->Branch("match_Ds_primvtx_ip", &match_Ds_primvtx_ip_vec);
+    tree->Branch("match_Ds_primvtx_iperr", &match_Ds_primvtx_iperr_vec);
+    tree->Branch("match_Ds_primvtx_ipchi2", &match_Ds_primvtx_ipchi2_vec);
 
-    tree->Branch("match_Ds_Iso_R0p3", &match_Ds_Iso_R0p3_vec);
-    tree->Branch("match_Ds_Iso_R0p4", &match_Ds_Iso_R0p4_vec);
-    tree->Branch("match_Ds_IsoRel_R0p3", &match_Ds_IsoRel_R0p3_vec);
-    tree->Branch("match_Ds_IsoRel_R0p4", &match_Ds_IsoRel_R0p4_vec);
+    tree->Branch("match_Ds_IsoR03_sumChargedHadronPt", &match_Ds_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("match_Ds_IsoR03_sumNeutralHadronPt", &match_Ds_IsoR03_sumNeutralHadronPt_vec);
+    tree->Branch("match_Ds_IsoR03_sumPhotonPt", &match_Ds_IsoR03_sumPhotonPt_vec);
+    tree->Branch("match_Ds_IsoR03_sumPUPt", &match_Ds_IsoR03_sumPUPt_vec);
+    tree->Branch("match_Ds_PFIsoR03", &match_Ds_PFIsoR03_vec);
+    tree->Branch("match_Ds_IsoR04_sumChargedHadronPt", &match_Ds_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("match_Ds_IsoR04_sumNeutralHadronPt", &match_Ds_IsoR04_sumNeutralHadronPt_vec);
+    tree->Branch("match_Ds_IsoR04_sumPhotonPt", &match_Ds_IsoR04_sumPhotonPt_vec);
+    tree->Branch("match_Ds_IsoR04_sumPUPt", &match_Ds_IsoR04_sumPUPt_vec);
+    tree->Branch("match_Ds_PFIsoR04", &match_Ds_PFIsoR04_vec);
 
-    tree->Branch("match_PV_noDs_withBS_IsValid", &match_PV_noDs_withBS_IsValid_vec);
-    tree->Branch("match_PV_noDs_withBS_IsFake", &match_PV_noDs_withBS_IsFake_vec);
-    tree->Branch("match_PV_noDs_withBS_chi2", &match_PV_noDs_withBS_chi2_vec);
-    tree->Branch("match_PV_noDs_withBS_ndof", &match_PV_noDs_withBS_ndof_vec);
-    tree->Branch("match_PV_noDs_withBS_chi2ndof", &match_PV_noDs_withBS_chi2ndof_vec);
-    tree->Branch("match_PV_noDs_withBS_x", &match_PV_noDs_withBS_x_vec);
-    tree->Branch("match_PV_noDs_withBS_y", &match_PV_noDs_withBS_y_vec);
-    tree->Branch("match_PV_noDs_withBS_z", &match_PV_noDs_withBS_z_vec);
-    tree->Branch("match_PV_noDs_withBS_xerr", &match_PV_noDs_withBS_xerr_vec);
-    tree->Branch("match_PV_noDs_withBS_yerr", &match_PV_noDs_withBS_yerr_vec);
-    tree->Branch("match_PV_noDs_withBS_zerr", &match_PV_noDs_withBS_zerr_vec);
-
-    tree->Branch("match_PV_noDs_noBS_IsValid", &match_PV_noDs_noBS_IsValid_vec);
-    tree->Branch("match_PV_noDs_noBS_IsFake", &match_PV_noDs_noBS_IsFake_vec);
-    tree->Branch("match_PV_noDs_noBS_chi2", &match_PV_noDs_noBS_chi2_vec);
-    tree->Branch("match_PV_noDs_noBS_ndof", &match_PV_noDs_noBS_ndof_vec);
-    tree->Branch("match_PV_noDs_noBS_chi2ndof", &match_PV_noDs_noBS_chi2ndof_vec);
-    tree->Branch("match_PV_noDs_noBS_x", &match_PV_noDs_noBS_x_vec);
-    tree->Branch("match_PV_noDs_noBS_y", &match_PV_noDs_noBS_y_vec);
-    tree->Branch("match_PV_noDs_noBS_z", &match_PV_noDs_noBS_z_vec);
-    tree->Branch("match_PV_noDs_noBS_xerr", &match_PV_noDs_noBS_xerr_vec);
-    tree->Branch("match_PV_noDs_noBS_yerr", &match_PV_noDs_noBS_yerr_vec);
-    tree->Branch("match_PV_noDs_noBS_zerr", &match_PV_noDs_noBS_zerr_vec);
+    tree->Branch("match_PV_noDs_IsValid", &match_PV_noDs_IsValid_vec);
+    tree->Branch("match_PV_noDs_IsFake", &match_PV_noDs_IsFake_vec);
+    tree->Branch("match_PV_noDs_chi2", &match_PV_noDs_chi2_vec);
+    tree->Branch("match_PV_noDs_ndof", &match_PV_noDs_ndof_vec);
+    tree->Branch("match_PV_noDs_chi2ndof", &match_PV_noDs_chi2ndof_vec);
+    tree->Branch("match_PV_noDs_x", &match_PV_noDs_x_vec);
+    tree->Branch("match_PV_noDs_y", &match_PV_noDs_y_vec);
+    tree->Branch("match_PV_noDs_z", &match_PV_noDs_z_vec);
+    tree->Branch("match_PV_noDs_xerr", &match_PV_noDs_xerr_vec);
+    tree->Branch("match_PV_noDs_yerr", &match_PV_noDs_yerr_vec);
+    tree->Branch("match_PV_noDs_zerr", &match_PV_noDs_zerr_vec);
 
     tree->Branch("match_Ds_PVnoDs_FDxy", &match_Ds_PVnoDs_FDxy_vec);
     tree->Branch("match_Ds_PVnoDs_FDz", &match_Ds_PVnoDs_FDz_vec);
@@ -1526,6 +1487,129 @@ void PVTree::CreateBranches()
     tree->Branch("match_pi_PVnoDs_ip", &match_pi_PVnoDs_ip_vec);
     tree->Branch("match_pi_PVnoDs_iperr", &match_pi_PVnoDs_iperr_vec);
     tree->Branch("match_pi_PVnoDs_ipchi2", &match_pi_PVnoDs_ipchi2_vec);
+    tree->Branch("match_phi_PVnoDs_ip", &match_phi_PVnoDs_ip_vec);
+    tree->Branch("match_phi_PVnoDs_iperr", &match_phi_PVnoDs_iperr_vec);
+    tree->Branch("match_phi_PVnoDs_ipchi2", &match_phi_PVnoDs_ipchi2_vec);
+    tree->Branch("match_Ds_PVnoDs_ip", &match_Ds_PVnoDs_ip_vec);
+    tree->Branch("match_Ds_PVnoDs_iperr", &match_Ds_PVnoDs_iperr_vec);
+    tree->Branch("match_Ds_PVnoDs_ipchi2", &match_Ds_PVnoDs_ipchi2_vec);
+
+    tree->Branch("match_PV_withDs_IsValid", &match_PV_withDs_IsValid_vec);
+    tree->Branch("match_PV_withDs_IsFake", &match_PV_withDs_IsFake_vec);
+    tree->Branch("match_PV_withDs_chi2", &match_PV_withDs_chi2_vec);
+    tree->Branch("match_PV_withDs_ndof", &match_PV_withDs_ndof_vec);
+    tree->Branch("match_PV_withDs_chi2ndof", &match_PV_withDs_chi2ndof_vec);
+    tree->Branch("match_PV_withDs_x", &match_PV_withDs_x_vec);
+    tree->Branch("match_PV_withDs_y", &match_PV_withDs_y_vec);
+    tree->Branch("match_PV_withDs_z", &match_PV_withDs_z_vec);
+    tree->Branch("match_PV_withDs_xerr", &match_PV_withDs_xerr_vec);
+    tree->Branch("match_PV_withDs_yerr", &match_PV_withDs_yerr_vec);
+    tree->Branch("match_PV_withDs_zerr", &match_PV_withDs_zerr_vec);
+
+    tree->Branch("match_Ds_PVwithDs_FDxy", &match_Ds_PVwithDs_FDxy_vec);
+    tree->Branch("match_Ds_PVwithDs_FDz", &match_Ds_PVwithDs_FDz_vec);
+    tree->Branch("match_Ds_PVwithDs_FD", &match_Ds_PVwithDs_FD_vec);
+    tree->Branch("match_Ds_PVwithDs_FDxyerr", &match_Ds_PVwithDs_FDxyerr_vec);
+    tree->Branch("match_Ds_PVwithDs_FDxychi2", &match_Ds_PVwithDs_FDxychi2_vec);
+    tree->Branch("match_Ds_PVwithDs_FDzerr", &match_Ds_PVwithDs_FDzerr_vec);
+    tree->Branch("match_Ds_PVwithDs_FDzchi2", &match_Ds_PVwithDs_FDzchi2_vec);
+    tree->Branch("match_Ds_PVwithDs_FDerr", &match_Ds_PVwithDs_FDerr_vec);
+    tree->Branch("match_Ds_PVwithDs_FDchi2", &match_Ds_PVwithDs_FDchi2_vec);
+    tree->Branch("match_Ds_PVwithDs_dira", &match_Ds_PVwithDs_dira_vec);
+    tree->Branch("match_Ds_PVwithDs_dira_angle", &match_Ds_PVwithDs_dira_angle_vec);
+    tree->Branch("match_Kp_PVwithDs_ip", &match_Kp_PVwithDs_ip_vec);
+    tree->Branch("match_Kp_PVwithDs_iperr", &match_Kp_PVwithDs_iperr_vec);
+    tree->Branch("match_Kp_PVwithDs_ipchi2", &match_Kp_PVwithDs_ipchi2_vec);
+    tree->Branch("match_Km_PVwithDs_ip", &match_Km_PVwithDs_ip_vec);
+    tree->Branch("match_Km_PVwithDs_iperr", &match_Km_PVwithDs_iperr_vec);
+    tree->Branch("match_Km_PVwithDs_ipchi2", &match_Km_PVwithDs_ipchi2_vec);
+    tree->Branch("match_pi_PVwithDs_ip", &match_pi_PVwithDs_ip_vec);
+    tree->Branch("match_pi_PVwithDs_iperr", &match_pi_PVwithDs_iperr_vec);
+    tree->Branch("match_pi_PVwithDs_ipchi2", &match_pi_PVwithDs_ipchi2_vec);
+    tree->Branch("match_phi_PVwithDs_ip", &match_phi_PVwithDs_ip_vec);
+    tree->Branch("match_phi_PVwithDs_iperr", &match_phi_PVwithDs_iperr_vec);
+    tree->Branch("match_phi_PVwithDs_ipchi2", &match_phi_PVwithDs_ipchi2_vec);
+    tree->Branch("match_Ds_PVwithDs_ip", &match_Ds_PVwithDs_ip_vec);
+    tree->Branch("match_Ds_PVwithDs_iperr", &match_Ds_PVwithDs_iperr_vec);
+    tree->Branch("match_Ds_PVwithDs_ipchi2", &match_Ds_PVwithDs_ipchi2_vec);
+
+    tree->Branch("match_mu_charge", &match_mu_charge_vec);
+    tree->Branch("match_mu_eta", &match_mu_eta_vec);
+    tree->Branch("match_mu_phi", &match_mu_phi_vec);
+    tree->Branch("match_mu_vx", &match_mu_vx_vec);
+    tree->Branch("match_mu_vy", &match_mu_vy_vec);
+    tree->Branch("match_mu_vz", &match_mu_vz_vec);
+    tree->Branch("match_mu_p", &match_mu_p_vec);
+    tree->Branch("match_mu_pt", &match_mu_pt_vec);
+    tree->Branch("match_mu_px", &match_mu_px_vec);
+    tree->Branch("match_mu_py", &match_mu_py_vec);
+    tree->Branch("match_mu_pz", &match_mu_pz_vec);
+    tree->Branch("match_mu_isHighPt", &match_mu_isHighPt_vec);
+    tree->Branch("match_mu_isLoose", &match_mu_isLoose_vec);
+    tree->Branch("match_mu_isMedium", &match_mu_isMedium_vec);
+    tree->Branch("match_mu_isSoft", &match_mu_isSoft_vec);
+    tree->Branch("match_mu_isTight", &match_mu_isTight_vec);
+    tree->Branch("match_mu_isPF", &match_mu_isPF_vec);
+    tree->Branch("match_mu_isTracker", &match_mu_isTracker_vec);
+    tree->Branch("match_mu_isGlobal", &match_mu_isGlobal_vec);
+    tree->Branch("match_mu_IsoR03_sumChargedHadronPt", &match_mu_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("match_mu_IsoR03_sumChargedParticlePt", &match_mu_IsoR03_sumChargedParticlePt_vec);
+    tree->Branch("match_mu_IsoR03_sumNeutralHadronEt", &match_mu_IsoR03_sumNeutralHadronEt_vec);
+    tree->Branch("match_mu_IsoR03_sumPhotonEt", &match_mu_IsoR03_sumPhotonEt_vec);
+    tree->Branch("match_mu_IsoR03_sumPUPt", &match_mu_IsoR03_sumPUPt_vec);
+    tree->Branch("match_mu_PFIsoR03", &match_mu_PFIsoR03_vec);
+    tree->Branch("match_mu_IsoR04_sumChargedHadronPt", &match_mu_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("match_mu_IsoR04_sumChargedParticlePt", &match_mu_IsoR04_sumChargedParticlePt_vec);
+    tree->Branch("match_mu_IsoR04_sumNeutralHadronEt", &match_mu_IsoR04_sumNeutralHadronEt_vec);
+    tree->Branch("match_mu_IsoR04_sumPhotonEt", &match_mu_IsoR04_sumPhotonEt_vec);
+    tree->Branch("match_mu_IsoR04_sumPUPt", &match_mu_IsoR04_sumPUPt_vec);
+    tree->Branch("match_mu_PFIsoR04", &match_mu_PFIsoR04_vec);
+    tree->Branch("match_mu_primvtx_dxy", &match_mu_primvtx_dxy_vec);
+    tree->Branch("match_mu_primvtx_dxyerr", &match_mu_primvtx_dxyerr_vec);
+    tree->Branch("match_mu_primvtx_dz", &match_mu_primvtx_dz_vec);
+    tree->Branch("match_mu_primvtx_dzerr", &match_mu_primvtx_dzerr_vec);
+    tree->Branch("match_mu_primvtx_ip", &match_mu_primvtx_ip_vec);
+    tree->Branch("match_mu_primvtx_iperr", &match_mu_primvtx_iperr_vec);
+    tree->Branch("match_mu_primvtx_ipchi2", &match_mu_primvtx_ipchi2_vec);
+    
+    tree->Branch("match_mu_charge", &match_mu_charge_vec);
+    tree->Branch("match_mu_eta", &match_mu_eta_vec);
+    tree->Branch("match_mu_phi", &match_mu_phi_vec);
+    tree->Branch("match_mu_vx", &match_mu_vx_vec);
+    tree->Branch("match_mu_vy", &match_mu_vy_vec);
+    tree->Branch("match_mu_vz", &match_mu_vz_vec);
+    tree->Branch("match_mu_p", &match_mu_p_vec);
+    tree->Branch("match_mu_pt", &match_mu_pt_vec);
+    tree->Branch("match_mu_px", &match_mu_px_vec);
+    tree->Branch("match_mu_py", &match_mu_py_vec);
+    tree->Branch("match_mu_pz", &match_mu_pz_vec);
+    tree->Branch("match_mu_isHighPt", &match_mu_isHighPt_vec);
+    tree->Branch("match_mu_isLoose", &match_mu_isLoose_vec);
+    tree->Branch("match_mu_isMedium", &match_mu_isMedium_vec);
+    tree->Branch("match_mu_isSoft", &match_mu_isSoft_vec);
+    tree->Branch("match_mu_isTight", &match_mu_isTight_vec);
+    tree->Branch("match_mu_isPF", &match_mu_isPF_vec);
+    tree->Branch("match_mu_isTracker", &match_mu_isTracker_vec);
+    tree->Branch("match_mu_isGlobal", &match_mu_isGlobal_vec);
+    tree->Branch("match_mu_IsoR03_sumChargedHadronPt", &match_mu_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("match_mu_IsoR03_sumChargedParticlePt", &match_mu_IsoR03_sumChargedParticlePt_vec);
+    tree->Branch("match_mu_IsoR03_sumNeutralHadronEt", &match_mu_IsoR03_sumNeutralHadronEt_vec);
+    tree->Branch("match_mu_IsoR03_sumPhotonEt", &match_mu_IsoR03_sumPhotonEt_vec);
+    tree->Branch("match_mu_IsoR03_sumPUPt", &match_mu_IsoR03_sumPUPt_vec);
+    tree->Branch("match_mu_PFIsoR03", &match_mu_PFIsoR03_vec);
+    tree->Branch("match_mu_IsoR04_sumChargedHadronPt", &match_mu_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("match_mu_IsoR04_sumChargedParticlePt", &match_mu_IsoR04_sumChargedParticlePt_vec);
+    tree->Branch("match_mu_IsoR04_sumNeutralHadronEt", &match_mu_IsoR04_sumNeutralHadronEt_vec);
+    tree->Branch("match_mu_IsoR04_sumPhotonEt", &match_mu_IsoR04_sumPhotonEt_vec);
+    tree->Branch("match_mu_IsoR04_sumPUPt", &match_mu_IsoR04_sumPUPt_vec);
+    tree->Branch("match_mu_PFIsoR04", &match_mu_PFIsoR04_vec);
+    tree->Branch("match_mu_primvtx_dxy", &match_mu_primvtx_dxy_vec);
+    tree->Branch("match_mu_primvtx_dxyerr", &match_mu_primvtx_dxyerr_vec);
+    tree->Branch("match_mu_primvtx_dz", &match_mu_primvtx_dz_vec);
+    tree->Branch("match_mu_primvtx_dzerr", &match_mu_primvtx_dzerr_vec);
+    tree->Branch("match_mu_primvtx_ip", &match_mu_primvtx_ip_vec);
+    tree->Branch("match_mu_primvtx_iperr", &match_mu_primvtx_iperr_vec);
+    tree->Branch("match_mu_primvtx_ipchi2", &match_mu_primvtx_ipchi2_vec);
 
     tree->Branch("num_reco_phi", &num_reco_phi);
     tree->Branch("num_reco_Ds", &num_reco_Ds);
@@ -1587,16 +1671,6 @@ void PVTree::CreateBranches()
     tree->Branch("Ds_pz", &Ds_pz_vec);
     tree->Branch("Ds_invm", &Ds_invm_vec);
 
-    tree->Branch("Kp_pp", &Kp_pp_vec);
-    tree->Branch("Kp_pl", &Kp_pl_vec);
-    tree->Branch("Km_pp", &Km_pp_vec);
-    tree->Branch("Km_pl", &Km_pl_vec);
-
-    tree->Branch("phi_pp", &phi_pp_vec);
-    tree->Branch("phi_pl", &phi_pl_vec);
-    tree->Branch("pi_pp", &pi_pp_vec);
-    tree->Branch("pi_pl", &pi_pl_vec);
-
     tree->Branch("dR_Kp_Km", &dR_Kp_Km_vec);
     tree->Branch("dR_Kp_phi", &dR_Kp_phi_vec);
     tree->Branch("dR_Km_phi", &dR_Km_phi_vec);
@@ -1608,28 +1682,10 @@ void PVTree::CreateBranches()
     tree->Branch("dR_phi_Ds", &dR_phi_Ds_vec);
     tree->Branch("dR_pi_Ds", &dR_pi_Ds_vec);
 
-    tree->Branch("dxy_Kp_Km", &dxy_Kp_Km_vec);
-    tree->Branch("dxy_Kp_phi", &dxy_Kp_phi_vec);
-    tree->Branch("dxy_Km_phi", &dxy_Km_phi_vec);
-    tree->Branch("dxy_Kp_pi", &dxy_Kp_pi_vec);
-    tree->Branch("dxy_Km_pi", &dxy_Km_pi_vec);
-    tree->Branch("dxy_pi_phi", &dxy_pi_phi_vec);
-    tree->Branch("dxy_Kp_Ds", &dxy_Kp_Ds_vec);
-    tree->Branch("dxy_Km_Ds", &dxy_Km_Ds_vec);
     tree->Branch("dxy_phi_Ds", &dxy_phi_Ds_vec);
-    tree->Branch("dxy_pi_Ds", &dxy_pi_Ds_vec);
-
-    tree->Branch("dz_Kp_Km", &dz_Kp_Km_vec);
-    tree->Branch("dz_Kp_phi", &dz_Kp_phi_vec);
-    tree->Branch("dz_Km_phi", &dz_Km_phi_vec);
-    tree->Branch("dz_Kp_pi", &dz_Kp_pi_vec);
-    tree->Branch("dz_Km_pi", &dz_Km_pi_vec);
-    tree->Branch("dz_pi_phi", &dz_pi_phi_vec);
-    tree->Branch("dz_Kp_Ds", &dz_Kp_Ds_vec);
-    tree->Branch("dz_Km_Ds", &dz_Km_Ds_vec);
     tree->Branch("dz_phi_Ds", &dz_phi_Ds_vec);
-    tree->Branch("dz_pi_Ds", &dz_pi_Ds_vec);
 
+    // Fit on phi
     tree->Branch("phiFit_chi2", &phiFit_chi2_vec);
     tree->Branch("phiFit_ndof", &phiFit_ndof_vec);
     tree->Branch("phiFit_chi2ndof", &phiFit_chi2ndof_vec);
@@ -1682,16 +1738,6 @@ void PVTree::CreateBranches()
     tree->Branch("phiFit_Ds_pz", &phiFit_Ds_pz_vec);
     tree->Branch("phiFit_Ds_invm", &phiFit_Ds_invm_vec);
 
-    tree->Branch("phiFit_Kp_pp", &phiFit_Kp_pp_vec);
-    tree->Branch("phiFit_Kp_pl", &phiFit_Kp_pl_vec);
-    tree->Branch("phiFit_Km_pp", &phiFit_Km_pp_vec);
-    tree->Branch("phiFit_Km_pl", &phiFit_Km_pl_vec);
-
-    tree->Branch("phiFit_phi_pp", &phiFit_phi_pp_vec);
-    tree->Branch("phiFit_phi_pl", &phiFit_phi_pl_vec);
-    tree->Branch("phiFit_pi_pp", &phiFit_pi_pp_vec);
-    tree->Branch("phiFit_pi_pl", &phiFit_pi_pl_vec);
-
     tree->Branch("phiFit_dR_Kp_Km", &phiFit_dR_Kp_Km_vec);
     tree->Branch("phiFit_dR_Kp_phi", &phiFit_dR_Kp_phi_vec);
     tree->Branch("phiFit_dR_Km_phi", &phiFit_dR_Km_phi_vec);
@@ -1702,10 +1748,6 @@ void PVTree::CreateBranches()
     tree->Branch("phiFit_dR_Km_Ds", &phiFit_dR_Km_Ds_vec);
     tree->Branch("phiFit_dR_phi_Ds", &phiFit_dR_phi_Ds_vec);
     tree->Branch("phiFit_dR_pi_Ds", &phiFit_dR_pi_Ds_vec);
-    
-    tree->Branch("alpha_phi", &alpha_phi_vec);
-    tree->Branch("beta_phi", &beta_phi_vec);
-    tree->Branch("APvar_phi", &APvar_phi_vec);
 
     // Fit on Ds 
     tree->Branch("DsFit_chi2", &DsFit_chi2_vec);
@@ -1760,16 +1802,6 @@ void PVTree::CreateBranches()
     tree->Branch("DsFit_Ds_pz", &DsFit_Ds_pz_vec);
     tree->Branch("DsFit_Ds_invm", &DsFit_Ds_invm_vec);
 
-    tree->Branch("DsFit_Kp_pp", &DsFit_Kp_pp_vec);
-    tree->Branch("DsFit_Kp_pl", &DsFit_Kp_pl_vec);
-    tree->Branch("DsFit_Km_pp", &DsFit_Km_pp_vec);
-    tree->Branch("DsFit_Km_pl", &DsFit_Km_pl_vec);
-
-    tree->Branch("DsFit_phi_pp", &DsFit_phi_pp_vec);
-    tree->Branch("DsFit_phi_pl", &DsFit_phi_pl_vec);
-    tree->Branch("DsFit_pi_pp", &DsFit_pi_pp_vec);
-    tree->Branch("DsFit_pi_pl", &DsFit_pi_pl_vec);
-
     tree->Branch("DsFit_dR_Kp_Km", &DsFit_dR_Kp_Km_vec);
     tree->Branch("DsFit_dR_Kp_phi", &DsFit_dR_Kp_phi_vec);
     tree->Branch("DsFit_dR_Km_phi", &DsFit_dR_Km_phi_vec);
@@ -1782,10 +1814,6 @@ void PVTree::CreateBranches()
     tree->Branch("DsFit_dR_pi_Ds", &DsFit_dR_pi_Ds_vec);
 
     tree->Branch("DsFit_Mconstraint_Ds_invm", &DsFit_Mconstraint_Ds_invm_vec);
-    
-    tree->Branch("alpha_Ds", &alpha_Ds_vec);
-    tree->Branch("beta_Ds", &beta_Ds_vec);
-    tree->Branch("APvar_Ds", &APvar_Ds_vec);
 
     tree->Branch("Ds_primvtx_FDxy", &Ds_primvtx_FDxy_vec);
     tree->Branch("Ds_primvtx_FDz", &Ds_primvtx_FDz_vec);
@@ -1807,35 +1835,35 @@ void PVTree::CreateBranches()
     tree->Branch("pi_primvtx_ip", &pi_primvtx_ip_vec);
     tree->Branch("pi_primvtx_iperr", &pi_primvtx_iperr_vec);
     tree->Branch("pi_primvtx_ipchi2", &pi_primvtx_ipchi2_vec);
+    tree->Branch("phi_primvtx_ip", &phi_primvtx_ip_vec);
+    tree->Branch("phi_primvtx_iperr", &phi_primvtx_iperr_vec);
+    tree->Branch("phi_primvtx_ipchi2", &phi_primvtx_ipchi2_vec);
+    tree->Branch("Ds_primvtx_ip", &Ds_primvtx_ip_vec);
+    tree->Branch("Ds_primvtx_iperr", &Ds_primvtx_iperr_vec);
+    tree->Branch("Ds_primvtx_ipchi2", &Ds_primvtx_ipchi2_vec);
 
-    tree->Branch("Ds_Iso_R0p3", &Ds_Iso_R0p3_vec);
-    tree->Branch("Ds_Iso_R0p4", &Ds_Iso_R0p4_vec);
-    tree->Branch("Ds_IsoRel_R0p3", &Ds_IsoRel_R0p3_vec);
-    tree->Branch("Ds_IsoRel_R0p4", &Ds_IsoRel_R0p4_vec);
+    tree->Branch("Ds_IsoR03_sumChargedHadronPt", &Ds_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("Ds_IsoR03_sumNeutralHadronPt", &Ds_IsoR03_sumNeutralHadronPt_vec);
+    tree->Branch("Ds_IsoR03_sumPhotonPt", &Ds_IsoR03_sumPhotonPt_vec);
+    tree->Branch("Ds_IsoR03_sumPUPt", &Ds_IsoR03_sumPUPt_vec);
+    tree->Branch("Ds_PFIsoR03", &Ds_PFIsoR03_vec);
+    tree->Branch("Ds_IsoR04_sumChargedHadronPt", &Ds_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("Ds_IsoR04_sumNeutralHadronPt", &Ds_IsoR04_sumNeutralHadronPt_vec);
+    tree->Branch("Ds_IsoR04_sumPhotonPt", &Ds_IsoR04_sumPhotonPt_vec);
+    tree->Branch("Ds_IsoR04_sumPUPt", &Ds_IsoR04_sumPUPt_vec);
+    tree->Branch("Ds_PFIsoR04", &Ds_PFIsoR04_vec);
 
-    tree->Branch("PV_noDs_withBS_IsValid", &PV_noDs_withBS_IsValid_vec);
-    tree->Branch("PV_noDs_withBS_IsFake", &PV_noDs_withBS_IsFake_vec);
-    tree->Branch("PV_noDs_withBS_chi2", &PV_noDs_withBS_chi2_vec);
-    tree->Branch("PV_noDs_withBS_ndof", &PV_noDs_withBS_ndof_vec);
-    tree->Branch("PV_noDs_withBS_chi2ndof", &PV_noDs_withBS_chi2ndof_vec);
-    tree->Branch("PV_noDs_withBS_x", &PV_noDs_withBS_x_vec);
-    tree->Branch("PV_noDs_withBS_y", &PV_noDs_withBS_y_vec);
-    tree->Branch("PV_noDs_withBS_z", &PV_noDs_withBS_z_vec);
-    tree->Branch("PV_noDs_withBS_xerr", &PV_noDs_withBS_xerr_vec);
-    tree->Branch("PV_noDs_withBS_yerr", &PV_noDs_withBS_yerr_vec);
-    tree->Branch("PV_noDs_withBS_zerr", &PV_noDs_withBS_zerr_vec);
-
-    tree->Branch("PV_noDs_noBS_IsValid", &PV_noDs_noBS_IsValid_vec);
-    tree->Branch("PV_noDs_noBS_IsFake", &PV_noDs_noBS_IsFake_vec);
-    tree->Branch("PV_noDs_noBS_chi2", &PV_noDs_noBS_chi2_vec);
-    tree->Branch("PV_noDs_noBS_ndof", &PV_noDs_noBS_ndof_vec);
-    tree->Branch("PV_noDs_noBS_chi2ndof", &PV_noDs_noBS_chi2ndof_vec);
-    tree->Branch("PV_noDs_noBS_x", &PV_noDs_noBS_x_vec);
-    tree->Branch("PV_noDs_noBS_y", &PV_noDs_noBS_y_vec);
-    tree->Branch("PV_noDs_noBS_z", &PV_noDs_noBS_z_vec);
-    tree->Branch("PV_noDs_noBS_xerr", &PV_noDs_noBS_xerr_vec);
-    tree->Branch("PV_noDs_noBS_yerr", &PV_noDs_noBS_yerr_vec);
-    tree->Branch("PV_noDs_noBS_zerr", &PV_noDs_noBS_zerr_vec);
+    tree->Branch("PV_noDs_IsValid", &PV_noDs_IsValid_vec);
+    tree->Branch("PV_noDs_IsFake", &PV_noDs_IsFake_vec);
+    tree->Branch("PV_noDs_chi2", &PV_noDs_chi2_vec);
+    tree->Branch("PV_noDs_ndof", &PV_noDs_ndof_vec);
+    tree->Branch("PV_noDs_chi2ndof", &PV_noDs_chi2ndof_vec);
+    tree->Branch("PV_noDs_x", &PV_noDs_x_vec);
+    tree->Branch("PV_noDs_y", &PV_noDs_y_vec);
+    tree->Branch("PV_noDs_z", &PV_noDs_z_vec);
+    tree->Branch("PV_noDs_xerr", &PV_noDs_xerr_vec);
+    tree->Branch("PV_noDs_yerr", &PV_noDs_yerr_vec);
+    tree->Branch("PV_noDs_zerr", &PV_noDs_zerr_vec);
 
     tree->Branch("Ds_PVnoDs_FDxy", &Ds_PVnoDs_FDxy_vec);
     tree->Branch("Ds_PVnoDs_FDz", &Ds_PVnoDs_FDz_vec);
@@ -1857,12 +1885,57 @@ void PVTree::CreateBranches()
     tree->Branch("pi_PVnoDs_ip", &pi_PVnoDs_ip_vec);
     tree->Branch("pi_PVnoDs_iperr", &pi_PVnoDs_iperr_vec);
     tree->Branch("pi_PVnoDs_ipchi2", &pi_PVnoDs_ipchi2_vec);
+    tree->Branch("phi_PVnoDs_ip", &phi_PVnoDs_ip_vec);
+    tree->Branch("phi_PVnoDs_iperr", &phi_PVnoDs_iperr_vec);
+    tree->Branch("phi_PVnoDs_ipchi2", &phi_PVnoDs_ipchi2_vec);
+    tree->Branch("Ds_PVnoDs_ip", &Ds_PVnoDs_ip_vec);
+    tree->Branch("Ds_PVnoDs_iperr", &Ds_PVnoDs_iperr_vec);
+    tree->Branch("Ds_PVnoDs_ipchi2", &Ds_PVnoDs_ipchi2_vec);
+
+    tree->Branch("PV_withDs_IsValid", &PV_withDs_IsValid_vec);
+    tree->Branch("PV_withDs_IsFake", &PV_withDs_IsFake_vec);
+    tree->Branch("PV_withDs_chi2", &PV_withDs_chi2_vec);
+    tree->Branch("PV_withDs_ndof", &PV_withDs_ndof_vec);
+    tree->Branch("PV_withDs_chi2ndof", &PV_withDs_chi2ndof_vec);
+    tree->Branch("PV_withDs_x", &PV_withDs_x_vec);
+    tree->Branch("PV_withDs_y", &PV_withDs_y_vec);
+    tree->Branch("PV_withDs_z", &PV_withDs_z_vec);
+    tree->Branch("PV_withDs_xerr", &PV_withDs_xerr_vec);
+    tree->Branch("PV_withDs_yerr", &PV_withDs_yerr_vec);
+    tree->Branch("PV_withDs_zerr", &PV_withDs_zerr_vec);
+
+    tree->Branch("Ds_PVwithDs_FDxy", &Ds_PVwithDs_FDxy_vec);
+    tree->Branch("Ds_PVwithDs_FDz", &Ds_PVwithDs_FDz_vec);
+    tree->Branch("Ds_PVwithDs_FD", &Ds_PVwithDs_FD_vec);
+    tree->Branch("Ds_PVwithDs_FDxyerr", &Ds_PVwithDs_FDxyerr_vec);
+    tree->Branch("Ds_PVwithDs_FDxychi2", &Ds_PVwithDs_FDxychi2_vec);
+    tree->Branch("Ds_PVwithDs_FDzerr", &Ds_PVwithDs_FDzerr_vec);
+    tree->Branch("Ds_PVwithDs_FDzchi2", &Ds_PVwithDs_FDzchi2_vec);
+    tree->Branch("Ds_PVwithDs_FDerr", &Ds_PVwithDs_FDerr_vec);
+    tree->Branch("Ds_PVwithDs_FDchi2", &Ds_PVwithDs_FDchi2_vec);
+    tree->Branch("Ds_PVwithDs_dira", &Ds_PVwithDs_dira_vec);
+    tree->Branch("Ds_PVwithDs_dira_angle", &Ds_PVwithDs_dira_angle_vec);
+    tree->Branch("Kp_PVwithDs_ip", &Kp_PVwithDs_ip_vec);
+    tree->Branch("Kp_PVwithDs_iperr", &Kp_PVwithDs_iperr_vec);
+    tree->Branch("Kp_PVwithDs_ipchi2", &Kp_PVwithDs_ipchi2_vec);
+    tree->Branch("Km_PVwithDs_ip", &Km_PVwithDs_ip_vec);
+    tree->Branch("Km_PVwithDs_iperr", &Km_PVwithDs_iperr_vec);
+    tree->Branch("Km_PVwithDs_ipchi2", &Km_PVwithDs_ipchi2_vec);
+    tree->Branch("pi_PVwithDs_ip", &pi_PVwithDs_ip_vec);
+    tree->Branch("pi_PVwithDs_iperr", &pi_PVwithDs_iperr_vec);
+    tree->Branch("pi_PVwithDs_ipchi2", &pi_PVwithDs_ipchi2_vec);
+    tree->Branch("phi_PVwithDs_ip", &phi_PVwithDs_ip_vec);
+    tree->Branch("phi_PVwithDs_iperr", &phi_PVwithDs_iperr_vec);
+    tree->Branch("phi_PVwithDs_ipchi2", &phi_PVwithDs_ipchi2_vec);
+    tree->Branch("Ds_PVwithDs_ip", &Ds_PVwithDs_ip_vec);
+    tree->Branch("Ds_PVwithDs_iperr", &Ds_PVwithDs_iperr_vec);
+    tree->Branch("Ds_PVwithDs_ipchi2", &Ds_PVwithDs_ipchi2_vec);
 
     tree->Branch("Kp_match", &Kp_match_vec);
     tree->Branch("Km_match", &Km_match_vec);
     tree->Branch("pi_match", &pi_match_vec);
     tree->Branch("match_entry", &match_entry_vec);
-    tree->Branch("non_match_entry", &non_match_entry_vec); 
+    tree->Branch("non_match_entry", &non_match_entry_vec);
 
     tree->Branch("best_Kp_isIsolatedChargedHadron", &best_Kp_isIsolatedChargedHadron_vec);
     tree->Branch("best_Kp_charge", &best_Kp_charge_vec);
@@ -1921,16 +1994,6 @@ void PVTree::CreateBranches()
     tree->Branch("best_Ds_pz", &best_Ds_pz_vec);
     tree->Branch("best_Ds_invm", &best_Ds_invm_vec);
 
-    tree->Branch("best_Kp_pp", &best_Kp_pp_vec);
-    tree->Branch("best_Kp_pl", &best_Kp_pl_vec);
-    tree->Branch("best_Km_pp", &best_Km_pp_vec);
-    tree->Branch("best_Km_pl", &best_Km_pl_vec);
-
-    tree->Branch("best_phi_pp", &best_phi_pp_vec);
-    tree->Branch("best_phi_pl", &best_phi_pl_vec);
-    tree->Branch("best_pi_pp", &best_pi_pp_vec);
-    tree->Branch("best_pi_pl", &best_pi_pl_vec);
-
     tree->Branch("best_dR_Kp_Km", &best_dR_Kp_Km_vec);
     tree->Branch("best_dR_Kp_phi", &best_dR_Kp_phi_vec);
     tree->Branch("best_dR_Km_phi", &best_dR_Km_phi_vec);
@@ -1942,28 +2005,10 @@ void PVTree::CreateBranches()
     tree->Branch("best_dR_phi_Ds", &best_dR_phi_Ds_vec);
     tree->Branch("best_dR_pi_Ds", &best_dR_pi_Ds_vec);
 
-    tree->Branch("best_dxy_Kp_Km", &best_dxy_Kp_Km_vec);
-    tree->Branch("best_dxy_Kp_phi", &best_dxy_Kp_phi_vec);
-    tree->Branch("best_dxy_Km_phi", &best_dxy_Km_phi_vec);
-    tree->Branch("best_dxy_Kp_pi", &best_dxy_Kp_pi_vec);
-    tree->Branch("best_dxy_Km_pi", &best_dxy_Km_pi_vec);
-    tree->Branch("best_dxy_pi_phi", &best_dxy_pi_phi_vec);
-    tree->Branch("best_dxy_Kp_Ds", &best_dxy_Kp_Ds_vec);
-    tree->Branch("best_dxy_Km_Ds", &best_dxy_Km_Ds_vec);
     tree->Branch("best_dxy_phi_Ds", &best_dxy_phi_Ds_vec);
-    tree->Branch("best_dxy_pi_Ds", &best_dxy_pi_Ds_vec);
-
-    tree->Branch("best_dz_Kp_Km", &best_dz_Kp_Km_vec);
-    tree->Branch("best_dz_Kp_phi", &best_dz_Kp_phi_vec);
-    tree->Branch("best_dz_Km_phi", &best_dz_Km_phi_vec);
-    tree->Branch("best_dz_Kp_pi", &best_dz_Kp_pi_vec);
-    tree->Branch("best_dz_Km_pi", &best_dz_Km_pi_vec);
-    tree->Branch("best_dz_pi_phi", &best_dz_pi_phi_vec);
-    tree->Branch("best_dz_Kp_Ds", &best_dz_Kp_Ds_vec);
-    tree->Branch("best_dz_Km_Ds", &best_dz_Km_Ds_vec);
     tree->Branch("best_dz_phi_Ds", &best_dz_phi_Ds_vec);
-    tree->Branch("best_dz_pi_Ds", &best_dz_pi_Ds_vec);
 
+    // Fit on phi
     tree->Branch("best_phiFit_chi2", &best_phiFit_chi2_vec);
     tree->Branch("best_phiFit_ndof", &best_phiFit_ndof_vec);
     tree->Branch("best_phiFit_chi2ndof", &best_phiFit_chi2ndof_vec);
@@ -2016,16 +2061,6 @@ void PVTree::CreateBranches()
     tree->Branch("best_phiFit_Ds_pz", &best_phiFit_Ds_pz_vec);
     tree->Branch("best_phiFit_Ds_invm", &best_phiFit_Ds_invm_vec);
 
-    tree->Branch("best_phiFit_Kp_pp", &best_phiFit_Kp_pp_vec);
-    tree->Branch("best_phiFit_Kp_pl", &best_phiFit_Kp_pl_vec);
-    tree->Branch("best_phiFit_Km_pp", &best_phiFit_Km_pp_vec);
-    tree->Branch("best_phiFit_Km_pl", &best_phiFit_Km_pl_vec);
-
-    tree->Branch("best_phiFit_phi_pp", &best_phiFit_phi_pp_vec);
-    tree->Branch("best_phiFit_phi_pl", &best_phiFit_phi_pl_vec);
-    tree->Branch("best_phiFit_pi_pp", &best_phiFit_pi_pp_vec);
-    tree->Branch("best_phiFit_pi_pl", &best_phiFit_pi_pl_vec);
-
     tree->Branch("best_phiFit_dR_Kp_Km", &best_phiFit_dR_Kp_Km_vec);
     tree->Branch("best_phiFit_dR_Kp_phi", &best_phiFit_dR_Kp_phi_vec);
     tree->Branch("best_phiFit_dR_Km_phi", &best_phiFit_dR_Km_phi_vec);
@@ -2036,10 +2071,6 @@ void PVTree::CreateBranches()
     tree->Branch("best_phiFit_dR_Km_Ds", &best_phiFit_dR_Km_Ds_vec);
     tree->Branch("best_phiFit_dR_phi_Ds", &best_phiFit_dR_phi_Ds_vec);
     tree->Branch("best_phiFit_dR_pi_Ds", &best_phiFit_dR_pi_Ds_vec);
-    
-    tree->Branch("best_alpha_phi", &best_alpha_phi_vec);
-    tree->Branch("best_beta_phi", &best_beta_phi_vec);
-    tree->Branch("best_APvar_phi", &best_APvar_phi_vec);
 
     // Fit on Ds 
     tree->Branch("best_DsFit_chi2", &best_DsFit_chi2_vec);
@@ -2094,16 +2125,6 @@ void PVTree::CreateBranches()
     tree->Branch("best_DsFit_Ds_pz", &best_DsFit_Ds_pz_vec);
     tree->Branch("best_DsFit_Ds_invm", &best_DsFit_Ds_invm_vec);
 
-    tree->Branch("best_DsFit_Kp_pp", &best_DsFit_Kp_pp_vec);
-    tree->Branch("best_DsFit_Kp_pl", &best_DsFit_Kp_pl_vec);
-    tree->Branch("best_DsFit_Km_pp", &best_DsFit_Km_pp_vec);
-    tree->Branch("best_DsFit_Km_pl", &best_DsFit_Km_pl_vec);
-
-    tree->Branch("best_DsFit_phi_pp", &best_DsFit_phi_pp_vec);
-    tree->Branch("best_DsFit_phi_pl", &best_DsFit_phi_pl_vec);
-    tree->Branch("best_DsFit_pi_pp", &best_DsFit_pi_pp_vec);
-    tree->Branch("best_DsFit_pi_pl", &best_DsFit_pi_pl_vec);
-
     tree->Branch("best_DsFit_dR_Kp_Km", &best_DsFit_dR_Kp_Km_vec);
     tree->Branch("best_DsFit_dR_Kp_phi", &best_DsFit_dR_Kp_phi_vec);
     tree->Branch("best_DsFit_dR_Km_phi", &best_DsFit_dR_Km_phi_vec);
@@ -2116,10 +2137,6 @@ void PVTree::CreateBranches()
     tree->Branch("best_DsFit_dR_pi_Ds", &best_DsFit_dR_pi_Ds_vec);
 
     tree->Branch("best_DsFit_Mconstraint_Ds_invm", &best_DsFit_Mconstraint_Ds_invm_vec);
-    
-    tree->Branch("best_alpha_Ds", &best_alpha_Ds_vec);
-    tree->Branch("best_beta_Ds", &best_beta_Ds_vec);
-    tree->Branch("best_APvar_Ds", &best_APvar_Ds_vec);
 
     tree->Branch("best_Ds_primvtx_FDxy", &best_Ds_primvtx_FDxy_vec);
     tree->Branch("best_Ds_primvtx_FDz", &best_Ds_primvtx_FDz_vec);
@@ -2141,35 +2158,35 @@ void PVTree::CreateBranches()
     tree->Branch("best_pi_primvtx_ip", &best_pi_primvtx_ip_vec);
     tree->Branch("best_pi_primvtx_iperr", &best_pi_primvtx_iperr_vec);
     tree->Branch("best_pi_primvtx_ipchi2", &best_pi_primvtx_ipchi2_vec);
+    tree->Branch("best_phi_primvtx_ip", &best_phi_primvtx_ip_vec);
+    tree->Branch("best_phi_primvtx_iperr", &best_phi_primvtx_iperr_vec);
+    tree->Branch("best_phi_primvtx_ipchi2", &best_phi_primvtx_ipchi2_vec);
+    tree->Branch("best_Ds_primvtx_ip", &best_Ds_primvtx_ip_vec);
+    tree->Branch("best_Ds_primvtx_iperr", &best_Ds_primvtx_iperr_vec);
+    tree->Branch("best_Ds_primvtx_ipchi2", &best_Ds_primvtx_ipchi2_vec);
 
-    tree->Branch("best_Ds_Iso_R0p3", &best_Ds_Iso_R0p3_vec);
-    tree->Branch("best_Ds_Iso_R0p4", &best_Ds_Iso_R0p4_vec);
-    tree->Branch("best_Ds_IsoRel_R0p3", &best_Ds_IsoRel_R0p3_vec);
-    tree->Branch("best_Ds_IsoRel_R0p4", &best_Ds_IsoRel_R0p4_vec);
+    tree->Branch("best_Ds_IsoR03_sumChargedHadronPt", &best_Ds_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("best_Ds_IsoR03_sumNeutralHadronPt", &best_Ds_IsoR03_sumNeutralHadronPt_vec);
+    tree->Branch("best_Ds_IsoR03_sumPhotonPt", &best_Ds_IsoR03_sumPhotonPt_vec);
+    tree->Branch("best_Ds_IsoR03_sumPUPt", &best_Ds_IsoR03_sumPUPt_vec);
+    tree->Branch("best_Ds_PFIsoR03", &best_Ds_PFIsoR03_vec);
+    tree->Branch("best_Ds_IsoR04_sumChargedHadronPt", &best_Ds_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("best_Ds_IsoR04_sumNeutralHadronPt", &best_Ds_IsoR04_sumNeutralHadronPt_vec);
+    tree->Branch("best_Ds_IsoR04_sumPhotonPt", &best_Ds_IsoR04_sumPhotonPt_vec);
+    tree->Branch("best_Ds_IsoR04_sumPUPt", &best_Ds_IsoR04_sumPUPt_vec);
+    tree->Branch("best_Ds_PFIsoR04", &best_Ds_PFIsoR04_vec);
 
-    tree->Branch("best_PV_noDs_withBS_IsValid", &best_PV_noDs_withBS_IsValid_vec);
-    tree->Branch("best_PV_noDs_withBS_IsFake", &best_PV_noDs_withBS_IsFake_vec);
-    tree->Branch("best_PV_noDs_withBS_chi2", &best_PV_noDs_withBS_chi2_vec);
-    tree->Branch("best_PV_noDs_withBS_ndof", &best_PV_noDs_withBS_ndof_vec);
-    tree->Branch("best_PV_noDs_withBS_chi2ndof", &best_PV_noDs_withBS_chi2ndof_vec);
-    tree->Branch("best_PV_noDs_withBS_x", &best_PV_noDs_withBS_x_vec);
-    tree->Branch("best_PV_noDs_withBS_y", &best_PV_noDs_withBS_y_vec);
-    tree->Branch("best_PV_noDs_withBS_z", &best_PV_noDs_withBS_z_vec);
-    tree->Branch("best_PV_noDs_withBS_xerr", &best_PV_noDs_withBS_xerr_vec);
-    tree->Branch("best_PV_noDs_withBS_yerr", &best_PV_noDs_withBS_yerr_vec);
-    tree->Branch("best_PV_noDs_withBS_zerr", &best_PV_noDs_withBS_zerr_vec);
-
-    tree->Branch("best_PV_noDs_noBS_IsValid", &best_PV_noDs_noBS_IsValid_vec);
-    tree->Branch("best_PV_noDs_noBS_IsFake", &best_PV_noDs_noBS_IsFake_vec);
-    tree->Branch("best_PV_noDs_noBS_chi2", &best_PV_noDs_noBS_chi2_vec);
-    tree->Branch("best_PV_noDs_noBS_ndof", &best_PV_noDs_noBS_ndof_vec);
-    tree->Branch("best_PV_noDs_noBS_chi2ndof", &best_PV_noDs_noBS_chi2ndof_vec);
-    tree->Branch("best_PV_noDs_noBS_x", &best_PV_noDs_noBS_x_vec);
-    tree->Branch("best_PV_noDs_noBS_y", &best_PV_noDs_noBS_y_vec);
-    tree->Branch("best_PV_noDs_noBS_z", &best_PV_noDs_noBS_z_vec);
-    tree->Branch("best_PV_noDs_noBS_xerr", &best_PV_noDs_noBS_xerr_vec);
-    tree->Branch("best_PV_noDs_noBS_yerr", &best_PV_noDs_noBS_yerr_vec);
-    tree->Branch("best_PV_noDs_noBS_zerr", &best_PV_noDs_noBS_zerr_vec);
+    tree->Branch("best_PV_noDs_IsValid", &best_PV_noDs_IsValid_vec);
+    tree->Branch("best_PV_noDs_IsFake", &best_PV_noDs_IsFake_vec);
+    tree->Branch("best_PV_noDs_chi2", &best_PV_noDs_chi2_vec);
+    tree->Branch("best_PV_noDs_ndof", &best_PV_noDs_ndof_vec);
+    tree->Branch("best_PV_noDs_chi2ndof", &best_PV_noDs_chi2ndof_vec);
+    tree->Branch("best_PV_noDs_x", &best_PV_noDs_x_vec);
+    tree->Branch("best_PV_noDs_y", &best_PV_noDs_y_vec);
+    tree->Branch("best_PV_noDs_z", &best_PV_noDs_z_vec);
+    tree->Branch("best_PV_noDs_xerr", &best_PV_noDs_xerr_vec);
+    tree->Branch("best_PV_noDs_yerr", &best_PV_noDs_yerr_vec);
+    tree->Branch("best_PV_noDs_zerr", &best_PV_noDs_zerr_vec);
 
     tree->Branch("best_Ds_PVnoDs_FDxy", &best_Ds_PVnoDs_FDxy_vec);
     tree->Branch("best_Ds_PVnoDs_FDz", &best_Ds_PVnoDs_FDz_vec);
@@ -2191,9 +2208,93 @@ void PVTree::CreateBranches()
     tree->Branch("best_pi_PVnoDs_ip", &best_pi_PVnoDs_ip_vec);
     tree->Branch("best_pi_PVnoDs_iperr", &best_pi_PVnoDs_iperr_vec);
     tree->Branch("best_pi_PVnoDs_ipchi2", &best_pi_PVnoDs_ipchi2_vec);
+    tree->Branch("best_phi_PVnoDs_ip", &best_phi_PVnoDs_ip_vec);
+    tree->Branch("best_phi_PVnoDs_iperr", &best_phi_PVnoDs_iperr_vec);
+    tree->Branch("best_phi_PVnoDs_ipchi2", &best_phi_PVnoDs_ipchi2_vec);
+    tree->Branch("best_Ds_PVnoDs_ip", &best_Ds_PVnoDs_ip_vec);
+    tree->Branch("best_Ds_PVnoDs_iperr", &best_Ds_PVnoDs_iperr_vec);
+    tree->Branch("best_Ds_PVnoDs_ipchi2", &best_Ds_PVnoDs_ipchi2_vec);
+
+    tree->Branch("best_PV_withDs_IsValid", &best_PV_withDs_IsValid_vec);
+    tree->Branch("best_PV_withDs_IsFake", &best_PV_withDs_IsFake_vec);
+    tree->Branch("best_PV_withDs_chi2", &best_PV_withDs_chi2_vec);
+    tree->Branch("best_PV_withDs_ndof", &best_PV_withDs_ndof_vec);
+    tree->Branch("best_PV_withDs_chi2ndof", &best_PV_withDs_chi2ndof_vec);
+    tree->Branch("best_PV_withDs_x", &best_PV_withDs_x_vec);
+    tree->Branch("best_PV_withDs_y", &best_PV_withDs_y_vec);
+    tree->Branch("best_PV_withDs_z", &best_PV_withDs_z_vec);
+    tree->Branch("best_PV_withDs_xerr", &best_PV_withDs_xerr_vec);
+    tree->Branch("best_PV_withDs_yerr", &best_PV_withDs_yerr_vec);
+    tree->Branch("best_PV_withDs_zerr", &best_PV_withDs_zerr_vec);
+
+    tree->Branch("best_Ds_PVwithDs_FDxy", &best_Ds_PVwithDs_FDxy_vec);
+    tree->Branch("best_Ds_PVwithDs_FDz", &best_Ds_PVwithDs_FDz_vec);
+    tree->Branch("best_Ds_PVwithDs_FD", &best_Ds_PVwithDs_FD_vec);
+    tree->Branch("best_Ds_PVwithDs_FDxyerr", &best_Ds_PVwithDs_FDxyerr_vec);
+    tree->Branch("best_Ds_PVwithDs_FDxychi2", &best_Ds_PVwithDs_FDxychi2_vec);
+    tree->Branch("best_Ds_PVwithDs_FDzerr", &best_Ds_PVwithDs_FDzerr_vec);
+    tree->Branch("best_Ds_PVwithDs_FDzchi2", &best_Ds_PVwithDs_FDzchi2_vec);
+    tree->Branch("best_Ds_PVwithDs_FDerr", &best_Ds_PVwithDs_FDerr_vec);
+    tree->Branch("best_Ds_PVwithDs_FDchi2", &best_Ds_PVwithDs_FDchi2_vec);
+    tree->Branch("best_Ds_PVwithDs_dira", &best_Ds_PVwithDs_dira_vec);
+    tree->Branch("best_Ds_PVwithDs_dira_angle", &best_Ds_PVwithDs_dira_angle_vec);
+    tree->Branch("best_Kp_PVwithDs_ip", &best_Kp_PVwithDs_ip_vec);
+    tree->Branch("best_Kp_PVwithDs_iperr", &best_Kp_PVwithDs_iperr_vec);
+    tree->Branch("best_Kp_PVwithDs_ipchi2", &best_Kp_PVwithDs_ipchi2_vec);
+    tree->Branch("best_Km_PVwithDs_ip", &best_Km_PVwithDs_ip_vec);
+    tree->Branch("best_Km_PVwithDs_iperr", &best_Km_PVwithDs_iperr_vec);
+    tree->Branch("best_Km_PVwithDs_ipchi2", &best_Km_PVwithDs_ipchi2_vec);
+    tree->Branch("best_pi_PVwithDs_ip", &best_pi_PVwithDs_ip_vec);
+    tree->Branch("best_pi_PVwithDs_iperr", &best_pi_PVwithDs_iperr_vec);
+    tree->Branch("best_pi_PVwithDs_ipchi2", &best_pi_PVwithDs_ipchi2_vec);
+    tree->Branch("best_phi_PVwithDs_ip", &best_phi_PVwithDs_ip_vec);
+    tree->Branch("best_phi_PVwithDs_iperr", &best_phi_PVwithDs_iperr_vec);
+    tree->Branch("best_phi_PVwithDs_ipchi2", &best_phi_PVwithDs_ipchi2_vec);
+    tree->Branch("best_Ds_PVwithDs_ip", &best_Ds_PVwithDs_ip_vec);
+    tree->Branch("best_Ds_PVwithDs_iperr", &best_Ds_PVwithDs_iperr_vec);
+    tree->Branch("best_Ds_PVwithDs_ipchi2", &best_Ds_PVwithDs_ipchi2_vec);
 
     tree->Branch("best_match_entry", &best_match_entry_vec);
 
+    tree->Branch("best_mu_charge", &best_mu_charge_vec);
+    tree->Branch("best_mu_eta", &best_mu_eta_vec);
+    tree->Branch("best_mu_phi", &best_mu_phi_vec);
+    tree->Branch("best_mu_vx", &best_mu_vx_vec);
+    tree->Branch("best_mu_vy", &best_mu_vy_vec);
+    tree->Branch("best_mu_vz", &best_mu_vz_vec);
+    tree->Branch("best_mu_p", &best_mu_p_vec);
+    tree->Branch("best_mu_pt", &best_mu_pt_vec);
+    tree->Branch("best_mu_px", &best_mu_px_vec);
+    tree->Branch("best_mu_py", &best_mu_py_vec);
+    tree->Branch("best_mu_pz", &best_mu_pz_vec);
+    tree->Branch("best_mu_isHighPt", &best_mu_isHighPt_vec);
+    tree->Branch("best_mu_isLoose", &best_mu_isLoose_vec);
+    tree->Branch("best_mu_isMedium", &best_mu_isMedium_vec);
+    tree->Branch("best_mu_isSoft", &best_mu_isSoft_vec);
+    tree->Branch("best_mu_isTight", &best_mu_isTight_vec);
+    tree->Branch("best_mu_isPF", &best_mu_isPF_vec);
+    tree->Branch("best_mu_isTracker", &best_mu_isTracker_vec);
+    tree->Branch("best_mu_isGlobal", &best_mu_isGlobal_vec);
+    tree->Branch("best_mu_IsoR03_sumChargedHadronPt", &best_mu_IsoR03_sumChargedHadronPt_vec);
+    tree->Branch("best_mu_IsoR03_sumChargedParticlePt", &best_mu_IsoR03_sumChargedParticlePt_vec);
+    tree->Branch("best_mu_IsoR03_sumNeutralHadronEt", &best_mu_IsoR03_sumNeutralHadronEt_vec);
+    tree->Branch("best_mu_IsoR03_sumPhotonEt", &best_mu_IsoR03_sumPhotonEt_vec);
+    tree->Branch("best_mu_IsoR03_sumPUPt", &best_mu_IsoR03_sumPUPt_vec);
+    tree->Branch("best_mu_PFIsoR03", &best_mu_PFIsoR03_vec);
+    tree->Branch("best_mu_IsoR04_sumChargedHadronPt", &best_mu_IsoR04_sumChargedHadronPt_vec);
+    tree->Branch("best_mu_IsoR04_sumChargedParticlePt", &best_mu_IsoR04_sumChargedParticlePt_vec);
+    tree->Branch("best_mu_IsoR04_sumNeutralHadronEt", &best_mu_IsoR04_sumNeutralHadronEt_vec);
+    tree->Branch("best_mu_IsoR04_sumPhotonEt", &best_mu_IsoR04_sumPhotonEt_vec);
+    tree->Branch("best_mu_IsoR04_sumPUPt", &best_mu_IsoR04_sumPUPt_vec);
+    tree->Branch("best_mu_PFIsoR04", &best_mu_PFIsoR04_vec);
+    tree->Branch("best_mu_primvtx_dxy", &best_mu_primvtx_dxy_vec);
+    tree->Branch("best_mu_primvtx_dxyerr", &best_mu_primvtx_dxyerr_vec);
+    tree->Branch("best_mu_primvtx_dz", &best_mu_primvtx_dz_vec);
+    tree->Branch("best_mu_primvtx_dzerr", &best_mu_primvtx_dzerr_vec);
+    tree->Branch("best_mu_primvtx_ip", &best_mu_primvtx_ip_vec);
+    tree->Branch("best_mu_primvtx_iperr", &best_mu_primvtx_iperr_vec);
+    tree->Branch("best_mu_primvtx_ipchi2", &best_mu_primvtx_ipchi2_vec);
+    tree->Branch("best_mu_match", &best_mu_match_vec);
 }
 
 void PVTree::Gen_Reset()
@@ -2315,13 +2416,17 @@ void PVTree::Gen_Reset()
     Gen_dR_Km_Ds = null;
     Gen_dR_phi_Ds = null;
     Gen_dR_pi_Ds = null;
+    Gen_dR_Kp_mu = null;
+    Gen_dR_Km_mu = null;
+    Gen_dR_phi_mu = null;
+    Gen_dR_pi_mu = null;
+    Gen_dR_Ds_mu = null;
 
-    Gen_dxy_Kp_Km = null;
-    Gen_dxy_Kp_pi = null;
-    Gen_dxy_Km_pi = null;
-    Gen_dz_Kp_Km = null;
-    Gen_dz_Kp_pi = null;
-    Gen_dz_Km_pi = null;
+    Gen_Ds_dx = null;
+    Gen_Ds_dy = null;
+    Gen_Ds_dz = null;
+    Gen_Ds_FDxy = null;
+    Gen_Ds_FD = null;
 }
 
 void PVTree::BS_Reset()
@@ -2418,16 +2523,6 @@ void PVTree::Match_Reset()
     match_Ds_pz = null;
     match_Ds_invm = null;
 
-    match_Kp_pp = null;
-    match_Kp_pl = null;
-    match_Km_pp = null;
-    match_Km_pl = null;
-
-    match_phi_pp = null;
-    match_phi_pl = null;
-    match_pi_pp = null;
-    match_pi_pl = null;
-
     match_dR_Kp_Km = null;
     match_dR_Kp_phi = null;
     match_dR_Km_phi = null;
@@ -2439,27 +2534,8 @@ void PVTree::Match_Reset()
     match_dR_phi_Ds = null;
     match_dR_pi_Ds = null;
 
-    match_dxy_Kp_Km = null;
-    match_dxy_Kp_phi = null;
-    match_dxy_Km_phi = null;
-    match_dxy_Kp_pi = null;
-    match_dxy_Km_pi = null;
-    match_dxy_pi_phi = null;
-    match_dxy_Kp_Ds = null;
-    match_dxy_Km_Ds = null;
     match_dxy_phi_Ds = null;
-    match_dxy_pi_Ds = null;
-
-    match_dz_Kp_Km = null;
-    match_dz_Kp_phi = null;
-    match_dz_Km_phi = null;
-    match_dz_Kp_pi = null;
-    match_dz_Km_pi = null;
-    match_dz_pi_phi = null;
-    match_dz_Kp_Ds = null;
-    match_dz_Km_Ds = null;
     match_dz_phi_Ds = null;
-    match_dz_pi_Ds = null;
 
     // Fit on phi
     match_phiFit_chi2 = null;
@@ -2514,16 +2590,6 @@ void PVTree::Match_Reset()
     match_phiFit_Ds_pz = null;
     match_phiFit_Ds_invm = null;
 
-    match_phiFit_Kp_pp = null;
-    match_phiFit_Kp_pl = null;
-    match_phiFit_Km_pp = null;
-    match_phiFit_Km_pl = null;
-
-    match_phiFit_phi_pp = null;
-    match_phiFit_phi_pl = null;
-    match_phiFit_pi_pp = null;
-    match_phiFit_pi_pl = null;
-
     match_phiFit_dR_Kp_Km = null;
     match_phiFit_dR_Kp_phi = null;
     match_phiFit_dR_Km_phi = null;
@@ -2534,10 +2600,6 @@ void PVTree::Match_Reset()
     match_phiFit_dR_Km_Ds = null;
     match_phiFit_dR_phi_Ds = null;
     match_phiFit_dR_pi_Ds = null;
-
-    match_alpha_phi = null;
-    match_beta_phi = null;
-    match_APvar_phi = null;
 
     // Fit on Ds 
     match_DsFit_chi2 = null;
@@ -2592,16 +2654,6 @@ void PVTree::Match_Reset()
     match_DsFit_Ds_pz = null;
     match_DsFit_Ds_invm = null;
 
-    match_DsFit_Kp_pp = null;
-    match_DsFit_Kp_pl = null;
-    match_DsFit_Km_pp = null;
-    match_DsFit_Km_pl = null;
-
-    match_DsFit_phi_pp = null;
-    match_DsFit_phi_pl = null;
-    match_DsFit_pi_pp = null;
-    match_DsFit_pi_pl = null;
-
     match_DsFit_dR_Kp_Km = null;
     match_DsFit_dR_Kp_phi = null;
     match_DsFit_dR_Km_phi = null;
@@ -2614,10 +2666,6 @@ void PVTree::Match_Reset()
     match_DsFit_dR_pi_Ds = null;
 
     match_DsFit_Mconstraint_Ds_invm = null;
-
-    match_alpha_Ds = null;
-    match_beta_Ds = null;
-    match_APvar_Ds = null;
 
     match_Ds_primvtx_FDxy = null;
     match_Ds_primvtx_FDz = null;
@@ -2639,35 +2687,35 @@ void PVTree::Match_Reset()
     match_pi_primvtx_ip = null;
     match_pi_primvtx_iperr = null;
     match_pi_primvtx_ipchi2 = null;
+    match_phi_primvtx_ip = null;
+    match_phi_primvtx_iperr = null;
+    match_phi_primvtx_ipchi2 = null;
+    match_Ds_primvtx_ip = null;
+    match_Ds_primvtx_iperr = null;
+    match_Ds_primvtx_ipchi2 = null;
 
-    match_Ds_Iso_R0p3 = 0.;
-    match_Ds_Iso_R0p4 = 0.;
-    match_Ds_IsoRel_R0p3 = 0.;
-    match_Ds_IsoRel_R0p4 = 0.;
+    match_Ds_IsoR03_sumChargedHadronPt = 0.;
+    match_Ds_IsoR03_sumNeutralHadronPt = 0.;
+    match_Ds_IsoR03_sumPhotonPt = 0.;
+    match_Ds_IsoR03_sumPUPt = 0.;
+    match_Ds_PFIsoR03 = 0.;
+    match_Ds_IsoR04_sumChargedHadronPt = 0.;
+    match_Ds_IsoR04_sumNeutralHadronPt = 0.;
+    match_Ds_IsoR04_sumPhotonPt = 0.;
+    match_Ds_IsoR04_sumPUPt = 0.;
+    match_Ds_PFIsoR04 = 0.;
 
-    match_PV_noDs_withBS_IsValid = false;
-    match_PV_noDs_withBS_IsFake = true;
-    match_PV_noDs_withBS_chi2 = null;
-    match_PV_noDs_withBS_ndof = null;
-    match_PV_noDs_withBS_chi2ndof = null;
-    match_PV_noDs_withBS_x = null;
-    match_PV_noDs_withBS_y = null;
-    match_PV_noDs_withBS_z = null;
-    match_PV_noDs_withBS_xerr = null;
-    match_PV_noDs_withBS_yerr = null;
-    match_PV_noDs_withBS_zerr = null;
-
-    match_PV_noDs_noBS_IsValid = false;
-    match_PV_noDs_noBS_IsFake = true;
-    match_PV_noDs_noBS_chi2 = null;
-    match_PV_noDs_noBS_ndof = null;
-    match_PV_noDs_noBS_chi2ndof = null;
-    match_PV_noDs_noBS_x = null;
-    match_PV_noDs_noBS_y = null;
-    match_PV_noDs_noBS_z = null;
-    match_PV_noDs_noBS_xerr = null;
-    match_PV_noDs_noBS_yerr = null;
-    match_PV_noDs_noBS_zerr = null;
+    match_PV_noDs_IsValid = false;
+    match_PV_noDs_IsFake = true;
+    match_PV_noDs_chi2 = null;
+    match_PV_noDs_ndof = null;
+    match_PV_noDs_chi2ndof = null;
+    match_PV_noDs_x = null;
+    match_PV_noDs_y = null;
+    match_PV_noDs_z = null;
+    match_PV_noDs_xerr = null;
+    match_PV_noDs_yerr = null;
+    match_PV_noDs_zerr = null;
 
     match_Ds_PVnoDs_FDxy = null;
     match_Ds_PVnoDs_FDz = null;
@@ -2689,9 +2737,93 @@ void PVTree::Match_Reset()
     match_pi_PVnoDs_ip = null;
     match_pi_PVnoDs_iperr = null;
     match_pi_PVnoDs_ipchi2 = null;
+    match_phi_PVnoDs_ip = null;
+    match_phi_PVnoDs_iperr = null;
+    match_phi_PVnoDs_ipchi2 = null;
+    match_Ds_PVnoDs_ip = null;
+    match_Ds_PVnoDs_iperr = null;
+    match_Ds_PVnoDs_ipchi2 = null;
+
+    match_PV_withDs_IsValid = false;
+    match_PV_withDs_IsFake = true;
+    match_PV_withDs_chi2 = null;
+    match_PV_withDs_ndof = null;
+    match_PV_withDs_chi2ndof = null;
+    match_PV_withDs_x = null;
+    match_PV_withDs_y = null;
+    match_PV_withDs_z = null;
+    match_PV_withDs_xerr = null;
+    match_PV_withDs_yerr = null;
+    match_PV_withDs_zerr = null;
+
+    match_Ds_PVwithDs_FDxy = null;
+    match_Ds_PVwithDs_FDz = null;
+    match_Ds_PVwithDs_FD = null;
+    match_Ds_PVwithDs_FDxyerr = null;
+    match_Ds_PVwithDs_FDxychi2 = null;
+    match_Ds_PVwithDs_FDzerr = null;
+    match_Ds_PVwithDs_FDzchi2 = null;
+    match_Ds_PVwithDs_FDerr = null;
+    match_Ds_PVwithDs_FDchi2 = null;
+    match_Ds_PVwithDs_dira = null;
+    match_Ds_PVwithDs_dira_angle = null;
+    match_Kp_PVwithDs_ip = null;
+    match_Kp_PVwithDs_iperr = null;
+    match_Kp_PVwithDs_ipchi2 = null;
+    match_Km_PVwithDs_ip = null;
+    match_Km_PVwithDs_iperr = null;
+    match_Km_PVwithDs_ipchi2 = null;
+    match_pi_PVwithDs_ip = null;
+    match_pi_PVwithDs_iperr = null;
+    match_pi_PVwithDs_ipchi2 = null;
+    match_phi_PVwithDs_ip = null;
+    match_phi_PVwithDs_iperr = null;
+    match_phi_PVwithDs_ipchi2 = null;
+    match_Ds_PVwithDs_ip = null;
+    match_Ds_PVwithDs_iperr = null;
+    match_Ds_PVwithDs_ipchi2 = null;
+
+    match_mu_charge = null;
+    match_mu_eta = null;
+    match_mu_phi = null;
+    match_mu_vx = null;
+    match_mu_vy = null;
+    match_mu_vz = null;
+    match_mu_p = null;
+    match_mu_pt = null;
+    match_mu_px = null;
+    match_mu_py = null;
+    match_mu_pz = null;
+    match_mu_isHighPt = false;
+    match_mu_isLoose = false;
+    match_mu_isMedium = false;
+    match_mu_isSoft = false;
+    match_mu_isTight = false;
+    match_mu_isPF = false;
+    match_mu_isTracker = false;
+    match_mu_isGlobal = false;
+    match_mu_IsoR03_sumChargedHadronPt = null;
+    match_mu_IsoR03_sumChargedParticlePt = null;
+    match_mu_IsoR03_sumNeutralHadronEt = null;
+    match_mu_IsoR03_sumPhotonEt = null;
+    match_mu_IsoR03_sumPUPt = null;
+    match_mu_PFIsoR03 = null;
+    match_mu_IsoR04_sumChargedHadronPt = null;
+    match_mu_IsoR04_sumChargedParticlePt = null;
+    match_mu_IsoR04_sumNeutralHadronEt = null;
+    match_mu_IsoR04_sumPhotonEt = null;
+    match_mu_IsoR04_sumPUPt = null;
+    match_mu_PFIsoR04 = null;
+    match_mu_primvtx_dxy = null;
+    match_mu_primvtx_dxyerr = null;
+    match_mu_primvtx_dz = null;
+    match_mu_primvtx_dzerr = null;
+    match_mu_primvtx_ip = null;
+    match_mu_primvtx_iperr = null;
+    match_mu_primvtx_ipchi2 = null;
 }
 
-void PVTree::Match_Fill_Vector()
+void PVTree::Match_Ds_Fill_Vector()
 {
     match_Kp_isIsolatedChargedHadron_vec.push_back(match_Kp_isIsolatedChargedHadron);
     match_Kp_charge_vec.push_back(match_Kp_charge);
@@ -2750,16 +2882,6 @@ void PVTree::Match_Fill_Vector()
     match_Ds_pz_vec.push_back(match_Ds_pz);
     match_Ds_invm_vec.push_back(match_Ds_invm);
 
-    match_Kp_pp_vec.push_back(match_Kp_pp);
-    match_Kp_pl_vec.push_back(match_Kp_pl);
-    match_Km_pp_vec.push_back(match_Km_pp);
-    match_Km_pl_vec.push_back(match_Km_pl);
-
-    match_phi_pp_vec.push_back(match_phi_pp);
-    match_phi_pl_vec.push_back(match_phi_pl);
-    match_pi_pp_vec.push_back(match_pi_pp);
-    match_pi_pl_vec.push_back(match_pi_pl);
-
     match_dR_Kp_Km_vec.push_back(match_dR_Kp_Km);
     match_dR_Kp_phi_vec.push_back(match_dR_Kp_phi);
     match_dR_Km_phi_vec.push_back(match_dR_Km_phi);
@@ -2771,28 +2893,8 @@ void PVTree::Match_Fill_Vector()
     match_dR_phi_Ds_vec.push_back(match_dR_phi_Ds);
     match_dR_pi_Ds_vec.push_back(match_dR_pi_Ds);
 
-    match_dxy_Kp_Km_vec.push_back(match_dxy_Kp_Km);
-    match_dxy_Kp_phi_vec.push_back(match_dxy_Kp_phi);
-    match_dxy_Km_phi_vec.push_back(match_dxy_Km_phi);
-    match_dxy_Kp_pi_vec.push_back(match_dxy_Kp_pi);
-    match_dxy_Km_pi_vec.push_back(match_dxy_Km_pi);
-    match_dxy_pi_phi_vec.push_back(match_dxy_pi_phi);
-    match_dxy_Kp_Ds_vec.push_back(match_dxy_Kp_Ds);
-    match_dxy_Km_Ds_vec.push_back(match_dxy_Km_Ds);
     match_dxy_phi_Ds_vec.push_back(match_dxy_phi_Ds);
-    match_dxy_pi_Ds_vec.push_back(match_dxy_pi_Ds);
-
-    match_dz_Kp_Km_vec.push_back(match_dz_Kp_Km);
-    match_dz_Kp_phi_vec.push_back(match_dz_Kp_phi);
-    match_dz_Km_phi_vec.push_back(match_dz_Km_phi);
-    match_dz_Kp_pi_vec.push_back(match_dz_Kp_pi);
-    match_dz_Km_pi_vec.push_back(match_dz_Km_pi);
-    match_dz_pi_phi_vec.push_back(match_dz_pi_phi);
-    match_dz_Kp_Ds_vec.push_back(match_dz_Kp_Ds);
-    match_dz_Km_Ds_vec.push_back(match_dz_Km_Ds);
     match_dz_phi_Ds_vec.push_back(match_dz_phi_Ds);
-    match_dz_pi_Ds_vec.push_back(match_dz_pi_Ds);
-
 
     // Fit on phi
     match_phiFit_chi2_vec.push_back(match_phiFit_chi2);
@@ -2847,16 +2949,6 @@ void PVTree::Match_Fill_Vector()
     match_phiFit_Ds_pz_vec.push_back(match_phiFit_Ds_pz);
     match_phiFit_Ds_invm_vec.push_back(match_phiFit_Ds_invm);
 
-    match_phiFit_Kp_pp_vec.push_back(match_phiFit_Kp_pp);
-    match_phiFit_Kp_pl_vec.push_back(match_phiFit_Kp_pl);
-    match_phiFit_Km_pp_vec.push_back(match_phiFit_Km_pp);
-    match_phiFit_Km_pl_vec.push_back(match_phiFit_Km_pl);
-
-    match_phiFit_phi_pp_vec.push_back(match_phiFit_phi_pp);
-    match_phiFit_phi_pl_vec.push_back(match_phiFit_phi_pl);
-    match_phiFit_pi_pp_vec.push_back(match_phiFit_pi_pp);
-    match_phiFit_pi_pl_vec.push_back(match_phiFit_pi_pl);
-
     match_phiFit_dR_Kp_Km_vec.push_back(match_phiFit_dR_Kp_Km);
     match_phiFit_dR_Kp_phi_vec.push_back(match_phiFit_dR_Kp_phi);
     match_phiFit_dR_Km_phi_vec.push_back(match_phiFit_dR_Km_phi);
@@ -2867,10 +2959,6 @@ void PVTree::Match_Fill_Vector()
     match_phiFit_dR_Km_Ds_vec.push_back(match_phiFit_dR_Km_Ds);
     match_phiFit_dR_phi_Ds_vec.push_back(match_phiFit_dR_phi_Ds);
     match_phiFit_dR_pi_Ds_vec.push_back(match_phiFit_dR_pi_Ds);
-
-    match_alpha_phi_vec.push_back(match_alpha_phi);
-    match_beta_phi_vec.push_back(match_beta_phi);
-    match_APvar_phi_vec.push_back(match_APvar_phi);
 
     // Fit on Ds 
     match_DsFit_chi2_vec.push_back(match_DsFit_chi2);
@@ -2925,16 +3013,6 @@ void PVTree::Match_Fill_Vector()
     match_DsFit_Ds_pz_vec.push_back(match_DsFit_Ds_pz);
     match_DsFit_Ds_invm_vec.push_back(match_DsFit_Ds_invm);
 
-    match_DsFit_Kp_pp_vec.push_back(match_DsFit_Kp_pp);
-    match_DsFit_Kp_pl_vec.push_back(match_DsFit_Kp_pl);
-    match_DsFit_Km_pp_vec.push_back(match_DsFit_Km_pp);
-    match_DsFit_Km_pl_vec.push_back(match_DsFit_Km_pl);
-
-    match_DsFit_phi_pp_vec.push_back(match_DsFit_phi_pp);
-    match_DsFit_phi_pl_vec.push_back(match_DsFit_phi_pl);
-    match_DsFit_pi_pp_vec.push_back(match_DsFit_pi_pp);
-    match_DsFit_pi_pl_vec.push_back(match_DsFit_pi_pl);
-
     match_DsFit_dR_Kp_Km_vec.push_back(match_DsFit_dR_Kp_Km);
     match_DsFit_dR_Kp_phi_vec.push_back(match_DsFit_dR_Kp_phi);
     match_DsFit_dR_Km_phi_vec.push_back(match_DsFit_dR_Km_phi);
@@ -2947,10 +3025,6 @@ void PVTree::Match_Fill_Vector()
     match_DsFit_dR_pi_Ds_vec.push_back(match_DsFit_dR_pi_Ds);
 
     match_DsFit_Mconstraint_Ds_invm_vec.push_back(match_DsFit_Mconstraint_Ds_invm);
-
-    match_alpha_Ds_vec.push_back(match_alpha_Ds);
-    match_beta_Ds_vec.push_back(match_beta_Ds);
-    match_APvar_Ds_vec.push_back(match_APvar_Ds);
 
     match_Ds_primvtx_FDxy_vec.push_back(match_Ds_primvtx_FDxy);
     match_Ds_primvtx_FDz_vec.push_back(match_Ds_primvtx_FDz);
@@ -2972,35 +3046,35 @@ void PVTree::Match_Fill_Vector()
     match_pi_primvtx_ip_vec.push_back(match_pi_primvtx_ip);
     match_pi_primvtx_iperr_vec.push_back(match_pi_primvtx_iperr);
     match_pi_primvtx_ipchi2_vec.push_back(match_pi_primvtx_ipchi2);
+    match_phi_primvtx_ip_vec.push_back(match_phi_primvtx_ip);
+    match_phi_primvtx_iperr_vec.push_back(match_phi_primvtx_iperr);
+    match_phi_primvtx_ipchi2_vec.push_back(match_phi_primvtx_ipchi2);
+    match_Ds_primvtx_ip_vec.push_back(match_Ds_primvtx_ip);
+    match_Ds_primvtx_iperr_vec.push_back(match_Ds_primvtx_iperr);
+    match_Ds_primvtx_ipchi2_vec.push_back(match_Ds_primvtx_ipchi2);
 
-    match_Ds_Iso_R0p3_vec.push_back(match_Ds_Iso_R0p3);
-    match_Ds_Iso_R0p4_vec.push_back(match_Ds_Iso_R0p4);
-    match_Ds_IsoRel_R0p3_vec.push_back(match_Ds_IsoRel_R0p3);
-    match_Ds_IsoRel_R0p4_vec.push_back(match_Ds_IsoRel_R0p4);
-    
-    match_PV_noDs_withBS_IsValid_vec.push_back(match_PV_noDs_withBS_IsValid);
-    match_PV_noDs_withBS_IsFake_vec.push_back(match_PV_noDs_withBS_IsFake);
-    match_PV_noDs_withBS_chi2_vec.push_back(match_PV_noDs_withBS_chi2);
-    match_PV_noDs_withBS_ndof_vec.push_back(match_PV_noDs_withBS_ndof);
-    match_PV_noDs_withBS_chi2ndof_vec.push_back(match_PV_noDs_withBS_chi2ndof);
-    match_PV_noDs_withBS_x_vec.push_back(match_PV_noDs_withBS_x);
-    match_PV_noDs_withBS_y_vec.push_back(match_PV_noDs_withBS_y);
-    match_PV_noDs_withBS_z_vec.push_back(match_PV_noDs_withBS_z);
-    match_PV_noDs_withBS_xerr_vec.push_back(match_PV_noDs_withBS_xerr);
-    match_PV_noDs_withBS_yerr_vec.push_back(match_PV_noDs_withBS_yerr);
-    match_PV_noDs_withBS_zerr_vec.push_back(match_PV_noDs_withBS_zerr);
+    match_Ds_IsoR03_sumChargedHadronPt_vec.push_back(match_Ds_IsoR03_sumChargedHadronPt);
+    match_Ds_IsoR03_sumNeutralHadronPt_vec.push_back(match_Ds_IsoR03_sumNeutralHadronPt);
+    match_Ds_IsoR03_sumPhotonPt_vec.push_back(match_Ds_IsoR03_sumPhotonPt);
+    match_Ds_IsoR03_sumPUPt_vec.push_back(match_Ds_IsoR03_sumPUPt);
+    match_Ds_PFIsoR03_vec.push_back(match_Ds_PFIsoR03);
+    match_Ds_IsoR04_sumChargedHadronPt_vec.push_back(match_Ds_IsoR04_sumChargedHadronPt);
+    match_Ds_IsoR04_sumNeutralHadronPt_vec.push_back(match_Ds_IsoR04_sumNeutralHadronPt);
+    match_Ds_IsoR04_sumPhotonPt_vec.push_back(match_Ds_IsoR04_sumPhotonPt);
+    match_Ds_IsoR04_sumPUPt_vec.push_back(match_Ds_IsoR04_sumPUPt);
+    match_Ds_PFIsoR04_vec.push_back(match_Ds_PFIsoR04);
 
-    match_PV_noDs_noBS_IsValid_vec.push_back(match_PV_noDs_noBS_IsValid);
-    match_PV_noDs_noBS_IsFake_vec.push_back(match_PV_noDs_noBS_IsFake);
-    match_PV_noDs_noBS_chi2_vec.push_back(match_PV_noDs_noBS_chi2);
-    match_PV_noDs_noBS_ndof_vec.push_back(match_PV_noDs_noBS_ndof);
-    match_PV_noDs_noBS_chi2ndof_vec.push_back(match_PV_noDs_noBS_chi2ndof);
-    match_PV_noDs_noBS_x_vec.push_back(match_PV_noDs_noBS_x);
-    match_PV_noDs_noBS_y_vec.push_back(match_PV_noDs_noBS_y);
-    match_PV_noDs_noBS_z_vec.push_back(match_PV_noDs_noBS_z);
-    match_PV_noDs_noBS_xerr_vec.push_back(match_PV_noDs_noBS_xerr);
-    match_PV_noDs_noBS_yerr_vec.push_back(match_PV_noDs_noBS_yerr);
-    match_PV_noDs_noBS_zerr_vec.push_back(match_PV_noDs_noBS_zerr);
+    match_PV_noDs_IsValid_vec.push_back(match_PV_noDs_IsValid);
+    match_PV_noDs_IsFake_vec.push_back(match_PV_noDs_IsFake);
+    match_PV_noDs_chi2_vec.push_back(match_PV_noDs_chi2);
+    match_PV_noDs_ndof_vec.push_back(match_PV_noDs_ndof);
+    match_PV_noDs_chi2ndof_vec.push_back(match_PV_noDs_chi2ndof);
+    match_PV_noDs_x_vec.push_back(match_PV_noDs_x);
+    match_PV_noDs_y_vec.push_back(match_PV_noDs_y);
+    match_PV_noDs_z_vec.push_back(match_PV_noDs_z);
+    match_PV_noDs_xerr_vec.push_back(match_PV_noDs_xerr);
+    match_PV_noDs_yerr_vec.push_back(match_PV_noDs_yerr);
+    match_PV_noDs_zerr_vec.push_back(match_PV_noDs_zerr);
 
     match_Ds_PVnoDs_FDxy_vec.push_back(match_Ds_PVnoDs_FDxy);
     match_Ds_PVnoDs_FDz_vec.push_back(match_Ds_PVnoDs_FDz);
@@ -3022,6 +3096,92 @@ void PVTree::Match_Fill_Vector()
     match_pi_PVnoDs_ip_vec.push_back(match_pi_PVnoDs_ip);
     match_pi_PVnoDs_iperr_vec.push_back(match_pi_PVnoDs_iperr);
     match_pi_PVnoDs_ipchi2_vec.push_back(match_pi_PVnoDs_ipchi2);
+    match_phi_PVnoDs_ip_vec.push_back(match_phi_PVnoDs_ip);
+    match_phi_PVnoDs_iperr_vec.push_back(match_phi_PVnoDs_iperr);
+    match_phi_PVnoDs_ipchi2_vec.push_back(match_phi_PVnoDs_ipchi2);
+    match_Ds_PVnoDs_ip_vec.push_back(match_Ds_PVnoDs_ip);
+    match_Ds_PVnoDs_iperr_vec.push_back(match_Ds_PVnoDs_iperr);
+    match_Ds_PVnoDs_ipchi2_vec.push_back(match_Ds_PVnoDs_ipchi2);
+
+    match_PV_withDs_IsValid_vec.push_back(match_PV_withDs_IsValid);
+    match_PV_withDs_IsFake_vec.push_back(match_PV_withDs_IsFake);
+    match_PV_withDs_chi2_vec.push_back(match_PV_withDs_chi2);
+    match_PV_withDs_ndof_vec.push_back(match_PV_withDs_ndof);
+    match_PV_withDs_chi2ndof_vec.push_back(match_PV_withDs_chi2ndof);
+    match_PV_withDs_x_vec.push_back(match_PV_withDs_x);
+    match_PV_withDs_y_vec.push_back(match_PV_withDs_y);
+    match_PV_withDs_z_vec.push_back(match_PV_withDs_z);
+    match_PV_withDs_xerr_vec.push_back(match_PV_withDs_xerr);
+    match_PV_withDs_yerr_vec.push_back(match_PV_withDs_yerr);
+    match_PV_withDs_zerr_vec.push_back(match_PV_withDs_zerr);
+
+    match_Ds_PVwithDs_FDxy_vec.push_back(match_Ds_PVwithDs_FDxy);
+    match_Ds_PVwithDs_FDz_vec.push_back(match_Ds_PVwithDs_FDz);
+    match_Ds_PVwithDs_FD_vec.push_back(match_Ds_PVwithDs_FD);
+    match_Ds_PVwithDs_FDxyerr_vec.push_back(match_Ds_PVwithDs_FDxyerr);
+    match_Ds_PVwithDs_FDxychi2_vec.push_back(match_Ds_PVwithDs_FDxychi2);
+    match_Ds_PVwithDs_FDzerr_vec.push_back(match_Ds_PVwithDs_FDzerr);
+    match_Ds_PVwithDs_FDzchi2_vec.push_back(match_Ds_PVwithDs_FDzchi2);
+    match_Ds_PVwithDs_FDerr_vec.push_back(match_Ds_PVwithDs_FDerr);
+    match_Ds_PVwithDs_FDchi2_vec.push_back(match_Ds_PVwithDs_FDchi2);
+    match_Ds_PVwithDs_dira_vec.push_back(match_Ds_PVwithDs_dira);
+    match_Ds_PVwithDs_dira_angle_vec.push_back(match_Ds_PVwithDs_dira_angle);
+    match_Kp_PVwithDs_ip_vec.push_back(match_Kp_PVwithDs_ip);
+    match_Kp_PVwithDs_iperr_vec.push_back(match_Kp_PVwithDs_iperr);
+    match_Kp_PVwithDs_ipchi2_vec.push_back(match_Kp_PVwithDs_ipchi2);
+    match_Km_PVwithDs_ip_vec.push_back(match_Km_PVwithDs_ip);
+    match_Km_PVwithDs_iperr_vec.push_back(match_Km_PVwithDs_iperr);
+    match_Km_PVwithDs_ipchi2_vec.push_back(match_Km_PVwithDs_ipchi2);
+    match_pi_PVwithDs_ip_vec.push_back(match_pi_PVwithDs_ip);
+    match_pi_PVwithDs_iperr_vec.push_back(match_pi_PVwithDs_iperr);
+    match_pi_PVwithDs_ipchi2_vec.push_back(match_pi_PVwithDs_ipchi2);
+    match_phi_PVwithDs_ip_vec.push_back(match_phi_PVwithDs_ip);
+    match_phi_PVwithDs_iperr_vec.push_back(match_phi_PVwithDs_iperr);
+    match_phi_PVwithDs_ipchi2_vec.push_back(match_phi_PVwithDs_ipchi2);
+    match_Ds_PVwithDs_ip_vec.push_back(match_Ds_PVwithDs_ip);
+    match_Ds_PVwithDs_iperr_vec.push_back(match_Ds_PVwithDs_iperr);
+    match_Ds_PVwithDs_ipchi2_vec.push_back(match_Ds_PVwithDs_ipchi2);
+}
+
+void PVTree::Match_mu_Fill_Vector(){
+    match_mu_charge_vec.push_back(match_mu_charge);
+    match_mu_eta_vec.push_back(match_mu_eta);
+    match_mu_phi_vec.push_back(match_mu_phi);
+    match_mu_vx_vec.push_back(match_mu_vx);
+    match_mu_vy_vec.push_back(match_mu_vy);
+    match_mu_vz_vec.push_back(match_mu_vz);
+    match_mu_p_vec.push_back(match_mu_p);
+    match_mu_pt_vec.push_back(match_mu_pt);
+    match_mu_px_vec.push_back(match_mu_px);
+    match_mu_py_vec.push_back(match_mu_py);
+    match_mu_pz_vec.push_back(match_mu_pz);
+    match_mu_isHighPt_vec.push_back(match_mu_isHighPt);
+    match_mu_isLoose_vec.push_back(match_mu_isLoose);
+    match_mu_isMedium_vec.push_back(match_mu_isMedium);
+    match_mu_isSoft_vec.push_back(match_mu_isSoft);
+    match_mu_isTight_vec.push_back(match_mu_isTight);
+    match_mu_isPF_vec.push_back(match_mu_isPF);
+    match_mu_isTracker_vec.push_back(match_mu_isTracker);
+    match_mu_isGlobal_vec.push_back(match_mu_isGlobal);
+    match_mu_IsoR03_sumChargedHadronPt_vec.push_back(match_mu_IsoR03_sumChargedHadronPt);
+    match_mu_IsoR03_sumChargedParticlePt_vec.push_back(match_mu_IsoR03_sumChargedParticlePt);
+    match_mu_IsoR03_sumNeutralHadronEt_vec.push_back(match_mu_IsoR03_sumNeutralHadronEt);
+    match_mu_IsoR03_sumPhotonEt_vec.push_back(match_mu_IsoR03_sumPhotonEt);
+    match_mu_IsoR03_sumPUPt_vec.push_back(match_mu_IsoR03_sumPUPt);
+    match_mu_PFIsoR03_vec.push_back(match_mu_PFIsoR03);
+    match_mu_IsoR04_sumChargedHadronPt_vec.push_back(match_mu_IsoR04_sumChargedHadronPt);
+    match_mu_IsoR04_sumChargedParticlePt_vec.push_back(match_mu_IsoR04_sumChargedParticlePt);
+    match_mu_IsoR04_sumNeutralHadronEt_vec.push_back(match_mu_IsoR04_sumNeutralHadronEt);
+    match_mu_IsoR04_sumPhotonEt_vec.push_back(match_mu_IsoR04_sumPhotonEt);
+    match_mu_IsoR04_sumPUPt_vec.push_back(match_mu_IsoR04_sumPUPt);
+    match_mu_PFIsoR04_vec.push_back(match_mu_PFIsoR04);
+    match_mu_primvtx_dxy_vec.push_back(match_mu_primvtx_dxy);
+    match_mu_primvtx_dxyerr_vec.push_back(match_mu_primvtx_dxyerr);
+    match_mu_primvtx_dz_vec.push_back(match_mu_primvtx_dz);
+    match_mu_primvtx_dzerr_vec.push_back(match_mu_primvtx_dzerr);
+    match_mu_primvtx_ip_vec.push_back(match_mu_primvtx_ip);
+    match_mu_primvtx_iperr_vec.push_back(match_mu_primvtx_iperr);
+    match_mu_primvtx_ipchi2_vec.push_back(match_mu_primvtx_ipchi2);
 }
 
 void PVTree::Kp_Reset()
@@ -3064,17 +3224,9 @@ void PVTree::Km_Reset()
     phi_pz = null;
     phi_invm = null;
 
-    Kp_pp = null;
-    Kp_pl = null;
-    Km_pp = null;
-    Km_pl = null;
-
     dR_Kp_Km = null;
     dR_Kp_phi = null;
     dR_Km_phi = null;
-    
-    dxy_Kp_Km = null;
-    dz_Kp_Km = null;
 }
 
 void PVTree::phi_Reset()
@@ -3114,24 +3266,9 @@ void PVTree::phi_Reset()
     phiFit_phi_pz = null;
     phiFit_phi_invm = null;
 
-    phiFit_Kp_pp = null;
-    phiFit_Kp_pl = null;
-    phiFit_Km_pp = null;
-    phiFit_Km_pl = null;
-
     phiFit_dR_Kp_Km = null;
     phiFit_dR_Kp_phi = null;
     phiFit_dR_Km_phi = null;
-
-    dxy_Kp_phi = null;
-    dxy_Km_phi = null;
-
-    dz_Kp_phi = null;
-    dz_Km_phi = null;
-
-    alpha_phi = null;
-    beta_phi = null;
-    APvar_phi = null;
 }
 
 void PVTree::pi_Reset()
@@ -3158,11 +3295,6 @@ void PVTree::pi_Reset()
     Ds_pz = null;
     Ds_invm = null;
 
-    phi_pp = null;
-    phi_pl = null;
-    pi_pp = null;
-    pi_pl = null;
-
     dR_Kp_pi = null;
     dR_Km_pi = null;
     dR_pi_phi = null;
@@ -3188,11 +3320,6 @@ void PVTree::pi_Reset()
     phiFit_Ds_pz = null;
     phiFit_Ds_invm = null;
 
-    phiFit_phi_pp = null;
-    phiFit_phi_pl = null;
-    phiFit_pi_pp = null;
-    phiFit_pi_pl = null;
-
     phiFit_dR_Kp_pi = null;
     phiFit_dR_Km_pi = null;
     phiFit_dR_pi_phi = null;
@@ -3200,14 +3327,6 @@ void PVTree::pi_Reset()
     phiFit_dR_Km_Ds = null;
     phiFit_dR_pi_Ds = null;
     phiFit_dR_phi_Ds = null;
-    
-    dxy_Kp_pi = null;
-    dxy_Km_pi = null;
-    dxy_pi_phi = null;
-
-    dz_Kp_pi = null;
-    dz_Km_pi = null;
-    dz_pi_phi = null;
 }
 
 void PVTree::Ds_Reset()
@@ -3266,16 +3385,6 @@ void PVTree::Ds_Reset()
 
     DsFit_Mconstraint_Ds_invm = null;
 
-    DsFit_Kp_pp = null;
-    DsFit_Kp_pl = null;
-    DsFit_Km_pp = null;
-    DsFit_Km_pl = null;
-
-    DsFit_phi_pp = null;
-    DsFit_phi_pl = null;
-    DsFit_pi_pp = null;
-    DsFit_pi_pl = null;
-
     DsFit_dR_Kp_Km = null;
     DsFit_dR_Kp_pi = null;
     DsFit_dR_Km_pi = null;
@@ -3287,19 +3396,8 @@ void PVTree::Ds_Reset()
     DsFit_dR_pi_Ds = null;
     DsFit_dR_phi_Ds = null;
 
-    dxy_Kp_Ds = null;
-    dxy_Km_Ds = null;
-    dxy_pi_Ds = null;
     dxy_phi_Ds = null;
-
-    dz_Kp_Ds = null;
-    dz_Km_Ds = null;
-    dz_pi_Ds = null;
     dz_phi_Ds = null;
-
-    alpha_Ds = null;
-    beta_Ds = null;
-    APvar_Ds = null;
 
     Ds_primvtx_FDxy = null;
     Ds_primvtx_FDz = null;
@@ -3321,11 +3419,23 @@ void PVTree::Ds_Reset()
     pi_primvtx_ip = null;
     pi_primvtx_iperr = null;
     pi_primvtx_ipchi2 = null;
+    phi_primvtx_ip = null;
+    phi_primvtx_iperr = null;
+    phi_primvtx_ipchi2 = null;
+    Ds_primvtx_ip = null;
+    Ds_primvtx_iperr = null;
+    Ds_primvtx_ipchi2 = null;
 
-    Ds_Iso_R0p3 = 0.;
-    Ds_Iso_R0p4 = 0.;
-    Ds_IsoRel_R0p3 = 0.;
-    Ds_IsoRel_R0p4 = 0.;
+    Ds_IsoR03_sumChargedHadronPt = 0.;
+    Ds_IsoR03_sumNeutralHadronPt = 0.;
+    Ds_IsoR03_sumPhotonPt = 0.;
+    Ds_IsoR03_sumPUPt = 0.;
+    Ds_PFIsoR03 = 0.;
+    Ds_IsoR04_sumChargedHadronPt = 0.;
+    Ds_IsoR04_sumNeutralHadronPt = 0.;
+    Ds_IsoR04_sumPhotonPt = 0.;
+    Ds_IsoR04_sumPUPt = 0.;
+    Ds_PFIsoR04 = 0.;
 
     Kp_match = false;
     Km_match = false;
@@ -3336,29 +3446,17 @@ void PVTree::Ds_Reset()
 
 void PVTree::PV_noDs_Reset()
 {
-    PV_noDs_withBS_IsValid = false;
-    PV_noDs_withBS_IsFake = true;
-    PV_noDs_withBS_chi2 = null;
-    PV_noDs_withBS_ndof = null;
-    PV_noDs_withBS_chi2ndof = null;
-    PV_noDs_withBS_x = null;
-    PV_noDs_withBS_y = null;
-    PV_noDs_withBS_z = null;
-    PV_noDs_withBS_xerr = null;
-    PV_noDs_withBS_yerr = null;
-    PV_noDs_withBS_zerr = null;
-
-    PV_noDs_noBS_IsValid = false;
-    PV_noDs_noBS_IsFake = true;
-    PV_noDs_noBS_chi2 = null;
-    PV_noDs_noBS_ndof = null;
-    PV_noDs_noBS_chi2ndof = null;
-    PV_noDs_noBS_x = null;
-    PV_noDs_noBS_y = null;
-    PV_noDs_noBS_z = null;
-    PV_noDs_noBS_xerr = null;
-    PV_noDs_noBS_yerr = null;
-    PV_noDs_noBS_zerr = null;
+    PV_noDs_IsValid = false;
+    PV_noDs_IsFake = true;
+    PV_noDs_chi2 = null;
+    PV_noDs_ndof = null;
+    PV_noDs_chi2ndof = null;
+    PV_noDs_x = null;
+    PV_noDs_y = null;
+    PV_noDs_z = null;
+    PV_noDs_xerr = null;
+    PV_noDs_yerr = null;
+    PV_noDs_zerr = null;
 
     Ds_PVnoDs_FDxy = null;
     Ds_PVnoDs_FDz = null;
@@ -3380,9 +3478,54 @@ void PVTree::PV_noDs_Reset()
     pi_PVnoDs_ip = null;
     pi_PVnoDs_iperr = null;
     pi_PVnoDs_ipchi2 = null;
+    phi_PVnoDs_ip = null;
+    phi_PVnoDs_iperr = null;
+    phi_PVnoDs_ipchi2 = null;
+    Ds_PVnoDs_ip = null;
+    Ds_PVnoDs_iperr = null;
+    Ds_PVnoDs_ipchi2 = null;
+
+    PV_withDs_IsValid = false;
+    PV_withDs_IsFake = true;
+    PV_withDs_chi2 = null;
+    PV_withDs_ndof = null;
+    PV_withDs_chi2ndof = null;
+    PV_withDs_x = null;
+    PV_withDs_y = null;
+    PV_withDs_z = null;
+    PV_withDs_xerr = null;
+    PV_withDs_yerr = null;
+    PV_withDs_zerr = null;
+
+    Ds_PVwithDs_FDxy = null;
+    Ds_PVwithDs_FDz = null;
+    Ds_PVwithDs_FD = null;
+    Ds_PVwithDs_FDxyerr = null;
+    Ds_PVwithDs_FDxychi2 = null;
+    Ds_PVwithDs_FDzerr = null;
+    Ds_PVwithDs_FDzchi2 = null;
+    Ds_PVwithDs_FDerr = null;
+    Ds_PVwithDs_FDchi2 = null;
+    Ds_PVwithDs_dira = null;
+    Ds_PVwithDs_dira_angle = null;
+    Kp_PVwithDs_ip = null;
+    Kp_PVwithDs_iperr = null;
+    Kp_PVwithDs_ipchi2 = null;
+    Km_PVwithDs_ip = null;
+    Km_PVwithDs_iperr = null;
+    Km_PVwithDs_ipchi2 = null;
+    pi_PVwithDs_ip = null;
+    pi_PVwithDs_iperr = null;
+    pi_PVwithDs_ipchi2 = null;
+    phi_PVwithDs_ip = null;
+    phi_PVwithDs_iperr = null;
+    phi_PVwithDs_ipchi2 = null;
+    Ds_PVwithDs_ip = null;
+    Ds_PVwithDs_iperr = null;
+    Ds_PVwithDs_ipchi2 = null;
 }
 
-void PVTree::Fill_Vector()
+void PVTree::Ds_Fill_Vector()
 {
     Kp_isIsolatedChargedHadron_vec.push_back(Kp_isIsolatedChargedHadron);
     Kp_charge_vec.push_back(Kp_charge);
@@ -3441,16 +3584,6 @@ void PVTree::Fill_Vector()
     Ds_pz_vec.push_back(Ds_pz);
     Ds_invm_vec.push_back(Ds_invm);
 
-    Kp_pp_vec.push_back(Kp_pp);
-    Kp_pl_vec.push_back(Kp_pl);
-    Km_pp_vec.push_back(Km_pp);
-    Km_pl_vec.push_back(Km_pl);
-
-    phi_pp_vec.push_back(phi_pp);
-    phi_pl_vec.push_back(phi_pl);
-    pi_pp_vec.push_back(pi_pp);
-    pi_pl_vec.push_back(pi_pl);
-
     dR_Kp_Km_vec.push_back(dR_Kp_Km);
     dR_Kp_phi_vec.push_back(dR_Kp_phi);
     dR_Km_phi_vec.push_back(dR_Km_phi);
@@ -3462,28 +3595,8 @@ void PVTree::Fill_Vector()
     dR_phi_Ds_vec.push_back(dR_phi_Ds);
     dR_pi_Ds_vec.push_back(dR_pi_Ds);
 
-    dxy_Kp_Km_vec.push_back(dxy_Kp_Km);
-    dxy_Kp_phi_vec.push_back(dxy_Kp_phi);
-    dxy_Km_phi_vec.push_back(dxy_Km_phi);
-    dxy_Kp_pi_vec.push_back(dxy_Kp_pi);
-    dxy_Km_pi_vec.push_back(dxy_Km_pi);
-    dxy_pi_phi_vec.push_back(dxy_pi_phi);
-    dxy_Kp_Ds_vec.push_back(dxy_Kp_Ds);
-    dxy_Km_Ds_vec.push_back(dxy_Km_Ds);
     dxy_phi_Ds_vec.push_back(dxy_phi_Ds);
-    dxy_pi_Ds_vec.push_back(dxy_pi_Ds);
-
-    dz_Kp_Km_vec.push_back(dz_Kp_Km);
-    dz_Kp_phi_vec.push_back(dz_Kp_phi);
-    dz_Km_phi_vec.push_back(dz_Km_phi);
-    dz_Kp_pi_vec.push_back(dz_Kp_pi);
-    dz_Km_pi_vec.push_back(dz_Km_pi);
-    dz_pi_phi_vec.push_back(dz_pi_phi);
-    dz_Kp_Ds_vec.push_back(dz_Kp_Ds);
-    dz_Km_Ds_vec.push_back(dz_Km_Ds);
     dz_phi_Ds_vec.push_back(dz_phi_Ds);
-    dz_pi_Ds_vec.push_back(dz_pi_Ds);
-
 
     // Fit on phi
     phiFit_chi2_vec.push_back(phiFit_chi2);
@@ -3538,16 +3651,6 @@ void PVTree::Fill_Vector()
     phiFit_Ds_pz_vec.push_back(phiFit_Ds_pz);
     phiFit_Ds_invm_vec.push_back(phiFit_Ds_invm);
 
-    phiFit_Kp_pp_vec.push_back(phiFit_Kp_pp);
-    phiFit_Kp_pl_vec.push_back(phiFit_Kp_pl);
-    phiFit_Km_pp_vec.push_back(phiFit_Km_pp);
-    phiFit_Km_pl_vec.push_back(phiFit_Km_pl);
-
-    phiFit_phi_pp_vec.push_back(phiFit_phi_pp);
-    phiFit_phi_pl_vec.push_back(phiFit_phi_pl);
-    phiFit_pi_pp_vec.push_back(phiFit_pi_pp);
-    phiFit_pi_pl_vec.push_back(phiFit_pi_pl);
-
     phiFit_dR_Kp_Km_vec.push_back(phiFit_dR_Kp_Km);
     phiFit_dR_Kp_phi_vec.push_back(phiFit_dR_Kp_phi);
     phiFit_dR_Km_phi_vec.push_back(phiFit_dR_Km_phi);
@@ -3558,10 +3661,6 @@ void PVTree::Fill_Vector()
     phiFit_dR_Km_Ds_vec.push_back(phiFit_dR_Km_Ds);
     phiFit_dR_phi_Ds_vec.push_back(phiFit_dR_phi_Ds);
     phiFit_dR_pi_Ds_vec.push_back(phiFit_dR_pi_Ds);
-
-    alpha_phi_vec.push_back(alpha_phi);
-    beta_phi_vec.push_back(beta_phi);
-    APvar_phi_vec.push_back(APvar_phi);
 
     // Fit on Ds 
     DsFit_chi2_vec.push_back(DsFit_chi2);
@@ -3616,16 +3715,6 @@ void PVTree::Fill_Vector()
     DsFit_Ds_pz_vec.push_back(DsFit_Ds_pz);
     DsFit_Ds_invm_vec.push_back(DsFit_Ds_invm);
 
-    DsFit_Kp_pp_vec.push_back(DsFit_Kp_pp);
-    DsFit_Kp_pl_vec.push_back(DsFit_Kp_pl);
-    DsFit_Km_pp_vec.push_back(DsFit_Km_pp);
-    DsFit_Km_pl_vec.push_back(DsFit_Km_pl);
-
-    DsFit_phi_pp_vec.push_back(DsFit_phi_pp);
-    DsFit_phi_pl_vec.push_back(DsFit_phi_pl);
-    DsFit_pi_pp_vec.push_back(DsFit_pi_pp);
-    DsFit_pi_pl_vec.push_back(DsFit_pi_pl);
-
     DsFit_dR_Kp_Km_vec.push_back(DsFit_dR_Kp_Km);
     DsFit_dR_Kp_phi_vec.push_back(DsFit_dR_Kp_phi);
     DsFit_dR_Km_phi_vec.push_back(DsFit_dR_Km_phi);
@@ -3638,10 +3727,6 @@ void PVTree::Fill_Vector()
     DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds);
 
     DsFit_Mconstraint_Ds_invm_vec.push_back(DsFit_Mconstraint_Ds_invm);
-
-    alpha_Ds_vec.push_back(alpha_Ds);
-    beta_Ds_vec.push_back(beta_Ds);
-    APvar_Ds_vec.push_back(APvar_Ds);
 
     Ds_primvtx_FDxy_vec.push_back(Ds_primvtx_FDxy);
     Ds_primvtx_FDz_vec.push_back(Ds_primvtx_FDz);
@@ -3663,35 +3748,35 @@ void PVTree::Fill_Vector()
     pi_primvtx_ip_vec.push_back(pi_primvtx_ip);
     pi_primvtx_iperr_vec.push_back(pi_primvtx_iperr);
     pi_primvtx_ipchi2_vec.push_back(pi_primvtx_ipchi2);
+    phi_primvtx_ip_vec.push_back(phi_primvtx_ip);
+    phi_primvtx_iperr_vec.push_back(phi_primvtx_iperr);
+    phi_primvtx_ipchi2_vec.push_back(phi_primvtx_ipchi2);
+    Ds_primvtx_ip_vec.push_back(Ds_primvtx_ip);
+    Ds_primvtx_iperr_vec.push_back(Ds_primvtx_iperr);
+    Ds_primvtx_ipchi2_vec.push_back(Ds_primvtx_ipchi2);
 
-    Ds_Iso_R0p3_vec.push_back(Ds_Iso_R0p3);
-    Ds_Iso_R0p4_vec.push_back(Ds_Iso_R0p4);
-    Ds_IsoRel_R0p3_vec.push_back(Ds_IsoRel_R0p3);
-    Ds_IsoRel_R0p4_vec.push_back(Ds_IsoRel_R0p4);
+    Ds_IsoR03_sumChargedHadronPt_vec.push_back(Ds_IsoR03_sumChargedHadronPt);
+    Ds_IsoR03_sumNeutralHadronPt_vec.push_back(Ds_IsoR03_sumNeutralHadronPt);
+    Ds_IsoR03_sumPhotonPt_vec.push_back(Ds_IsoR03_sumPhotonPt);
+    Ds_IsoR03_sumPUPt_vec.push_back(Ds_IsoR03_sumPUPt);
+    Ds_PFIsoR03_vec.push_back(Ds_PFIsoR03);
+    Ds_IsoR04_sumChargedHadronPt_vec.push_back(Ds_IsoR04_sumChargedHadronPt);
+    Ds_IsoR04_sumNeutralHadronPt_vec.push_back(Ds_IsoR04_sumNeutralHadronPt);
+    Ds_IsoR04_sumPhotonPt_vec.push_back(Ds_IsoR04_sumPhotonPt);
+    Ds_IsoR04_sumPUPt_vec.push_back(Ds_IsoR04_sumPUPt);
+    Ds_PFIsoR04_vec.push_back(Ds_PFIsoR04);
 
-    PV_noDs_withBS_IsValid_vec.push_back(PV_noDs_withBS_IsValid);
-    PV_noDs_withBS_IsFake_vec.push_back(PV_noDs_withBS_IsFake);
-    PV_noDs_withBS_chi2_vec.push_back(PV_noDs_withBS_chi2);
-    PV_noDs_withBS_ndof_vec.push_back(PV_noDs_withBS_ndof);
-    PV_noDs_withBS_chi2ndof_vec.push_back(PV_noDs_withBS_chi2ndof);
-    PV_noDs_withBS_x_vec.push_back(PV_noDs_withBS_x);
-    PV_noDs_withBS_y_vec.push_back(PV_noDs_withBS_y);
-    PV_noDs_withBS_z_vec.push_back(PV_noDs_withBS_z);
-    PV_noDs_withBS_xerr_vec.push_back(PV_noDs_withBS_xerr);
-    PV_noDs_withBS_yerr_vec.push_back(PV_noDs_withBS_yerr);
-    PV_noDs_withBS_zerr_vec.push_back(PV_noDs_withBS_zerr);
-
-    PV_noDs_noBS_IsValid_vec.push_back(PV_noDs_noBS_IsValid);
-    PV_noDs_noBS_IsFake_vec.push_back(PV_noDs_noBS_IsFake);
-    PV_noDs_noBS_chi2_vec.push_back(PV_noDs_noBS_chi2);
-    PV_noDs_noBS_ndof_vec.push_back(PV_noDs_noBS_ndof);
-    PV_noDs_noBS_chi2ndof_vec.push_back(PV_noDs_noBS_chi2ndof);
-    PV_noDs_noBS_x_vec.push_back(PV_noDs_noBS_x);
-    PV_noDs_noBS_y_vec.push_back(PV_noDs_noBS_y);
-    PV_noDs_noBS_z_vec.push_back(PV_noDs_noBS_z);
-    PV_noDs_noBS_xerr_vec.push_back(PV_noDs_noBS_xerr);
-    PV_noDs_noBS_yerr_vec.push_back(PV_noDs_noBS_yerr);
-    PV_noDs_noBS_zerr_vec.push_back(PV_noDs_noBS_zerr);
+    PV_noDs_IsValid_vec.push_back(PV_noDs_IsValid);
+    PV_noDs_IsFake_vec.push_back(PV_noDs_IsFake);
+    PV_noDs_chi2_vec.push_back(PV_noDs_chi2);
+    PV_noDs_ndof_vec.push_back(PV_noDs_ndof);
+    PV_noDs_chi2ndof_vec.push_back(PV_noDs_chi2ndof);
+    PV_noDs_x_vec.push_back(PV_noDs_x);
+    PV_noDs_y_vec.push_back(PV_noDs_y);
+    PV_noDs_z_vec.push_back(PV_noDs_z);
+    PV_noDs_xerr_vec.push_back(PV_noDs_xerr);
+    PV_noDs_yerr_vec.push_back(PV_noDs_yerr);
+    PV_noDs_zerr_vec.push_back(PV_noDs_zerr);
 
     Ds_PVnoDs_FDxy_vec.push_back(Ds_PVnoDs_FDxy);
     Ds_PVnoDs_FDz_vec.push_back(Ds_PVnoDs_FDz);
@@ -3713,6 +3798,51 @@ void PVTree::Fill_Vector()
     pi_PVnoDs_ip_vec.push_back(pi_PVnoDs_ip);
     pi_PVnoDs_iperr_vec.push_back(pi_PVnoDs_iperr);
     pi_PVnoDs_ipchi2_vec.push_back(pi_PVnoDs_ipchi2);
+    phi_PVnoDs_ip_vec.push_back(phi_PVnoDs_ip);
+    phi_PVnoDs_iperr_vec.push_back(phi_PVnoDs_iperr);
+    phi_PVnoDs_ipchi2_vec.push_back(phi_PVnoDs_ipchi2);
+    Ds_PVnoDs_ip_vec.push_back(Ds_PVnoDs_ip);
+    Ds_PVnoDs_iperr_vec.push_back(Ds_PVnoDs_iperr);
+    Ds_PVnoDs_ipchi2_vec.push_back(Ds_PVnoDs_ipchi2);
+
+    PV_withDs_IsValid_vec.push_back(PV_withDs_IsValid);
+    PV_withDs_IsFake_vec.push_back(PV_withDs_IsFake);
+    PV_withDs_chi2_vec.push_back(PV_withDs_chi2);
+    PV_withDs_ndof_vec.push_back(PV_withDs_ndof);
+    PV_withDs_chi2ndof_vec.push_back(PV_withDs_chi2ndof);
+    PV_withDs_x_vec.push_back(PV_withDs_x);
+    PV_withDs_y_vec.push_back(PV_withDs_y);
+    PV_withDs_z_vec.push_back(PV_withDs_z);
+    PV_withDs_xerr_vec.push_back(PV_withDs_xerr);
+    PV_withDs_yerr_vec.push_back(PV_withDs_yerr);
+    PV_withDs_zerr_vec.push_back(PV_withDs_zerr);
+
+    Ds_PVwithDs_FDxy_vec.push_back(Ds_PVwithDs_FDxy);
+    Ds_PVwithDs_FDz_vec.push_back(Ds_PVwithDs_FDz);
+    Ds_PVwithDs_FD_vec.push_back(Ds_PVwithDs_FD);
+    Ds_PVwithDs_FDxyerr_vec.push_back(Ds_PVwithDs_FDxyerr);
+    Ds_PVwithDs_FDxychi2_vec.push_back(Ds_PVwithDs_FDxychi2);
+    Ds_PVwithDs_FDzerr_vec.push_back(Ds_PVwithDs_FDzerr);
+    Ds_PVwithDs_FDzchi2_vec.push_back(Ds_PVwithDs_FDzchi2);
+    Ds_PVwithDs_FDerr_vec.push_back(Ds_PVwithDs_FDerr);
+    Ds_PVwithDs_FDchi2_vec.push_back(Ds_PVwithDs_FDchi2);
+    Ds_PVwithDs_dira_vec.push_back(Ds_PVwithDs_dira);
+    Ds_PVwithDs_dira_angle_vec.push_back(Ds_PVwithDs_dira_angle);
+    Kp_PVwithDs_ip_vec.push_back(Kp_PVwithDs_ip);
+    Kp_PVwithDs_iperr_vec.push_back(Kp_PVwithDs_iperr);
+    Kp_PVwithDs_ipchi2_vec.push_back(Kp_PVwithDs_ipchi2);
+    Km_PVwithDs_ip_vec.push_back(Km_PVwithDs_ip);
+    Km_PVwithDs_iperr_vec.push_back(Km_PVwithDs_iperr);
+    Km_PVwithDs_ipchi2_vec.push_back(Km_PVwithDs_ipchi2);
+    pi_PVwithDs_ip_vec.push_back(pi_PVwithDs_ip);
+    pi_PVwithDs_iperr_vec.push_back(pi_PVwithDs_iperr);
+    pi_PVwithDs_ipchi2_vec.push_back(pi_PVwithDs_ipchi2);
+    phi_PVwithDs_ip_vec.push_back(phi_PVwithDs_ip);
+    phi_PVwithDs_iperr_vec.push_back(phi_PVwithDs_iperr);
+    phi_PVwithDs_ipchi2_vec.push_back(phi_PVwithDs_ipchi2);
+    Ds_PVwithDs_ip_vec.push_back(Ds_PVwithDs_ip);
+    Ds_PVwithDs_iperr_vec.push_back(Ds_PVwithDs_iperr);
+    Ds_PVwithDs_ipchi2_vec.push_back(Ds_PVwithDs_ipchi2);
 
     Kp_match_vec.push_back(Kp_match);
     Km_match_vec.push_back(Km_match);
@@ -3721,7 +3851,7 @@ void PVTree::Fill_Vector()
     non_match_entry_vec.push_back(non_match_entry);
 }
 
-void PVTree::Best_Fill_Vector(int idxmax)
+void PVTree::Best_Ds_Fill_Vector(int idxmax)
 {
     best_Kp_isIsolatedChargedHadron_vec.push_back(Kp_isIsolatedChargedHadron_vec[idxmax]);
     best_Kp_charge_vec.push_back(Kp_charge_vec[idxmax]);
@@ -3780,16 +3910,6 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_Ds_pz_vec.push_back(Ds_pz_vec[idxmax]);
     best_Ds_invm_vec.push_back(Ds_invm_vec[idxmax]);
 
-    best_Kp_pp_vec.push_back(Kp_pp_vec[idxmax]);
-    best_Kp_pl_vec.push_back(Kp_pl_vec[idxmax]);
-    best_Km_pp_vec.push_back(Km_pp_vec[idxmax]);
-    best_Km_pl_vec.push_back(Km_pl_vec[idxmax]);
-
-    best_phi_pp_vec.push_back(phi_pp_vec[idxmax]);
-    best_phi_pl_vec.push_back(phi_pl_vec[idxmax]);
-    best_pi_pp_vec.push_back(pi_pp_vec[idxmax]);
-    best_pi_pl_vec.push_back(pi_pl_vec[idxmax]);
-
     best_dR_Kp_Km_vec.push_back(dR_Kp_Km_vec[idxmax]);
     best_dR_Kp_phi_vec.push_back(dR_Kp_phi_vec[idxmax]);
     best_dR_Km_phi_vec.push_back(dR_Km_phi_vec[idxmax]);
@@ -3801,28 +3921,8 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_dR_phi_Ds_vec.push_back(dR_phi_Ds_vec[idxmax]);
     best_dR_pi_Ds_vec.push_back(dR_pi_Ds_vec[idxmax]);
 
-    best_dxy_Kp_Km_vec.push_back(dxy_Kp_Km_vec[idxmax]);
-    best_dxy_Kp_phi_vec.push_back(dxy_Kp_phi_vec[idxmax]);
-    best_dxy_Km_phi_vec.push_back(dxy_Km_phi_vec[idxmax]);
-    best_dxy_Kp_pi_vec.push_back(dxy_Kp_pi_vec[idxmax]);
-    best_dxy_Km_pi_vec.push_back(dxy_Km_pi_vec[idxmax]);
-    best_dxy_pi_phi_vec.push_back(dxy_pi_phi_vec[idxmax]);
-    best_dxy_Kp_Ds_vec.push_back(dxy_Kp_Ds_vec[idxmax]);
-    best_dxy_Km_Ds_vec.push_back(dxy_Km_Ds_vec[idxmax]);
     best_dxy_phi_Ds_vec.push_back(dxy_phi_Ds_vec[idxmax]);
-    best_dxy_pi_Ds_vec.push_back(dxy_pi_Ds_vec[idxmax]);
-
-    best_dz_Kp_Km_vec.push_back(dz_Kp_Km_vec[idxmax]);
-    best_dz_Kp_phi_vec.push_back(dz_Kp_phi_vec[idxmax]);
-    best_dz_Km_phi_vec.push_back(dz_Km_phi_vec[idxmax]);
-    best_dz_Kp_pi_vec.push_back(dz_Kp_pi_vec[idxmax]);
-    best_dz_Km_pi_vec.push_back(dz_Km_pi_vec[idxmax]);
-    best_dz_pi_phi_vec.push_back(dz_pi_phi_vec[idxmax]);
-    best_dz_Kp_Ds_vec.push_back(dz_Kp_Ds_vec[idxmax]);
-    best_dz_Km_Ds_vec.push_back(dz_Km_Ds_vec[idxmax]);
     best_dz_phi_Ds_vec.push_back(dz_phi_Ds_vec[idxmax]);
-    best_dz_pi_Ds_vec.push_back(dz_pi_Ds_vec[idxmax]);
-
 
     // Fit on phi
     best_phiFit_chi2_vec.push_back(phiFit_chi2_vec[idxmax]);
@@ -3877,16 +3977,6 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_phiFit_Ds_pz_vec.push_back(phiFit_Ds_pz_vec[idxmax]);
     best_phiFit_Ds_invm_vec.push_back(phiFit_Ds_invm_vec[idxmax]);
 
-    best_phiFit_Kp_pp_vec.push_back(phiFit_Kp_pp_vec[idxmax]);
-    best_phiFit_Kp_pl_vec.push_back(phiFit_Kp_pl_vec[idxmax]);
-    best_phiFit_Km_pp_vec.push_back(phiFit_Km_pp_vec[idxmax]);
-    best_phiFit_Km_pl_vec.push_back(phiFit_Km_pl_vec[idxmax]);
-
-    best_phiFit_phi_pp_vec.push_back(phiFit_phi_pp_vec[idxmax]);
-    best_phiFit_phi_pl_vec.push_back(phiFit_phi_pl_vec[idxmax]);
-    best_phiFit_pi_pp_vec.push_back(phiFit_pi_pp_vec[idxmax]);
-    best_phiFit_pi_pl_vec.push_back(phiFit_pi_pl_vec[idxmax]);
-
     best_phiFit_dR_Kp_Km_vec.push_back(phiFit_dR_Kp_Km_vec[idxmax]);
     best_phiFit_dR_Kp_phi_vec.push_back(phiFit_dR_Kp_phi_vec[idxmax]);
     best_phiFit_dR_Km_phi_vec.push_back(phiFit_dR_Km_phi_vec[idxmax]);
@@ -3897,10 +3987,6 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_phiFit_dR_Km_Ds_vec.push_back(phiFit_dR_Km_Ds_vec[idxmax]);
     best_phiFit_dR_phi_Ds_vec.push_back(phiFit_dR_phi_Ds_vec[idxmax]);
     best_phiFit_dR_pi_Ds_vec.push_back(phiFit_dR_pi_Ds_vec[idxmax]);
-
-    best_alpha_phi_vec.push_back(alpha_phi_vec[idxmax]);
-    best_beta_phi_vec.push_back(beta_phi_vec[idxmax]);
-    best_APvar_phi_vec.push_back(APvar_phi_vec[idxmax]);
 
     // Fit on Ds 
     best_DsFit_chi2_vec.push_back(DsFit_chi2_vec[idxmax]);
@@ -3955,16 +4041,6 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_DsFit_Ds_pz_vec.push_back(DsFit_Ds_pz_vec[idxmax]);
     best_DsFit_Ds_invm_vec.push_back(DsFit_Ds_invm_vec[idxmax]);
 
-    best_DsFit_Kp_pp_vec.push_back(DsFit_Kp_pp_vec[idxmax]);
-    best_DsFit_Kp_pl_vec.push_back(DsFit_Kp_pl_vec[idxmax]);
-    best_DsFit_Km_pp_vec.push_back(DsFit_Km_pp_vec[idxmax]);
-    best_DsFit_Km_pl_vec.push_back(DsFit_Km_pl_vec[idxmax]);
-
-    best_DsFit_phi_pp_vec.push_back(DsFit_phi_pp_vec[idxmax]);
-    best_DsFit_phi_pl_vec.push_back(DsFit_phi_pl_vec[idxmax]);
-    best_DsFit_pi_pp_vec.push_back(DsFit_pi_pp_vec[idxmax]);
-    best_DsFit_pi_pl_vec.push_back(DsFit_pi_pl_vec[idxmax]);
-
     best_DsFit_dR_Kp_Km_vec.push_back(DsFit_dR_Kp_Km_vec[idxmax]);
     best_DsFit_dR_Kp_phi_vec.push_back(DsFit_dR_Kp_phi_vec[idxmax]);
     best_DsFit_dR_Km_phi_vec.push_back(DsFit_dR_Km_phi_vec[idxmax]);
@@ -3977,10 +4053,6 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_DsFit_dR_pi_Ds_vec.push_back(DsFit_dR_pi_Ds_vec[idxmax]);
 
     best_DsFit_Mconstraint_Ds_invm_vec.push_back(DsFit_Mconstraint_Ds_invm_vec[idxmax]);
-
-    best_alpha_Ds_vec.push_back(alpha_Ds_vec[idxmax]);
-    best_beta_Ds_vec.push_back(beta_Ds_vec[idxmax]);
-    best_APvar_Ds_vec.push_back(APvar_Ds_vec[idxmax]);
 
     best_Ds_primvtx_FDxy_vec.push_back(Ds_primvtx_FDxy_vec[idxmax]);
     best_Ds_primvtx_FDz_vec.push_back(Ds_primvtx_FDz_vec[idxmax]);
@@ -4002,35 +4074,35 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_pi_primvtx_ip_vec.push_back(pi_primvtx_ip_vec[idxmax]);
     best_pi_primvtx_iperr_vec.push_back(pi_primvtx_iperr_vec[idxmax]);
     best_pi_primvtx_ipchi2_vec.push_back(pi_primvtx_ipchi2_vec[idxmax]);
+    best_phi_primvtx_ip_vec.push_back(phi_primvtx_ip_vec[idxmax]);
+    best_phi_primvtx_iperr_vec.push_back(phi_primvtx_iperr_vec[idxmax]);
+    best_phi_primvtx_ipchi2_vec.push_back(phi_primvtx_ipchi2_vec[idxmax]);
+    best_Ds_primvtx_ip_vec.push_back(Ds_primvtx_ip_vec[idxmax]);
+    best_Ds_primvtx_iperr_vec.push_back(Ds_primvtx_iperr_vec[idxmax]);
+    best_Ds_primvtx_ipchi2_vec.push_back(Ds_primvtx_ipchi2_vec[idxmax]);
 
-    best_Ds_Iso_R0p3_vec.push_back(Ds_Iso_R0p3_vec[idxmax]);
-    best_Ds_Iso_R0p4_vec.push_back(Ds_Iso_R0p4_vec[idxmax]);
-    best_Ds_IsoRel_R0p3_vec.push_back(Ds_IsoRel_R0p3_vec[idxmax]);
-    best_Ds_IsoRel_R0p4_vec.push_back(Ds_IsoRel_R0p4_vec[idxmax]);
+    best_Ds_IsoR03_sumChargedHadronPt_vec.push_back(Ds_IsoR03_sumChargedHadronPt_vec[idxmax]);
+    best_Ds_IsoR03_sumNeutralHadronPt_vec.push_back(Ds_IsoR03_sumNeutralHadronPt_vec[idxmax]);
+    best_Ds_IsoR03_sumPhotonPt_vec.push_back(Ds_IsoR03_sumPhotonPt_vec[idxmax]);
+    best_Ds_IsoR03_sumPUPt_vec.push_back(Ds_IsoR03_sumPUPt_vec[idxmax]);
+    best_Ds_PFIsoR03_vec.push_back(Ds_PFIsoR03_vec[idxmax]);
+    best_Ds_IsoR04_sumChargedHadronPt_vec.push_back(Ds_IsoR04_sumChargedHadronPt_vec[idxmax]);
+    best_Ds_IsoR04_sumNeutralHadronPt_vec.push_back(Ds_IsoR04_sumNeutralHadronPt_vec[idxmax]);
+    best_Ds_IsoR04_sumPhotonPt_vec.push_back(Ds_IsoR04_sumPhotonPt_vec[idxmax]);
+    best_Ds_IsoR04_sumPUPt_vec.push_back(Ds_IsoR04_sumPUPt_vec[idxmax]);
+    best_Ds_PFIsoR04_vec.push_back(Ds_PFIsoR04_vec[idxmax]);
 
-    best_PV_noDs_withBS_IsValid_vec.push_back(PV_noDs_withBS_IsValid_vec[idxmax]);
-    best_PV_noDs_withBS_IsFake_vec.push_back(PV_noDs_withBS_IsFake_vec[idxmax]);
-    best_PV_noDs_withBS_chi2_vec.push_back(PV_noDs_withBS_chi2_vec[idxmax]);
-    best_PV_noDs_withBS_ndof_vec.push_back(PV_noDs_withBS_ndof_vec[idxmax]);
-    best_PV_noDs_withBS_chi2ndof_vec.push_back(PV_noDs_withBS_chi2ndof_vec[idxmax]);
-    best_PV_noDs_withBS_x_vec.push_back(PV_noDs_withBS_x_vec[idxmax]);
-    best_PV_noDs_withBS_y_vec.push_back(PV_noDs_withBS_y_vec[idxmax]);
-    best_PV_noDs_withBS_z_vec.push_back(PV_noDs_withBS_z_vec[idxmax]);
-    best_PV_noDs_withBS_xerr_vec.push_back(PV_noDs_withBS_xerr_vec[idxmax]);
-    best_PV_noDs_withBS_yerr_vec.push_back(PV_noDs_withBS_yerr_vec[idxmax]);
-    best_PV_noDs_withBS_zerr_vec.push_back(PV_noDs_withBS_zerr_vec[idxmax]);
-
-    best_PV_noDs_noBS_IsValid_vec.push_back(PV_noDs_noBS_IsValid_vec[idxmax]);
-    best_PV_noDs_noBS_IsFake_vec.push_back(PV_noDs_noBS_IsFake_vec[idxmax]);
-    best_PV_noDs_noBS_chi2_vec.push_back(PV_noDs_noBS_chi2_vec[idxmax]);
-    best_PV_noDs_noBS_ndof_vec.push_back(PV_noDs_noBS_ndof_vec[idxmax]);
-    best_PV_noDs_noBS_chi2ndof_vec.push_back(PV_noDs_noBS_chi2ndof_vec[idxmax]);
-    best_PV_noDs_noBS_x_vec.push_back(PV_noDs_noBS_x_vec[idxmax]);
-    best_PV_noDs_noBS_y_vec.push_back(PV_noDs_noBS_y_vec[idxmax]);
-    best_PV_noDs_noBS_z_vec.push_back(PV_noDs_noBS_z_vec[idxmax]);
-    best_PV_noDs_noBS_xerr_vec.push_back(PV_noDs_noBS_xerr_vec[idxmax]);
-    best_PV_noDs_noBS_yerr_vec.push_back(PV_noDs_noBS_yerr_vec[idxmax]);
-    best_PV_noDs_noBS_zerr_vec.push_back(PV_noDs_noBS_zerr_vec[idxmax]);
+    best_PV_noDs_IsValid_vec.push_back(PV_noDs_IsValid_vec[idxmax]);
+    best_PV_noDs_IsFake_vec.push_back(PV_noDs_IsFake_vec[idxmax]);
+    best_PV_noDs_chi2_vec.push_back(PV_noDs_chi2_vec[idxmax]);
+    best_PV_noDs_ndof_vec.push_back(PV_noDs_ndof_vec[idxmax]);
+    best_PV_noDs_chi2ndof_vec.push_back(PV_noDs_chi2ndof_vec[idxmax]);
+    best_PV_noDs_x_vec.push_back(PV_noDs_x_vec[idxmax]);
+    best_PV_noDs_y_vec.push_back(PV_noDs_y_vec[idxmax]);
+    best_PV_noDs_z_vec.push_back(PV_noDs_z_vec[idxmax]);
+    best_PV_noDs_xerr_vec.push_back(PV_noDs_xerr_vec[idxmax]);
+    best_PV_noDs_yerr_vec.push_back(PV_noDs_yerr_vec[idxmax]);
+    best_PV_noDs_zerr_vec.push_back(PV_noDs_zerr_vec[idxmax]);
 
     best_Ds_PVnoDs_FDxy_vec.push_back(Ds_PVnoDs_FDxy_vec[idxmax]);
     best_Ds_PVnoDs_FDz_vec.push_back(Ds_PVnoDs_FDz_vec[idxmax]);
@@ -4052,6 +4124,138 @@ void PVTree::Best_Fill_Vector(int idxmax)
     best_pi_PVnoDs_ip_vec.push_back(pi_PVnoDs_ip_vec[idxmax]);
     best_pi_PVnoDs_iperr_vec.push_back(pi_PVnoDs_iperr_vec[idxmax]);
     best_pi_PVnoDs_ipchi2_vec.push_back(pi_PVnoDs_ipchi2_vec[idxmax]);
+    best_phi_PVnoDs_ip_vec.push_back(phi_PVnoDs_ip_vec[idxmax]);
+    best_phi_PVnoDs_iperr_vec.push_back(phi_PVnoDs_iperr_vec[idxmax]);
+    best_phi_PVnoDs_ipchi2_vec.push_back(phi_PVnoDs_ipchi2_vec[idxmax]);
+    best_Ds_PVnoDs_ip_vec.push_back(Ds_PVnoDs_ip_vec[idxmax]);
+    best_Ds_PVnoDs_iperr_vec.push_back(Ds_PVnoDs_iperr_vec[idxmax]);
+    best_Ds_PVnoDs_ipchi2_vec.push_back(Ds_PVnoDs_ipchi2_vec[idxmax]);
+
+    best_PV_withDs_IsValid_vec.push_back(PV_withDs_IsValid_vec[idxmax]);
+    best_PV_withDs_IsFake_vec.push_back(PV_withDs_IsFake_vec[idxmax]);
+    best_PV_withDs_chi2_vec.push_back(PV_withDs_chi2_vec[idxmax]);
+    best_PV_withDs_ndof_vec.push_back(PV_withDs_ndof_vec[idxmax]);
+    best_PV_withDs_chi2ndof_vec.push_back(PV_withDs_chi2ndof_vec[idxmax]);
+    best_PV_withDs_x_vec.push_back(PV_withDs_x_vec[idxmax]);
+    best_PV_withDs_y_vec.push_back(PV_withDs_y_vec[idxmax]);
+    best_PV_withDs_z_vec.push_back(PV_withDs_z_vec[idxmax]);
+    best_PV_withDs_xerr_vec.push_back(PV_withDs_xerr_vec[idxmax]);
+    best_PV_withDs_yerr_vec.push_back(PV_withDs_yerr_vec[idxmax]);
+    best_PV_withDs_zerr_vec.push_back(PV_withDs_zerr_vec[idxmax]);
+
+    best_Ds_PVwithDs_FDxy_vec.push_back(Ds_PVwithDs_FDxy_vec[idxmax]);
+    best_Ds_PVwithDs_FDz_vec.push_back(Ds_PVwithDs_FDz_vec[idxmax]);
+    best_Ds_PVwithDs_FD_vec.push_back(Ds_PVwithDs_FD_vec[idxmax]);
+    best_Ds_PVwithDs_FDxyerr_vec.push_back(Ds_PVwithDs_FDxyerr_vec[idxmax]);
+    best_Ds_PVwithDs_FDxychi2_vec.push_back(Ds_PVwithDs_FDxychi2_vec[idxmax]);
+    best_Ds_PVwithDs_FDzerr_vec.push_back(Ds_PVwithDs_FDzerr_vec[idxmax]);
+    best_Ds_PVwithDs_FDzchi2_vec.push_back(Ds_PVwithDs_FDzchi2_vec[idxmax]);
+    best_Ds_PVwithDs_FDerr_vec.push_back(Ds_PVwithDs_FDerr_vec[idxmax]);
+    best_Ds_PVwithDs_FDchi2_vec.push_back(Ds_PVwithDs_FDchi2_vec[idxmax]);
+    best_Ds_PVwithDs_dira_vec.push_back(Ds_PVwithDs_dira_vec[idxmax]);
+    best_Ds_PVwithDs_dira_angle_vec.push_back(Ds_PVwithDs_dira_angle_vec[idxmax]);
+    best_Kp_PVwithDs_ip_vec.push_back(Kp_PVwithDs_ip_vec[idxmax]);
+    best_Kp_PVwithDs_iperr_vec.push_back(Kp_PVwithDs_iperr_vec[idxmax]);
+    best_Kp_PVwithDs_ipchi2_vec.push_back(Kp_PVwithDs_ipchi2_vec[idxmax]);
+    best_Km_PVwithDs_ip_vec.push_back(Km_PVwithDs_ip_vec[idxmax]);
+    best_Km_PVwithDs_iperr_vec.push_back(Km_PVwithDs_iperr_vec[idxmax]);
+    best_Km_PVwithDs_ipchi2_vec.push_back(Km_PVwithDs_ipchi2_vec[idxmax]);
+    best_pi_PVwithDs_ip_vec.push_back(pi_PVwithDs_ip_vec[idxmax]);
+    best_pi_PVwithDs_iperr_vec.push_back(pi_PVwithDs_iperr_vec[idxmax]);
+    best_pi_PVwithDs_ipchi2_vec.push_back(pi_PVwithDs_ipchi2_vec[idxmax]);
+    best_phi_PVwithDs_ip_vec.push_back(phi_PVwithDs_ip_vec[idxmax]);
+    best_phi_PVwithDs_iperr_vec.push_back(phi_PVwithDs_iperr_vec[idxmax]);
+    best_phi_PVwithDs_ipchi2_vec.push_back(phi_PVwithDs_ipchi2_vec[idxmax]);
+    best_Ds_PVwithDs_ip_vec.push_back(Ds_PVwithDs_ip_vec[idxmax]);
+    best_Ds_PVwithDs_iperr_vec.push_back(Ds_PVwithDs_iperr_vec[idxmax]);
+    best_Ds_PVwithDs_ipchi2_vec.push_back(Ds_PVwithDs_ipchi2_vec[idxmax]);
 
     best_match_entry_vec.push_back(match_entry_vec[idxmax]);
+}
+
+void PVTree::mu_Reset()
+{
+    best_mu_charge = null;
+    best_mu_eta = null;
+    best_mu_phi = null;
+    best_mu_vx = null;
+    best_mu_vy = null;
+    best_mu_vz = null;
+    best_mu_p = null;
+    best_mu_pt = null;
+    best_mu_px = null;
+    best_mu_py = null;
+    best_mu_pz = null;
+    best_mu_isHighPt = false;
+    best_mu_isLoose = false;
+    best_mu_isMedium = false;
+    best_mu_isSoft = false;
+    best_mu_isTight = false;
+    best_mu_isPF = false;
+    best_mu_isTracker = false;
+    best_mu_isGlobal = false;
+    best_mu_IsoR03_sumChargedHadronPt = null;
+    best_mu_IsoR03_sumChargedParticlePt = null;
+    best_mu_IsoR03_sumNeutralHadronEt = null;
+    best_mu_IsoR03_sumPhotonEt = null;
+    best_mu_IsoR03_sumPUPt = null;
+    best_mu_PFIsoR03 = null;
+    best_mu_IsoR04_sumChargedHadronPt = null;
+    best_mu_IsoR04_sumChargedParticlePt = null;
+    best_mu_IsoR04_sumNeutralHadronEt = null;
+    best_mu_IsoR04_sumPhotonEt = null;
+    best_mu_IsoR04_sumPUPt = null;
+    best_mu_PFIsoR04 = null;
+    best_mu_primvtx_dxy = null;
+    best_mu_primvtx_dxyerr = null;
+    best_mu_primvtx_dz = null;
+    best_mu_primvtx_dzerr = null;
+    best_mu_primvtx_ip = null;
+    best_mu_primvtx_iperr = null;
+    best_mu_primvtx_ipchi2 = null;
+    best_mu_match = false;
+}
+
+
+void PVTree::Best_mu_Fill_Vector()
+{
+    best_mu_charge_vec.push_back(best_mu_charge);
+    best_mu_eta_vec.push_back(best_mu_eta);
+    best_mu_phi_vec.push_back(best_mu_phi);
+    best_mu_vx_vec.push_back(best_mu_vx);
+    best_mu_vy_vec.push_back(best_mu_vy);
+    best_mu_vz_vec.push_back(best_mu_vz);
+    best_mu_p_vec.push_back(best_mu_p);
+    best_mu_pt_vec.push_back(best_mu_pt);
+    best_mu_px_vec.push_back(best_mu_px);
+    best_mu_py_vec.push_back(best_mu_py);
+    best_mu_pz_vec.push_back(best_mu_pz);
+    best_mu_isHighPt_vec.push_back(best_mu_isHighPt);
+    best_mu_isLoose_vec.push_back(best_mu_isLoose);
+    best_mu_isMedium_vec.push_back(best_mu_isMedium);
+    best_mu_isSoft_vec.push_back(best_mu_isSoft);
+    best_mu_isTight_vec.push_back(best_mu_isTight);
+    best_mu_isPF_vec.push_back(best_mu_isPF);
+    best_mu_isTracker_vec.push_back(best_mu_isTracker);
+    best_mu_isGlobal_vec.push_back(best_mu_isGlobal);
+    best_mu_IsoR03_sumChargedHadronPt_vec.push_back(best_mu_IsoR03_sumChargedHadronPt);
+    best_mu_IsoR03_sumChargedParticlePt_vec.push_back(best_mu_IsoR03_sumChargedParticlePt);
+    best_mu_IsoR03_sumNeutralHadronEt_vec.push_back(best_mu_IsoR03_sumNeutralHadronEt);
+    best_mu_IsoR03_sumPhotonEt_vec.push_back(best_mu_IsoR03_sumPhotonEt);
+    best_mu_IsoR03_sumPUPt_vec.push_back(best_mu_IsoR03_sumPUPt);
+    best_mu_PFIsoR03_vec.push_back(best_mu_PFIsoR03);
+    best_mu_IsoR04_sumChargedHadronPt_vec.push_back(best_mu_IsoR04_sumChargedHadronPt);
+    best_mu_IsoR04_sumChargedParticlePt_vec.push_back(best_mu_IsoR04_sumChargedParticlePt);
+    best_mu_IsoR04_sumNeutralHadronEt_vec.push_back(best_mu_IsoR04_sumNeutralHadronEt);
+    best_mu_IsoR04_sumPhotonEt_vec.push_back(best_mu_IsoR04_sumPhotonEt);
+    best_mu_IsoR04_sumPUPt_vec.push_back(best_mu_IsoR04_sumPUPt);
+    best_mu_PFIsoR04_vec.push_back(best_mu_PFIsoR04);
+    best_mu_primvtx_dxy_vec.push_back(best_mu_primvtx_dxy);
+    best_mu_primvtx_dxyerr_vec.push_back(best_mu_primvtx_dxyerr);
+    best_mu_primvtx_dz_vec.push_back(best_mu_primvtx_dz);
+    best_mu_primvtx_dzerr_vec.push_back(best_mu_primvtx_dzerr);
+    best_mu_primvtx_ip_vec.push_back(best_mu_primvtx_ip);
+    best_mu_primvtx_iperr_vec.push_back(best_mu_primvtx_iperr);
+    best_mu_primvtx_ipchi2_vec.push_back(best_mu_primvtx_ipchi2);
+    best_mu_match_vec.push_back(best_mu_match);
 }
