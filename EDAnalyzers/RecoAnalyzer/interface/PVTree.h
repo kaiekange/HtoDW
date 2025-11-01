@@ -3,169 +3,553 @@
 
 #include <TTree.h>
 #include <vector>
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "DataFormats/GeometryVector/interface/GlobalVector.h"
+#include "DataFormats/GeometryCommonDetAlgo/interface/GlobalError.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+#include "TLorentzVector.h"
+#include "Rtypes.h"
 
 #define null -777
+
 
 class PVTree 
 {
     public:
 
         PVTree(TTree *tree_);
-
         TTree *tree;
 
-        void Init();
         void CreateBranches();
+        void Init();
+
         void Gen_Reset();
-        void BS_Reset();
-        void PV_Reset();
+
+        struct GenInfo {
+            double eta, phi, vx, vy, vz, p, pt, px, py, pz;
+            void clearAll() {
+                eta = null;
+                phi = null;
+                vx  = null;
+                vy  = null;
+                vz  = null;
+                p   = null;
+                pt  = null;
+                px  = null;
+                py  = null;
+                pz  = null;
+            }
+            void fillAll( const reco::GenParticle& );
+        };
+
+        struct BSInfo {
+            int type;
+            double x0, y0, z0, sigmaZ, dxdz, dydz;
+            double BWX, BWY, x0err, y0err, z0err, sigmaZ0err;
+            double dxdzerr, dydzerr, BWXerr, BWYerr;
+            double emitX, emitY, betaStar;
+            void clearAll() {
+                type       = null;
+                x0         = null;
+                y0         = null;
+                z0         = null;
+                sigmaZ     = null;
+                dxdz       = null;
+                dydz       = null;
+                BWX        = null;
+                BWY        = null;
+                x0err      = null;
+                y0err      = null;
+                z0err      = null;
+                sigmaZ0err = null;
+                dxdzerr    = null;
+                dydzerr    = null;
+                BWXerr     = null;
+                BWYerr     = null;
+                emitX      = null;
+                emitY      = null;
+                betaStar   = null;
+            }
+            void fillAll( const reco::BeamSpot& );
+        };
+
+        struct VtxInfo {
+            bool isValid, isFake;
+            double chi2, ndof, chi2ndof;
+            double vx, vy, vz, vxerr, vyerr, vzerr;
+            void clearAll() {
+                isValid  = false;
+                isFake   = true;
+                chi2     = null;
+                ndof     = null;
+                chi2ndof = null;
+                vx       = null;
+                vy       = null;
+                vz       = null;
+                vxerr    = null;
+                vyerr    = null;
+                vzerr    = null;
+            }
+            void fillAll( const reco::Vertex& );
+        };
+        struct VtxInfoVec {
+            std::vector<bool> isValid, isFake;
+            std::vector<double> chi2, ndof, chi2ndof;
+            std::vector<double> vx, vy, vz, vxerr, vyerr, vzerr;
+            void clearAll() {
+                isValid.clear();
+                isFake.clear();
+                chi2.clear();
+                ndof.clear();
+                chi2ndof.clear();
+                vx.clear();
+                vy.clear();
+                vz.clear();
+                vxerr.clear();
+                vyerr.clear();
+                vzerr.clear();
+            }
+            void fillAll( const VtxInfo& info ) {
+                isValid.push_back(info.isValid);
+                isFake.push_back(info.isFake);
+                chi2.push_back(info.chi2);
+                ndof.push_back(info.ndof);
+                chi2ndof.push_back(info.chi2ndof);
+                vx.push_back(info.vx);
+                vy.push_back(info.vy);
+                vz.push_back(info.vz);
+                vxerr.push_back(info.vxerr);
+                vyerr.push_back(info.vyerr);
+                vzerr.push_back(info.vzerr);
+            }
+            VtxInfo findIdx( int idx ) const {
+                VtxInfo info;
+                info.isValid  = isValid[idx];
+                info.isFake   = isFake[idx];
+                info.chi2     = chi2[idx];
+                info.ndof     = ndof[idx];
+                info.chi2ndof = chi2ndof[idx];
+                info.vx       = vx[idx];
+                info.vy       = vy[idx];
+                info.vz       = vz[idx];
+                info.vxerr    = vxerr[idx];
+                info.vyerr    = vyerr[idx];
+                info.vzerr    = vzerr[idx];
+                return info;
+            }
+        };
+
+        struct PFInfo {
+            bool isIsolatedChargedHadron;
+            int charge;
+            double eta, phi, vx, vy, vz;
+            double p, pt, px, py, pz;
+            void clearAll() {
+                isIsolatedChargedHadron = false;
+                charge                  = null;
+                eta                     = null;
+                phi                     = null;
+                vx                      = null;
+                vy                      = null;
+                vz                      = null;
+                p                       = null;
+                pt                      = null;
+                px                      = null;
+                py                      = null;
+                pz                      = null;
+            }
+            void fillAll( const pat::PackedCandidate& );
+        };
+        struct PFInfoVec {
+            std::vector<bool> isIsolatedChargedHadron;
+            std::vector<int> charge;
+            std::vector<double> eta, phi, vx, vy, vz;
+            std::vector<double> p, pt, px, py, pz;
+            void clearAll() {
+                isIsolatedChargedHadron.clear();
+                charge.clear();
+                eta.clear();
+                phi.clear();
+                vx.clear();
+                vy.clear();
+                vz.clear();
+                p.clear();
+                pt.clear();
+                px.clear();
+                py.clear();
+                pz.clear();
+            }
+            void fillAll( const PFInfo& info ) {
+                isIsolatedChargedHadron.push_back(info.isIsolatedChargedHadron);
+                charge.push_back(info.charge);
+                eta.push_back(info.eta);
+                phi.push_back(info.phi);
+                vx.push_back(info.vx);
+                vy.push_back(info.vy);
+                vz.push_back(info.vz);
+                p.push_back(info.p);
+                pt.push_back(info.pt);
+                px.push_back(info.px);
+                py.push_back(info.py);
+                pz.push_back(info.pz);
+            }
+            PFInfo findIdx(int idx) const {
+                PFInfo info;
+                info.isIsolatedChargedHadron = isIsolatedChargedHadron[idx];
+                info.charge                  = charge[idx];
+                info.eta                     = eta[idx];
+                info.phi                     = phi[idx];
+                info.vx                      = vx[idx];
+                info.vy                      = vy[idx];
+                info.vz                      = vz[idx];
+                info.p                       = p[idx];
+                info.pt                      = pt[idx];
+                info.px                      = px[idx];
+                info.py                      = py[idx];
+                info.pz                      = pz[idx];
+                return info;
+            }
+        };
+
+        struct TLVInfo {
+            double eta, phi, p, pt, px, py, pz, invm;
+            void clearAll() {
+                eta  = null;
+                phi  = null;
+                p    = null;
+                pt   = null;
+                px   = null;
+                py   = null;
+                pz   = null;
+                invm = null;
+            }
+            void fillAll( const TLorentzVector& );
+        };
+        struct TLVInfoVec {
+            std::vector<double> eta, phi, p, pt, px, py, pz, invm;
+            void clearAll() {
+                eta.clear();
+                phi.clear();
+                p.clear();
+                pt.clear();
+                px.clear();
+                py.clear();
+                pz.clear();
+                invm.clear();
+            }
+            void fillAll( const TLVInfo& info ) {
+                eta.push_back(info.eta);
+                phi.push_back(info.phi);
+                p.push_back(info.p);
+                pt.push_back(info.pt);
+                px.push_back(info.px);
+                py.push_back(info.py);
+                pz.push_back(info.pz);
+                invm.push_back(info.invm);
+            }
+            TLVInfo findIdx(int idx) const {
+                TLVInfo info;
+                info.eta  = eta[idx];
+                info.phi  = phi[idx];
+                info.p    = p[idx];
+                info.pt   = pt[idx];
+                info.px   = px[idx];
+                info.py   = py[idx];
+                info.pz   = pz[idx];
+                info.invm = invm[idx];
+                return info;
+            }
+        };
+
+        struct FDInfo {
+            double FDxy, FDz, FD;
+            double FDxyerr, FDzerr, FDerr;
+            double FDxychi2, FDzchi2, FDchi2;
+            double dira, dira_angle;
+            void clearAll() {
+                FDxy       = null;
+                FDz        = null;
+                FD         = null;
+                FDxyerr    = null;
+                FDzerr     = null;
+                FDerr      = null;
+                FDxychi2   = null;
+                FDzchi2    = null;
+                FDchi2     = null;
+                dira       = null;
+                dira_angle = null;
+            }
+            void fillAll( const GlobalVector&, const GlobalError&, const GlobalVector& );
+        };
+        struct FDInfoVec {
+            std::vector<double> FDxy, FDz, FD;
+            std::vector<double> FDxyerr, FDzerr, FDerr;
+            std::vector<double> FDxychi2, FDzchi2, FDchi2;
+            std::vector<double> dira, dira_angle;
+            void clearAll() {
+                FDxy.clear();
+                FDz.clear();
+                FD.clear();
+                FDxyerr.clear();
+                FDzerr.clear();
+                FDerr.clear();
+                FDxychi2.clear();
+                FDzchi2.clear();
+                FDchi2.clear();
+                dira.clear();
+                dira_angle.clear();
+            }
+            void fillAll( const FDInfo& info ) {
+                FDxy.push_back(info.FDxy);
+                FDz.push_back(info.FDz);
+                FD.push_back(info.FD);
+                FDxyerr.push_back(info.FDxyerr);
+                FDzerr.push_back(info.FDzerr);
+                FDerr.push_back(info.FDerr);
+                FDxychi2.push_back(info.FDxychi2);
+                FDzchi2.push_back(info.FDzchi2);
+                FDchi2.push_back(info.FDchi2);
+                dira.push_back(info.dira);
+                dira_angle.push_back(info.dira_angle);
+            }
+            FDInfo findIdx(int idx) const {
+                FDInfo info;
+                info.FDxy       = FDxy[idx];
+                info.FDz        = FDz[idx];
+                info.FD         = FD[idx];
+                info.FDxyerr    = FDxyerr[idx];
+                info.FDzerr     = FDzerr[idx];
+                info.FDerr      = FDerr[idx];
+                info.FDxychi2   = FDxychi2[idx];
+                info.FDzchi2    = FDzchi2[idx];
+                info.FDchi2     = FDchi2[idx];
+                info.dira       = dira[idx];
+                info.dira_angle = dira_angle[idx];
+                return info;
+            }
+        };
+
+        struct IPInfo {
+            double ip, iperr, ipchi2;
+            void clearAll(){
+                ip = null;
+                iperr = null;
+                ipchi2 = null;
+            }
+            void fillAll( const reco::TransientTrack&, const reco::Vertex& );
+        };
+        struct IPInfoVec {
+            std::vector<double> ip, iperr, ipchi2;
+            void clearAll() {
+                ip.clear();
+                iperr.clear();
+                ipchi2.clear();
+            }
+            void fillAll( const IPInfo& info ){
+                ip.push_back(info.ip);
+                iperr.push_back(info.iperr);
+                ipchi2.push_back(info.ipchi2);
+            }
+            IPInfo findIdx(int idx) const {
+                IPInfo info;
+                info.ip     = ip[idx];
+                info.iperr  = iperr[idx];
+                info.ipchi2 = ipchi2[idx];
+                return info;
+            }
+        };
+
+        struct IsoInfo {
+            double sumChargedHadronPt, sumNeutralHadronPt, sumPhotonPt, sumPUPt, PFIso;
+            void clearAll() {
+                sumChargedHadronPt = 0.0;
+                sumNeutralHadronPt = 0.0;
+                sumPhotonPt        = 0.0;
+                sumPUPt            = 0.0;
+                PFIso              = 0.0;
+            }
+        };
+        struct IsoInfoVec {
+            std::vector<double> sumChargedHadronPt, sumNeutralHadronPt, sumPhotonPt, sumPUPt, PFIso;
+            void clearAll() {
+                sumChargedHadronPt.clear();
+                sumNeutralHadronPt.clear();
+                sumPhotonPt.clear();
+                sumPUPt.clear();
+                PFIso.clear();
+            }
+            void fillAll( const IsoInfo& info ){
+                sumChargedHadronPt.push_back(info.sumChargedHadronPt);
+                sumNeutralHadronPt.push_back(info.sumNeutralHadronPt);
+                sumPhotonPt.push_back(info.sumPhotonPt);
+                sumPUPt.push_back(info.sumPUPt);
+                PFIso.push_back(info.PFIso);
+            }
+            IsoInfo findIdx(int idx) const {
+                IsoInfo info;
+                info.sumChargedHadronPt = sumChargedHadronPt[idx];
+                info.sumNeutralHadronPt = sumNeutralHadronPt[idx];
+                info.sumPhotonPt        = sumPhotonPt[idx];
+                info.sumPUPt            = sumPUPt[idx];
+                info.PFIso              = PFIso[idx];
+                return info;
+            }
+        };
+
+        struct MuonInfo {
+            int charge;
+            double eta, phi, vx, vy, vz;
+            double p, pt, px, py, pz;
+            double dxy, dxyerr, dz, dzerr;
+            bool isHighPt, isLoose, isMedium;
+            bool isSoft, isTight, isPF;
+            bool isTracker, isGlobal;
+            void clearAll(){
+                charge    = null;
+                eta       = null;
+                phi       = null;
+                vx        = null;
+                vy        = null;
+                vz        = null;
+                p         = null;
+                pt        = null;
+                px        = null;
+                py        = null;
+                pz        = null;
+                dxy       = null;
+                dxyerr    = null;
+                dz        = null;
+                dzerr     = null;
+                isHighPt  = false;
+                isLoose   = false;
+                isMedium  = false;
+                isSoft    = false;
+                isTight   = false;
+                isPF      = false;
+                isTracker = false;
+                isGlobal  = false;
+            }
+            void fillAll( const pat::Muon&, const reco::Vertex& );
+        };
+        struct MuonInfoVec {
+            std::vector<int> charge;
+            std::vector<double> eta, phi, vx, vy, vz;
+            std::vector<double> p, pt, px, py, pz;
+            std::vector<double> dxy, dxyerr, dz, dzerr;
+            std::vector<bool> isHighPt, isLoose, isMedium;
+            std::vector<bool> isSoft, isTight, isPF;
+            std::vector<bool> isTracker, isGlobal;
+            void clearAll() {
+                charge.clear();
+                eta.clear();
+                phi.clear();
+                vx.clear();
+                vy.clear();
+                vz.clear();
+                p.clear();
+                pt.clear();
+                px.clear();
+                py.clear();
+                pz.clear();
+                dxy.clear();
+                dxyerr.clear();
+                dz.clear();
+                dzerr.clear();
+                isHighPt.clear();
+                isLoose.clear();
+                isMedium.clear();
+                isSoft.clear();
+                isTight.clear();
+                isPF.clear();
+                isTracker.clear();
+                isGlobal.clear();
+            }
+            void fillAll( const MuonInfo& info ){
+                charge.push_back(info.charge);
+                eta.push_back(info.eta);
+                phi.push_back(info.phi);
+                vx.push_back(info.vx);
+                vy.push_back(info.vy);
+                vz.push_back(info.vz);
+                p.push_back(info.p);
+                pt.push_back(info.pt);
+                px.push_back(info.px);
+                py.push_back(info.py);
+                pz.push_back(info.pz);
+                dxy.push_back(info.dxy);
+                dxyerr.push_back(info.dxyerr);
+                dz.push_back(info.dz);
+                dzerr.push_back(info.dzerr);
+                isHighPt.push_back(info.isHighPt);
+                isLoose.push_back(info.isLoose);
+                isMedium.push_back(info.isMedium);
+                isSoft.push_back(info.isSoft);
+                isTight.push_back(info.isTight);
+                isPF.push_back(info.isPF);
+                isTracker.push_back(info.isTracker);
+                isGlobal.push_back(info.isGlobal);
+            }
+            MuonInfo findIdx(int idx) const {
+                MuonInfo info;
+                info.charge    = charge[idx];
+                info.eta       = eta[idx];
+                info.phi       = phi[idx];
+                info.vx        = vx[idx];
+                info.vy        = vy[idx];
+                info.vz        = vz[idx];
+                info.p         = p[idx];
+                info.pt        = pt[idx];
+                info.px        = px[idx];
+                info.py        = py[idx];
+                info.pz        = pz[idx];
+                info.dxy       = dxy[idx];
+                info.dxyerr    = dxyerr[idx];
+                info.dz        = dz[idx];
+                info.dzerr     = dzerr[idx];
+                info.isHighPt  = isHighPt[idx];
+                info.isLoose   = isLoose[idx];
+                info.isMedium  = isMedium[idx];
+                info.isSoft    = isSoft[idx];
+                info.isTight   = isTight[idx];
+                info.isPF      = isPF[idx];
+                info.isTracker = isTracker[idx];
+                info.isGlobal  = isGlobal[idx];
+                return info;
+            }
+        };
+
+
         void Match_Reset();
-        void Match_Ds_Fill_Vector();
-        void Match_mu_Fill_Vector();
-        void Kp_Reset();
-        void Km_Reset();
-        void phi_Reset();
-        void pi_Reset();
-        void Ds_Reset();
-        void PV_noDs_Reset();
-        void Ds_Fill_Vector();
-        void Best_Ds_Fill_Vector(int idxmax);
-        void mu_Reset();
-        void Best_mu_Fill_Vector();
+        void FillMatchDs();
+        void FillMatchmu();
 
-        // Gen particles
+        void FillDs();
+        void FillBestDs(int idxmax);
+        void FillBestmu();
 
-        int num_Gen_Kp;
-        int num_Gen_Km;
-        int num_Gen_pi;
-        int num_Gen_phi;
-        int num_Gen_Ds;
-        int num_Gen_mu;
-        int num_Gen_nu;
-        int num_Gen_W;
-        int num_Gen_H;
-
-        double Gen_Kp_eta;
-        double Gen_Kp_phi;
-        double Gen_Kp_vx;
-        double Gen_Kp_vy;
-        double Gen_Kp_vz;
-        double Gen_Kp_p;
-        double Gen_Kp_pt;
-        double Gen_Kp_px;
-        double Gen_Kp_py;
-        double Gen_Kp_pz;
-        double Gen_Kp_pp;
-        double Gen_Kp_pl;
-
-        double Gen_Km_eta;
-        double Gen_Km_phi;
-        double Gen_Km_vx;
-        double Gen_Km_vy;
-        double Gen_Km_vz;
-        double Gen_Km_p;
-        double Gen_Km_pt;
-        double Gen_Km_px;
-        double Gen_Km_py;
-        double Gen_Km_pz;
-        double Gen_Km_pp;
-        double Gen_Km_pl;
-
-        double Gen_pi_eta;
-        double Gen_pi_phi;
-        double Gen_pi_vx;
-        double Gen_pi_vy;
-        double Gen_pi_vz;
-        double Gen_pi_p;
-        double Gen_pi_pt;
-        double Gen_pi_px;
-        double Gen_pi_py;
-        double Gen_pi_pz;
-        double Gen_pi_pp;
-        double Gen_pi_pl;
-
-        double Gen_phi_eta;
-        double Gen_phi_phi;
-        double Gen_phi_vx;
-        double Gen_phi_vy;
-        double Gen_phi_vz;
-        double Gen_phi_p;
-        double Gen_phi_pt;
-        double Gen_phi_px;
-        double Gen_phi_py;
-        double Gen_phi_pz;
-        double Gen_phi_pp;
-        double Gen_phi_pl;
-
-        double Gen_Ds_eta;
-        double Gen_Ds_phi;
-        double Gen_Ds_vx;
-        double Gen_Ds_vy;
-        double Gen_Ds_vz;
-        double Gen_Ds_p;
-        double Gen_Ds_pt;
-        double Gen_Ds_px;
-        double Gen_Ds_py;
-        double Gen_Ds_pz;
-
-        double Gen_mu_eta;
-        double Gen_mu_phi;
-        double Gen_mu_vx;
-        double Gen_mu_vy;
-        double Gen_mu_vz;
-        double Gen_mu_p;
-        double Gen_mu_pt;
-        double Gen_mu_px;
-        double Gen_mu_py;
-        double Gen_mu_pz;
-
-        double Gen_nu_eta;
-        double Gen_nu_phi;
-        double Gen_nu_vx;
-        double Gen_nu_vy;
-        double Gen_nu_vz;
-        double Gen_nu_p;
-        double Gen_nu_pt;
-        double Gen_nu_px;
-        double Gen_nu_py;
-        double Gen_nu_pz;
-
-        double Gen_W_eta;
-        double Gen_W_phi;
-        double Gen_W_vx;
-        double Gen_W_vy;
-        double Gen_W_vz;
-        double Gen_W_p;
-        double Gen_W_pt;
-        double Gen_W_px;
-        double Gen_W_py;
-        double Gen_W_pz;
-
-        double Gen_H_eta;
-        double Gen_H_phi;
-        double Gen_H_vx;
-        double Gen_H_vy;
-        double Gen_H_vz;
-        double Gen_H_p;
-        double Gen_H_pt;
-        double Gen_H_px;
-        double Gen_H_py;
-        double Gen_H_pz;
+        int num_Gen_Kp, num_Gen_Km, num_Gen_pi, num_Gen_phi, num_Gen_Ds, num_Gen_mu, num_Gen_nu, num_Gen_W, num_Gen_H;
+        GenInfo Gen_H, Gen_Ds, Gen_W, Gen_phi, Gen_Kp, Gen_Km, Gen_pi, Gen_mu, Gen_nu;
 
         double Gen_dR_Kp_Km;
         double Gen_dR_Kp_phi;
         double Gen_dR_Km_phi;
-        double Gen_dR_Kp_pi;
-        double Gen_dR_Km_pi;
-        double Gen_dR_pi_phi;
-        double Gen_dR_Kp_Ds;
-        double Gen_dR_Km_Ds;
-        double Gen_dR_phi_Ds;
-        double Gen_dR_pi_Ds;
-        double Gen_dR_Kp_mu;
-        double Gen_dR_Km_mu;
-        double Gen_dR_phi_mu;
-        double Gen_dR_pi_mu;
+        double Gen_dR_Kp_pi; 
+        double Gen_dR_Km_pi; 
+        double Gen_dR_pi_phi; 
+        double Gen_dR_Kp_Ds; 
+        double Gen_dR_Km_Ds; 
+        double Gen_dR_phi_Ds; 
+        double Gen_dR_pi_Ds; 
+        double Gen_dR_Kp_mu; 
+        double Gen_dR_Km_mu; 
+        double Gen_dR_phi_mu; 
+        double Gen_dR_pi_mu; 
         double Gen_dR_Ds_mu;
 
         double Gen_Ds_dx;
@@ -174,33 +558,8 @@ class PVTree
         double Gen_Ds_FDxy;
         double Gen_Ds_FD;
 
-        int BS_type;
-        double BS_x0;
-        double BS_y0;
-        double BS_z0;
-        double BS_sigmaZ;
-        double BS_dxdz;
-        double BS_dydz;
-        double BS_BWX;
-        double BS_BWY;
-        double BS_x0err;
-        double BS_y0err;
-        double BS_z0err;
-        double BS_sigmaZ0err;
-        double BS_dxdzerr;
-        double BS_dydzerr;
-        double BS_BWXerr;
-        double BS_BWYerr;
-        double BS_emitX;
-        double BS_emitY;
-        double BS_betaStar;
-
-        double PV_vx;
-        double PV_vy;
-        double PV_vz;
-        double PV_vxerr;
-        double PV_vyerr;
-        double PV_vzerr;
+        BSInfo beamspotInfo;
+        VtxInfo primvtxInfo;
 
         // Matched particles
         int num_match_Kp;
@@ -215,1518 +574,197 @@ class PVTree
         int match_dR_pi;
         int match_dR_mu;
 
-        // Original info
-        bool match_Kp_isIsolatedChargedHadron;
-        int match_Kp_charge;
-        double match_Kp_eta;
-        double match_Kp_phi;
-        double match_Kp_vx;
-        double match_Kp_vy;
-        double match_Kp_vz;
-        double match_Kp_p;
-        double match_Kp_pt;
-        double match_Kp_px;
-        double match_Kp_py;
-        double match_Kp_pz;
+        PFInfo match_Kp;          PFInfoVec match_Kp_vec;
+        PFInfo match_Km;          PFInfoVec match_Km_vec;
+        PFInfo match_pi;          PFInfoVec match_pi_vec;
+        TLVInfo match_phi;        TLVInfoVec match_phi_vec;
+        TLVInfo match_Ds;         TLVInfoVec match_Ds_vec;
+        TLVInfo match_phiFit_Kp;  TLVInfoVec match_phiFit_Kp_vec;
+        TLVInfo match_phiFit_Km;  TLVInfoVec match_phiFit_Km_vec;
+        TLVInfo match_phiFit_pi;  TLVInfoVec match_phiFit_pi_vec;
+        TLVInfo match_phiFit_phi; TLVInfoVec match_phiFit_phi_vec;
+        TLVInfo match_phiFit_Ds;  TLVInfoVec match_phiFit_Ds_vec;
+        TLVInfo match_DsFit_Kp;   TLVInfoVec match_DsFit_Kp_vec;
+        TLVInfo match_DsFit_Km;   TLVInfoVec match_DsFit_Km_vec;
+        TLVInfo match_DsFit_pi;   TLVInfoVec match_DsFit_pi_vec;
+        TLVInfo match_DsFit_phi;  TLVInfoVec match_DsFit_phi_vec;
+        TLVInfo match_DsFit_Ds;   TLVInfoVec match_DsFit_Ds_vec;
 
-        bool match_Km_isIsolatedChargedHadron;
-        int match_Km_charge;
-        double match_Km_eta;
-        double match_Km_phi;
-        double match_Km_vx;
-        double match_Km_vy;
-        double match_Km_vz;
-        double match_Km_p;
-        double match_Km_pt;
-        double match_Km_px;
-        double match_Km_py;
-        double match_Km_pz;
+        double match_dR_Kp_Km;  std::vector<double> match_dR_Kp_Km_vec;
+        double match_dR_Kp_phi; std::vector<double> match_dR_Kp_phi_vec;
+        double match_dR_Km_phi; std::vector<double> match_dR_Km_phi_vec;
+        double match_dR_Kp_pi;  std::vector<double> match_dR_Kp_pi_vec;
+        double match_dR_Km_pi;  std::vector<double> match_dR_Km_pi_vec;
+        double match_dR_pi_phi; std::vector<double> match_dR_pi_phi_vec;
+        double match_dR_Kp_Ds;  std::vector<double> match_dR_Kp_Ds_vec;
+        double match_dR_Km_Ds;  std::vector<double> match_dR_Km_Ds_vec;
+        double match_dR_phi_Ds; std::vector<double> match_dR_phi_Ds_vec;
+        double match_dR_pi_Ds;  std::vector<double> match_dR_pi_Ds_vec;
 
-        bool match_pi_isIsolatedChargedHadron;
-        int match_pi_charge;
-        double match_pi_eta;
-        double match_pi_phi;
-        double match_pi_vx;
-        double match_pi_vy;
-        double match_pi_vz;
-        double match_pi_p;
-        double match_pi_pt;
-        double match_pi_px;
-        double match_pi_py;
-        double match_pi_pz;
+        double match_phiFit_dR_Kp_Km;  std::vector<double> match_phiFit_dR_Kp_Km_vec;
+        double match_phiFit_dR_Kp_phi; std::vector<double> match_phiFit_dR_Kp_phi_vec;
+        double match_phiFit_dR_Km_phi; std::vector<double> match_phiFit_dR_Km_phi_vec;
+        double match_phiFit_dR_Kp_pi;  std::vector<double> match_phiFit_dR_Kp_pi_vec;
+        double match_phiFit_dR_Km_pi;  std::vector<double> match_phiFit_dR_Km_pi_vec;
+        double match_phiFit_dR_pi_phi; std::vector<double> match_phiFit_dR_pi_phi_vec;
+        double match_phiFit_dR_Kp_Ds;  std::vector<double> match_phiFit_dR_Kp_Ds_vec;
+        double match_phiFit_dR_Km_Ds;  std::vector<double> match_phiFit_dR_Km_Ds_vec;
+        double match_phiFit_dR_phi_Ds; std::vector<double> match_phiFit_dR_phi_Ds_vec;
+        double match_phiFit_dR_pi_Ds;  std::vector<double> match_phiFit_dR_pi_Ds_vec;
 
-        double match_phi_eta;
-        double match_phi_phi;
-        double match_phi_p;
-        double match_phi_pt;
-        double match_phi_px;
-        double match_phi_py;
-        double match_phi_pz;
-        double match_phi_invm;
+        double match_DsFit_dR_Kp_Km;  std::vector<double> match_DsFit_dR_Kp_Km_vec;
+        double match_DsFit_dR_Kp_phi; std::vector<double> match_DsFit_dR_Kp_phi_vec;
+        double match_DsFit_dR_Km_phi; std::vector<double> match_DsFit_dR_Km_phi_vec;
+        double match_DsFit_dR_Kp_pi;  std::vector<double> match_DsFit_dR_Kp_pi_vec;
+        double match_DsFit_dR_Km_pi;  std::vector<double> match_DsFit_dR_Km_pi_vec;
+        double match_DsFit_dR_pi_phi; std::vector<double> match_DsFit_dR_pi_phi_vec;
+        double match_DsFit_dR_Kp_Ds;  std::vector<double> match_DsFit_dR_Kp_Ds_vec;
+        double match_DsFit_dR_Km_Ds;  std::vector<double> match_DsFit_dR_Km_Ds_vec;
+        double match_DsFit_dR_phi_Ds; std::vector<double> match_DsFit_dR_phi_Ds_vec;
+        double match_DsFit_dR_pi_Ds;  std::vector<double> match_DsFit_dR_pi_Ds_vec;
 
-        double match_Ds_eta;
-        double match_Ds_phi;
-        double match_Ds_p;
-        double match_Ds_pt;
-        double match_Ds_px;
-        double match_Ds_py;
-        double match_Ds_pz;
-        double match_Ds_invm;
+        double match_dxy_phi_Ds; std::vector<double> match_dxy_phi_Ds_vec;
+        double match_dz_phi_Ds;  std::vector<double> match_dz_phi_Ds_vec;
 
-        double match_dR_Kp_Km;
-        double match_dR_Kp_phi;
-        double match_dR_Km_phi;
-        double match_dR_Kp_pi;
-        double match_dR_Km_pi;
-        double match_dR_pi_phi;
-        double match_dR_Kp_Ds;
-        double match_dR_Km_Ds;
-        double match_dR_phi_Ds;
-        double match_dR_pi_Ds;
+        double match_DsFit_Mconstraint_Ds_invm; std::vector<double> match_DsFit_Mconstraint_Ds_invm_vec;
 
-        double match_dxy_phi_Ds;
-        double match_dz_phi_Ds;
+        VtxInfo match_phiFit;   VtxInfoVec match_phiFit_vec;
+        VtxInfo match_DsFit;    VtxInfoVec match_DsFit_vec;
+        VtxInfo match_PVnoDs;   VtxInfoVec match_PVnoDs_vec;
+        VtxInfo match_PVwithDs; VtxInfoVec match_PVwithDs_vec;
 
-        // Fit on phi
-        double match_phiFit_chi2;
-        double match_phiFit_ndof;
-        double match_phiFit_chi2ndof;
-        double match_phiFit_vx;
-        double match_phiFit_vy;
-        double match_phiFit_vz;
-        double match_phiFit_vxerr;
-        double match_phiFit_vyerr;
-        double match_phiFit_vzerr;
+        FDInfo match_Ds_primvtx_FD;   FDInfoVec match_Ds_primvtx_FD_vec;
+        IPInfo match_Kp_primvtx_ip;   IPInfoVec match_Kp_primvtx_ip_vec;
+        IPInfo match_Km_primvtx_ip;   IPInfoVec match_Km_primvtx_ip_vec;
+        IPInfo match_pi_primvtx_ip;   IPInfoVec match_pi_primvtx_ip_vec;
+        IPInfo match_phi_primvtx_ip;  IPInfoVec match_phi_primvtx_ip_vec;
+        IPInfo match_Ds_primvtx_ip;   IPInfoVec match_Ds_primvtx_ip_vec;
+        FDInfo match_Ds_PVnoDs_FD;    FDInfoVec match_Ds_PVnoDs_FD_vec;
+        IPInfo match_Kp_PVnoDs_ip;    IPInfoVec match_Kp_PVnoDs_ip_vec;
+        IPInfo match_Km_PVnoDs_ip;    IPInfoVec match_Km_PVnoDs_ip_vec;
+        IPInfo match_pi_PVnoDs_ip;    IPInfoVec match_pi_PVnoDs_ip_vec;
+        IPInfo match_phi_PVnoDs_ip;   IPInfoVec match_phi_PVnoDs_ip_vec;
+        IPInfo match_Ds_PVnoDs_ip;    IPInfoVec match_Ds_PVnoDs_ip_vec;
+        FDInfo match_Ds_PVwithDs_FD;  FDInfoVec match_Ds_PVwithDs_FD_vec;
+        IPInfo match_Kp_PVwithDs_ip;  IPInfoVec match_Kp_PVwithDs_ip_vec;
+        IPInfo match_Km_PVwithDs_ip;  IPInfoVec match_Km_PVwithDs_ip_vec;
+        IPInfo match_pi_PVwithDs_ip;  IPInfoVec match_pi_PVwithDs_ip_vec;
+        IPInfo match_phi_PVwithDs_ip; IPInfoVec match_phi_PVwithDs_ip_vec;
+        IPInfo match_Ds_PVwithDs_ip;  IPInfoVec match_Ds_PVwithDs_ip_vec;
 
-        double match_phiFit_Kp_eta;
-        double match_phiFit_Kp_phi;
-        double match_phiFit_Kp_p;
-        double match_phiFit_Kp_pt;
-        double match_phiFit_Kp_px;
-        double match_phiFit_Kp_py;
-        double match_phiFit_Kp_pz;
+        IsoInfo match_Ds_IsoR03; IsoInfoVec match_Ds_IsoR03_vec;
+        IsoInfo match_Ds_IsoR04; IsoInfoVec match_Ds_IsoR04_vec;
 
-        double match_phiFit_Km_eta;
-        double match_phiFit_Km_phi;
-        double match_phiFit_Km_p;
-        double match_phiFit_Km_pt;
-        double match_phiFit_Km_px;
-        double match_phiFit_Km_py;
-        double match_phiFit_Km_pz;
+        MuonInfo match_mu;          MuonInfoVec match_mu_vec;
+        IsoInfo match_mu_IsoR03;    IsoInfoVec match_mu_IsoR03_vec;
+        IsoInfo match_mu_IsoR04;    IsoInfoVec match_mu_IsoR04_vec;
+        IPInfo match_mu_primvtx_ip; IPInfoVec match_mu_primvtx_ip_vec;
 
-        double match_phiFit_pi_eta;
-        double match_phiFit_pi_phi;
-        double match_phiFit_pi_p;
-        double match_phiFit_pi_pt;
-        double match_phiFit_pi_px;
-        double match_phiFit_pi_py;
-        double match_phiFit_pi_pz;
-
-        double match_phiFit_phi_eta;
-        double match_phiFit_phi_phi;
-        double match_phiFit_phi_p;
-        double match_phiFit_phi_pt;
-        double match_phiFit_phi_px;
-        double match_phiFit_phi_py;
-        double match_phiFit_phi_pz;
-        double match_phiFit_phi_invm;
-
-        double match_phiFit_Ds_eta;
-        double match_phiFit_Ds_phi;
-        double match_phiFit_Ds_p;
-        double match_phiFit_Ds_pt;
-        double match_phiFit_Ds_px;
-        double match_phiFit_Ds_py;
-        double match_phiFit_Ds_pz;
-        double match_phiFit_Ds_invm;
-
-        double match_phiFit_dR_Kp_Km;
-        double match_phiFit_dR_Kp_phi;
-        double match_phiFit_dR_Km_phi;
-        double match_phiFit_dR_Kp_pi;
-        double match_phiFit_dR_Km_pi;
-        double match_phiFit_dR_pi_phi;
-        double match_phiFit_dR_Kp_Ds;
-        double match_phiFit_dR_Km_Ds;
-        double match_phiFit_dR_phi_Ds;
-        double match_phiFit_dR_pi_Ds;
-
-        // Fit on Ds 
-        double match_DsFit_chi2;
-        double match_DsFit_ndof;
-        double match_DsFit_chi2ndof;
-        double match_DsFit_vx;
-        double match_DsFit_vy;
-        double match_DsFit_vz;
-        double match_DsFit_vxerr;
-        double match_DsFit_vyerr;
-        double match_DsFit_vzerr;
-
-        double match_DsFit_Kp_eta;
-        double match_DsFit_Kp_phi;
-        double match_DsFit_Kp_p;
-        double match_DsFit_Kp_pt;
-        double match_DsFit_Kp_px;
-        double match_DsFit_Kp_py;
-        double match_DsFit_Kp_pz;
-
-        double match_DsFit_Km_eta;
-        double match_DsFit_Km_phi;
-        double match_DsFit_Km_p;
-        double match_DsFit_Km_pt;
-        double match_DsFit_Km_px;
-        double match_DsFit_Km_py;
-        double match_DsFit_Km_pz;
-
-        double match_DsFit_pi_eta;
-        double match_DsFit_pi_phi;
-        double match_DsFit_pi_p;
-        double match_DsFit_pi_pt;
-        double match_DsFit_pi_px;
-        double match_DsFit_pi_py;
-        double match_DsFit_pi_pz;
-
-        double match_DsFit_phi_eta;
-        double match_DsFit_phi_phi;
-        double match_DsFit_phi_p;
-        double match_DsFit_phi_pt;
-        double match_DsFit_phi_px;
-        double match_DsFit_phi_py;
-        double match_DsFit_phi_pz;
-        double match_DsFit_phi_invm;
-
-        double match_DsFit_Ds_eta;
-        double match_DsFit_Ds_phi;
-        double match_DsFit_Ds_p;
-        double match_DsFit_Ds_pt;
-        double match_DsFit_Ds_px;
-        double match_DsFit_Ds_py;
-        double match_DsFit_Ds_pz;
-        double match_DsFit_Ds_invm;
-
-        double match_DsFit_dR_Kp_Km;
-        double match_DsFit_dR_Kp_phi;
-        double match_DsFit_dR_Km_phi;
-        double match_DsFit_dR_Kp_pi;
-        double match_DsFit_dR_Km_pi;
-        double match_DsFit_dR_pi_phi;
-        double match_DsFit_dR_Kp_Ds;
-        double match_DsFit_dR_Km_Ds;
-        double match_DsFit_dR_phi_Ds;
-        double match_DsFit_dR_pi_Ds;
-
-        double match_DsFit_Mconstraint_Ds_invm;
-
-        double match_Ds_primvtx_FDxy;
-        double match_Ds_primvtx_FDz;
-        double match_Ds_primvtx_FD;
-        double match_Ds_primvtx_FDxyerr;
-        double match_Ds_primvtx_FDxychi2;
-        double match_Ds_primvtx_FDzerr;
-        double match_Ds_primvtx_FDzchi2;
-        double match_Ds_primvtx_FDerr;
-        double match_Ds_primvtx_FDchi2;
-        double match_Ds_primvtx_dira;
-        double match_Ds_primvtx_dira_angle;
-        double match_Kp_primvtx_ip;
-        double match_Kp_primvtx_iperr;
-        double match_Kp_primvtx_ipchi2;
-        double match_Km_primvtx_ip;
-        double match_Km_primvtx_iperr;
-        double match_Km_primvtx_ipchi2;
-        double match_pi_primvtx_ip;
-        double match_pi_primvtx_iperr;
-        double match_pi_primvtx_ipchi2;
-        double match_phi_primvtx_ip;
-        double match_phi_primvtx_iperr;
-        double match_phi_primvtx_ipchi2;
-        double match_Ds_primvtx_ip;
-        double match_Ds_primvtx_iperr;
-        double match_Ds_primvtx_ipchi2;
-
-        double match_Ds_IsoR03_sumChargedHadronPt;
-        double match_Ds_IsoR03_sumNeutralHadronPt;
-        double match_Ds_IsoR03_sumPhotonPt;
-        double match_Ds_IsoR03_sumPUPt;
-        double match_Ds_PFIsoR03;
-        double match_Ds_IsoR04_sumChargedHadronPt;
-        double match_Ds_IsoR04_sumNeutralHadronPt;
-        double match_Ds_IsoR04_sumPhotonPt;
-        double match_Ds_IsoR04_sumPUPt;
-        double match_Ds_PFIsoR04;
-
-        bool match_PV_noDs_IsValid;
-        bool match_PV_noDs_IsFake;
-        double match_PV_noDs_chi2;
-        double match_PV_noDs_ndof;
-        double match_PV_noDs_chi2ndof;
-        double match_PV_noDs_x;
-        double match_PV_noDs_y;
-        double match_PV_noDs_z;
-        double match_PV_noDs_xerr;
-        double match_PV_noDs_yerr;
-        double match_PV_noDs_zerr;
-
-        double match_Ds_PVnoDs_FDxy;
-        double match_Ds_PVnoDs_FDz;
-        double match_Ds_PVnoDs_FD;
-        double match_Ds_PVnoDs_FDxyerr;
-        double match_Ds_PVnoDs_FDxychi2;
-        double match_Ds_PVnoDs_FDzerr;
-        double match_Ds_PVnoDs_FDzchi2;
-        double match_Ds_PVnoDs_FDerr;
-        double match_Ds_PVnoDs_FDchi2;
-        double match_Ds_PVnoDs_dira;
-        double match_Ds_PVnoDs_dira_angle;
-        double match_Kp_PVnoDs_ip;
-        double match_Kp_PVnoDs_iperr;
-        double match_Kp_PVnoDs_ipchi2;
-        double match_Km_PVnoDs_ip;
-        double match_Km_PVnoDs_iperr;
-        double match_Km_PVnoDs_ipchi2;
-        double match_pi_PVnoDs_ip;
-        double match_pi_PVnoDs_iperr;
-        double match_pi_PVnoDs_ipchi2;
-        double match_phi_PVnoDs_ip;
-        double match_phi_PVnoDs_iperr;
-        double match_phi_PVnoDs_ipchi2;
-        double match_Ds_PVnoDs_ip;
-        double match_Ds_PVnoDs_iperr;
-        double match_Ds_PVnoDs_ipchi2;
-
-        bool match_PV_withDs_IsValid;
-        bool match_PV_withDs_IsFake;
-        double match_PV_withDs_chi2;
-        double match_PV_withDs_ndof;
-        double match_PV_withDs_chi2ndof;
-        double match_PV_withDs_x;
-        double match_PV_withDs_y;
-        double match_PV_withDs_z;
-        double match_PV_withDs_xerr;
-        double match_PV_withDs_yerr;
-        double match_PV_withDs_zerr;
-
-        double match_Ds_PVwithDs_FDxy;
-        double match_Ds_PVwithDs_FDz;
-        double match_Ds_PVwithDs_FD;
-        double match_Ds_PVwithDs_FDxyerr;
-        double match_Ds_PVwithDs_FDxychi2;
-        double match_Ds_PVwithDs_FDzerr;
-        double match_Ds_PVwithDs_FDzchi2;
-        double match_Ds_PVwithDs_FDerr;
-        double match_Ds_PVwithDs_FDchi2;
-        double match_Ds_PVwithDs_dira;
-        double match_Ds_PVwithDs_dira_angle;
-        double match_Kp_PVwithDs_ip;
-        double match_Kp_PVwithDs_iperr;
-        double match_Kp_PVwithDs_ipchi2;
-        double match_Km_PVwithDs_ip;
-        double match_Km_PVwithDs_iperr;
-        double match_Km_PVwithDs_ipchi2;
-        double match_pi_PVwithDs_ip;
-        double match_pi_PVwithDs_iperr;
-        double match_pi_PVwithDs_ipchi2;
-        double match_phi_PVwithDs_ip;
-        double match_phi_PVwithDs_iperr;
-        double match_phi_PVwithDs_ipchi2;
-        double match_Ds_PVwithDs_ip;
-        double match_Ds_PVwithDs_iperr;
-        double match_Ds_PVwithDs_ipchi2;
-
-        int match_mu_charge;
-        double match_mu_eta;
-        double match_mu_phi;
-        double match_mu_vx;
-        double match_mu_vy;
-        double match_mu_vz;
-        double match_mu_p;
-        double match_mu_pt;
-        double match_mu_px;
-        double match_mu_py;
-        double match_mu_pz;
-        bool match_mu_isHighPt;
-        bool match_mu_isLoose;
-        bool match_mu_isMedium;
-        bool match_mu_isSoft;
-        bool match_mu_isTight;
-        bool match_mu_isPF;
-        bool match_mu_isTracker;
-        bool match_mu_isGlobal;
-        double match_mu_IsoR03_sumChargedHadronPt;
-        double match_mu_IsoR03_sumChargedParticlePt;
-        double match_mu_IsoR03_sumNeutralHadronEt;
-        double match_mu_IsoR03_sumPhotonEt;
-        double match_mu_IsoR03_sumPUPt;
-        double match_mu_PFIsoR03;
-        double match_mu_IsoR04_sumChargedHadronPt;
-        double match_mu_IsoR04_sumChargedParticlePt;
-        double match_mu_IsoR04_sumNeutralHadronEt;
-        double match_mu_IsoR04_sumPhotonEt;
-        double match_mu_IsoR04_sumPUPt;
-        double match_mu_PFIsoR04;
-        double match_mu_primvtx_dxy;
-        double match_mu_primvtx_dxyerr;
-        double match_mu_primvtx_dz;
-        double match_mu_primvtx_dzerr;
-        double match_mu_primvtx_ip;
-        double match_mu_primvtx_iperr;
-        double match_mu_primvtx_ipchi2;
-        
         int num_reco_phi;
         int num_reco_Ds;
 
-        bool Kp_isIsolatedChargedHadron;
-        int Kp_charge;
-        double Kp_eta;
-        double Kp_phi;
-        double Kp_vx;
-        double Kp_vy;
-        double Kp_vz;
-        double Kp_p;
-        double Kp_pt;
-        double Kp_px;
-        double Kp_py;
-        double Kp_pz;
-
-        bool Km_isIsolatedChargedHadron;
-        int Km_charge;
-        double Km_eta;
-        double Km_phi;
-        double Km_vx;
-        double Km_vy;
-        double Km_vz;
-        double Km_p;
-        double Km_pt;
-        double Km_px;
-        double Km_py;
-        double Km_pz;
-
-        bool pi_isIsolatedChargedHadron;
-        int pi_charge;
-        double pi_eta;
-        double pi_phi;
-        double pi_vx;
-        double pi_vy;
-        double pi_vz;
-        double pi_p;
-        double pi_pt;
-        double pi_px;
-        double pi_py;
-        double pi_pz;
-
-        double phi_eta;
-        double phi_phi;
-        double phi_p;
-        double phi_pt;
-        double phi_px;
-        double phi_py;
-        double phi_pz;
-        double phi_invm;
-
-        double Ds_eta;
-        double Ds_phi;
-        double Ds_p;
-        double Ds_pt;
-        double Ds_px;
-        double Ds_py;
-        double Ds_pz;
-        double Ds_invm;
-
-        double Kp_pp;
-        double Kp_pl;
-        double Km_pp;
-        double Km_pl;
-
-        double phi_pp;
-        double phi_pl;
-        double pi_pp;
-        double pi_pl;
-
-        double dR_Kp_Km;
-        double dR_Kp_phi;
-        double dR_Km_phi;
-        double dR_Kp_pi;
-        double dR_Km_pi;
-        double dR_pi_phi;
-        double dR_Kp_Ds;
-        double dR_Km_Ds;
-        double dR_phi_Ds;
-        double dR_pi_Ds;
-
-        double dxy_Kp_Km;
-        double dxy_Kp_pi;
-        double dxy_Km_pi;
-        double dxy_Kp_phi;
-        double dxy_Km_phi;
-        double dxy_pi_phi;
-        double dxy_Kp_Ds;
-        double dxy_Km_Ds;
-        double dxy_pi_Ds;
-        double dxy_phi_Ds;
-
-        double dz_Kp_Km;
-        double dz_Kp_pi;
-        double dz_Km_pi;
-        double dz_Kp_phi;
-        double dz_Km_phi;
-        double dz_pi_phi;
-        double dz_Kp_Ds;
-        double dz_Km_Ds;
-        double dz_pi_Ds;
-        double dz_phi_Ds;
-
-        // Fit on phi
-        double phiFit_chi2;
-        double phiFit_ndof;
-        double phiFit_chi2ndof;
-        double phiFit_vx;
-        double phiFit_vy;
-        double phiFit_vz;
-        double phiFit_vxerr;
-        double phiFit_vyerr;
-        double phiFit_vzerr;
-
-        double phiFit_Kp_eta;
-        double phiFit_Kp_phi;
-        double phiFit_Kp_p;
-        double phiFit_Kp_pt;
-        double phiFit_Kp_px;
-        double phiFit_Kp_py;
-        double phiFit_Kp_pz;
-
-        double phiFit_Km_eta;
-        double phiFit_Km_phi;
-        double phiFit_Km_p;
-        double phiFit_Km_pt;
-        double phiFit_Km_px;
-        double phiFit_Km_py;
-        double phiFit_Km_pz;
-
-        double phiFit_pi_eta;
-        double phiFit_pi_phi;
-        double phiFit_pi_p;
-        double phiFit_pi_pt;
-        double phiFit_pi_px;
-        double phiFit_pi_py;
-        double phiFit_pi_pz;
-
-        double phiFit_phi_eta;
-        double phiFit_phi_phi;
-        double phiFit_phi_p;
-        double phiFit_phi_pt;
-        double phiFit_phi_px;
-        double phiFit_phi_py;
-        double phiFit_phi_pz;
-        double phiFit_phi_invm;
-
-        double phiFit_Ds_eta;
-        double phiFit_Ds_phi;
-        double phiFit_Ds_p;
-        double phiFit_Ds_pt;
-        double phiFit_Ds_px;
-        double phiFit_Ds_py;
-        double phiFit_Ds_pz;
-        double phiFit_Ds_invm;
-
-        double phiFit_Kp_pp;
-        double phiFit_Kp_pl;
-        double phiFit_Km_pp;
-        double phiFit_Km_pl;
-
-        double phiFit_phi_pp;
-        double phiFit_phi_pl;
-        double phiFit_pi_pp;
-        double phiFit_pi_pl;
-
-        double phiFit_dR_Kp_Km;
-        double phiFit_dR_Kp_phi;
-        double phiFit_dR_Km_phi;
-        double phiFit_dR_Kp_pi;
-        double phiFit_dR_Km_pi;
-        double phiFit_dR_pi_phi;
-        double phiFit_dR_Kp_Ds;
-        double phiFit_dR_Km_Ds;
-        double phiFit_dR_phi_Ds;
-        double phiFit_dR_pi_Ds;
-
-        double alpha_phi;
-        double beta_phi;
-        double APvar_phi;
-
-        // Fit on Ds 
-        double DsFit_chi2;
-        double DsFit_ndof;
-        double DsFit_chi2ndof;
-        double DsFit_vx;
-        double DsFit_vy;
-        double DsFit_vz;
-        double DsFit_vxerr;
-        double DsFit_vyerr;
-        double DsFit_vzerr;
-
-        double DsFit_Kp_eta;
-        double DsFit_Kp_phi;
-        double DsFit_Kp_p;
-        double DsFit_Kp_pt;
-        double DsFit_Kp_px;
-        double DsFit_Kp_py;
-        double DsFit_Kp_pz;
-
-        double DsFit_Km_eta;
-        double DsFit_Km_phi;
-        double DsFit_Km_p;
-        double DsFit_Km_pt;
-        double DsFit_Km_px;
-        double DsFit_Km_py;
-        double DsFit_Km_pz;
-
-        double DsFit_pi_eta;
-        double DsFit_pi_phi;
-        double DsFit_pi_p;
-        double DsFit_pi_pt;
-        double DsFit_pi_px;
-        double DsFit_pi_py;
-        double DsFit_pi_pz;
-
-        double DsFit_phi_eta;
-        double DsFit_phi_phi;
-        double DsFit_phi_p;
-        double DsFit_phi_pt;
-        double DsFit_phi_px;
-        double DsFit_phi_py;
-        double DsFit_phi_pz;
-        double DsFit_phi_invm;
-
-        double DsFit_Ds_eta;
-        double DsFit_Ds_phi;
-        double DsFit_Ds_p;
-        double DsFit_Ds_pt;
-        double DsFit_Ds_px;
-        double DsFit_Ds_py;
-        double DsFit_Ds_pz;
-        double DsFit_Ds_invm;
-
-        double DsFit_Kp_pp;
-        double DsFit_Kp_pl;
-        double DsFit_Km_pp;
-        double DsFit_Km_pl;
-
-        double DsFit_phi_pp;
-        double DsFit_phi_pl;
-        double DsFit_pi_pp;
-        double DsFit_pi_pl;
-
-        double DsFit_dR_Kp_Km;
-        double DsFit_dR_Kp_phi;
-        double DsFit_dR_Km_phi;
-        double DsFit_dR_Kp_pi;
-        double DsFit_dR_Km_pi;
-        double DsFit_dR_pi_phi;
-        double DsFit_dR_Kp_Ds;
-        double DsFit_dR_Km_Ds;
-        double DsFit_dR_phi_Ds;
-        double DsFit_dR_pi_Ds;
-
-        double DsFit_Mconstraint_Ds_invm;
-
-        double Ds_primvtx_FDxy;
-        double Ds_primvtx_FDz;
-        double Ds_primvtx_FD;
-        double Ds_primvtx_FDxyerr;
-        double Ds_primvtx_FDxychi2;
-        double Ds_primvtx_FDzerr;
-        double Ds_primvtx_FDzchi2;
-        double Ds_primvtx_FDerr;
-        double Ds_primvtx_FDchi2;
-        double Ds_primvtx_dira;
-        double Ds_primvtx_dira_angle;
-        double Kp_primvtx_ip;
-        double Kp_primvtx_iperr;
-        double Kp_primvtx_ipchi2;
-        double Km_primvtx_ip;
-        double Km_primvtx_iperr;
-        double Km_primvtx_ipchi2;
-        double pi_primvtx_ip;
-        double pi_primvtx_iperr;
-        double pi_primvtx_ipchi2;
-        double phi_primvtx_ip;
-        double phi_primvtx_iperr;
-        double phi_primvtx_ipchi2;
-        double Ds_primvtx_ip;
-        double Ds_primvtx_iperr;
-        double Ds_primvtx_ipchi2;
-
-        double Ds_IsoR03_sumChargedHadronPt;
-        double Ds_IsoR03_sumNeutralHadronPt;
-        double Ds_IsoR03_sumPhotonPt;
-        double Ds_IsoR03_sumPUPt;
-        double Ds_PFIsoR03;
-        double Ds_IsoR04_sumChargedHadronPt;
-        double Ds_IsoR04_sumNeutralHadronPt;
-        double Ds_IsoR04_sumPhotonPt;
-        double Ds_IsoR04_sumPUPt;
-        double Ds_PFIsoR04;
-
-        bool PV_noDs_IsValid;
-        bool PV_noDs_IsFake;
-        double PV_noDs_chi2;
-        double PV_noDs_ndof;
-        double PV_noDs_chi2ndof;
-        double PV_noDs_x;
-        double PV_noDs_y;
-        double PV_noDs_z;
-        double PV_noDs_xerr;
-        double PV_noDs_yerr;
-        double PV_noDs_zerr;
-
-        double Ds_PVnoDs_FDxy;
-        double Ds_PVnoDs_FDz;
-        double Ds_PVnoDs_FD;
-        double Ds_PVnoDs_FDxyerr;
-        double Ds_PVnoDs_FDxychi2;
-        double Ds_PVnoDs_FDzerr;
-        double Ds_PVnoDs_FDzchi2;
-        double Ds_PVnoDs_FDerr;
-        double Ds_PVnoDs_FDchi2;
-        double Ds_PVnoDs_dira;
-        double Ds_PVnoDs_dira_angle;
-        double Kp_PVnoDs_ip;
-        double Kp_PVnoDs_iperr;
-        double Kp_PVnoDs_ipchi2;
-        double Km_PVnoDs_ip;
-        double Km_PVnoDs_iperr;
-        double Km_PVnoDs_ipchi2;
-        double pi_PVnoDs_ip;
-        double pi_PVnoDs_iperr;
-        double pi_PVnoDs_ipchi2;
-        double phi_PVnoDs_ip;
-        double phi_PVnoDs_iperr;
-        double phi_PVnoDs_ipchi2;
-        double Ds_PVnoDs_ip;
-        double Ds_PVnoDs_iperr;
-        double Ds_PVnoDs_ipchi2;
-
-        bool PV_withDs_IsValid;
-        bool PV_withDs_IsFake;
-        double PV_withDs_chi2;
-        double PV_withDs_ndof;
-        double PV_withDs_chi2ndof;
-        double PV_withDs_x;
-        double PV_withDs_y;
-        double PV_withDs_z;
-        double PV_withDs_xerr;
-        double PV_withDs_yerr;
-        double PV_withDs_zerr;
-
-        double Ds_PVwithDs_FDxy;
-        double Ds_PVwithDs_FDz;
-        double Ds_PVwithDs_FD;
-        double Ds_PVwithDs_FDxyerr;
-        double Ds_PVwithDs_FDxychi2;
-        double Ds_PVwithDs_FDzerr;
-        double Ds_PVwithDs_FDzchi2;
-        double Ds_PVwithDs_FDerr;
-        double Ds_PVwithDs_FDchi2;
-        double Ds_PVwithDs_dira;
-        double Ds_PVwithDs_dira_angle;
-        double Kp_PVwithDs_ip;
-        double Kp_PVwithDs_iperr;
-        double Kp_PVwithDs_ipchi2;
-        double Km_PVwithDs_ip;
-        double Km_PVwithDs_iperr;
-        double Km_PVwithDs_ipchi2;
-        double pi_PVwithDs_ip;
-        double pi_PVwithDs_iperr;
-        double pi_PVwithDs_ipchi2;
-        double phi_PVwithDs_ip;
-        double phi_PVwithDs_iperr;
-        double phi_PVwithDs_ipchi2;
-        double Ds_PVwithDs_ip;
-        double Ds_PVwithDs_iperr;
-        double Ds_PVwithDs_ipchi2;
-
-        bool Kp_match;
-        bool Km_match;
-        bool pi_match;
-        bool match_entry;
-        bool non_match_entry;
-
-        int best_mu_charge;
-        double best_mu_eta;
-        double best_mu_phi;
-        double best_mu_vx;
-        double best_mu_vy;
-        double best_mu_vz;
-        double best_mu_p;
-        double best_mu_pt;
-        double best_mu_px;
-        double best_mu_py;
-        double best_mu_pz;
-        bool best_mu_isHighPt;
-        bool best_mu_isLoose;
-        bool best_mu_isMedium;
-        bool best_mu_isSoft;
-        bool best_mu_isTight;
-        bool best_mu_isPF;
-        bool best_mu_isTracker;
-        bool best_mu_isGlobal;
-        double best_mu_IsoR03_sumChargedHadronPt;
-        double best_mu_IsoR03_sumChargedParticlePt;
-        double best_mu_IsoR03_sumNeutralHadronEt;
-        double best_mu_IsoR03_sumPhotonEt;
-        double best_mu_IsoR03_sumPUPt;
-        double best_mu_PFIsoR03;
-        double best_mu_IsoR04_sumChargedHadronPt;
-        double best_mu_IsoR04_sumChargedParticlePt;
-        double best_mu_IsoR04_sumNeutralHadronEt;
-        double best_mu_IsoR04_sumPhotonEt;
-        double best_mu_IsoR04_sumPUPt;
-        double best_mu_PFIsoR04;
-        double best_mu_primvtx_dxy;
-        double best_mu_primvtx_dxyerr;
-        double best_mu_primvtx_dz;
-        double best_mu_primvtx_dzerr;
-        double best_mu_primvtx_ip;
-        double best_mu_primvtx_iperr;
-        double best_mu_primvtx_ipchi2;
-        bool best_mu_match; 
-
-        // Original info
-        std::vector<bool> match_Kp_isIsolatedChargedHadron_vec;
-        std::vector<int> match_Kp_charge_vec;
-        std::vector<double> match_Kp_eta_vec;
-        std::vector<double> match_Kp_phi_vec;
-        std::vector<double> match_Kp_vx_vec;
-        std::vector<double> match_Kp_vy_vec;
-        std::vector<double> match_Kp_vz_vec;
-        std::vector<double> match_Kp_p_vec;
-        std::vector<double> match_Kp_pt_vec;
-        std::vector<double> match_Kp_px_vec;
-        std::vector<double> match_Kp_py_vec;
-        std::vector<double> match_Kp_pz_vec;
-
-        std::vector<bool> match_Km_isIsolatedChargedHadron_vec;
-        std::vector<int> match_Km_charge_vec;
-        std::vector<double> match_Km_eta_vec;
-        std::vector<double> match_Km_phi_vec;
-        std::vector<double> match_Km_vx_vec;
-        std::vector<double> match_Km_vy_vec;
-        std::vector<double> match_Km_vz_vec;
-        std::vector<double> match_Km_p_vec;
-        std::vector<double> match_Km_pt_vec;
-        std::vector<double> match_Km_px_vec;
-        std::vector<double> match_Km_py_vec;
-        std::vector<double> match_Km_pz_vec;
-
-        std::vector<bool> match_pi_isIsolatedChargedHadron_vec;
-        std::vector<int> match_pi_charge_vec;
-        std::vector<double> match_pi_eta_vec;
-        std::vector<double> match_pi_phi_vec;
-        std::vector<double> match_pi_vx_vec;
-        std::vector<double> match_pi_vy_vec;
-        std::vector<double> match_pi_vz_vec;
-        std::vector<double> match_pi_p_vec;
-        std::vector<double> match_pi_pt_vec;
-        std::vector<double> match_pi_px_vec;
-        std::vector<double> match_pi_py_vec;
-        std::vector<double> match_pi_pz_vec;
-
-        std::vector<double> match_phi_eta_vec;
-        std::vector<double> match_phi_phi_vec;
-        std::vector<double> match_phi_p_vec;
-        std::vector<double> match_phi_pt_vec;
-        std::vector<double> match_phi_px_vec;
-        std::vector<double> match_phi_py_vec;
-        std::vector<double> match_phi_pz_vec;
-        std::vector<double> match_phi_invm_vec;
-
-        std::vector<double> match_Ds_eta_vec;
-        std::vector<double> match_Ds_phi_vec;
-        std::vector<double> match_Ds_p_vec;
-        std::vector<double> match_Ds_pt_vec;
-        std::vector<double> match_Ds_px_vec;
-        std::vector<double> match_Ds_py_vec;
-        std::vector<double> match_Ds_pz_vec;
-        std::vector<double> match_Ds_invm_vec;
-
-        std::vector<double> match_dR_Kp_Km_vec;
-        std::vector<double> match_dR_Kp_phi_vec;
-        std::vector<double> match_dR_Km_phi_vec;
-        std::vector<double> match_dR_Kp_pi_vec;
-        std::vector<double> match_dR_Km_pi_vec;
-        std::vector<double> match_dR_pi_phi_vec;
-        std::vector<double> match_dR_Kp_Ds_vec;
-        std::vector<double> match_dR_Km_Ds_vec;
-        std::vector<double> match_dR_phi_Ds_vec;
-        std::vector<double> match_dR_pi_Ds_vec;
-
-        std::vector<double> match_dxy_phi_Ds_vec;
-        std::vector<double> match_dz_phi_Ds_vec;
-
-        // Fit on phi
-        std::vector<double> match_phiFit_chi2_vec;
-        std::vector<double> match_phiFit_ndof_vec;
-        std::vector<double> match_phiFit_chi2ndof_vec;
-        std::vector<double> match_phiFit_vx_vec;
-        std::vector<double> match_phiFit_vy_vec;
-        std::vector<double> match_phiFit_vz_vec;
-        std::vector<double> match_phiFit_vxerr_vec;
-        std::vector<double> match_phiFit_vyerr_vec;
-        std::vector<double> match_phiFit_vzerr_vec;
-
-        std::vector<double> match_phiFit_Kp_eta_vec;
-        std::vector<double> match_phiFit_Kp_phi_vec;
-        std::vector<double> match_phiFit_Kp_p_vec;
-        std::vector<double> match_phiFit_Kp_pt_vec;
-        std::vector<double> match_phiFit_Kp_px_vec;
-        std::vector<double> match_phiFit_Kp_py_vec;
-        std::vector<double> match_phiFit_Kp_pz_vec;
-
-        std::vector<double> match_phiFit_Km_eta_vec;
-        std::vector<double> match_phiFit_Km_phi_vec;
-        std::vector<double> match_phiFit_Km_p_vec;
-        std::vector<double> match_phiFit_Km_pt_vec;
-        std::vector<double> match_phiFit_Km_px_vec;
-        std::vector<double> match_phiFit_Km_py_vec;
-        std::vector<double> match_phiFit_Km_pz_vec;
-
-        std::vector<double> match_phiFit_pi_eta_vec;
-        std::vector<double> match_phiFit_pi_phi_vec;
-        std::vector<double> match_phiFit_pi_p_vec;
-        std::vector<double> match_phiFit_pi_pt_vec;
-        std::vector<double> match_phiFit_pi_px_vec;
-        std::vector<double> match_phiFit_pi_py_vec;
-        std::vector<double> match_phiFit_pi_pz_vec;
-
-        std::vector<double> match_phiFit_phi_eta_vec;
-        std::vector<double> match_phiFit_phi_phi_vec;
-        std::vector<double> match_phiFit_phi_p_vec;
-        std::vector<double> match_phiFit_phi_pt_vec;
-        std::vector<double> match_phiFit_phi_px_vec;
-        std::vector<double> match_phiFit_phi_py_vec;
-        std::vector<double> match_phiFit_phi_pz_vec;
-        std::vector<double> match_phiFit_phi_invm_vec;
-
-        std::vector<double> match_phiFit_Ds_eta_vec;
-        std::vector<double> match_phiFit_Ds_phi_vec;
-        std::vector<double> match_phiFit_Ds_p_vec;
-        std::vector<double> match_phiFit_Ds_pt_vec;
-        std::vector<double> match_phiFit_Ds_px_vec;
-        std::vector<double> match_phiFit_Ds_py_vec;
-        std::vector<double> match_phiFit_Ds_pz_vec;
-        std::vector<double> match_phiFit_Ds_invm_vec;
-
-        std::vector<double> match_phiFit_dR_Kp_Km_vec;
-        std::vector<double> match_phiFit_dR_Kp_phi_vec;
-        std::vector<double> match_phiFit_dR_Km_phi_vec;
-        std::vector<double> match_phiFit_dR_Kp_pi_vec;
-        std::vector<double> match_phiFit_dR_Km_pi_vec;
-        std::vector<double> match_phiFit_dR_pi_phi_vec;
-        std::vector<double> match_phiFit_dR_Kp_Ds_vec;
-        std::vector<double> match_phiFit_dR_Km_Ds_vec;
-        std::vector<double> match_phiFit_dR_phi_Ds_vec;
-        std::vector<double> match_phiFit_dR_pi_Ds_vec;
-
-        // Fit on Ds 
-        std::vector<double> match_DsFit_chi2_vec;
-        std::vector<double> match_DsFit_ndof_vec;
-        std::vector<double> match_DsFit_chi2ndof_vec;
-        std::vector<double> match_DsFit_vx_vec;
-        std::vector<double> match_DsFit_vy_vec;
-        std::vector<double> match_DsFit_vz_vec;
-        std::vector<double> match_DsFit_vxerr_vec;
-        std::vector<double> match_DsFit_vyerr_vec;
-        std::vector<double> match_DsFit_vzerr_vec;
-
-        std::vector<double> match_DsFit_Kp_eta_vec;
-        std::vector<double> match_DsFit_Kp_phi_vec;
-        std::vector<double> match_DsFit_Kp_p_vec;
-        std::vector<double> match_DsFit_Kp_pt_vec;
-        std::vector<double> match_DsFit_Kp_px_vec;
-        std::vector<double> match_DsFit_Kp_py_vec;
-        std::vector<double> match_DsFit_Kp_pz_vec;
-
-        std::vector<double> match_DsFit_Km_eta_vec;
-        std::vector<double> match_DsFit_Km_phi_vec;
-        std::vector<double> match_DsFit_Km_p_vec;
-        std::vector<double> match_DsFit_Km_pt_vec;
-        std::vector<double> match_DsFit_Km_px_vec;
-        std::vector<double> match_DsFit_Km_py_vec;
-        std::vector<double> match_DsFit_Km_pz_vec;
-
-        std::vector<double> match_DsFit_pi_eta_vec;
-        std::vector<double> match_DsFit_pi_phi_vec;
-        std::vector<double> match_DsFit_pi_p_vec;
-        std::vector<double> match_DsFit_pi_pt_vec;
-        std::vector<double> match_DsFit_pi_px_vec;
-        std::vector<double> match_DsFit_pi_py_vec;
-        std::vector<double> match_DsFit_pi_pz_vec;
-
-        std::vector<double> match_DsFit_phi_eta_vec;
-        std::vector<double> match_DsFit_phi_phi_vec;
-        std::vector<double> match_DsFit_phi_p_vec;
-        std::vector<double> match_DsFit_phi_pt_vec;
-        std::vector<double> match_DsFit_phi_px_vec;
-        std::vector<double> match_DsFit_phi_py_vec;
-        std::vector<double> match_DsFit_phi_pz_vec;
-        std::vector<double> match_DsFit_phi_invm_vec;
-
-        std::vector<double> match_DsFit_Ds_eta_vec;
-        std::vector<double> match_DsFit_Ds_phi_vec;
-        std::vector<double> match_DsFit_Ds_p_vec;
-        std::vector<double> match_DsFit_Ds_pt_vec;
-        std::vector<double> match_DsFit_Ds_px_vec;
-        std::vector<double> match_DsFit_Ds_py_vec;
-        std::vector<double> match_DsFit_Ds_pz_vec;
-        std::vector<double> match_DsFit_Ds_invm_vec;
-
-        std::vector<double> match_DsFit_dR_Kp_Km_vec;
-        std::vector<double> match_DsFit_dR_Kp_phi_vec;
-        std::vector<double> match_DsFit_dR_Km_phi_vec;
-        std::vector<double> match_DsFit_dR_Kp_pi_vec;
-        std::vector<double> match_DsFit_dR_Km_pi_vec;
-        std::vector<double> match_DsFit_dR_pi_phi_vec;
-        std::vector<double> match_DsFit_dR_Kp_Ds_vec;
-        std::vector<double> match_DsFit_dR_Km_Ds_vec;
-        std::vector<double> match_DsFit_dR_phi_Ds_vec;
-        std::vector<double> match_DsFit_dR_pi_Ds_vec;
-
-        std::vector<double> match_DsFit_Mconstraint_Ds_invm_vec;
-
-        std::vector<double> match_Ds_primvtx_FDxy_vec;
-        std::vector<double> match_Ds_primvtx_FDz_vec;
-        std::vector<double> match_Ds_primvtx_FD_vec;
-        std::vector<double> match_Ds_primvtx_FDxyerr_vec;
-        std::vector<double> match_Ds_primvtx_FDxychi2_vec;
-        std::vector<double> match_Ds_primvtx_FDzerr_vec;
-        std::vector<double> match_Ds_primvtx_FDzchi2_vec;
-        std::vector<double> match_Ds_primvtx_FDerr_vec;
-        std::vector<double> match_Ds_primvtx_FDchi2_vec;
-        std::vector<double> match_Ds_primvtx_dira_vec;
-        std::vector<double> match_Ds_primvtx_dira_angle_vec;
-        std::vector<double> match_Kp_primvtx_ip_vec;
-        std::vector<double> match_Kp_primvtx_iperr_vec;
-        std::vector<double> match_Kp_primvtx_ipchi2_vec;
-        std::vector<double> match_Km_primvtx_ip_vec;
-        std::vector<double> match_Km_primvtx_iperr_vec;
-        std::vector<double> match_Km_primvtx_ipchi2_vec;
-        std::vector<double> match_pi_primvtx_ip_vec;
-        std::vector<double> match_pi_primvtx_iperr_vec;
-        std::vector<double> match_pi_primvtx_ipchi2_vec;
-        std::vector<double> match_phi_primvtx_ip_vec;
-        std::vector<double> match_phi_primvtx_iperr_vec;
-        std::vector<double> match_phi_primvtx_ipchi2_vec;
-        std::vector<double> match_Ds_primvtx_ip_vec;
-        std::vector<double> match_Ds_primvtx_iperr_vec;
-        std::vector<double> match_Ds_primvtx_ipchi2_vec;
-
-        std::vector<double> match_Ds_IsoR03_sumChargedHadronPt_vec;
-        std::vector<double> match_Ds_IsoR03_sumNeutralHadronPt_vec;
-        std::vector<double> match_Ds_IsoR03_sumPhotonPt_vec;
-        std::vector<double> match_Ds_IsoR03_sumPUPt_vec;
-        std::vector<double> match_Ds_PFIsoR03_vec;
-        std::vector<double> match_Ds_IsoR04_sumChargedHadronPt_vec;
-        std::vector<double> match_Ds_IsoR04_sumNeutralHadronPt_vec;
-        std::vector<double> match_Ds_IsoR04_sumPhotonPt_vec;
-        std::vector<double> match_Ds_IsoR04_sumPUPt_vec;
-        std::vector<double> match_Ds_PFIsoR04_vec;
-
-        std::vector<bool> match_PV_noDs_IsValid_vec;
-        std::vector<bool> match_PV_noDs_IsFake_vec;
-        std::vector<double> match_PV_noDs_chi2_vec;
-        std::vector<double> match_PV_noDs_ndof_vec;
-        std::vector<double> match_PV_noDs_chi2ndof_vec;
-        std::vector<double> match_PV_noDs_x_vec;
-        std::vector<double> match_PV_noDs_y_vec;
-        std::vector<double> match_PV_noDs_z_vec;
-        std::vector<double> match_PV_noDs_xerr_vec;
-        std::vector<double> match_PV_noDs_yerr_vec;
-        std::vector<double> match_PV_noDs_zerr_vec;
-
-        std::vector<double> match_Ds_PVnoDs_FDxy_vec;
-        std::vector<double> match_Ds_PVnoDs_FDz_vec;
-        std::vector<double> match_Ds_PVnoDs_FD_vec;
-        std::vector<double> match_Ds_PVnoDs_FDxyerr_vec;
-        std::vector<double> match_Ds_PVnoDs_FDxychi2_vec;
-        std::vector<double> match_Ds_PVnoDs_FDzerr_vec;
-        std::vector<double> match_Ds_PVnoDs_FDzchi2_vec;
-        std::vector<double> match_Ds_PVnoDs_FDerr_vec;
-        std::vector<double> match_Ds_PVnoDs_FDchi2_vec;
-        std::vector<double> match_Ds_PVnoDs_dira_vec;
-        std::vector<double> match_Ds_PVnoDs_dira_angle_vec;
-        std::vector<double> match_Kp_PVnoDs_ip_vec;
-        std::vector<double> match_Kp_PVnoDs_iperr_vec;
-        std::vector<double> match_Kp_PVnoDs_ipchi2_vec;
-        std::vector<double> match_Km_PVnoDs_ip_vec;
-        std::vector<double> match_Km_PVnoDs_iperr_vec;
-        std::vector<double> match_Km_PVnoDs_ipchi2_vec;
-        std::vector<double> match_pi_PVnoDs_ip_vec;
-        std::vector<double> match_pi_PVnoDs_iperr_vec;
-        std::vector<double> match_pi_PVnoDs_ipchi2_vec;
-        std::vector<double> match_phi_PVnoDs_ip_vec;
-        std::vector<double> match_phi_PVnoDs_iperr_vec;
-        std::vector<double> match_phi_PVnoDs_ipchi2_vec;
-        std::vector<double> match_Ds_PVnoDs_ip_vec;
-        std::vector<double> match_Ds_PVnoDs_iperr_vec;
-        std::vector<double> match_Ds_PVnoDs_ipchi2_vec;
-
-        std::vector<bool> match_PV_withDs_IsValid_vec;
-        std::vector<bool> match_PV_withDs_IsFake_vec;
-        std::vector<double> match_PV_withDs_chi2_vec;
-        std::vector<double> match_PV_withDs_ndof_vec;
-        std::vector<double> match_PV_withDs_chi2ndof_vec;
-        std::vector<double> match_PV_withDs_x_vec;
-        std::vector<double> match_PV_withDs_y_vec;
-        std::vector<double> match_PV_withDs_z_vec;
-        std::vector<double> match_PV_withDs_xerr_vec;
-        std::vector<double> match_PV_withDs_yerr_vec;
-        std::vector<double> match_PV_withDs_zerr_vec;
-
-        std::vector<double> match_Ds_PVwithDs_FDxy_vec;
-        std::vector<double> match_Ds_PVwithDs_FDz_vec;
-        std::vector<double> match_Ds_PVwithDs_FD_vec;
-        std::vector<double> match_Ds_PVwithDs_FDxyerr_vec;
-        std::vector<double> match_Ds_PVwithDs_FDxychi2_vec;
-        std::vector<double> match_Ds_PVwithDs_FDzerr_vec;
-        std::vector<double> match_Ds_PVwithDs_FDzchi2_vec;
-        std::vector<double> match_Ds_PVwithDs_FDerr_vec;
-        std::vector<double> match_Ds_PVwithDs_FDchi2_vec;
-        std::vector<double> match_Ds_PVwithDs_dira_vec;
-        std::vector<double> match_Ds_PVwithDs_dira_angle_vec;
-        std::vector<double> match_Kp_PVwithDs_ip_vec;
-        std::vector<double> match_Kp_PVwithDs_iperr_vec;
-        std::vector<double> match_Kp_PVwithDs_ipchi2_vec;
-        std::vector<double> match_Km_PVwithDs_ip_vec;
-        std::vector<double> match_Km_PVwithDs_iperr_vec;
-        std::vector<double> match_Km_PVwithDs_ipchi2_vec;
-        std::vector<double> match_pi_PVwithDs_ip_vec;
-        std::vector<double> match_pi_PVwithDs_iperr_vec;
-        std::vector<double> match_pi_PVwithDs_ipchi2_vec;
-        std::vector<double> match_phi_PVwithDs_ip_vec;
-        std::vector<double> match_phi_PVwithDs_iperr_vec;
-        std::vector<double> match_phi_PVwithDs_ipchi2_vec;
-        std::vector<double> match_Ds_PVwithDs_ip_vec;
-        std::vector<double> match_Ds_PVwithDs_iperr_vec;
-        std::vector<double> match_Ds_PVwithDs_ipchi2_vec;
-
-        std::vector<int> match_mu_charge_vec;
-        std::vector<double> match_mu_eta_vec;
-        std::vector<double> match_mu_phi_vec;
-        std::vector<double> match_mu_vx_vec;
-        std::vector<double> match_mu_vy_vec;
-        std::vector<double> match_mu_vz_vec;
-        std::vector<double> match_mu_p_vec;
-        std::vector<double> match_mu_pt_vec;
-        std::vector<double> match_mu_px_vec;
-        std::vector<double> match_mu_py_vec;
-        std::vector<double> match_mu_pz_vec;
-        std::vector<bool> match_mu_isHighPt_vec;
-        std::vector<bool> match_mu_isLoose_vec;
-        std::vector<bool> match_mu_isMedium_vec;
-        std::vector<bool> match_mu_isSoft_vec;
-        std::vector<bool> match_mu_isTight_vec;
-        std::vector<bool> match_mu_isPF_vec;
-        std::vector<bool> match_mu_isTracker_vec;
-        std::vector<bool> match_mu_isGlobal_vec;
-        std::vector<double> match_mu_IsoR03_sumChargedHadronPt_vec;
-        std::vector<double> match_mu_IsoR03_sumChargedParticlePt_vec;
-        std::vector<double> match_mu_IsoR03_sumNeutralHadronEt_vec;
-        std::vector<double> match_mu_IsoR03_sumPhotonEt_vec;
-        std::vector<double> match_mu_IsoR03_sumPUPt_vec;
-        std::vector<double> match_mu_PFIsoR03_vec;
-        std::vector<double> match_mu_IsoR04_sumChargedHadronPt_vec;
-        std::vector<double> match_mu_IsoR04_sumChargedParticlePt_vec;
-        std::vector<double> match_mu_IsoR04_sumNeutralHadronEt_vec;
-        std::vector<double> match_mu_IsoR04_sumPhotonEt_vec;
-        std::vector<double> match_mu_IsoR04_sumPUPt_vec;
-        std::vector<double> match_mu_PFIsoR04_vec;
-        std::vector<double> match_mu_primvtx_dxy_vec;
-        std::vector<double> match_mu_primvtx_dxyerr_vec;
-        std::vector<double> match_mu_primvtx_dz_vec;
-        std::vector<double> match_mu_primvtx_dzerr_vec;
-        std::vector<double> match_mu_primvtx_ip_vec;
-        std::vector<double> match_mu_primvtx_iperr_vec;
-        std::vector<double> match_mu_primvtx_ipchi2_vec;
-        
-        std::vector<bool> Kp_isIsolatedChargedHadron_vec;
-        std::vector<int> Kp_charge_vec;
-        std::vector<double> Kp_eta_vec;
-        std::vector<double> Kp_phi_vec;
-        std::vector<double> Kp_vx_vec;
-        std::vector<double> Kp_vy_vec;
-        std::vector<double> Kp_vz_vec;
-        std::vector<double> Kp_p_vec;
-        std::vector<double> Kp_pt_vec;
-        std::vector<double> Kp_px_vec;
-        std::vector<double> Kp_py_vec;
-        std::vector<double> Kp_pz_vec;
-
-        std::vector<bool> Km_isIsolatedChargedHadron_vec;
-        std::vector<int> Km_charge_vec;
-        std::vector<double> Km_eta_vec;
-        std::vector<double> Km_phi_vec;
-        std::vector<double> Km_vx_vec;
-        std::vector<double> Km_vy_vec;
-        std::vector<double> Km_vz_vec;
-        std::vector<double> Km_p_vec;
-        std::vector<double> Km_pt_vec;
-        std::vector<double> Km_px_vec;
-        std::vector<double> Km_py_vec;
-        std::vector<double> Km_pz_vec;
-
-        std::vector<bool> pi_isIsolatedChargedHadron_vec;
-        std::vector<int> pi_charge_vec;
-        std::vector<double> pi_eta_vec;
-        std::vector<double> pi_phi_vec;
-        std::vector<double> pi_vx_vec;
-        std::vector<double> pi_vy_vec;
-        std::vector<double> pi_vz_vec;
-        std::vector<double> pi_p_vec;
-        std::vector<double> pi_pt_vec;
-        std::vector<double> pi_px_vec;
-        std::vector<double> pi_py_vec;
-        std::vector<double> pi_pz_vec;
-
-        std::vector<double> phi_eta_vec;
-        std::vector<double> phi_phi_vec;
-        std::vector<double> phi_p_vec;
-        std::vector<double> phi_pt_vec;
-        std::vector<double> phi_px_vec;
-        std::vector<double> phi_py_vec;
-        std::vector<double> phi_pz_vec;
-        std::vector<double> phi_invm_vec;
-
-        std::vector<double> Ds_eta_vec;
-        std::vector<double> Ds_phi_vec;
-        std::vector<double> Ds_p_vec;
-        std::vector<double> Ds_pt_vec;
-        std::vector<double> Ds_px_vec;
-        std::vector<double> Ds_py_vec;
-        std::vector<double> Ds_pz_vec;
-        std::vector<double> Ds_invm_vec;
-
-        std::vector<double> dR_Kp_Km_vec;
-        std::vector<double> dR_Kp_phi_vec;
-        std::vector<double> dR_Km_phi_vec;
-        std::vector<double> dR_Kp_pi_vec;
-        std::vector<double> dR_Km_pi_vec;
-        std::vector<double> dR_pi_phi_vec;
-        std::vector<double> dR_Kp_Ds_vec;
-        std::vector<double> dR_Km_Ds_vec;
-        std::vector<double> dR_phi_Ds_vec;
-        std::vector<double> dR_pi_Ds_vec;
-
-        std::vector<double> dxy_phi_Ds_vec;
-        std::vector<double> dz_phi_Ds_vec;
-
-        // Fit on phi
-        std::vector<double> phiFit_chi2_vec;
-        std::vector<double> phiFit_ndof_vec;
-        std::vector<double> phiFit_chi2ndof_vec;
-        std::vector<double> phiFit_vx_vec;
-        std::vector<double> phiFit_vy_vec;
-        std::vector<double> phiFit_vz_vec;
-        std::vector<double> phiFit_vxerr_vec;
-        std::vector<double> phiFit_vyerr_vec;
-        std::vector<double> phiFit_vzerr_vec;
-
-        std::vector<double> phiFit_Kp_eta_vec;
-        std::vector<double> phiFit_Kp_phi_vec;
-        std::vector<double> phiFit_Kp_p_vec;
-        std::vector<double> phiFit_Kp_pt_vec;
-        std::vector<double> phiFit_Kp_px_vec;
-        std::vector<double> phiFit_Kp_py_vec;
-        std::vector<double> phiFit_Kp_pz_vec;
-
-        std::vector<double> phiFit_Km_eta_vec;
-        std::vector<double> phiFit_Km_phi_vec;
-        std::vector<double> phiFit_Km_p_vec;
-        std::vector<double> phiFit_Km_pt_vec;
-        std::vector<double> phiFit_Km_px_vec;
-        std::vector<double> phiFit_Km_py_vec;
-        std::vector<double> phiFit_Km_pz_vec;
-
-        std::vector<double> phiFit_pi_eta_vec;
-        std::vector<double> phiFit_pi_phi_vec;
-        std::vector<double> phiFit_pi_p_vec;
-        std::vector<double> phiFit_pi_pt_vec;
-        std::vector<double> phiFit_pi_px_vec;
-        std::vector<double> phiFit_pi_py_vec;
-        std::vector<double> phiFit_pi_pz_vec;
-
-        std::vector<double> phiFit_phi_eta_vec;
-        std::vector<double> phiFit_phi_phi_vec;
-        std::vector<double> phiFit_phi_p_vec;
-        std::vector<double> phiFit_phi_pt_vec;
-        std::vector<double> phiFit_phi_px_vec;
-        std::vector<double> phiFit_phi_py_vec;
-        std::vector<double> phiFit_phi_pz_vec;
-        std::vector<double> phiFit_phi_invm_vec;
-
-        std::vector<double> phiFit_Ds_eta_vec;
-        std::vector<double> phiFit_Ds_phi_vec;
-        std::vector<double> phiFit_Ds_p_vec;
-        std::vector<double> phiFit_Ds_pt_vec;
-        std::vector<double> phiFit_Ds_px_vec;
-        std::vector<double> phiFit_Ds_py_vec;
-        std::vector<double> phiFit_Ds_pz_vec;
-        std::vector<double> phiFit_Ds_invm_vec;
-
-        std::vector<double> phiFit_dR_Kp_Km_vec;
-        std::vector<double> phiFit_dR_Kp_phi_vec;
-        std::vector<double> phiFit_dR_Km_phi_vec;
-        std::vector<double> phiFit_dR_Kp_pi_vec;
-        std::vector<double> phiFit_dR_Km_pi_vec;
-        std::vector<double> phiFit_dR_pi_phi_vec;
-        std::vector<double> phiFit_dR_Kp_Ds_vec;
-        std::vector<double> phiFit_dR_Km_Ds_vec;
-        std::vector<double> phiFit_dR_phi_Ds_vec;
-        std::vector<double> phiFit_dR_pi_Ds_vec;
-
-        // Fit on Ds 
-        std::vector<double> DsFit_chi2_vec;
-        std::vector<double> DsFit_ndof_vec;
-        std::vector<double> DsFit_chi2ndof_vec;
-        std::vector<double> DsFit_vx_vec;
-        std::vector<double> DsFit_vy_vec;
-        std::vector<double> DsFit_vz_vec;
-        std::vector<double> DsFit_vxerr_vec;
-        std::vector<double> DsFit_vyerr_vec;
-        std::vector<double> DsFit_vzerr_vec;
-
-        std::vector<double> DsFit_Kp_eta_vec;
-        std::vector<double> DsFit_Kp_phi_vec;
-        std::vector<double> DsFit_Kp_p_vec;
-        std::vector<double> DsFit_Kp_pt_vec;
-        std::vector<double> DsFit_Kp_px_vec;
-        std::vector<double> DsFit_Kp_py_vec;
-        std::vector<double> DsFit_Kp_pz_vec;
-
-        std::vector<double> DsFit_Km_eta_vec;
-        std::vector<double> DsFit_Km_phi_vec;
-        std::vector<double> DsFit_Km_p_vec;
-        std::vector<double> DsFit_Km_pt_vec;
-        std::vector<double> DsFit_Km_px_vec;
-        std::vector<double> DsFit_Km_py_vec;
-        std::vector<double> DsFit_Km_pz_vec;
-
-        std::vector<double> DsFit_pi_eta_vec;
-        std::vector<double> DsFit_pi_phi_vec;
-        std::vector<double> DsFit_pi_p_vec;
-        std::vector<double> DsFit_pi_pt_vec;
-        std::vector<double> DsFit_pi_px_vec;
-        std::vector<double> DsFit_pi_py_vec;
-        std::vector<double> DsFit_pi_pz_vec;
-
-        std::vector<double> DsFit_phi_eta_vec;
-        std::vector<double> DsFit_phi_phi_vec;
-        std::vector<double> DsFit_phi_p_vec;
-        std::vector<double> DsFit_phi_pt_vec;
-        std::vector<double> DsFit_phi_px_vec;
-        std::vector<double> DsFit_phi_py_vec;
-        std::vector<double> DsFit_phi_pz_vec;
-        std::vector<double> DsFit_phi_invm_vec;
-
-        std::vector<double> DsFit_Ds_eta_vec;
-        std::vector<double> DsFit_Ds_phi_vec;
-        std::vector<double> DsFit_Ds_p_vec;
-        std::vector<double> DsFit_Ds_pt_vec;
-        std::vector<double> DsFit_Ds_px_vec;
-        std::vector<double> DsFit_Ds_py_vec;
-        std::vector<double> DsFit_Ds_pz_vec;
-        std::vector<double> DsFit_Ds_invm_vec;
-
-        std::vector<double> DsFit_dR_Kp_Km_vec;
-        std::vector<double> DsFit_dR_Kp_phi_vec;
-        std::vector<double> DsFit_dR_Km_phi_vec;
-        std::vector<double> DsFit_dR_Kp_pi_vec;
-        std::vector<double> DsFit_dR_Km_pi_vec;
-        std::vector<double> DsFit_dR_pi_phi_vec;
-        std::vector<double> DsFit_dR_Kp_Ds_vec;
-        std::vector<double> DsFit_dR_Km_Ds_vec;
-        std::vector<double> DsFit_dR_phi_Ds_vec;
-        std::vector<double> DsFit_dR_pi_Ds_vec;
-
-        std::vector<double> DsFit_Mconstraint_Ds_invm_vec;
-
-        std::vector<double> Ds_primvtx_FDxy_vec;
-        std::vector<double> Ds_primvtx_FDz_vec;
-        std::vector<double> Ds_primvtx_FD_vec;
-        std::vector<double> Ds_primvtx_FDxyerr_vec;
-        std::vector<double> Ds_primvtx_FDxychi2_vec;
-        std::vector<double> Ds_primvtx_FDzerr_vec;
-        std::vector<double> Ds_primvtx_FDzchi2_vec;
-        std::vector<double> Ds_primvtx_FDerr_vec;
-        std::vector<double> Ds_primvtx_FDchi2_vec;
-        std::vector<double> Ds_primvtx_dira_vec;
-        std::vector<double> Ds_primvtx_dira_angle_vec;
-        std::vector<double> Kp_primvtx_ip_vec;
-        std::vector<double> Kp_primvtx_iperr_vec;
-        std::vector<double> Kp_primvtx_ipchi2_vec;
-        std::vector<double> Km_primvtx_ip_vec;
-        std::vector<double> Km_primvtx_iperr_vec;
-        std::vector<double> Km_primvtx_ipchi2_vec;
-        std::vector<double> pi_primvtx_ip_vec;
-        std::vector<double> pi_primvtx_iperr_vec;
-        std::vector<double> pi_primvtx_ipchi2_vec;
-        std::vector<double> phi_primvtx_ip_vec;
-        std::vector<double> phi_primvtx_iperr_vec;
-        std::vector<double> phi_primvtx_ipchi2_vec;
-        std::vector<double> Ds_primvtx_ip_vec;
-        std::vector<double> Ds_primvtx_iperr_vec;
-        std::vector<double> Ds_primvtx_ipchi2_vec;
-
-        std::vector<double> Ds_IsoR03_sumChargedHadronPt_vec;
-        std::vector<double> Ds_IsoR03_sumNeutralHadronPt_vec;
-        std::vector<double> Ds_IsoR03_sumPhotonPt_vec;
-        std::vector<double> Ds_IsoR03_sumPUPt_vec;
-        std::vector<double> Ds_PFIsoR03_vec;
-        std::vector<double> Ds_IsoR04_sumChargedHadronPt_vec;
-        std::vector<double> Ds_IsoR04_sumNeutralHadronPt_vec;
-        std::vector<double> Ds_IsoR04_sumPhotonPt_vec;
-        std::vector<double> Ds_IsoR04_sumPUPt_vec;
-        std::vector<double> Ds_PFIsoR04_vec;
-
-        std::vector<bool> PV_noDs_IsValid_vec;
-        std::vector<bool> PV_noDs_IsFake_vec;
-        std::vector<double> PV_noDs_chi2_vec;
-        std::vector<double> PV_noDs_ndof_vec;
-        std::vector<double> PV_noDs_chi2ndof_vec;
-        std::vector<double> PV_noDs_x_vec;
-        std::vector<double> PV_noDs_y_vec;
-        std::vector<double> PV_noDs_z_vec;
-        std::vector<double> PV_noDs_xerr_vec;
-        std::vector<double> PV_noDs_yerr_vec;
-        std::vector<double> PV_noDs_zerr_vec;
-
-        std::vector<double> Ds_PVnoDs_FDxy_vec;
-        std::vector<double> Ds_PVnoDs_FDz_vec;
-        std::vector<double> Ds_PVnoDs_FD_vec;
-        std::vector<double> Ds_PVnoDs_FDxyerr_vec;
-        std::vector<double> Ds_PVnoDs_FDxychi2_vec;
-        std::vector<double> Ds_PVnoDs_FDzerr_vec;
-        std::vector<double> Ds_PVnoDs_FDzchi2_vec;
-        std::vector<double> Ds_PVnoDs_FDerr_vec;
-        std::vector<double> Ds_PVnoDs_FDchi2_vec;
-        std::vector<double> Ds_PVnoDs_dira_vec;
-        std::vector<double> Ds_PVnoDs_dira_angle_vec;
-        std::vector<double> Kp_PVnoDs_ip_vec;
-        std::vector<double> Kp_PVnoDs_iperr_vec;
-        std::vector<double> Kp_PVnoDs_ipchi2_vec;
-        std::vector<double> Km_PVnoDs_ip_vec;
-        std::vector<double> Km_PVnoDs_iperr_vec;
-        std::vector<double> Km_PVnoDs_ipchi2_vec;
-        std::vector<double> pi_PVnoDs_ip_vec;
-        std::vector<double> pi_PVnoDs_iperr_vec;
-        std::vector<double> pi_PVnoDs_ipchi2_vec;
-        std::vector<double> phi_PVnoDs_ip_vec;
-        std::vector<double> phi_PVnoDs_iperr_vec;
-        std::vector<double> phi_PVnoDs_ipchi2_vec;
-        std::vector<double> Ds_PVnoDs_ip_vec;
-        std::vector<double> Ds_PVnoDs_iperr_vec;
-        std::vector<double> Ds_PVnoDs_ipchi2_vec;
-
-        std::vector<bool> PV_withDs_IsValid_vec;
-        std::vector<bool> PV_withDs_IsFake_vec;
-        std::vector<double> PV_withDs_chi2_vec;
-        std::vector<double> PV_withDs_ndof_vec;
-        std::vector<double> PV_withDs_chi2ndof_vec;
-        std::vector<double> PV_withDs_x_vec;
-        std::vector<double> PV_withDs_y_vec;
-        std::vector<double> PV_withDs_z_vec;
-        std::vector<double> PV_withDs_xerr_vec;
-        std::vector<double> PV_withDs_yerr_vec;
-        std::vector<double> PV_withDs_zerr_vec;
-
-        std::vector<double> Ds_PVwithDs_FDxy_vec;
-        std::vector<double> Ds_PVwithDs_FDz_vec;
-        std::vector<double> Ds_PVwithDs_FD_vec;
-        std::vector<double> Ds_PVwithDs_FDxyerr_vec;
-        std::vector<double> Ds_PVwithDs_FDxychi2_vec;
-        std::vector<double> Ds_PVwithDs_FDzerr_vec;
-        std::vector<double> Ds_PVwithDs_FDzchi2_vec;
-        std::vector<double> Ds_PVwithDs_FDerr_vec;
-        std::vector<double> Ds_PVwithDs_FDchi2_vec;
-        std::vector<double> Ds_PVwithDs_dira_vec;
-        std::vector<double> Ds_PVwithDs_dira_angle_vec;
-        std::vector<double> Kp_PVwithDs_ip_vec;
-        std::vector<double> Kp_PVwithDs_iperr_vec;
-        std::vector<double> Kp_PVwithDs_ipchi2_vec;
-        std::vector<double> Km_PVwithDs_ip_vec;
-        std::vector<double> Km_PVwithDs_iperr_vec;
-        std::vector<double> Km_PVwithDs_ipchi2_vec;
-        std::vector<double> pi_PVwithDs_ip_vec;
-        std::vector<double> pi_PVwithDs_iperr_vec;
-        std::vector<double> pi_PVwithDs_ipchi2_vec;
-        std::vector<double> phi_PVwithDs_ip_vec;
-        std::vector<double> phi_PVwithDs_iperr_vec;
-        std::vector<double> phi_PVwithDs_ipchi2_vec;
-        std::vector<double> Ds_PVwithDs_ip_vec;
-        std::vector<double> Ds_PVwithDs_iperr_vec;
-        std::vector<double> Ds_PVwithDs_ipchi2_vec;
-
-        std::vector<bool> Kp_match_vec;
-        std::vector<bool> Km_match_vec;
-        std::vector<bool> pi_match_vec;
-        std::vector<bool> match_entry_vec;
-        std::vector<bool> non_match_entry_vec;
-
-        std::vector<bool> best_Kp_isIsolatedChargedHadron_vec;
-        std::vector<int> best_Kp_charge_vec;
-        std::vector<double> best_Kp_eta_vec;
-        std::vector<double> best_Kp_phi_vec;
-        std::vector<double> best_Kp_vx_vec;
-        std::vector<double> best_Kp_vy_vec;
-        std::vector<double> best_Kp_vz_vec;
-        std::vector<double> best_Kp_p_vec;
-        std::vector<double> best_Kp_pt_vec;
-        std::vector<double> best_Kp_px_vec;
-        std::vector<double> best_Kp_py_vec;
-        std::vector<double> best_Kp_pz_vec;
-
-        std::vector<bool> best_Km_isIsolatedChargedHadron_vec;
-        std::vector<int> best_Km_charge_vec;
-        std::vector<double> best_Km_eta_vec;
-        std::vector<double> best_Km_phi_vec;
-        std::vector<double> best_Km_vx_vec;
-        std::vector<double> best_Km_vy_vec;
-        std::vector<double> best_Km_vz_vec;
-        std::vector<double> best_Km_p_vec;
-        std::vector<double> best_Km_pt_vec;
-        std::vector<double> best_Km_px_vec;
-        std::vector<double> best_Km_py_vec;
-        std::vector<double> best_Km_pz_vec;
-
-        std::vector<bool> best_pi_isIsolatedChargedHadron_vec;
-        std::vector<int> best_pi_charge_vec;
-        std::vector<double> best_pi_eta_vec;
-        std::vector<double> best_pi_phi_vec;
-        std::vector<double> best_pi_vx_vec;
-        std::vector<double> best_pi_vy_vec;
-        std::vector<double> best_pi_vz_vec;
-        std::vector<double> best_pi_p_vec;
-        std::vector<double> best_pi_pt_vec;
-        std::vector<double> best_pi_px_vec;
-        std::vector<double> best_pi_py_vec;
-        std::vector<double> best_pi_pz_vec;
-
-        std::vector<double> best_phi_eta_vec;
-        std::vector<double> best_phi_phi_vec;
-        std::vector<double> best_phi_p_vec;
-        std::vector<double> best_phi_pt_vec;
-        std::vector<double> best_phi_px_vec;
-        std::vector<double> best_phi_py_vec;
-        std::vector<double> best_phi_pz_vec;
-        std::vector<double> best_phi_invm_vec;
-
-        std::vector<double> best_Ds_eta_vec;
-        std::vector<double> best_Ds_phi_vec;
-        std::vector<double> best_Ds_p_vec;
-        std::vector<double> best_Ds_pt_vec;
-        std::vector<double> best_Ds_px_vec;
-        std::vector<double> best_Ds_py_vec;
-        std::vector<double> best_Ds_pz_vec;
-        std::vector<double> best_Ds_invm_vec;
+        PFInfo Kp;          PFInfoVec Kp_vec;
+        PFInfo Km;          PFInfoVec Km_vec;
+        PFInfo pi;          PFInfoVec pi_vec;
+        TLVInfo phi;        TLVInfoVec phi_vec;
+        TLVInfo Ds;         TLVInfoVec Ds_vec;
+        TLVInfo phiFit_Kp;  TLVInfoVec phiFit_Kp_vec;
+        TLVInfo phiFit_Km;  TLVInfoVec phiFit_Km_vec;
+        TLVInfo phiFit_pi;  TLVInfoVec phiFit_pi_vec;
+        TLVInfo phiFit_phi; TLVInfoVec phiFit_phi_vec;
+        TLVInfo phiFit_Ds;  TLVInfoVec phiFit_Ds_vec;
+        TLVInfo DsFit_Kp;   TLVInfoVec DsFit_Kp_vec;
+        TLVInfo DsFit_Km;   TLVInfoVec DsFit_Km_vec;
+        TLVInfo DsFit_pi;   TLVInfoVec DsFit_pi_vec;
+        TLVInfo DsFit_phi;  TLVInfoVec DsFit_phi_vec;
+        TLVInfo DsFit_Ds;   TLVInfoVec DsFit_Ds_vec;
+
+        double dR_Kp_Km;  std::vector<double> dR_Kp_Km_vec;
+        double dR_Kp_phi; std::vector<double> dR_Kp_phi_vec;
+        double dR_Km_phi; std::vector<double> dR_Km_phi_vec;
+        double dR_Kp_pi;  std::vector<double> dR_Kp_pi_vec;
+        double dR_Km_pi;  std::vector<double> dR_Km_pi_vec;
+        double dR_pi_phi; std::vector<double> dR_pi_phi_vec;
+        double dR_Kp_Ds;  std::vector<double> dR_Kp_Ds_vec;
+        double dR_Km_Ds;  std::vector<double> dR_Km_Ds_vec;
+        double dR_phi_Ds; std::vector<double> dR_phi_Ds_vec;
+        double dR_pi_Ds;  std::vector<double> dR_pi_Ds_vec;
+
+        double phiFit_dR_Kp_Km;  std::vector<double> phiFit_dR_Kp_Km_vec;
+        double phiFit_dR_Kp_phi; std::vector<double> phiFit_dR_Kp_phi_vec;
+        double phiFit_dR_Km_phi; std::vector<double> phiFit_dR_Km_phi_vec;
+        double phiFit_dR_Kp_pi;  std::vector<double> phiFit_dR_Kp_pi_vec;
+        double phiFit_dR_Km_pi;  std::vector<double> phiFit_dR_Km_pi_vec;
+        double phiFit_dR_pi_phi; std::vector<double> phiFit_dR_pi_phi_vec;
+        double phiFit_dR_Kp_Ds;  std::vector<double> phiFit_dR_Kp_Ds_vec;
+        double phiFit_dR_Km_Ds;  std::vector<double> phiFit_dR_Km_Ds_vec;
+        double phiFit_dR_phi_Ds; std::vector<double> phiFit_dR_phi_Ds_vec;
+        double phiFit_dR_pi_Ds;  std::vector<double> phiFit_dR_pi_Ds_vec;
+
+        double DsFit_dR_Kp_Km;  std::vector<double> DsFit_dR_Kp_Km_vec;
+        double DsFit_dR_Kp_phi; std::vector<double> DsFit_dR_Kp_phi_vec;
+        double DsFit_dR_Km_phi; std::vector<double> DsFit_dR_Km_phi_vec;
+        double DsFit_dR_Kp_pi;  std::vector<double> DsFit_dR_Kp_pi_vec;
+        double DsFit_dR_Km_pi;  std::vector<double> DsFit_dR_Km_pi_vec;
+        double DsFit_dR_pi_phi; std::vector<double> DsFit_dR_pi_phi_vec;
+        double DsFit_dR_Kp_Ds;  std::vector<double> DsFit_dR_Kp_Ds_vec;
+        double DsFit_dR_Km_Ds;  std::vector<double> DsFit_dR_Km_Ds_vec;
+        double DsFit_dR_phi_Ds; std::vector<double> DsFit_dR_phi_Ds_vec;
+        double DsFit_dR_pi_Ds;  std::vector<double> DsFit_dR_pi_Ds_vec;
+
+        double dxy_phi_Ds; std::vector<double> dxy_phi_Ds_vec;
+        double dz_phi_Ds;  std::vector<double> dz_phi_Ds_vec;
+
+        double DsFit_Mconstraint_Ds_invm; std::vector<double> DsFit_Mconstraint_Ds_invm_vec;
+
+        VtxInfo phiFit;   VtxInfoVec phiFit_vec;
+        VtxInfo DsFit;    VtxInfoVec DsFit_vec;
+        VtxInfo PVnoDs;   VtxInfoVec PVnoDs_vec;
+        VtxInfo PVwithDs; VtxInfoVec PVwithDs_vec;
+
+        FDInfo Ds_primvtx_FD;   FDInfoVec Ds_primvtx_FD_vec;
+        IPInfo Kp_primvtx_ip;   IPInfoVec Kp_primvtx_ip_vec;
+        IPInfo Km_primvtx_ip;   IPInfoVec Km_primvtx_ip_vec;
+        IPInfo pi_primvtx_ip;   IPInfoVec pi_primvtx_ip_vec;
+        IPInfo phi_primvtx_ip;  IPInfoVec phi_primvtx_ip_vec;
+        IPInfo Ds_primvtx_ip;   IPInfoVec Ds_primvtx_ip_vec;
+        FDInfo Ds_PVnoDs_FD;    FDInfoVec Ds_PVnoDs_FD_vec;
+        IPInfo Kp_PVnoDs_ip;    IPInfoVec Kp_PVnoDs_ip_vec;
+        IPInfo Km_PVnoDs_ip;    IPInfoVec Km_PVnoDs_ip_vec;
+        IPInfo pi_PVnoDs_ip;    IPInfoVec pi_PVnoDs_ip_vec;
+        IPInfo phi_PVnoDs_ip;   IPInfoVec phi_PVnoDs_ip_vec;
+        IPInfo Ds_PVnoDs_ip;    IPInfoVec Ds_PVnoDs_ip_vec;
+        FDInfo Ds_PVwithDs_FD;  FDInfoVec Ds_PVwithDs_FD_vec;
+        IPInfo Kp_PVwithDs_ip;  IPInfoVec Kp_PVwithDs_ip_vec;
+        IPInfo Km_PVwithDs_ip;  IPInfoVec Km_PVwithDs_ip_vec;
+        IPInfo pi_PVwithDs_ip;  IPInfoVec pi_PVwithDs_ip_vec;
+        IPInfo phi_PVwithDs_ip; IPInfoVec phi_PVwithDs_ip_vec;
+        IPInfo Ds_PVwithDs_ip;  IPInfoVec Ds_PVwithDs_ip_vec;
+
+        IsoInfo Ds_IsoR03; IsoInfoVec Ds_IsoR03_vec;
+        IsoInfo Ds_IsoR04; IsoInfoVec Ds_IsoR04_vec;
+
+        bool Kp_match;        std::vector<bool> Kp_match_vec;
+        bool Km_match;        std::vector<bool> Km_match_vec;
+        bool pi_match;        std::vector<bool> pi_match_vec;
+        bool match_entry;     std::vector<bool> match_entry_vec;
+        bool non_match_entry; std::vector<bool> non_match_entry_vec;
+
+        PFInfoVec best_Kp_vec;
+        PFInfoVec best_Km_vec;
+        PFInfoVec best_pi_vec;
+        TLVInfoVec best_phi_vec;
+        TLVInfoVec best_Ds_vec;
+        TLVInfoVec best_phiFit_Kp_vec;
+        TLVInfoVec best_phiFit_Km_vec;
+        TLVInfoVec best_phiFit_pi_vec;
+        TLVInfoVec best_phiFit_phi_vec;
+        TLVInfoVec best_phiFit_Ds_vec;
+        TLVInfoVec best_DsFit_Kp_vec;
+        TLVInfoVec best_DsFit_Km_vec;
+        TLVInfoVec best_DsFit_pi_vec;
+        TLVInfoVec best_DsFit_phi_vec;
+        TLVInfoVec best_DsFit_Ds_vec;
 
         std::vector<double> best_dR_Kp_Km_vec;
         std::vector<double> best_dR_Kp_phi_vec;
@@ -1739,62 +777,6 @@ class PVTree
         std::vector<double> best_dR_phi_Ds_vec;
         std::vector<double> best_dR_pi_Ds_vec;
 
-        std::vector<double> best_dxy_phi_Ds_vec;
-        std::vector<double> best_dz_phi_Ds_vec;
-
-        // Fit on phi
-        std::vector<double> best_phiFit_chi2_vec;
-        std::vector<double> best_phiFit_ndof_vec;
-        std::vector<double> best_phiFit_chi2ndof_vec;
-        std::vector<double> best_phiFit_vx_vec;
-        std::vector<double> best_phiFit_vy_vec;
-        std::vector<double> best_phiFit_vz_vec;
-        std::vector<double> best_phiFit_vxerr_vec;
-        std::vector<double> best_phiFit_vyerr_vec;
-        std::vector<double> best_phiFit_vzerr_vec;
-
-        std::vector<double> best_phiFit_Kp_eta_vec;
-        std::vector<double> best_phiFit_Kp_phi_vec;
-        std::vector<double> best_phiFit_Kp_p_vec;
-        std::vector<double> best_phiFit_Kp_pt_vec;
-        std::vector<double> best_phiFit_Kp_px_vec;
-        std::vector<double> best_phiFit_Kp_py_vec;
-        std::vector<double> best_phiFit_Kp_pz_vec;
-
-        std::vector<double> best_phiFit_Km_eta_vec;
-        std::vector<double> best_phiFit_Km_phi_vec;
-        std::vector<double> best_phiFit_Km_p_vec;
-        std::vector<double> best_phiFit_Km_pt_vec;
-        std::vector<double> best_phiFit_Km_px_vec;
-        std::vector<double> best_phiFit_Km_py_vec;
-        std::vector<double> best_phiFit_Km_pz_vec;
-
-        std::vector<double> best_phiFit_pi_eta_vec;
-        std::vector<double> best_phiFit_pi_phi_vec;
-        std::vector<double> best_phiFit_pi_p_vec;
-        std::vector<double> best_phiFit_pi_pt_vec;
-        std::vector<double> best_phiFit_pi_px_vec;
-        std::vector<double> best_phiFit_pi_py_vec;
-        std::vector<double> best_phiFit_pi_pz_vec;
-
-        std::vector<double> best_phiFit_phi_eta_vec;
-        std::vector<double> best_phiFit_phi_phi_vec;
-        std::vector<double> best_phiFit_phi_p_vec;
-        std::vector<double> best_phiFit_phi_pt_vec;
-        std::vector<double> best_phiFit_phi_px_vec;
-        std::vector<double> best_phiFit_phi_py_vec;
-        std::vector<double> best_phiFit_phi_pz_vec;
-        std::vector<double> best_phiFit_phi_invm_vec;
-
-        std::vector<double> best_phiFit_Ds_eta_vec;
-        std::vector<double> best_phiFit_Ds_phi_vec;
-        std::vector<double> best_phiFit_Ds_p_vec;
-        std::vector<double> best_phiFit_Ds_pt_vec;
-        std::vector<double> best_phiFit_Ds_px_vec;
-        std::vector<double> best_phiFit_Ds_py_vec;
-        std::vector<double> best_phiFit_Ds_pz_vec;
-        std::vector<double> best_phiFit_Ds_invm_vec;
-
         std::vector<double> best_phiFit_dR_Kp_Km_vec;
         std::vector<double> best_phiFit_dR_Kp_phi_vec;
         std::vector<double> best_phiFit_dR_Km_phi_vec;
@@ -1805,59 +787,6 @@ class PVTree
         std::vector<double> best_phiFit_dR_Km_Ds_vec;
         std::vector<double> best_phiFit_dR_phi_Ds_vec;
         std::vector<double> best_phiFit_dR_pi_Ds_vec;
-
-        // Fit on Ds 
-        std::vector<double> best_DsFit_chi2_vec;
-        std::vector<double> best_DsFit_ndof_vec;
-        std::vector<double> best_DsFit_chi2ndof_vec;
-        std::vector<double> best_DsFit_vx_vec;
-        std::vector<double> best_DsFit_vy_vec;
-        std::vector<double> best_DsFit_vz_vec;
-        std::vector<double> best_DsFit_vxerr_vec;
-        std::vector<double> best_DsFit_vyerr_vec;
-        std::vector<double> best_DsFit_vzerr_vec;
-
-        std::vector<double> best_DsFit_Kp_eta_vec;
-        std::vector<double> best_DsFit_Kp_phi_vec;
-        std::vector<double> best_DsFit_Kp_p_vec;
-        std::vector<double> best_DsFit_Kp_pt_vec;
-        std::vector<double> best_DsFit_Kp_px_vec;
-        std::vector<double> best_DsFit_Kp_py_vec;
-        std::vector<double> best_DsFit_Kp_pz_vec;
-
-        std::vector<double> best_DsFit_Km_eta_vec;
-        std::vector<double> best_DsFit_Km_phi_vec;
-        std::vector<double> best_DsFit_Km_p_vec;
-        std::vector<double> best_DsFit_Km_pt_vec;
-        std::vector<double> best_DsFit_Km_px_vec;
-        std::vector<double> best_DsFit_Km_py_vec;
-        std::vector<double> best_DsFit_Km_pz_vec;
-
-        std::vector<double> best_DsFit_pi_eta_vec;
-        std::vector<double> best_DsFit_pi_phi_vec;
-        std::vector<double> best_DsFit_pi_p_vec;
-        std::vector<double> best_DsFit_pi_pt_vec;
-        std::vector<double> best_DsFit_pi_px_vec;
-        std::vector<double> best_DsFit_pi_py_vec;
-        std::vector<double> best_DsFit_pi_pz_vec;
-
-        std::vector<double> best_DsFit_phi_eta_vec;
-        std::vector<double> best_DsFit_phi_phi_vec;
-        std::vector<double> best_DsFit_phi_p_vec;
-        std::vector<double> best_DsFit_phi_pt_vec;
-        std::vector<double> best_DsFit_phi_px_vec;
-        std::vector<double> best_DsFit_phi_py_vec;
-        std::vector<double> best_DsFit_phi_pz_vec;
-        std::vector<double> best_DsFit_phi_invm_vec;
-
-        std::vector<double> best_DsFit_Ds_eta_vec;
-        std::vector<double> best_DsFit_Ds_phi_vec;
-        std::vector<double> best_DsFit_Ds_p_vec;
-        std::vector<double> best_DsFit_Ds_pt_vec;
-        std::vector<double> best_DsFit_Ds_px_vec;
-        std::vector<double> best_DsFit_Ds_py_vec;
-        std::vector<double> best_DsFit_Ds_pz_vec;
-        std::vector<double> best_DsFit_Ds_invm_vec;
 
         std::vector<double> best_DsFit_dR_Kp_Km_vec;
         std::vector<double> best_DsFit_dR_Kp_phi_vec;
@@ -1870,165 +799,45 @@ class PVTree
         std::vector<double> best_DsFit_dR_phi_Ds_vec;
         std::vector<double> best_DsFit_dR_pi_Ds_vec;
 
+        std::vector<double> best_dxy_phi_Ds_vec;
+        std::vector<double> best_dz_phi_Ds_vec;
+
         std::vector<double> best_DsFit_Mconstraint_Ds_invm_vec;
 
-        std::vector<double> best_Ds_primvtx_FDxy_vec;
-        std::vector<double> best_Ds_primvtx_FDz_vec;
-        std::vector<double> best_Ds_primvtx_FD_vec;
-        std::vector<double> best_Ds_primvtx_FDxyerr_vec;
-        std::vector<double> best_Ds_primvtx_FDxychi2_vec;
-        std::vector<double> best_Ds_primvtx_FDzerr_vec;
-        std::vector<double> best_Ds_primvtx_FDzchi2_vec;
-        std::vector<double> best_Ds_primvtx_FDerr_vec;
-        std::vector<double> best_Ds_primvtx_FDchi2_vec;
-        std::vector<double> best_Ds_primvtx_dira_vec;
-        std::vector<double> best_Ds_primvtx_dira_angle_vec;
-        std::vector<double> best_Kp_primvtx_ip_vec;
-        std::vector<double> best_Kp_primvtx_iperr_vec;
-        std::vector<double> best_Kp_primvtx_ipchi2_vec;
-        std::vector<double> best_Km_primvtx_ip_vec;
-        std::vector<double> best_Km_primvtx_iperr_vec;
-        std::vector<double> best_Km_primvtx_ipchi2_vec;
-        std::vector<double> best_pi_primvtx_ip_vec;
-        std::vector<double> best_pi_primvtx_iperr_vec;
-        std::vector<double> best_pi_primvtx_ipchi2_vec;
-        std::vector<double> best_phi_primvtx_ip_vec;
-        std::vector<double> best_phi_primvtx_iperr_vec;
-        std::vector<double> best_phi_primvtx_ipchi2_vec;
-        std::vector<double> best_Ds_primvtx_ip_vec;
-        std::vector<double> best_Ds_primvtx_iperr_vec;
-        std::vector<double> best_Ds_primvtx_ipchi2_vec;
+        VtxInfoVec best_phiFit_vec;
+        VtxInfoVec best_DsFit_vec;
+        VtxInfoVec best_PVnoDs_vec;
+        VtxInfoVec best_PVwithDs_vec;
 
-        std::vector<double> best_Ds_IsoR03_sumChargedHadronPt_vec;
-        std::vector<double> best_Ds_IsoR03_sumNeutralHadronPt_vec;
-        std::vector<double> best_Ds_IsoR03_sumPhotonPt_vec;
-        std::vector<double> best_Ds_IsoR03_sumPUPt_vec;
-        std::vector<double> best_Ds_PFIsoR03_vec;
-        std::vector<double> best_Ds_IsoR04_sumChargedHadronPt_vec;
-        std::vector<double> best_Ds_IsoR04_sumNeutralHadronPt_vec;
-        std::vector<double> best_Ds_IsoR04_sumPhotonPt_vec;
-        std::vector<double> best_Ds_IsoR04_sumPUPt_vec;
-        std::vector<double> best_Ds_PFIsoR04_vec;
+        FDInfoVec best_Ds_primvtx_FD_vec;
+        IPInfoVec best_Kp_primvtx_ip_vec;
+        IPInfoVec best_Km_primvtx_ip_vec;
+        IPInfoVec best_pi_primvtx_ip_vec;
+        IPInfoVec best_phi_primvtx_ip_vec;
+        IPInfoVec best_Ds_primvtx_ip_vec;
+        FDInfoVec best_Ds_PVnoDs_FD_vec;
+        IPInfoVec best_Kp_PVnoDs_ip_vec;
+        IPInfoVec best_Km_PVnoDs_ip_vec;
+        IPInfoVec best_pi_PVnoDs_ip_vec;
+        IPInfoVec best_phi_PVnoDs_ip_vec;
+        IPInfoVec best_Ds_PVnoDs_ip_vec;
+        FDInfoVec best_Ds_PVwithDs_FD_vec;
+        IPInfoVec best_Kp_PVwithDs_ip_vec;
+        IPInfoVec best_Km_PVwithDs_ip_vec;
+        IPInfoVec best_pi_PVwithDs_ip_vec;
+        IPInfoVec best_phi_PVwithDs_ip_vec;
+        IPInfoVec best_Ds_PVwithDs_ip_vec;
 
-        std::vector<bool> best_PV_noDs_IsValid_vec;
-        std::vector<bool> best_PV_noDs_IsFake_vec;
-        std::vector<double> best_PV_noDs_chi2_vec;
-        std::vector<double> best_PV_noDs_ndof_vec;
-        std::vector<double> best_PV_noDs_chi2ndof_vec;
-        std::vector<double> best_PV_noDs_x_vec;
-        std::vector<double> best_PV_noDs_y_vec;
-        std::vector<double> best_PV_noDs_z_vec;
-        std::vector<double> best_PV_noDs_xerr_vec;
-        std::vector<double> best_PV_noDs_yerr_vec;
-        std::vector<double> best_PV_noDs_zerr_vec;
-
-        std::vector<double> best_Ds_PVnoDs_FDxy_vec;
-        std::vector<double> best_Ds_PVnoDs_FDz_vec;
-        std::vector<double> best_Ds_PVnoDs_FD_vec;
-        std::vector<double> best_Ds_PVnoDs_FDxyerr_vec;
-        std::vector<double> best_Ds_PVnoDs_FDxychi2_vec;
-        std::vector<double> best_Ds_PVnoDs_FDzerr_vec;
-        std::vector<double> best_Ds_PVnoDs_FDzchi2_vec;
-        std::vector<double> best_Ds_PVnoDs_FDerr_vec;
-        std::vector<double> best_Ds_PVnoDs_FDchi2_vec;
-        std::vector<double> best_Ds_PVnoDs_dira_vec;
-        std::vector<double> best_Ds_PVnoDs_dira_angle_vec;
-        std::vector<double> best_Kp_PVnoDs_ip_vec;
-        std::vector<double> best_Kp_PVnoDs_iperr_vec;
-        std::vector<double> best_Kp_PVnoDs_ipchi2_vec;
-        std::vector<double> best_Km_PVnoDs_ip_vec;
-        std::vector<double> best_Km_PVnoDs_iperr_vec;
-        std::vector<double> best_Km_PVnoDs_ipchi2_vec;
-        std::vector<double> best_pi_PVnoDs_ip_vec;
-        std::vector<double> best_pi_PVnoDs_iperr_vec;
-        std::vector<double> best_pi_PVnoDs_ipchi2_vec;
-        std::vector<double> best_phi_PVnoDs_ip_vec;
-        std::vector<double> best_phi_PVnoDs_iperr_vec;
-        std::vector<double> best_phi_PVnoDs_ipchi2_vec;
-        std::vector<double> best_Ds_PVnoDs_ip_vec;
-        std::vector<double> best_Ds_PVnoDs_iperr_vec;
-        std::vector<double> best_Ds_PVnoDs_ipchi2_vec;
-
-        std::vector<bool> best_PV_withDs_IsValid_vec;
-        std::vector<bool> best_PV_withDs_IsFake_vec;
-        std::vector<double> best_PV_withDs_chi2_vec;
-        std::vector<double> best_PV_withDs_ndof_vec;
-        std::vector<double> best_PV_withDs_chi2ndof_vec;
-        std::vector<double> best_PV_withDs_x_vec;
-        std::vector<double> best_PV_withDs_y_vec;
-        std::vector<double> best_PV_withDs_z_vec;
-        std::vector<double> best_PV_withDs_xerr_vec;
-        std::vector<double> best_PV_withDs_yerr_vec;
-        std::vector<double> best_PV_withDs_zerr_vec;
-
-        std::vector<double> best_Ds_PVwithDs_FDxy_vec;
-        std::vector<double> best_Ds_PVwithDs_FDz_vec;
-        std::vector<double> best_Ds_PVwithDs_FD_vec;
-        std::vector<double> best_Ds_PVwithDs_FDxyerr_vec;
-        std::vector<double> best_Ds_PVwithDs_FDxychi2_vec;
-        std::vector<double> best_Ds_PVwithDs_FDzerr_vec;
-        std::vector<double> best_Ds_PVwithDs_FDzchi2_vec;
-        std::vector<double> best_Ds_PVwithDs_FDerr_vec;
-        std::vector<double> best_Ds_PVwithDs_FDchi2_vec;
-        std::vector<double> best_Ds_PVwithDs_dira_vec;
-        std::vector<double> best_Ds_PVwithDs_dira_angle_vec;
-        std::vector<double> best_Kp_PVwithDs_ip_vec;
-        std::vector<double> best_Kp_PVwithDs_iperr_vec;
-        std::vector<double> best_Kp_PVwithDs_ipchi2_vec;
-        std::vector<double> best_Km_PVwithDs_ip_vec;
-        std::vector<double> best_Km_PVwithDs_iperr_vec;
-        std::vector<double> best_Km_PVwithDs_ipchi2_vec;
-        std::vector<double> best_pi_PVwithDs_ip_vec;
-        std::vector<double> best_pi_PVwithDs_iperr_vec;
-        std::vector<double> best_pi_PVwithDs_ipchi2_vec;
-        std::vector<double> best_phi_PVwithDs_ip_vec;
-        std::vector<double> best_phi_PVwithDs_iperr_vec;
-        std::vector<double> best_phi_PVwithDs_ipchi2_vec;
-        std::vector<double> best_Ds_PVwithDs_ip_vec;
-        std::vector<double> best_Ds_PVwithDs_iperr_vec;
-        std::vector<double> best_Ds_PVwithDs_ipchi2_vec;
-
+        IsoInfoVec best_Ds_IsoR03_vec;
+        IsoInfoVec best_Ds_IsoR04_vec;
         std::vector<bool> best_match_entry_vec;
 
-        std::vector<int> best_mu_charge_vec;
-        std::vector<double> best_mu_eta_vec;
-        std::vector<double> best_mu_phi_vec;
-        std::vector<double> best_mu_vx_vec;
-        std::vector<double> best_mu_vy_vec;
-        std::vector<double> best_mu_vz_vec;
-        std::vector<double> best_mu_p_vec;
-        std::vector<double> best_mu_pt_vec;
-        std::vector<double> best_mu_px_vec;
-        std::vector<double> best_mu_py_vec;
-        std::vector<double> best_mu_pz_vec;
-        std::vector<bool> best_mu_isHighPt_vec;
-        std::vector<bool> best_mu_isLoose_vec;
-        std::vector<bool> best_mu_isMedium_vec;
-        std::vector<bool> best_mu_isSoft_vec;
-        std::vector<bool> best_mu_isTight_vec;
-        std::vector<bool> best_mu_isPF_vec;
-        std::vector<bool> best_mu_isTracker_vec;
-        std::vector<bool> best_mu_isGlobal_vec;
-        std::vector<double> best_mu_IsoR03_sumChargedHadronPt_vec;
-        std::vector<double> best_mu_IsoR03_sumChargedParticlePt_vec;
-        std::vector<double> best_mu_IsoR03_sumNeutralHadronEt_vec;
-        std::vector<double> best_mu_IsoR03_sumPhotonEt_vec;
-        std::vector<double> best_mu_IsoR03_sumPUPt_vec;
-        std::vector<double> best_mu_PFIsoR03_vec;
-        std::vector<double> best_mu_IsoR04_sumChargedHadronPt_vec;
-        std::vector<double> best_mu_IsoR04_sumChargedParticlePt_vec;
-        std::vector<double> best_mu_IsoR04_sumNeutralHadronEt_vec;
-        std::vector<double> best_mu_IsoR04_sumPhotonEt_vec;
-        std::vector<double> best_mu_IsoR04_sumPUPt_vec;
-        std::vector<double> best_mu_PFIsoR04_vec;
-        std::vector<double> best_mu_primvtx_dxy_vec;
-        std::vector<double> best_mu_primvtx_dxyerr_vec;
-        std::vector<double> best_mu_primvtx_dz_vec;
-        std::vector<double> best_mu_primvtx_dzerr_vec;
-        std::vector<double> best_mu_primvtx_ip_vec;
-        std::vector<double> best_mu_primvtx_iperr_vec;
-        std::vector<double> best_mu_primvtx_ipchi2_vec;
-        std::vector<bool> best_mu_match_vec; 
+        MuonInfo mu;          MuonInfoVec mu_vec;
+        IsoInfo mu_IsoR03;    IsoInfoVec mu_IsoR03_vec;
+        IsoInfo mu_IsoR04;    IsoInfoVec mu_IsoR04_vec;
+        IPInfo mu_primvtx_ip; IPInfoVec mu_primvtx_ip_vec;
+
+        bool best_mu_match;   std::vector<bool> best_mu_match_vec; 
 
 };
 

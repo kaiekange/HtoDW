@@ -18,10 +18,10 @@ process.load('RecoVertex.PrimaryVertexProducer.OfflinePrimaryVertices_cfi')
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) ) 
 
-myinfile = "file:/user/kakang/Analysis/CMSSW_10_6_30_patch1/src/tuples/PAT/output_1.root"
-myoutfile = "file:test.root"
-# myinfile = sys.argv[2]
-# myoutfile = sys.argv[3]
+# myinfile = "file:/user/kakang/Analysis/CMSSW_10_6_30_patch1/src/tuples/PAT/output_1.root"
+# myoutfile = "file:test.root"
+myinfile = sys.argv[2]
+myoutfile = sys.argv[3]
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(myinfile)
