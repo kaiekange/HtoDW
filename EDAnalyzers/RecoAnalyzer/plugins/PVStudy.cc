@@ -267,7 +267,10 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     ftree->Match_Reset();
     reco::Track::CovarianceMatrix dummy_track_cov;
     for (unsigned int ic = 0; ic < 5; ++ic) {
-        dummy_track_cov(ic,ic) = 1.0;
+        for (unsigned int jc = 0; jc < 5; ++jc) {
+            if(ic == jc) dummy_track_cov(ic,jc) = 1e-4;
+            else dummy_track_cov(ic,jc) = 0.0;
+        }
     }
 
     struct MatchInfo {int index; float dr;};
@@ -515,16 +518,16 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
                     if(reco::deltaR(match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.3){
                         if( abs(pf.pdgId()) == 211 && (pf.fromPV() > 1) ) ftree->match_Ds_IsoR03.sumChargedHadronPt += pf.pt();
-                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR03.sumNeutralHadronPt += pf.pt();
-                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR03.sumPhotonPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR03.sumNeutralHadronEt += pf.et();
+                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR03.sumPhotonEt += pf.et();
 
                         if( pf.fromPV() <= 1 ) ftree->match_Ds_IsoR03.sumPUPt += pf.pt();
                     }
 
                     if(reco::deltaR(match_DsFit_Ds_P4.Eta(), match_DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.4){
                         if( abs(pf.pdgId()) == 211 && (pf.fromPV() > 1) ) ftree->match_Ds_IsoR04.sumChargedHadronPt += pf.pt();
-                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR04.sumNeutralHadronPt += pf.pt();
-                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR04.sumPhotonPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->match_Ds_IsoR04.sumNeutralHadronEt += pf.et();
+                        else if( pf.pdgId() == 22 ) ftree->match_Ds_IsoR04.sumPhotonEt += pf.et();
 
                         if( pf.fromPV() <= 1 ) ftree->match_Ds_IsoR04.sumPUPt += pf.pt();
                     }
@@ -535,8 +538,8 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 }
                 match_PVtracks_withDs.push_back(match_Ds_dummy_track); 
 
-                ftree->match_Ds_IsoR03.PFIso = ( ftree->match_Ds_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR03.sumNeutralHadronPt + ftree->match_Ds_IsoR03.sumPhotonPt - 0.5*ftree->match_Ds_IsoR03.sumPUPt) ) / match_DsFit_Ds_P4.Pt();
-                ftree->match_Ds_IsoR04.PFIso = ( ftree->match_Ds_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR04.sumNeutralHadronPt + ftree->match_Ds_IsoR04.sumPhotonPt - 0.5*ftree->match_Ds_IsoR04.sumPUPt) ) / match_DsFit_Ds_P4.Pt();
+                ftree->match_Ds_IsoR03.PFIso = ( ftree->match_Ds_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR03.sumNeutralHadronEt + ftree->match_Ds_IsoR03.sumPhotonEt - 0.5*ftree->match_Ds_IsoR03.sumPUPt) ) / match_DsFit_Ds_P4.Pt();
+                ftree->match_Ds_IsoR04.PFIso = ( ftree->match_Ds_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->match_Ds_IsoR04.sumNeutralHadronEt + ftree->match_Ds_IsoR04.sumPhotonEt - 0.5*ftree->match_Ds_IsoR04.sumPUPt) ) / match_DsFit_Ds_P4.Pt();
 
                 std::vector<TransientVertex> match_pvs_noDs = revertex->makeVertices(match_PVtracks_noDs, *bsHandle, iSetup, "noBS");
                 if( !(match_pvs_noDs.empty()) ){
@@ -585,15 +588,15 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         ftree->match_mu.fillAll( match_muon, primvtx );
         ftree->match_mu_IsoR03.sumChargedHadronPt = match_muon.pfIsolationR03().sumChargedHadronPt;
-        ftree->match_mu_IsoR03.sumNeutralHadronPt = match_muon.pfIsolationR03().sumNeutralHadronEt;
-        ftree->match_mu_IsoR03.sumPhotonPt = match_muon.pfIsolationR03().sumPhotonEt;
+        ftree->match_mu_IsoR03.sumNeutralHadronEt = match_muon.pfIsolationR03().sumNeutralHadronEt;
+        ftree->match_mu_IsoR03.sumPhotonEt = match_muon.pfIsolationR03().sumPhotonEt;
         ftree->match_mu_IsoR03.sumPUPt = match_muon.pfIsolationR03().sumPUPt;
-        ftree->match_mu_IsoR03.PFIso = (ftree->match_mu_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR03.sumNeutralHadronPt + ftree->match_mu_IsoR03.sumPhotonPt - 0.5*ftree->match_mu_IsoR03.sumPUPt)) / match_muon.pt();
+        ftree->match_mu_IsoR03.PFIso = (ftree->match_mu_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR03.sumNeutralHadronEt + ftree->match_mu_IsoR03.sumPhotonEt - 0.5*ftree->match_mu_IsoR03.sumPUPt)) / match_muon.pt();
         ftree->match_mu_IsoR04.sumChargedHadronPt = match_muon.pfIsolationR04().sumChargedHadronPt;
-        ftree->match_mu_IsoR04.sumNeutralHadronPt = match_muon.pfIsolationR04().sumNeutralHadronEt;
-        ftree->match_mu_IsoR04.sumPhotonPt = match_muon.pfIsolationR04().sumPhotonEt;
+        ftree->match_mu_IsoR04.sumNeutralHadronEt = match_muon.pfIsolationR04().sumNeutralHadronEt;
+        ftree->match_mu_IsoR04.sumPhotonEt = match_muon.pfIsolationR04().sumPhotonEt;
         ftree->match_mu_IsoR04.sumPUPt = match_muon.pfIsolationR04().sumPUPt;
-        ftree->match_mu_IsoR04.PFIso = (ftree->match_mu_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR04.sumNeutralHadronPt + ftree->match_mu_IsoR04.sumPhotonPt - 0.5*ftree->match_mu_IsoR04.sumPUPt)) / match_muon.pt();
+        ftree->match_mu_IsoR04.PFIso = (ftree->match_mu_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->match_mu_IsoR04.sumNeutralHadronEt + ftree->match_mu_IsoR04.sumPhotonEt - 0.5*ftree->match_mu_IsoR04.sumPUPt)) / match_muon.pt();
         ftree->match_mu_primvtx_ip.fillAll( (*ttBuilder).build(match_muon.muonBestTrack()), primvtx);
 
         ftree->FillMatchmu();
@@ -885,16 +888,16 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
                     if(reco::deltaR(DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.3){
                         if( abs(pf.pdgId()) == 211 && (pf.fromPV()>1) ) ftree->Ds_IsoR03.sumChargedHadronPt += pf.pt();
-                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR03.sumNeutralHadronPt += pf.pt();
-                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR03.sumPhotonPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR03.sumNeutralHadronEt += pf.et();
+                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR03.sumPhotonEt += pf.et();
 
                         if( pf.fromPV() <= 1 ) ftree->Ds_IsoR03.sumPUPt += pf.pt();
                     }
 
                     if(reco::deltaR(DsFit_Ds_P4.Eta(), DsFit_Ds_P4.Phi(), pf.eta(), pf.phi()) < 0.4){
                         if( abs(pf.pdgId()) == 211 && (pf.fromPV()>1) ) ftree->Ds_IsoR04.sumChargedHadronPt += pf.pt();
-                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR04.sumNeutralHadronPt += pf.pt();
-                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR04.sumPhotonPt += pf.pt();
+                        else if( pf.pdgId() == 130 ) ftree->Ds_IsoR04.sumNeutralHadronEt += pf.et();
+                        else if( pf.pdgId() == 22 ) ftree->Ds_IsoR04.sumPhotonEt += pf.et();
 
                         if( pf.fromPV() <= 1 ) ftree->Ds_IsoR04.sumPUPt += pf.pt();
                     }
@@ -905,8 +908,8 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 }
                 PVtracks_withDs.push_back(Ds_dummy_track);
 
-                ftree->Ds_IsoR03.PFIso = ( ftree->Ds_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR03.sumNeutralHadronPt + ftree->Ds_IsoR03.sumPhotonPt - 0.5*ftree->Ds_IsoR03.sumPUPt) ) / DsFit_Ds_P4.Pt();
-                ftree->Ds_IsoR04.PFIso = ( ftree->Ds_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR04.sumNeutralHadronPt + ftree->Ds_IsoR04.sumPhotonPt - 0.5*ftree->Ds_IsoR04.sumPUPt) ) / DsFit_Ds_P4.Pt();
+                ftree->Ds_IsoR03.PFIso = ( ftree->Ds_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR03.sumNeutralHadronEt + ftree->Ds_IsoR03.sumPhotonEt - 0.5*ftree->Ds_IsoR03.sumPUPt) ) / DsFit_Ds_P4.Pt();
+                ftree->Ds_IsoR04.PFIso = ( ftree->Ds_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->Ds_IsoR04.sumNeutralHadronEt + ftree->Ds_IsoR04.sumPhotonEt - 0.5*ftree->Ds_IsoR04.sumPUPt) ) / DsFit_Ds_P4.Pt();
 
                 std::vector<TransientVertex> pvs_noDs = revertex->makeVertices(PVtracks_noDs, *bsHandle, iSetup, "noBS");
                 if( !(pvs_noDs.empty()) ){
@@ -995,15 +998,15 @@ void PVStudy::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
         ftree->mu.fillAll( muon, primvtx );
         ftree->mu_IsoR03.sumChargedHadronPt = muon.pfIsolationR03().sumChargedHadronPt;
-        ftree->mu_IsoR03.sumNeutralHadronPt = muon.pfIsolationR03().sumNeutralHadronEt;
-        ftree->mu_IsoR03.sumPhotonPt = muon.pfIsolationR03().sumPhotonEt;
+        ftree->mu_IsoR03.sumNeutralHadronEt = muon.pfIsolationR03().sumNeutralHadronEt;
+        ftree->mu_IsoR03.sumPhotonEt = muon.pfIsolationR03().sumPhotonEt;
         ftree->mu_IsoR03.sumPUPt = muon.pfIsolationR03().sumPUPt;
-        ftree->mu_IsoR03.PFIso = (ftree->mu_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->mu_IsoR03.sumNeutralHadronPt + ftree->mu_IsoR03.sumPhotonPt - 0.5*ftree->mu_IsoR03.sumPUPt)) / muon.pt();
+        ftree->mu_IsoR03.PFIso = (ftree->mu_IsoR03.sumChargedHadronPt + std::max(0.0, ftree->mu_IsoR03.sumNeutralHadronEt + ftree->mu_IsoR03.sumPhotonEt - 0.5*ftree->mu_IsoR03.sumPUPt)) / muon.pt();
         ftree->mu_IsoR04.sumChargedHadronPt = muon.pfIsolationR04().sumChargedHadronPt;
-        ftree->mu_IsoR04.sumNeutralHadronPt = muon.pfIsolationR04().sumNeutralHadronEt;
-        ftree->mu_IsoR04.sumPhotonPt = muon.pfIsolationR04().sumPhotonEt;
+        ftree->mu_IsoR04.sumNeutralHadronEt = muon.pfIsolationR04().sumNeutralHadronEt;
+        ftree->mu_IsoR04.sumPhotonEt = muon.pfIsolationR04().sumPhotonEt;
         ftree->mu_IsoR04.sumPUPt = muon.pfIsolationR04().sumPUPt;
-        ftree->mu_IsoR04.PFIso = (ftree->mu_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->mu_IsoR04.sumNeutralHadronPt + ftree->mu_IsoR04.sumPhotonPt - 0.5*ftree->mu_IsoR04.sumPUPt)) / muon.pt();
+        ftree->mu_IsoR04.PFIso = (ftree->mu_IsoR04.sumChargedHadronPt + std::max(0.0, ftree->mu_IsoR04.sumNeutralHadronEt + ftree->mu_IsoR04.sumPhotonEt - 0.5*ftree->mu_IsoR04.sumPUPt)) / muon.pt();
         ftree->mu_primvtx_ip.fillAll( (*ttBuilder).build(muon.muonBestTrack()), primvtx);
         
         if( maxidx_mu_pt == bestmu.index ) ftree->best_mu_match = true;

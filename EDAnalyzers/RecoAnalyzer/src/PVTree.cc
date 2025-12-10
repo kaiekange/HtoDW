@@ -819,14 +819,14 @@ void PVTree::CreateBranches()
     tree->Branch("match_Ds_PVwithDs_ipchi2",     &match_Ds_PVwithDs_ip_vec.ipchi2);
 
     tree->Branch("match_Ds_IsoR03_sumChargedHadronPt", &match_Ds_IsoR03_vec.sumChargedHadronPt);
-    tree->Branch("match_Ds_IsoR03_sumNeutralHadronPt", &match_Ds_IsoR03_vec.sumNeutralHadronPt);
-    tree->Branch("match_Ds_IsoR03_sumPhotonPt",        &match_Ds_IsoR03_vec.sumPhotonPt);
+    tree->Branch("match_Ds_IsoR03_sumNeutralHadronEt", &match_Ds_IsoR03_vec.sumNeutralHadronEt);
+    tree->Branch("match_Ds_IsoR03_sumPhotonEt",        &match_Ds_IsoR03_vec.sumPhotonEt);
     tree->Branch("match_Ds_IsoR03_sumPUPt",            &match_Ds_IsoR03_vec.sumPUPt);
     tree->Branch("match_Ds_IsoR03_PFIso",              &match_Ds_IsoR03_vec.PFIso);
 
     tree->Branch("match_Ds_IsoR04_sumChargedHadronPt", &match_Ds_IsoR04_vec.sumChargedHadronPt);
-    tree->Branch("match_Ds_IsoR04_sumNeutralHadronPt", &match_Ds_IsoR04_vec.sumNeutralHadronPt);
-    tree->Branch("match_Ds_IsoR04_sumPhotonPt",        &match_Ds_IsoR04_vec.sumPhotonPt);
+    tree->Branch("match_Ds_IsoR04_sumNeutralHadronEt", &match_Ds_IsoR04_vec.sumNeutralHadronEt);
+    tree->Branch("match_Ds_IsoR04_sumPhotonEt",        &match_Ds_IsoR04_vec.sumPhotonEt);
     tree->Branch("match_Ds_IsoR04_sumPUPt",            &match_Ds_IsoR04_vec.sumPUPt);
     tree->Branch("match_Ds_IsoR04_PFIso",              &match_Ds_IsoR04_vec.PFIso);
 
@@ -855,14 +855,14 @@ void PVTree::CreateBranches()
     tree->Branch("match_mu_isGlobal",  &match_mu_vec.isGlobal);
 
     tree->Branch("match_mu_IsoR03_sumChargedHadronPt", &match_mu_IsoR03_vec.sumChargedHadronPt);
-    tree->Branch("match_mu_IsoR03_sumNeutralHadronPt", &match_mu_IsoR03_vec.sumNeutralHadronPt);
-    tree->Branch("match_mu_IsoR03_sumPhotonPt",        &match_mu_IsoR03_vec.sumPhotonPt);
+    tree->Branch("match_mu_IsoR03_sumNeutralHadronEt", &match_mu_IsoR03_vec.sumNeutralHadronEt);
+    tree->Branch("match_mu_IsoR03_sumPhotonEt",        &match_mu_IsoR03_vec.sumPhotonEt);
     tree->Branch("match_mu_IsoR03_sumPUPt",            &match_mu_IsoR03_vec.sumPUPt);
     tree->Branch("match_mu_IsoR03_PFIso",              &match_mu_IsoR03_vec.PFIso);
 
     tree->Branch("match_mu_IsoR04_sumChargedHadronPt", &match_mu_IsoR04_vec.sumChargedHadronPt);
-    tree->Branch("match_mu_IsoR04_sumNeutralHadronPt", &match_mu_IsoR04_vec.sumNeutralHadronPt);
-    tree->Branch("match_mu_IsoR04_sumPhotonPt",        &match_mu_IsoR04_vec.sumPhotonPt);
+    tree->Branch("match_mu_IsoR04_sumNeutralHadronEt", &match_mu_IsoR04_vec.sumNeutralHadronEt);
+    tree->Branch("match_mu_IsoR04_sumPhotonEt",        &match_mu_IsoR04_vec.sumPhotonEt);
     tree->Branch("match_mu_IsoR04_sumPUPt",            &match_mu_IsoR04_vec.sumPUPt);
     tree->Branch("match_mu_IsoR04_PFIso",              &match_mu_IsoR04_vec.PFIso);
 
@@ -1189,14 +1189,14 @@ void PVTree::CreateBranches()
     tree->Branch("Ds_PVwithDs_ipchi2",     &Ds_PVwithDs_ip_vec.ipchi2);
 
     tree->Branch("Ds_IsoR03_sumChargedHadronPt", &Ds_IsoR03_vec.sumChargedHadronPt);
-    tree->Branch("Ds_IsoR03_sumNeutralHadronPt", &Ds_IsoR03_vec.sumNeutralHadronPt);
-    tree->Branch("Ds_IsoR03_sumPhotonPt",        &Ds_IsoR03_vec.sumPhotonPt);
+    tree->Branch("Ds_IsoR03_sumNeutralHadronEt", &Ds_IsoR03_vec.sumNeutralHadronEt);
+    tree->Branch("Ds_IsoR03_sumPhotonEt",        &Ds_IsoR03_vec.sumPhotonEt);
     tree->Branch("Ds_IsoR03_sumPUPt",            &Ds_IsoR03_vec.sumPUPt);
     tree->Branch("Ds_IsoR03_PFIso",              &Ds_IsoR03_vec.PFIso);
 
     tree->Branch("Ds_IsoR04_sumChargedHadronPt", &Ds_IsoR04_vec.sumChargedHadronPt);
-    tree->Branch("Ds_IsoR04_sumNeutralHadronPt", &Ds_IsoR04_vec.sumNeutralHadronPt);
-    tree->Branch("Ds_IsoR04_sumPhotonPt",        &Ds_IsoR04_vec.sumPhotonPt);
+    tree->Branch("Ds_IsoR04_sumNeutralHadronEt", &Ds_IsoR04_vec.sumNeutralHadronEt);
+    tree->Branch("Ds_IsoR04_sumPhotonEt",        &Ds_IsoR04_vec.sumPhotonEt);
     tree->Branch("Ds_IsoR04_sumPUPt",            &Ds_IsoR04_vec.sumPUPt);
     tree->Branch("Ds_IsoR04_PFIso",              &Ds_IsoR04_vec.PFIso);
 
@@ -1522,14 +1522,14 @@ void PVTree::CreateBranches()
     tree->Branch("best_Ds_PVwithDs_ipchi2",     &best_Ds_PVwithDs_ip_vec.ipchi2);
 
     tree->Branch("best_Ds_IsoR03_sumChargedHadronPt", &best_Ds_IsoR03_vec.sumChargedHadronPt);
-    tree->Branch("best_Ds_IsoR03_sumNeutralHadronPt", &best_Ds_IsoR03_vec.sumNeutralHadronPt);
-    tree->Branch("best_Ds_IsoR03_sumPhotonPt",        &best_Ds_IsoR03_vec.sumPhotonPt);
+    tree->Branch("best_Ds_IsoR03_sumNeutralHadronEt", &best_Ds_IsoR03_vec.sumNeutralHadronEt);
+    tree->Branch("best_Ds_IsoR03_sumPhotonEt",        &best_Ds_IsoR03_vec.sumPhotonEt);
     tree->Branch("best_Ds_IsoR03_sumPUPt",            &best_Ds_IsoR03_vec.sumPUPt);
     tree->Branch("best_Ds_IsoR03_PFIso",              &best_Ds_IsoR03_vec.PFIso);
 
     tree->Branch("best_Ds_IsoR04_sumChargedHadronPt", &best_Ds_IsoR04_vec.sumChargedHadronPt);
-    tree->Branch("best_Ds_IsoR04_sumNeutralHadronPt", &best_Ds_IsoR04_vec.sumNeutralHadronPt);
-    tree->Branch("best_Ds_IsoR04_sumPhotonPt",        &best_Ds_IsoR04_vec.sumPhotonPt);
+    tree->Branch("best_Ds_IsoR04_sumNeutralHadronEt", &best_Ds_IsoR04_vec.sumNeutralHadronEt);
+    tree->Branch("best_Ds_IsoR04_sumPhotonEt",        &best_Ds_IsoR04_vec.sumPhotonEt);
     tree->Branch("best_Ds_IsoR04_sumPUPt",            &best_Ds_IsoR04_vec.sumPUPt);
     tree->Branch("best_Ds_IsoR04_PFIso",              &best_Ds_IsoR04_vec.PFIso);
 
@@ -1560,14 +1560,14 @@ void PVTree::CreateBranches()
     tree->Branch("best_mu_isGlobal",  &mu_vec.isGlobal);
 
     tree->Branch("best_mu_IsoR03_sumChargedHadronPt", &mu_IsoR03_vec.sumChargedHadronPt);
-    tree->Branch("best_mu_IsoR03_sumNeutralHadronPt", &mu_IsoR03_vec.sumNeutralHadronPt);
-    tree->Branch("best_mu_IsoR03_sumPhotonPt",        &mu_IsoR03_vec.sumPhotonPt);
+    tree->Branch("best_mu_IsoR03_sumNeutralHadronEt", &mu_IsoR03_vec.sumNeutralHadronEt);
+    tree->Branch("best_mu_IsoR03_sumPhotonEt",        &mu_IsoR03_vec.sumPhotonEt);
     tree->Branch("best_mu_IsoR03_sumPUPt",            &mu_IsoR03_vec.sumPUPt);
     tree->Branch("best_mu_IsoR03_PFIso",              &mu_IsoR03_vec.PFIso);
 
     tree->Branch("best_mu_IsoR04_sumChargedHadronPt", &mu_IsoR04_vec.sumChargedHadronPt);
-    tree->Branch("best_mu_IsoR04_sumNeutralHadronPt", &mu_IsoR04_vec.sumNeutralHadronPt);
-    tree->Branch("best_mu_IsoR04_sumPhotonPt",        &mu_IsoR04_vec.sumPhotonPt);
+    tree->Branch("best_mu_IsoR04_sumNeutralHadronEt", &mu_IsoR04_vec.sumNeutralHadronEt);
+    tree->Branch("best_mu_IsoR04_sumPhotonEt",        &mu_IsoR04_vec.sumPhotonEt);
     tree->Branch("best_mu_IsoR04_sumPUPt",            &mu_IsoR04_vec.sumPUPt);
     tree->Branch("best_mu_IsoR04_PFIso",              &mu_IsoR04_vec.PFIso);
 

@@ -366,36 +366,36 @@ class PVTree
         };
 
         struct IsoInfo {
-            double sumChargedHadronPt, sumNeutralHadronPt, sumPhotonPt, sumPUPt, PFIso;
+            double sumChargedHadronPt, sumNeutralHadronEt, sumPhotonEt, sumPUPt, PFIso;
             void clearAll() {
                 sumChargedHadronPt = 0.0;
-                sumNeutralHadronPt = 0.0;
-                sumPhotonPt        = 0.0;
+                sumNeutralHadronEt = 0.0;
+                sumPhotonEt        = 0.0;
                 sumPUPt            = 0.0;
                 PFIso              = 0.0;
             }
         };
         struct IsoInfoVec {
-            std::vector<double> sumChargedHadronPt, sumNeutralHadronPt, sumPhotonPt, sumPUPt, PFIso;
+            std::vector<double> sumChargedHadronPt, sumNeutralHadronEt, sumPhotonEt, sumPUPt, PFIso;
             void clearAll() {
                 sumChargedHadronPt.clear();
-                sumNeutralHadronPt.clear();
-                sumPhotonPt.clear();
+                sumNeutralHadronEt.clear();
+                sumPhotonEt.clear();
                 sumPUPt.clear();
                 PFIso.clear();
             }
             void fillAll( const IsoInfo& info ){
                 sumChargedHadronPt.push_back(info.sumChargedHadronPt);
-                sumNeutralHadronPt.push_back(info.sumNeutralHadronPt);
-                sumPhotonPt.push_back(info.sumPhotonPt);
+                sumNeutralHadronEt.push_back(info.sumNeutralHadronEt);
+                sumPhotonEt.push_back(info.sumPhotonEt);
                 sumPUPt.push_back(info.sumPUPt);
                 PFIso.push_back(info.PFIso);
             }
             IsoInfo findIdx(int idx) const {
                 IsoInfo info;
                 info.sumChargedHadronPt = sumChargedHadronPt[idx];
-                info.sumNeutralHadronPt = sumNeutralHadronPt[idx];
-                info.sumPhotonPt        = sumPhotonPt[idx];
+                info.sumNeutralHadronEt = sumNeutralHadronEt[idx];
+                info.sumPhotonEt        = sumPhotonEt[idx];
                 info.sumPUPt            = sumPUPt[idx];
                 info.PFIso              = PFIso[idx];
                 return info;
