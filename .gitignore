@@ -1,1 +1,5 @@
 Configuration/GenProduction/python/__pycache__/
+__init__.py
+*.root
+*.log
+*/thread0
