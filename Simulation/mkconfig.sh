@@ -11,9 +11,9 @@ mode="LHEGS"
 cfgfile=${mode}_cfg.py
 
 cmsDriver.py "Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py" \
-    --eventcontent RAWSIM,PREMIXRAW \
+    --eventcontent PREMIXRAW \
     --customise Configuration/DataProcessing/Utils.addMonitoring \
-    --datatier GEN-SIM-RAW,LHE \
+    --datatier GEN-SIM-RAW \
     --conditions 124X_mcRun3_2022_realistic_v12 \
     --beamspot Realistic25ns13p6TeVEarly2022Collision \
     --step LHE,GEN,SIM,DIGI,DATAMIX,L1,DIGI2RAW,HLT:2022v12 \
