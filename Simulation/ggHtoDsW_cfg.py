@@ -2,7 +2,8 @@
 # using: 
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py --eventcontent PREMIXRAW --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM-RAW --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM,DIGI,DATAMIX,L1,DIGI2RAW,HLT:2022v12 --procModifiers premix_stage2,siPixelQualityRawToDigi --datamix PreMix --pileup_input dbs:/Neutrino_E-10_gun/Run3Summer21PrePremix-Summer22_124X_mcRun3_2022_realistic_v11-v2/PREMIX --geometry DB:Extended --era Run3 --fileout file:test.root --python_filename LHEGS_cfg.py --number 10 --no_exec --mc
+# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py --python_filename ggHtoDsW_cfg.py --eventcontent AODSIM --customise Configuration/DataProcessing/Utils.addMonitoring --customise_commands process.RandomNumberGeneratorService.externalLHEProducer.initialSeed=int(sys.argv[3]) --datatier AODSIM --fileout OUTPUTFILE --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM,DIGI,DATAMIX,L1,DIGI2RAW,HLT:2022v12,RAW2DIGI,L1Reco,RECO,RECOSIM --procModifiers premix_stage2,siPixelQualityRawToDigi --datamix PreMix --pileup_input dbs:/Neutrino_E-10_gun/Run3Summer21PrePremix-Summer22_124X_mcRun3_2022_realistic_v11-v2/PREMIX --geometry DB:Extended --era Run3 --number 500 --no_exec --mc
+import sys
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.Eras.Era_Run3_cff import Run3
@@ -29,11 +30,15 @@ process.load('Configuration.StandardSequences.DataMixerPreMix_cff')
 process.load('Configuration.StandardSequences.SimL1EmulatorDM_cff')
 process.load('Configuration.StandardSequences.DigiToRawDM_cff')
 process.load('HLTrigger.Configuration.HLT_2022v12_cff')
+process.load('Configuration.StandardSequences.RawToDigi_cff')
+process.load('Configuration.StandardSequences.L1Reco_cff')
+process.load('Configuration.StandardSequences.Reconstruction_cff')
+process.load('Configuration.StandardSequences.RecoSim_cff')
 process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(10),
+    input = cms.untracked.int32(500),
     output = cms.optional.untracked.allowed(cms.int32,cms.PSet)
 )
 
@@ -72,24 +77,26 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py nevts:10'),
+    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py nevts:500'),
     name = cms.untracked.string('Applications'),
     version = cms.untracked.string('$Revision: 1.19 $')
 )
 
 # Output definition
 
-process.PREMIXRAWoutput = cms.OutputModule("PoolOutputModule",
+process.AODSIMoutput = cms.OutputModule("PoolOutputModule",
     SelectEvents = cms.untracked.PSet(
         SelectEvents = cms.vstring('generation_step')
     ),
+    compressionAlgorithm = cms.untracked.string('LZMA'),
+    compressionLevel = cms.untracked.int32(4),
     dataset = cms.untracked.PSet(
-        dataTier = cms.untracked.string('GEN-SIM-RAW'),
+        dataTier = cms.untracked.string('AODSIM'),
         filterName = cms.untracked.string('')
     ),
-    fileName = cms.untracked.string('file:test.root'),
-    outputCommands = process.PREMIXRAWEventContent.outputCommands,
-    splitLevel = cms.untracked.int32(0)
+    eventAutoFlushCompressedSize = cms.untracked.int32(31457280),
+    fileName = cms.untracked.string(sys.argv[2]),
+    outputCommands = process.AODSIMEventContent.outputCommands
 )
 
 # Additional output definition
@@ -188,7 +195,7 @@ process.generator = cms.EDFilter("Pythia8ConcurrentHadronizerFilter",
 process.externalLHEProducer = cms.EDProducer("ExternalLHEProducer",
     args = cms.vstring('/cvmfs/cms.cern.ch/phys_generator/gridpacks/RunIII/13p6TeV/slc7_amd64_gcc10/powheg/V2/gg_H_quark-mass-effects_mwindow1d0_slc7_amd64_gcc10_CMSSW_12_4_8.tgz'),
     generateConcurrently = cms.untracked.bool(True),
-    nEvents = cms.untracked.uint32(10),
+    nEvents = cms.untracked.uint32(500),
     numberOfParameters = cms.uint32(1),
     outputFile = cms.string('cmsgrid_final.lhe'),
     scriptName = cms.FileInPath('GeneratorInterface/LHEInterface/data/run_generic_tarball_cvmfs.sh')
@@ -205,9 +212,13 @@ process.digitisation_step = cms.Path(process.pdigi)
 process.datamixing_step = cms.Path(process.pdatamix)
 process.L1simulation_step = cms.Path(process.SimL1Emulator)
 process.digi2raw_step = cms.Path(process.DigiToRaw)
+process.raw2digi_step = cms.Path(process.RawToDigi)
+process.L1Reco_step = cms.Path(process.L1Reco)
+process.reconstruction_step = cms.Path(process.reconstruction)
+process.recosim_step = cms.Path(process.recosim)
 process.genfiltersummary_step = cms.EndPath(process.genFilterSummary)
 process.endjob_step = cms.EndPath(process.endOfProcess)
-process.PREMIXRAWoutput_step = cms.EndPath(process.PREMIXRAWoutput)
+process.AODSIMoutput_step = cms.EndPath(process.AODSIMoutput)
 
 # Schedule definition
 # process.schedule imported from cff in HLTrigger.Configuration
@@ -219,7 +230,7 @@ process.schedule.insert(4, process.digitisation_step)
 process.schedule.insert(5, process.datamixing_step)
 process.schedule.insert(6, process.L1simulation_step)
 process.schedule.insert(7, process.digi2raw_step)
-process.schedule.extend([process.endjob_step,process.PREMIXRAWoutput_step])
+process.schedule.extend([process.raw2digi_step,process.L1Reco_step,process.reconstruction_step,process.recosim_step,process.endjob_step,process.AODSIMoutput_step])
 from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask
 associatePatAlgosToolsTask(process)
 # filter all path with the production filter sequence
@@ -245,6 +256,11 @@ process = customizeHLTforMC(process)
 
 
 # Customisation from command line
+
+process.RandomNumberGeneratorService.externalLHEProducer.initialSeed=int(sys.argv[3])
+#Have logErrorHarvester wait for the same EDProducers to finish as those providing data for the OutputModule
+from FWCore.Modules.logErrorHarvester_cff import customiseLogErrorHarvesterUsingOutputCommands
+process = customiseLogErrorHarvesterUsingOutputCommands(process)
 
 # Add early deletion of temporary data products to reduce peak memory need
 from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEarlyDelete
