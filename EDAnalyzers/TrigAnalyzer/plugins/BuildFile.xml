@@ -22,6 +22,8 @@
 
 <use name="RecoVertex/KalmanVertexFit"/>
 <use name="RecoVertex/VertexTools"/>
+<use name="RecoVertex/KinematicFitPrimitives"/>
+<use name="RecoVertex/KinematicFit"/>
 
 <use name="CommonTools/UtilAlgos"/>
 <use name="CLHEP"/>
