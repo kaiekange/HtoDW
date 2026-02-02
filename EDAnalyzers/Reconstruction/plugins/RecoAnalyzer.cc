@@ -72,10 +72,8 @@ private:
 	const Double_t Mass_pi = 0.13957039;
 	const Double_t Mass_mu = 0.1056583755;
 	unsigned long nEventsProcessed_;
-	unsigned long nEventsValidKp_;
-	unsigned long nEventsValidKm_;
-	unsigned long nEventsValidpi_;
-	unsigned long nEventsValidmu_;
+	unsigned long nEventsMatch_;
+	unsigned long nEventsNonMatch_;
 
 	std::map<TString, Int_t> triggerCounts_;
 	std::map<TString, Int_t> triggerTotal_;
@@ -119,10 +117,8 @@ void RecoAnalyzer::beginJob()
 	ftree->CreateBranches();
 	InfoTree = fs->make<TTree>("RunInfo", "RunInfo");
 	InfoTree->Branch("nEventsProcessed_", &nEventsProcessed_);
-	InfoTree->Branch("nEventsValidKp_", &nEventsValidKp_);
-	InfoTree->Branch("nEventsValidKm_", &nEventsValidKm_);
-	InfoTree->Branch("nEventsValidpi_", &nEventsValidpi_);
-	InfoTree->Branch("nEventsValidmu_", &nEventsValidmu_);
+	InfoTree->Branch("nEventsMatch_", &nEventsMatch_);
+	InfoTree->Branch("nEventsNonMatch_", &nEventsNonMatch_);
 }
 
 void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
@@ -150,10 +146,8 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 
 	ftree->Init();
 	nEventsProcessed_ = 0;
-	nEventsValidKp_ = 0;
-	nEventsValidKm_ = 0;
-	nEventsValidpi_ = 0;
-	nEventsValidmu_ = 0;
+	nEventsMatch_ = 0;
+	nEventsNonMatch_ = 0;
 
 	const reco::Vertex &primvtx = primvtxHandle->front();
 	if (!primvtx.isValid())
@@ -211,7 +205,6 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 			if ((Kp_gp.pdgId() == 321) && hasAncestor(Kp_gp, 333, 321) && hasAncestor(Kp_gp, 431, 211) && hasAncestor(Kp_gp, 25, 24))
 				Kp_match = true;
 		}
-		nEventsValidKp_++;
 
 		for (size_t iKm = 0; iKm < idx_pf.size(); iKm++)
 		{
@@ -258,8 +251,6 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 				if ((Km_gp.pdgId() == -321) && hasAncestor(Km_gp, 333, 321) && hasAncestor(Km_gp, 431, 211) && hasAncestor(Km_gp, 25, 24))
 					Km_match = true;
 			}
-
-			nEventsValidKm_++;
 
 			for (size_t ipi = 0; ipi < idx_pf.size(); ipi++)
 			{
@@ -311,8 +302,6 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 				TLorentzVector phi_tlv_phiM, Ds_tlv_phiM;
 				phi_tlv_phiM.SetXYZM(phi_tlv.Px(), phi_tlv.Py(), phi_tlv.Pz(), Mass_phi);
 				Ds_tlv_phiM = phi_tlv_phiM + pi_tlv;
-
-				nEventsValidpi_++;
 
 				std::pair<bool, Measurement1D> K1_ipresult = IPTools::absoluteImpactParameter3D(DsFit_ttrk[0], primvtx);
 				std::pair<bool, Measurement1D> K2_ipresult = IPTools::absoluteImpactParameter3D(DsFit_ttrk[1], primvtx);
@@ -378,9 +367,9 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 					}
 				}
 				IsoR03_PFIso = IsoR03_sumChargedHadronPt + std::max(0.0, IsoR03_sumNeutralHadronEt + IsoR03_sumPhotonEt - 0.5 * IsoR03_sumPUPt);
-				IsoR03_RelIso =(IsoR03_sumChargedHadronPt + std::max(0.0, IsoR03_sumNeutralHadronEt + IsoR03_sumPhotonEt - 0.5 * IsoR03_sumPUPt)) / Ds_tlv.Pt();
+				IsoR03_RelIso = (IsoR03_sumChargedHadronPt + std::max(0.0, IsoR03_sumNeutralHadronEt + IsoR03_sumPhotonEt - 0.5 * IsoR03_sumPUPt)) / Ds_tlv.Pt();
 				IsoR04_PFIso = IsoR04_sumChargedHadronPt + std::max(0.0, IsoR04_sumNeutralHadronEt + IsoR04_sumPhotonEt - 0.5 * IsoR04_sumPUPt);
-				IsoR04_RelIso =(IsoR04_sumChargedHadronPt + std::max(0.0, IsoR04_sumNeutralHadronEt + IsoR04_sumPhotonEt - 0.5 * IsoR04_sumPUPt)) / Ds_tlv.Pt();
+				IsoR04_RelIso = (IsoR04_sumChargedHadronPt + std::max(0.0, IsoR04_sumNeutralHadronEt + IsoR04_sumPhotonEt - 0.5 * IsoR04_sumPUPt)) / Ds_tlv.Pt();
 
 				bool pi_match = false;
 				pat::PackedCandidateRef pi_pfRef(PFCandHandle, idx_pi);
@@ -412,7 +401,10 @@ void RecoAnalyzer::analyze(const edm::Event &iEvent, const edm::EventSetup &iSet
 							mu_match = true;
 					}
 
-					nEventsValidmu_++;
+					if (Kp_match && Km_match && pi_match && mu_match)
+						nEventsMatch_++;
+					if (!Kp_match && !Km_match && !pi_match && !mu_match)
+						nEventsNonMatch_++;
 
 					ftree->K1_charge.push_back(pi_pf.charge());
 					ftree->K1_eta.push_back(K1_tlv.Eta());
