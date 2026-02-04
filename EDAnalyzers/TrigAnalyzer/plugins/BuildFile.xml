@@ -1,5 +1,3 @@
-<use name="EDAnalyzers/TrigAnalyzer"/>
-
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
 <use name="FWCore/ServiceRegistry"/>
@@ -24,6 +22,8 @@
 <use name="RecoVertex/VertexTools"/>
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/KinematicFit"/>
+
+<use name="EDAnalyzers/TrigAnalyzer"/>
 
 <use name="CommonTools/UtilAlgos"/>
 <use name="CLHEP"/>
