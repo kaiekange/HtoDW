@@ -1,7 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 from Configuration.AlCa.GlobalTag import GlobalTag
 
-file_list = ["file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_{}.root".format(i) for i in range(1, 11)]
+file_list = ["file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_{}.root".format(i) for i in range(1, 21)]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(*file_list))
 
 # source = cms.Source("PoolSource", fileNames=cms.untracked.vstring("file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_1.root"))

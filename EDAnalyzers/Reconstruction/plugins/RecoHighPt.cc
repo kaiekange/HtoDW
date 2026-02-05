@@ -34,9 +34,10 @@
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "TrackingTools/IPTools/interface/IPTools.h"
 
-#include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
-#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
-#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
+#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
+#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 
 #include "TLorentzVector.h"
 #include "TTree.h"
@@ -64,12 +65,21 @@ private:
 	edm::EDGetTokenT<edm::Association<reco::GenParticleCollection>> associationToken_;
 	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
 
-	const Double_t Mass_Ds = 1.96835;
-	const Double_t Mass_phi = 1.019460;
-	const Double_t Mass_K = 0.493677;
-	const Double_t Mass_pi = 0.13957039;
-	const Double_t Mass_mu = 0.1056583755;
+	KinematicParticleFactoryFromTransientTrack factory;
+	KinematicParticleVertexFitter KPVFitter;
+
+	const Float_t Mass_Ds = 1.96835;
+	const Float_t Mass_phi = 1.019460;
+	const Float_t Mass_K = 0.493677;
+	const Float_t Mass_pi = 0.13957039;
+	const Float_t Mass_mu = 0.1056583755;
+	Float_t chi = 0.0;
+	Float_t ndf = 0.0;
+	Float_t Mass_K_sigma = 0.000013;
+	Float_t Mass_pi_sigma = 0.00000017;
+
 	unsigned long nEventsProcessed_;
+	unsigned long nEventsTriggered_;
 	unsigned long nEventsKpMatch_;
 	unsigned long nEventsKpNonMatch_;
 	unsigned long nEventsKmMatch_;
@@ -84,12 +94,9 @@ private:
 	unsigned long nEventsMuNonMatch_;
 	unsigned long nEventsMatch_;
 	unsigned long nEventsNonMatch_;
-
-	KalmanVertexFitter KVFitter;
 };
 
 RecoHighPt::RecoHighPt(const edm::ParameterSet &iConfig)
-	: KVFitter(true)
 {
 	edm::InputTag TriggerBitsTag_("TriggerResults", "", "HLT");
 	triggerToken_ = consumes<edm::TriggerResults>(TriggerBitsTag_);
@@ -116,6 +123,7 @@ RecoHighPt::RecoHighPt(const edm::ParameterSet &iConfig)
 void RecoHighPt::beginJob()
 {
 	nEventsProcessed_ = 0;
+	nEventsTriggered_ = 0;
 	nEventsKpMatch_ = 0;
 	nEventsKpNonMatch_ = 0;
 	nEventsKmMatch_ = 0;
@@ -155,12 +163,44 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 	edm::ESHandle<TransientTrackBuilder> ttBuilderHandle = iSetup.getHandle(ttBuilderToken_);
 	const TransientTrackBuilder *ttBuilder = ttBuilderHandle.product();
 
+	//==================================================//
+	//--------------------------------------------------//
+	// primary vertex
+	//--------------------------------------------------//
+	//==================================================//
 	const reco::Vertex &primvtx = primvtxHandle->front();
 	if (!primvtx.isValid())
 		return;
 	GlobalPoint primvtx_pos(primvtx.x(), primvtx.y(), primvtx.z());
-	// nEventsProcessed_++;
+	GlobalError primvtx_cov(primvtx.covariance());
+	nEventsProcessed_++;
 
+	//==================================================//
+	//--------------------------------------------------//
+	// Triggers
+	//--------------------------------------------------//
+	//==================================================//
+	Bool_t trig_HLT_IsoMu24 = false;
+	Bool_t trig_HLT_Mu50 = false;
+	const edm::TriggerNames &names = iEvent.triggerNames(*triggerHandle);
+	for (Size_t i = 0; i < names.size(); i++)
+	{
+		TString trigName = names.triggerName(i);
+		Bool_t pass = triggerHandle->accept(i);
+		if (trigName.Contains("HLT_IsoMu24_v"))
+			trig_HLT_IsoMu24 = pass;
+		else if (trigName.Contains("HLT_Mu50_v"))
+			trig_HLT_Mu50 = pass;
+	}
+	if (!(trig_HLT_IsoMu24 || trig_HLT_Mu50))
+		return;
+	nEventsTriggered_++;
+
+	//==================================================//
+	//--------------------------------------------------//
+	// Gen match
+	//--------------------------------------------------//
+	//==================================================//
 	Int_t Kp_match_idx = -777;
 	Int_t Km_match_idx = -777;
 	Int_t pi_match_idx = -777;
@@ -244,6 +284,11 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 		}
 	}
 
+	//==================================================//
+	//--------------------------------------------------//
+	// Reconstruction
+	//--------------------------------------------------//
+	//==================================================//
 	std::vector<Int_t> idx_pf;
 
 	for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
@@ -254,8 +299,6 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 		if (!pf.trackHighPurity())
 			continue;
 		if (pf.pt() < 0.5)
-			continue;
-		if (pf.p() < 1)
 			continue;
 		if (abs(pf.pdgId()) != 211)
 			continue;
@@ -280,6 +323,12 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 		const pat::PackedCandidate &cnd_Kp_pf = (*PFCandHandle)[idx_Kp];
 		if (cnd_Kp_pf.charge() != 1)
 			continue;
+		if (cnd_Kp_pf.pt() < 1)
+			continue;
+
+		TLorentzVector cnd_Kp_tlv;
+		cnd_Kp_tlv.SetXYZM(cnd_Kp_pf.px(), cnd_Kp_pf.py(), cnd_Kp_pf.pz(), Mass_K);
+		reco::TransientTrack cnd_Kp_tt = (*ttBuilder).build(cnd_Kp_pf.bestTrack());
 
 		for (Int_t iKm = 0; iKm < static_cast<Int_t>(idx_pf.size()); iKm++)
 		{
@@ -290,40 +339,17 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 			const pat::PackedCandidate &cnd_Km_pf = (*PFCandHandle)[idx_Km];
 			if (cnd_Km_pf.charge() != -1)
 				continue;
-
-			if (reco::deltaR(cnd_Kp_pf.eta(), cnd_Kp_pf.phi(), cnd_Km_pf.eta(), cnd_Km_pf.phi()) > 0.1)
-				continue;
-			if (abs(cnd_Kp_pf.pt() - cnd_Km_pf.pt()) > 20)
+			if (cnd_Km_pf.pt() < 1)
 				continue;
 
-			std::vector<reco::TransientTrack> cnd_phi_ttrk = {
-				(*ttBuilder).build(cnd_Kp_pf.pseudoTrack()),
-				(*ttBuilder).build(cnd_Km_pf.pseudoTrack())};
+			TLorentzVector cnd_Km_tlv;
+			cnd_Km_tlv.SetXYZM(cnd_Km_pf.px(), cnd_Km_pf.py(), cnd_Km_pf.pz(), Mass_K);
+			if ((cnd_Kp_tlv + cnd_Km_tlv).Pt() < 2.5)
+				continue;
+			if (abs((cnd_Kp_tlv + cnd_Km_tlv).M() - Mass_phi) > 0.1)
+				continue;
+			reco::TransientTrack cnd_Km_tt = (*ttBuilder).build(cnd_Km_pf.bestTrack());
 
-			TransientVertex cnd_phi_tvtx = KVFitter.vertex(cnd_phi_ttrk);
-			if (!cnd_phi_tvtx.isValid())
-				continue;
-			if (!cnd_phi_tvtx.hasRefittedTracks())
-				continue;
-			if (cnd_phi_tvtx.normalisedChiSquared() < 0)
-				continue;
-			if (cnd_phi_tvtx.normalisedChiSquared() > 10)
-				continue;
-
-			reco::Vertex cnd_phi_vtx = reco::Vertex(cnd_phi_tvtx);
-			std::vector<reco::TransientTrack> cnd_phiFit_ttrk = cnd_phi_tvtx.refittedTracks();
-			TLorentzVector cnd_phiFit_Kp_tlv, cnd_phiFit_Km_tlv, cnd_phiFit_phi_tlv;
-			cnd_phiFit_Kp_tlv.SetXYZM(cnd_phiFit_ttrk[0].track().px(), cnd_phiFit_ttrk[0].track().py(), cnd_phiFit_ttrk[0].track().pz(), Mass_K);
-			cnd_phiFit_Km_tlv.SetXYZM(cnd_phiFit_ttrk[1].track().px(), cnd_phiFit_ttrk[1].track().py(), cnd_phiFit_ttrk[1].track().pz(), Mass_K);
-			cnd_phiFit_phi_tlv = cnd_phiFit_Kp_tlv + cnd_phiFit_Km_tlv;
-			if (reco::deltaR(cnd_phiFit_Kp_tlv.Eta(), cnd_phiFit_Kp_tlv.Phi(), cnd_phiFit_phi_tlv.Eta(), cnd_phiFit_phi_tlv.Phi()) > 0.05)
-				continue;
-			if (reco::deltaR(cnd_phiFit_Km_tlv.Eta(), cnd_phiFit_Km_tlv.Phi(), cnd_phiFit_phi_tlv.Eta(), cnd_phiFit_phi_tlv.Phi()) > 0.05)
-				continue;
-			if ((cnd_phiFit_phi_tlv.M() - Mass_phi) > 0.1)
-				continue;
-			if (cnd_phiFit_phi_tlv.Pt() < 2)
-				continue;
 
 			for (Int_t ipi = 0; ipi < static_cast<Int_t>(idx_pf.size()); ipi++)
 			{
@@ -332,75 +358,81 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 				const Int_t idx_pi = idx_pf[ipi];
 				const pat::PackedCandidate &cnd_pi_pf = (*PFCandHandle)[idx_pi];
 
-				if (reco::deltaR(cnd_Kp_pf.eta(), cnd_Kp_pf.phi(), cnd_pi_pf.eta(), cnd_pi_pf.phi()) > 0.4)
+				TLorentzVector cnd_pi_tlv;
+				cnd_pi_tlv.SetXYZM(cnd_pi_pf.px(), cnd_pi_pf.py(), cnd_pi_pf.pz(), Mass_pi);
+				if ((cnd_Kp_tlv + cnd_Km_tlv + cnd_pi_tlv).Pt() < 5)
 					continue;
-				if (reco::deltaR(cnd_Km_pf.eta(), cnd_Km_pf.phi(), cnd_pi_pf.eta(), cnd_pi_pf.phi()) > 0.4)
+				if (abs((cnd_Kp_tlv + cnd_Km_tlv + cnd_pi_tlv).M() - Mass_Ds) > 0.3)
 					continue;
-				if (reco::deltaR(cnd_phiFit_phi_tlv.Eta(), cnd_phiFit_phi_tlv.Phi(), cnd_pi_pf.eta(), cnd_pi_pf.phi()) > 0.4)
+				reco::TransientTrack cnd_pi_tt = (*ttBuilder).build(cnd_pi_pf.bestTrack());
+
+				std::vector<RefCountedKinematicParticle> DsDaughters;
+				DsDaughters.push_back(factory.particle(cnd_Kp_tt, Mass_K, chi, ndf, Mass_K_sigma));
+				DsDaughters.push_back(factory.particle(cnd_Km_tt, Mass_K, chi, ndf, Mass_K_sigma));
+				DsDaughters.push_back(factory.particle(cnd_pi_tt, Mass_pi, chi, ndf, Mass_pi_sigma));
+				RefCountedKinematicTree DsTree = KPVFitter.fit(DsDaughters);
+
+				if (!DsTree->isValid())
+					continue;
+				DsTree->movePointerToTheTop();
+
+				// DsTree vertex
+				RefCountedKinematicVertex Ds_vertex = DsTree->currentDecayVertex();
+				if (!Ds_vertex->vertexIsValid())
+					continue;
+				GlobalPoint Ds_vtx_pos = Ds_vertex->position();
+				GlobalError Ds_vtx_cov = Ds_vertex->error();
+
+				Float_t Ds_prob = TMath::Prob(Ds_vertex->chiSquared(), Ds_vertex->degreesOfFreedom());
+				if (Ds_prob < 0.01)
 					continue;
 
-				std::vector<reco::TransientTrack> cnd_Ds_ttrk = {
-					cnd_phiFit_ttrk[0],
-					cnd_phiFit_ttrk[1],
-					(*ttBuilder).build(cnd_pi_pf.pseudoTrack())};
+				// DsTree particles: Ds
+				RefCountedKinematicParticle Ds = DsTree->currentParticle();
+				GlobalVector Ds_mtm = Ds->currentState().globalMomentum();
+				// DsTree particles: K+
+				DsTree->movePointerToTheFirstChild();
+				RefCountedKinematicParticle Kp = DsTree->currentParticle();
+				GlobalVector Kp_mtm = Kp->currentState().globalMomentum();
+				// DsTree particles: K-
+				DsTree->movePointerToTheNextChild();
+				RefCountedKinematicParticle Km = DsTree->currentParticle();
+				GlobalVector Km_mtm = Km->currentState().globalMomentum();
+				// // DsTree particles: pi
+				// DsTree->movePointerToTheNextChild();
+				// RefCountedKinematicParticle pi = DsTree->currentParticle();
+				// GlobalVector pi_mtm = pi->currentState().globalMomentum();
 
-				TransientVertex cnd_Ds_tvtx = KVFitter.vertex(cnd_Ds_ttrk);
-				if (!cnd_Ds_tvtx.isValid())
-					continue;
-				if (!cnd_Ds_tvtx.hasRefittedTracks())
-					continue;
-				if (cnd_Ds_tvtx.normalisedChiSquared() < 0)
-					continue;
-				if (cnd_Ds_tvtx.normalisedChiSquared() > 10)
-					continue;
-				reco::Vertex cnd_Ds_vtx = reco::Vertex(cnd_Ds_tvtx);
+				// Construct phi from
+				// GlobalVector phi_mtm = Kp_mtm + Km_mtm;
+				TLorentzVector Kp_tlv, Km_tlv, phi_tlv;
+				Kp_tlv.SetXYZM(Kp_mtm.x(), Kp_mtm.y(), Kp_mtm.z(), Mass_K);
+				Km_tlv.SetXYZM(Km_mtm.x(), Km_mtm.y(), Km_mtm.z(), Mass_K);
+				phi_tlv = Kp_tlv + Km_tlv;
 
-				std::vector<reco::TransientTrack> cnd_DsFit_ttrk = cnd_Ds_tvtx.refittedTracks();
-				TLorentzVector cnd_Kp_tlv, cnd_Km_tlv, cnd_pi_tlv, cnd_phi_tlv, cnd_Ds_tlv;
-				cnd_Kp_tlv.SetXYZM(cnd_DsFit_ttrk[0].track().px(), cnd_DsFit_ttrk[0].track().py(), cnd_DsFit_ttrk[0].track().pz(), Mass_K);
-				cnd_Km_tlv.SetXYZM(cnd_DsFit_ttrk[1].track().px(), cnd_DsFit_ttrk[1].track().py(), cnd_DsFit_ttrk[1].track().pz(), Mass_K);
-				cnd_pi_tlv.SetXYZM(cnd_DsFit_ttrk[2].track().px(), cnd_DsFit_ttrk[2].track().py(), cnd_DsFit_ttrk[2].track().pz(), Mass_pi);
-				cnd_phi_tlv = cnd_Kp_tlv + cnd_Km_tlv;
-				cnd_Ds_tlv = cnd_Kp_tlv + cnd_Km_tlv + cnd_pi_tlv;
-
-				if (reco::deltaR(cnd_Kp_tlv.Eta(), cnd_Kp_tlv.Phi(), cnd_Ds_tlv.Eta(), cnd_Ds_tlv.Phi()) > 0.15)
+				if (abs(phi_tlv.M() - Mass_phi) > 0.03)
 					continue;
-				if (reco::deltaR(cnd_Km_tlv.Eta(), cnd_Km_tlv.Phi(), cnd_Ds_tlv.Eta(), cnd_Ds_tlv.Phi()) > 0.15)
+				if (phi_tlv.Pt() < 3)
 					continue;
-				if (reco::deltaR(cnd_pi_tlv.Eta(), cnd_pi_tlv.Phi(), cnd_Ds_tlv.Eta(), cnd_Ds_tlv.Phi()) > 0.4)
+				if (abs(Ds->currentState().mass() - Mass_Ds) > 0.15)
 					continue;
-				if (reco::deltaR(cnd_phi_tlv.Eta(), cnd_phi_tlv.Phi(), cnd_Ds_tlv.Eta(), cnd_Ds_tlv.Phi()) > 0.15)
-					continue;
-
-				if ((cnd_phi_tlv.M() - Mass_phi) > 0.03)
-					continue;
-				if (cnd_phi_tlv.Pt() < 3)
-					continue;
-				if ((cnd_Ds_tlv.M() - Mass_Ds) > 0.15)
-					continue;
-				if (cnd_Ds_tlv.Pt() < 7)
+				if (Ds_mtm.perp() < 7)
 					continue;
 
-				GlobalPoint Ds_pos(cnd_Ds_vtx.x(), cnd_Ds_vtx.y(), cnd_Ds_vtx.z());
-				GlobalVector displacement = Ds_pos - primvtx_pos;
-				GlobalVector PDirec(cnd_Ds_tlv.Px(), cnd_Ds_tlv.Py(), cnd_Ds_tlv.Pz());
-				VertexDistance3D vtxdist3D;
-				Measurement1D Ds_FD_3D = vtxdist3D.signedDistance(primvtx, cnd_Ds_vtx, PDirec);
-				if (abs(Ds_FD_3D.value()) > 4)
-					continue;
-				Float_t direction_angle = displacement.dot(PDirec) / (displacement.mag() * PDirec.mag());
-				if(direction_angle < 0)
+				GlobalVector displacement = Ds_vtx_pos - primvtx_pos;
+				Float_t dira = displacement.dot(Ds_mtm) / (displacement.mag() * Ds_mtm.mag());
+				if(dira < 0.9)
 					continue;
 
 				if ((idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx))
 					Ds_pass++;
 
-				if (cnd_Ds_tlv.Pt() > best_Ds_pt)
+				if (Ds_mtm.perp() > best_Ds_pt)
 				{
 					best_Kp_idx = idx_Kp;
 					best_Km_idx = idx_Km;
 					best_pi_idx = idx_pi;
-					best_Ds_pt = cnd_Ds_tlv.Pt();
+					best_Ds_pt = Ds_mtm.perp();
 				}
 			}
 		}
@@ -427,8 +459,6 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 			continue;
 		if (cnd_muon.pt() < 7)
 			continue;
-		// if (cnd_muon.p() < 1)
-		// 	continue;
 		if (!cnd_muon.isTightMuon(primvtx))
 			continue;
 
@@ -438,7 +468,7 @@ void RecoHighPt::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 			best_mu_pt = cnd_muon.pt();
 		}
 	}
-
+	
 	if (best_mu_idx == -1)
 		return;
 
@@ -513,7 +543,7 @@ Bool_t RecoHighPt::hasAncestor(const reco::GenParticle &gp, const Int_t motherid
 
 void RecoHighPt::endJob()
 {
-	std::cout << "Total: " << nEventsProcessed_ << std::endl;
+	std::cout << "Total: " << nEventsProcessed_ << ", Triggered: " << nEventsTriggered_ << std::endl;
 	std::cout << "Kp match: " << nEventsKpMatch_ << ", nonmatch: " << nEventsKpNonMatch_ << std::endl;
 	std::cout << "Km match: " << nEventsKmMatch_ << ", nonmatch: " << nEventsKmNonMatch_ << std::endl;
 	std::cout << "pi match: " << nEventspiMatch_ << ", nonmatch: " << nEventspiNonMatch_ << std::endl;
