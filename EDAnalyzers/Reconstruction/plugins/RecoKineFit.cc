@@ -20,6 +20,8 @@
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
+#include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/Math/interface/Point3D.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -67,6 +69,8 @@ private:
 	edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken_;
 	edm::EDGetTokenT<pat::PackedCandidateCollection> PFCandToken_;
 	edm::EDGetTokenT<pat::MuonCollection> MuonToken_;
+	edm::EDGetTokenT<pat::METCollection> MetToken_;
+	edm::EDGetTokenT<pat::JetCollection> JetToken_;
 	edm::EDGetTokenT<edm::Association<reco::GenParticleCollection>> associationToken_;
 	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
 
@@ -87,7 +91,7 @@ private:
 
 	const edm::Service<TFileService> fs;
 	KineTree *ftree;
-	TTree * InfoTree;
+	TTree *InfoTree;
 
 	unsigned long nEventsProcessed_;
 	unsigned long nEventsTriggered_;
@@ -111,6 +115,12 @@ RecoKineFit::RecoKineFit(const edm::ParameterSet &iConfig)
 
 	edm::InputTag MuonTag_("slimmedMuons");
 	MuonToken_ = consumes<pat::MuonCollection>(MuonTag_);
+
+	edm::InputTag MetTag_("slimmedMETsPuppi");
+	MetToken_ = consumes<pat::METCollection>(MetTag_);
+
+	edm::InputTag JetTag_("slimmedJetsPuppi");
+	JetToken_ = consumes<pat::JetCollection>(JetTag_);
 
 	edm::InputTag assotiationTag_("packedPFCandidateToGenAssociation");
 	associationToken_ = consumes<edm::Association<reco::GenParticleCollection>>(assotiationTag_);
@@ -153,6 +163,12 @@ void RecoKineFit::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetu
 
 	edm::Handle<pat::MuonCollection> MuonHandle;
 	iEvent.getByToken(MuonToken_, MuonHandle);
+
+	edm::Handle<pat::METCollection> MetHandle;
+	iEvent.getByToken(MetToken_, MetHandle);
+
+	edm::Handle<pat::JetCollection> JetHandle;
+	iEvent.getByToken(JetToken_, JetHandle);
 
 	edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
 	iEvent.getByToken(associationToken_, associationHandle);
@@ -492,14 +508,33 @@ void RecoKineFit::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetu
 		}
 	}
 
+	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
+	{
+		const pat::Muon &muon = (*MuonHandle)[idx_mu];
+		if (!muon.isTightMuon(primvtx))
+			continue;
+
+		if (muon.charge() == best_pi_pf.charge())
+			ftree->num_ss_mu++;
+		else if (muon.charge() == -best_pi_pf.charge())
+			ftree->num_os_mu++;
+	}
+
 	if (best_mu_idx == -1)
 		return;
-	
+
 	const pat::Muon &muon = (*MuonHandle)[best_mu_idx];
+
+	//==================================================//
+	//--------------------------------------------------//
+	// MET
+	//--------------------------------------------------//
+	//==================================================//
+	const pat::MET &Met = MetHandle->front();
 
 	nEventsReconstructed_++;
 
-	if((best_Kp_idx == Kp_match_idx) && (best_Km_idx == Km_match_idx) && (best_pi_idx == pi_match_idx) && (best_mu_idx == mu_match_idx))
+	if ((best_Kp_idx == Kp_match_idx) && (best_Km_idx == Km_match_idx) && (best_pi_idx == pi_match_idx) && (best_mu_idx == mu_match_idx))
 		nEventsMatch_++;
 
 	//==================================================//
@@ -600,6 +635,20 @@ void RecoKineFit::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetu
 	Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
 	Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt);
 	Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
+
+	Float_t deltaR_Ds_Jet = 100.;
+	Int_t num_jets_pt30 = 0;
+	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
+	{
+		const pat::Jet &Jet = (*JetHandle)[idx_jet];
+		if (Jet.pt() < 50)
+			continue;
+		num_jets_pt30++;
+		Float_t tmp_deltaR_Ds_Jet = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
+
+		if (tmp_deltaR_Ds_Jet < deltaR_Ds_Jet)
+			deltaR_Ds_Jet = tmp_deltaR_Ds_Jet;
+	}
 
 	//--------------------------------------------------//
 	// muon candidate
@@ -798,6 +847,24 @@ void RecoKineFit::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetu
 	ftree->mu_IsoR04_PFIso = mu_IsoR04_PFIso;
 	ftree->mu_IsoR04_RelIso = mu_IsoR04_RelIso;
 
+	// MET kinematics
+	ftree->met_sig = Met.metSignificance();
+	ftree->met_phi = Met.phi();
+	ftree->met_px = Met.px();
+	ftree->met_py = Met.py();
+	ftree->met_pt = Met.pt();
+	ftree->met_sumEt = Met.sumEt();
+	ftree->met_corphi = Met.corPhi();
+	ftree->met_corpx = Met.corPx();
+	ftree->met_corpy = Met.corPy();
+	ftree->met_corpt = Met.corPt();
+	ftree->met_corsumEt = Met.corSumEt();
+
+	// Jets
+	ftree->num_jets = JetHandle->size();
+	ftree->num_jets_pt30 = num_jets_pt30;
+	ftree->deltaR_Ds_Jet = deltaR_Ds_Jet;
+	
 	ftree->Kp_match = (best_Kp_idx == Kp_match_idx);
 	ftree->Km_match = (best_Km_idx == Km_match_idx);
 	ftree->pi_match = (best_pi_idx == pi_match_idx);

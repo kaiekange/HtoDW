@@ -2,13 +2,18 @@ import sys
 import FWCore.ParameterSet.Config as cms
 from Configuration.AlCa.GlobalTag import GlobalTag
 
-JOBID = int(sys.argv[2])
-start = JOBID * 20 + 1
-end = start + 20
+# JOBID = int(sys.argv[2])
+# start = JOBID * 20 + 1
+# end = start + 20
 
-myoutfile = sys.argv[3]
-# myoutfile = "file:./Kinetest.root"
-# myoutfile = "file:/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/analysis/RecoKine/RecoKine.root"
+# myoutfile = sys.argv[3]
+# # myoutfile = "file:./Kinetest.root"
+# # myoutfile = "file:/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/analysis/RecoKine/RecoKine.root"
+
+
+start = 1
+end = 2
+myoutfile = "file:./Kinetest.root"
 
 file_list = ["file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end) if i != 185]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(*file_list))
