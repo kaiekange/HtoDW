@@ -169,6 +169,9 @@ public:
 	Float_t Ds_IsoR04_PFIso;
 	Float_t Ds_IsoR04_RelIso;
 
+	Int_t num_ss_mu;
+	Int_t num_os_mu;
+
 	Int_t mu_charge;
 	Float_t mu_eta;
 	Float_t mu_phi;
@@ -222,6 +225,10 @@ public:
 	Float_t met_corpt;
 	Float_t met_corsumEt;
 
+	Float_t num_jets;
+	Float_t num_jets_pt30;
+	Float_t deltaR_Ds_Jet;
+	
 	Bool_t Kp_match;
 	Bool_t Km_match;
 	Bool_t pi_match;

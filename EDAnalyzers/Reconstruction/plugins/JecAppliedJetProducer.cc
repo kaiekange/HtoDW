@@ -36,8 +36,8 @@ private:
 	edm::EDGetTokenT<Double_t> rhoToken_;
 
 	// --- Config / correction backends
-	edm::FileInPath jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
-	edm::FileInPath jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
+	std::string jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
+	std::string jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
 
 	// Pointer to the global JEC config singleton
 	JecConfigReader::JecConfig *jecCfg_{nullptr};
@@ -81,29 +81,33 @@ private:
 
 JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet &iConfig)
 {
-	edm::InputTag srcJetsTag_("slimmedJetsPuppi");
-	srcJetsToken_ = consumes<pat::JetCollection>(srcJetsTag_);
+	// Read parameters from config with sensible defaults
+	isDebug_ = iConfig.getUntrackedParameter<bool>("IsDebug", false);
+	isData_ = iConfig.getUntrackedParameter<bool>("IsData", false);
+	year_ = iConfig.getUntrackedParameter<std::string>("Year", "2022Pre");
+	era_ = iConfig.getUntrackedParameter<std::string>("Era", "");
+	
+	edm::InputTag srcJetsTag = iConfig.getUntrackedParameter<edm::InputTag>("SrcJets", edm::InputTag("slimmedJetsPuppi"));
+	srcJetsToken_ = consumes<pat::JetCollection>(srcJetsTag);
 
-	edm::InputTag rhoTag_("fixedGridRhoFastjetAll");
-	rhoToken_ = consumes<Double_t>(rhoTag_);
+	edm::InputTag rhoTag = iConfig.getUntrackedParameter<edm::InputTag>("Rho", edm::InputTag("fixedGridRhoFastjetAll"));
+	rhoToken_ = consumes<Double_t>(rhoTag);
 
 	// Era (needed for data path)
-	if (jetsPset_.existsAs<std::string>("Era"))
-		era_ = jetsPset_.getParameter<std::string>("Era");
 	if (isData_ && era_.empty())
 		throw edm::Exception(edm::errors::Configuration) << "JecAppliedJetProducer: For data (IsData=true) you must provide a non-empty 'Era' in the Jets PSet.";
 
 	// Use the resolved filesystem path from edm::FileInPath and configure
 	// the singleton defaults *before* first construction.
 	JecConfigReader::ConfigPaths paths;
-	paths.ak4 = jecConfigPath_.fullPath();
+	paths.ak4 = jecConfigPath_;
 
 	JecConfigReader::JecConfig::setDefaultPaths(paths);
-	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_.fullPath());
+	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_);
 
 	jecCfg_ = &JecConfigReader::JecConfig::defaultInstance();
 
-	produces<pat::JetCollection>("CorrectedAK4");
+	produces<pat::JetCollection>("CorrectedJetsPuppi");
 }
 
 void JecAppliedJetProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSetup)
@@ -190,13 +194,14 @@ void JecAppliedJetProducer::produce(edm::Event &iEvent, const edm::EventSetup &i
 		}
 
 		// Attach userFloats for downstream bookkeeping
+		double jesSystFactor = 1.0;
 		const Double_t total = jesFactor * jesSystFactor * jerFactor;
 		addUserFloats(outJet, jesFactor, jesSystFactor, jerFactor, total);
 
 		out->push_back(std::move(outJet));
 	}
 
-	iEvent.put(std::move(out), "CorrectedAK4");
+	iEvent.put(std::move(out), "CorrectedJetsPuppi");
 }
 
 // Register

@@ -20,7 +20,7 @@ private:
 
     edm::EDGetTokenT<pat::JetCollection> srcJetsToken_;
 
-    edm::FileInPath jvmConfigPath_ = "EDAnalyzers/Reconstruction/json/JvmConfig.json";
+    std::string jvmConfigPath_ = "EDAnalyzers/Reconstruction/json/JvmConfig.json";
 
     JvmApplication::VetoChecker jvmChecker_;
 
@@ -31,7 +31,7 @@ JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet &iConfig) :
 {
     // Configure the JVM config singleton with the path from edm::FileInPath
     auto &jvmCfg = JvmConfigReader::JvmConfig::defaultInstance();
-    jvmCfg.setConfigPath(jvmConfigPath_.fullPath(), /*reload=*/true);
+    jvmCfg.setConfigPath(jvmConfigPath_, /*reload=*/true);
 
     // Get the JVM for this year from the JSON config
     JvmConfigReader::Jvm jvm = jvmCfg.getJvmForYear(year_);
@@ -39,7 +39,7 @@ JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet &iConfig) :
     if (jvm.use)
         jvmChecker_.setJvm(jvm.ref, jvm.key);
     else
-        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_ << "\" in config \"" << jvmConfigPath_.fullPath() << "\". Filter will not veto any events.\n";
+        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_ << "\" in config \"" << jvmConfigPath_ << "\". Filter will not veto any events.\n";
 
     // Declare consumes using the EDFilter base API
     edm::InputTag srcJetsTag_("slimmedJetsPuppi");

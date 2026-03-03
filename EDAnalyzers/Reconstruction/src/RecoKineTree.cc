@@ -163,6 +163,9 @@ void KineTree::Init()
 	Ds_IsoR04_PFIso = null;
 	Ds_IsoR04_RelIso = null;
 
+	num_ss_mu = 0;
+	num_os_mu = 0;
+
 	mu_charge = null;
 	mu_eta = null;
 	mu_phi = null;
@@ -215,6 +218,10 @@ void KineTree::Init()
 	met_corpy = null;
 	met_corpt = null;
 	met_corsumEt = null;
+
+	num_jets = null;
+	num_jets_pt30 = null;
+	deltaR_Ds_Jet = null;
 
 	Kp_match = false;
 	Km_match = false;
@@ -379,6 +386,9 @@ void KineTree::CreateBranches()
 	tree->Branch("Ds_IsoR04_PFIso", &Ds_IsoR04_PFIso);
 	tree->Branch("Ds_IsoR04_RelIso", &Ds_IsoR04_RelIso);
 
+	tree->Branch("num_ss_mu", &num_ss_mu);
+	tree->Branch("num_os_mu", &num_os_mu);
+
 	tree->Branch("mu_charge", &mu_charge);
 	tree->Branch("mu_eta", &mu_eta);
 	tree->Branch("mu_phi", &mu_phi);
@@ -431,6 +441,10 @@ void KineTree::CreateBranches()
 	tree->Branch("met_corpy", &met_corpy);
 	tree->Branch("met_corpt", &met_corpt);
 	tree->Branch("met_corsumEt", &met_corsumEt);
+
+	tree->Branch("num_jets", &num_jets);
+	tree->Branch("num_jets_pt30", &num_jets_pt30);
+	tree->Branch("deltaR_Ds_Jet", &deltaR_Ds_Jet);
 
 	tree->Branch("Kp_match", &Kp_match);
 	tree->Branch("Km_match", &Km_match);

@@ -29,7 +29,6 @@ public:
 	void produce(edm::Event &iEvent, const edm::EventSetup &iSetup) override;
 
 private:
-
 	Bool_t isDebug_{false};
 	Bool_t isData_{false};
 	std::string year_ = "2022Pre";
@@ -45,8 +44,8 @@ private:
 	edm::EDGetTokenT<pat::METCollection> metPuppiToken_;
 
 	// ---- Config / corrections (AK4) ----
-	edm::FileInPath jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
-	edm::FileInPath jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
+	std::string jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
+	std::string jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
 	JecConfigReader::JecConfig *jecCfg_{nullptr};
 
 	// JES syst correction ref (MC only, cached once)
@@ -119,19 +118,17 @@ JecAppliedMetProducer::JecAppliedMetProducer(const edm::ParameterSet &iConfig)
 	metPFToken_ = consumes<pat::METCollection>(srcMetPFTag_);
 
 	edm::InputTag srcMetPuppiTag_("slimmedMETsPuppi");
-	metPFToken_ = consumes<pat::METCollection>(srcMetPuppiTag_);
+	metPuppiToken_ = consumes<pat::METCollection>(srcMetPuppiTag_);
 
 	// Era (needed for data path)
-	if (jetsPset_.existsAs<std::string>("Era"))
-		era_ = jetsPset_.getParameter<std::string>("Era");
 	if (isData_ && era_.empty())
 		throw edm::Exception(edm::errors::Configuration) << "JecAppliedMetProducer: For data (IsData=true) you must provide a non-empty 'Era' in the Jets PSet.";
 
 	JecConfigReader::ConfigPaths paths;
-	paths.ak4 = jecConfigPath_.fullPath();
+	paths.ak4 = jecConfigPath_;
 
 	JecConfigReader::JecConfig::setDefaultPaths(paths);
-	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_.fullPath());
+	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_);
 
 	// Get the singleton instance
 	jecCfg_ = &JecConfigReader::JecConfig::defaultInstance();
@@ -158,7 +155,7 @@ void JecAppliedMetProducer::produce(edm::Event &iEvent, const edm::EventSetup &i
 		iEvent.getByToken(metPFToken_, metHandle);
 
 	if (!metHandle.isValid() || metHandle->empty())
-		throw edm::Exception(edm::errors::ProductNotFound) << "JecAppliedMetProducer: MET collection is invalid or empty (" << (usePuppi ? srcMetPuppiTag_.encode() : srcMetPFTag_.encode()) << ").";
+		throw edm::Exception(edm::errors::ProductNotFound) << "JecAppliedMetProducer: MET collection is invalid or empty.";
 
 	const pat::MET &metIn = metHandle->front();
 

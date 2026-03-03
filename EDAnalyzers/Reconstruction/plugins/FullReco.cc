@@ -47,8 +47,6 @@
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 
 #include "EDAnalyzers/Reconstruction/interface/FullRecoTree.h"
-#include "EDAnalyzers/Reconstruction/interface/JecConfigReader.h"
-#include "EDAnalyzers/Reconstruction/interface/JecApplication.h"
 
 #include "TLorentzVector.h"
 #include "TTree.h"
@@ -60,116 +58,11 @@ public:
 	~FullReco() override {};
 
 	static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
-	void JetCorr(edm::Event &iEvent, const edm::EventSetup &iSetup) override;
-	void MetCorr(edm::Event &iEvent, const edm::EventSetup &iSetup) override;
 
 private:
 	void beginJob() override;
 	void analyze(const edm::Event &, const edm::EventSetup &) override;
 	void endJob() override;
-
-	Bool_t filter(edm::Event &, const edm::EventSetup &) override;
-
-	Bool_t isDebug_{false};
-	Bool_t isData_{false};
-	std::string year_ = "2022Pre";
-	std::string era_ = "";
-
-	// Optional: read muon subtraction factor from jet userFloat (0..1). Empty => disabled.
-	std::string muonSubtrUserFloat_ = "";
-
-	// --- Config / correction backends
-	edm::FileInPath jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
-	edm::FileInPath jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
-    edm::FileInPath jvmConfigPath_ = "EDAnalyzers/Reconstruction/json/JvmConfig.json";
-
-	// Pointer to the global JEC config singleton
-	JecConfigReader::JecConfig *jecCfg_{nullptr};
-
-	// JES syst correction ref (MC only, cached once)
-	std::optional<correction::Correction::Ref> jesSystRef_;
-
-	JvmApplication::VetoChecker jvmChecker_;
-
-	// Helpers
-	static Double_t computeRawFactorFromMiniAOD(const pat::Jet &j)
-	{
-		const Double_t ptCorr = j.pt();
-		const Double_t ptRaw = j.correctedP4("Uncorrected").pt(); // MiniAOD stored
-		if (ptCorr <= 0.0)
-			return 0.0;
-		const Double_t rf = 1.0 - (ptRaw / ptCorr);
-		// clamp to sane range
-		return std::min(std::max(rf, 0.0), 1.0);
-	}
-
-	static inline void setP4Scaled(pat::Jet &j, Double_t scale)
-	{
-		const auto p4 = j.p4();
-		const auto p4Scaled = reco::Particle::LorentzVector(p4.px() * scale, p4.py() * scale, p4.pz() * scale, p4.energy() * scale);
-		j.setP4(p4Scaled);
-	}
-
-	static inline void addUserFloats(pat::Jet &j, Double_t jes, Double_t jesSyst, Double_t jer, Double_t total)
-	{
-		j.addUserFloat("JERC:jesFactor", jes);
-		j.addUserFloat("JERC:jesSystFactor", jesSyst);
-		j.addUserFloat("JERC:jerFactor", jer);
-		j.addUserFloat("JERC:totalFactor", total);
-	}
-
-	static inline Double_t getRawPtFromMiniAOD(const pat::Jet &j)
-	{
-		return j.correctedP4("Uncorrected").pt(); // MiniAOD stores this
-	}
-
-	static inline Double_t getMuonSubtrFraction(const pat::Jet &j, const std::string &name)
-	{
-		if (name.empty())
-			return 0.0;
-		if (j.hasUserFloat(name))
-		{
-			const Double_t f = j.userFloat(name);
-			if (std::isfinite(f))
-				return std::max(0.0, std::min(1.0, f));
-		}
-		return 0.0;
-	}
-
-	static inline Double_t getMetRawPt(const pat::MET &met)
-	{
-		// Prefer uncorrected if available, else fall back with a warning.
-		Double_t v = met.uncorPt();
-		if (!(v >= 0.0))
-		{
-			std::cout << "[JecAppliedMetProducer] WARNING: met.uncorPt() invalid; using met.pt().\n";
-			v = met.pt();
-		}
-		return v;
-	}
-
-	static inline Double_t getMetRawPhi(const pat::MET &met)
-	{
-		Double_t v = met.uncorPhi();
-		if (!std::isfinite(v))
-		{
-			std::cout << "[JecAppliedMetProducer] WARNING: met.uncorPhi() invalid; using met.phi().\n";
-			v = met.phi();
-		}
-		return v;
-	}
-
-	static inline pat::MET makeCorrectedMetFrom(const pat::MET &src, const TLorentzVector &p4corr)
-	{
-		pat::MET out = src; // copy PAT object (keeps extras)
-		// Replace p4 with corrected pT/phi, zero eta/mass (MET mass=0, eta unused)
-		const auto corr = reco::Particle::LorentzVector(p4corr.Px(), p4corr.Py(), 0.0, p4corr.Pt() /* E≈|pT| for massless */);
-		out.setP4(corr);
-		// Bookkeeping helpers (raw pt/phi will be set by caller)
-		out.addUserFloat("JERC:MET_corr_pt", p4corr.Pt());
-		out.addUserFloat("JERC:MET_corr_phi", p4corr.Phi());
-		return out;
-	}
 
 	Measurement1D distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 	Measurement1D distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
@@ -210,51 +103,8 @@ private:
 	unsigned long nEventsReconstructed_;
 };
 
-FullReco::FullReco(const edm::ParameterSet &iConfig) : jvmChecker_()
+FullReco::FullReco(const edm::ParameterSet &iConfig)
 {
-	edm::InputTag srcJetsTag_("slimmedJetsPuppi");
-	srcJetsToken_ = consumes<pat::JetCollection>(srcJetsTag_);
-
-	edm::InputTag rhoTag_("fixedGridRhoFastjetAll");
-	rhoToken_ = consumes<Double_t>(rhoTag_);
-
-	edm::InputTag srcMetPFTag_("slimmedMETs");
-	metPFToken_ = consumes<pat::METCollection>(srcMetPFTag_);
-
-	edm::InputTag srcMetPuppiTag_("slimmedMETsPuppi");
-	metPuppiToken_ = consumes<pat::METCollection>(srcMetPuppiTag_);
-
-	// Era (needed for data path)
-	if (jetsPset_.existsAs<std::string>("Era"))
-		era_ = jetsPset_.getParameter<std::string>("Era");
-	if (isData_ && era_.empty())
-		throw edm::Exception(edm::errors::Configuration) << "JecAppliedJetProducer & JecAppliedMetProducer: For data (IsData=true) you must provide a non-empty 'Era' in the Jets PSet.";
-
-	// Use the resolved filesystem path from edm::FileInPath and configure
-	// the singleton defaults *before* first construction.
-	JecConfigReader::ConfigPaths paths;
-	paths.ak4 = jecConfigPath_.fullPath();
-
-	JecConfigReader::JecConfig::setDefaultPaths(paths);
-	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_.fullPath());
-
-	jecCfg_ = &JecConfigReader::JecConfig::defaultInstance();
-
-	JetCorr<pat::JetCollection>("CorrectedAK4");
-	MetCorr<pat::METCollection>("CorrectedMet");
-
- 	// Configure the JVM config singleton with the path from edm::FileInPath
-    auto &jvmCfg = JvmConfigReader::JvmConfig::defaultInstance();
-    jvmCfg.setConfigPath(jvmConfigPath_.fullPath(), /*reload=*/true);
-
-    // Get the JVM for this year from the JSON config
-    JvmConfigReader::Jvm jvm = jvmCfg.getJvmForYear(year_);
-
-    if (jvm.use)
-        jvmChecker_.setJvm(jvm.ref, jvm.key);
-    else
-        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_ << "\" in config \"" << jvmConfigPath_.fullPath() << "\". Filter will not veto any events.\n";
-
 	edm::InputTag TriggerBitsTag_("TriggerResults", "", "HLT");
 	triggerToken_ = consumes<edm::TriggerResults>(TriggerBitsTag_);
 
@@ -267,10 +117,16 @@ FullReco::FullReco(const edm::ParameterSet &iConfig) : jvmChecker_()
 	edm::InputTag MuonTag_("slimmedMuons");
 	MuonToken_ = consumes<pat::MuonCollection>(MuonTag_);
 
-	edm::InputTag MetTag_("slimmedMETsPuppi");
+	// edm::InputTag MetTag_("slimmedMETsPuppi");
+	// MetToken_ = consumes<pat::METCollection>(MetTag_);
+
+	// edm::InputTag JetTag_("slimmedJetsPuppi");
+	// JetToken_ = consumes<pat::JetCollection>(JetTag_);
+
+	edm::InputTag MetTag_("CorrectedMet");
 	MetToken_ = consumes<pat::METCollection>(MetTag_);
 
-	edm::InputTag JetTag_("slimmedJetsPuppi");
+	edm::InputTag JetTag_("CorrectedJetsPuppi");
 	JetToken_ = consumes<pat::JetCollection>(JetTag_);
 
 	edm::ESInputTag ttBuilderTag_("", "TransientTrackBuilder");
@@ -954,206 +810,6 @@ Measurement1D FullReco::distance3D(const GlobalPoint &vtx1Position, const Global
 		err = sqrt(err2) / dist;
 
 	return Measurement1D(dist, err);
-}
-
-void FullReco::JetCorr(edm::Event &iEvent, const edm::EventSetup &iSetup)
-{
-	// Inputs
-	edm::Handle<pat::JetCollection> srcJetsHandle;
-	iEvent.getByToken(srcJetsToken_, srcJetsHandle);
-
-	edm::Handle<Double_t> rhoHandle;
-	iEvent.getByToken(rhoToken_, rhoHandle);
-	const Double_t rho = rhoHandle.isValid() ? *rhoHandle : 0.0;
-
-	auto out = std::make_unique<pat::JetCollection>();
-	out->reserve(srcJetsHandle->size());
-
-	// Build systematics payload
-	JecApplication::SystematicOptions systOpts{};
-
-	// Per-event Applier (handles JEC/JER handles and run-based residual logic)
-	JecApplication::Applier applier = [&]() -> JecApplication::Applier
-	{
-		if (isData_)
-		{
-			std::optional<Double_t> runNumber;
-			if (JecApplication::requiresRunBasedResidual(year_))
-				runNumber = static_cast<Double_t>(iEvent.id().run());
-			return JecApplication::Applier::DataAK4(*jecCfg_, year_, era_, isDebug_, runNumber);
-		}
-		else
-			return JecApplication::Applier::McAK4(*jecCfg_, year_, isDebug_);
-	}();
-
-	// Loop jets
-	for (const auto &jet : *srcJetsHandle)
-	{
-		pat::Jet outJet = jet;
-
-		const Double_t rawFactor = computeRawFactorFromMiniAOD(jet);
-
-		JecApplication::JesInputs jesIn{jet.pt(), jet.eta(), jet.phi(), jet.jetArea(), rho, rawFactor};
-
-		// --- JES nominal factor (via Applier) ---
-		const Double_t jesFactor = applier.jesFactorNominal(jesIn);
-
-		// Apply JES nominal
-		setP4Scaled(outJet, jesFactor);
-
-		// --- JER (MC only) ---
-		double jerFactor = 1.0;
-		if (!isData_)
-		{
-			// State after JES (and optional JES syst)
-			JecApplication::JesInputs jAfter{outJet.pt(), outJet.eta(), outJet.phi(), jet.jetArea(), rho, 0.0};
-
-			// Gen-matching if available
-			JecApplication::JerInputs jerIn{};
-			jerIn.event = iEvent.id().event();
-			jerIn.rho = rho;
-
-			if (const auto *gj = jet.genJet())
-			{
-				jerIn.hasGen = true;
-				jerIn.genPt = gj->pt();
-				jerIn.genEta = gj->eta();
-				jerIn.genPhi = gj->phi();
-				jerIn.maxDr = 0.2; // AK4
-			}
-
-			jerFactor = applier.jerFactor(jAfter, jerIn, systOpts);
-			setP4Scaled(outJet, jerFactor);
-		}
-
-		// Attach userFloats for downstream bookkeeping
-		const Double_t total = jesFactor * jesSystFactor * jerFactor;
-		addUserFloats(outJet, jesFactor, jesSystFactor, jerFactor, total);
-
-		out->push_back(std::move(outJet));
-	}
-
-	iEvent.put(std::move(out), "CorrectedAK4");
-}
-
-
-void FullReco::MetCorr(edm::Event &iEvent, const edm::EventSetup &iSetup)
-{
-	// Inputs
-	edm::Handle<pat::JetCollection> srcJetsHandle;
-	iEvent.getByToken(srcJetsToken_, srcJetsHandle);
-
-	edm::Handle<Double_t> rhoHandle;
-	iEvent.getByToken(rhoToken_, rhoHandle);
-	const Double_t rho = rhoHandle.isValid() ? *rhoHandle : 0.0;
-
-	const Bool_t usePuppi = JecApplication::usesPuppiMet(year_);
-
-	edm::Handle<pat::METCollection> metHandle;
-	if (usePuppi)
-		iEvent.getByToken(metPuppiToken_, metHandle);
-	else
-		iEvent.getByToken(metPFToken_, metHandle);
-
-	if (!metHandle.isValid() || metHandle->empty())
-		throw edm::Exception(edm::errors::ProductNotFound) << "JecAppliedMetProducer: MET collection is invalid or empty (" << (usePuppi ? srcMetPuppiTag_.encode() : srcMetPFTag_.encode()) << ").";
-
-	const pat::MET &metIn = metHandle->front();
-
-	const Double_t metRawPt = getMetRawPt(metIn);
-	const Double_t metRawPhi = getMetRawPhi(metIn);
-
-	// Build jetsForMet (RAW AK4 BEFORE any modifications)
-	std::vector<JecApplication::JetForMet> jetsForMet;
-	std::vector<JecApplication::JerInputs> jersForMet;
-	jetsForMet.reserve(srcJetsHandle->size());
-	jersForMet.reserve(srcJetsHandle->size());
-
-	for (const auto &j : *srcJetsHandle)
-	{
-		JecApplication::JetForMet v;
-		v.phi = j.phi();
-		v.eta = j.eta();
-		v.area = j.jetArea();
-		v.rawPt = getRawPtFromMiniAOD(j);
-		v.muonSubtrFactor = getMuonSubtrFraction(j, muonSubtrUserFloat_);
-		v.chEmEf = j.chargedEmEnergyFraction();
-		v.neEmEf = j.neutralEmEnergyFraction();
-		jetsForMet.push_back(v);
-
-		JecApplication::JerInputs jerIn;
-		jerIn.event = iEvent.id().event();
-		jerIn.rho = rho;
-		if (const auto *gj = j.genJet())
-		{
-			jerIn.hasGen = true;
-			jerIn.genPt = gj->pt();
-			jerIn.genEta = gj->eta();
-			jerIn.genPhi = gj->phi();
-			jerIn.maxDr = 0.2; // AK4
-		}
-		jersForMet.push_back(jerIn);
-	}
-
-	// Per-event Applier (same pattern as jet producer)
-	JecApplication::Applier applier = [&]() -> JecApplication::Applier
-	{
-		if (isData_)
-		{
-			std::optional<Double_t> runNumber;
-			if (JecApplication::requiresRunBasedResidual(year_))
-				runNumber = static_cast<Double_t>(iEvent.id().run());
-			return JecApplication::Applier::DataAK4(*jecCfg_, year_, era_, isDebug_, runNumber);
-		}
-		else
-			return JecApplication::Applier::McAK4(*jecCfg_, year_, isDebug_);
-	}();
-
-	// Systematics payload
-	JecApplication::SystematicOptions systOpts{};
-
-	// Call the shared Type-1 MET routine through Applier
-	JecApplication::MetInputs metInputs{metRawPt, metRawPhi};
-	const TLorentzVector p4CorrectedMET = applier.correctedMet(metInputs, jetsForMet, jersForMet, rho, systOpts);
-
-	// Build and put output (copy original PAT MET; replace p4)
-	auto out = std::make_unique<pat::METCollection>();
-	pat::MET metOut = makeCorrectedMetFrom(metIn, p4CorrectedMET);
-	// record which raw was used
-	metOut.addUserFloat("JERC:MET_raw_pt_used", metRawPt);
-	metOut.addUserFloat("JERC:MET_raw_phi_used", metRawPhi);
-	out->push_back(std::move(metOut));
-
-	iEvent.put(std::move(out), "CorrectedMet");
-}
-
-Bool_t FullReco::filter(edm::Event &iEvent, const edm::EventSetup &iSetup)
-{
-    Bool_t passEvent = true;
-    try
-    {
-        edm::Handle<pat::JetCollection> srcJetsHandle;
-        iEvent.getByToken(srcJetsToken_, srcJetsHandle);
-
-        if (srcJetsHandle.isValid())
-        {
-            for (const auto &jIt : *srcJetsHandle)
-            {
-                if (jvmChecker_.checkJetInVetoRegion(jIt.eta(), jIt.phi(), jIt.pt(), 6, jIt.chargedEmEnergyFraction(), jIt.neutralEmEnergyFraction()))
-                {
-                    passEvent = false;
-                    break; // No need to loop over the remaining jets.
-                }
-            }
-        }
-    }
-    catch (std::exception const &e)
-    {
-        std::cout << "[JvmAppliedEventFilter] exception in filter -> " << e.what() << std::endl;
-        // Be conservative on exception: do not veto the event.
-        return true;
-    }
-    return passEvent;
 }
 
 void FullReco::endJob()
