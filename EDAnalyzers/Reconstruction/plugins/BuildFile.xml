@@ -6,6 +6,8 @@
 <use name="FWCore/Services"/>
 <use name="FWCore/Common"/>
 <use name="FWCore/PluginManager"/>
+<use name="FWCore/MessageLogger"/>
+<use name="FWCore/Utilities"/>
 
 <use name="DataFormats/Common"/>
 <use name="DataFormats/HepMCCandidate"/>
@@ -13,6 +15,7 @@
 <use name="DataFormats/Math"/>
 <use name="DataFormats/VertexReco"/>
 <use name="DataFormats/TrackReco"/>
+<use name="DataFormats/METReco"/>
 <use name="DataFormats/GeometryVector"/>
 <use name="DataFormats/GeometryCommonDetAlgo"/>
 
@@ -26,13 +29,17 @@
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/KinematicFit"/>
 
+<use name="JetMETCorrections/Objects"/>
+<use name="JetMETCorrections/Modules"/>
+
+<use name="CondFormats/JetMETObjects"/>
+<use name="CondFormats/DataRecord"/>
+
 <use name="CommonTools/UtilAlgos"/>
+<use name="CommonTools/Utils"/>
 <use name="CLHEP"/>
 <use name="root"/>
 <use name="rootcore"/>
 <use name="rootphysics"/>
 
 <flags EDM_PLUGIN="1"/>
-
-
-
