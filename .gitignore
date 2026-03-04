@@ -1,0 +1,6 @@
+*.root
+*.log
+*.txt
+**/crab_*
+**/__pycache__
+**/kakang.cc

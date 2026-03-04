@@ -1,0 +1,51 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/ParameterSet"/>
+<use name="FWCore/ServiceRegistry"/>
+<use name="FWCore/MessageLogger"/>
+<use name="FWCore/Utilities"/>
+
+<use name="CommonTools/UtilAlgos"/>     <!-- TFileService -->
+<use name="CommonTools/Utils"/>         <!-- TFileDirectory -->
+
+<use name="DataFormats/PatCandidates"/>
+<use name="DataFormats/METReco"/>       <!-- reco::MET::LorentzVector -->
+
+<use name="JetMETCorrections/Objects"/> <!-- JetCorrectionsRecord -->
+<use name="JetMETCorrections/Modules"/> <!-- JetResolution interface -->
+<use name="CondFormats/JetMETObjects"/> <!-- JetCorrectorParameters -->
+<use name="CondFormats/DataRecord"/>    <!-- JetResolutionRcd -->
+
+<use name="FWCore/Services"/>
+<use name="FWCore/Common"/>
+<use name="FWCore/PluginManager"/>
+
+
+
+<use name="DataFormats/Common"/>
+<use name="DataFormats/HepMCCandidate"/>
+
+<use name="DataFormats/Math"/>
+<use name="DataFormats/VertexReco"/>
+<use name="DataFormats/TrackReco"/>
+
+<use name="DataFormats/GeometryVector"/>
+<use name="DataFormats/GeometryCommonDetAlgo"/>
+
+<use name="TrackingTools/TransientTrack"/>
+<use name="TrackingTools/Records"/>
+<use name="TrackingTools/IPTools"/>
+
+<use name="RecoVertex/KalmanVertexFit"/>
+<use name="RecoVertex/VertexTools"/>
+
+<use name="RecoVertex/KinematicFitPrimitives"/>
+<use name="RecoVertex/KinematicFit"/>
+
+<use name="CLHEP"/>
+<use name="root"/>
+<use name="rootcore"/>
+<use name="rootphysics"/>
+
+<use name="EDAnalyzers/Reconstruction"/>
+
+<flags EDM_PLUGIN="1"/>
