@@ -153,19 +153,11 @@ namespace JecConfigReader
         using CS = correction::CorrectionSet;
 
         // correctionlib returns unique_ptr; promote to shared_ptr
-        try
-        {
-            std::unique_ptr<CS> up = CS::from_file(path);
-            std::shared_ptr<CS> sp(std::move(up));
+        std::unique_ptr<CS> up = CS::from_file(path);
+        std::shared_ptr<CS> sp(std::move(up));
 
-            auto [it2, _] = csCache_.emplace(path, sp);
-            return it2->second;
-        }
-        catch (const std::exception &e)
-        {
-            throw std::runtime_error("Failed to load CorrectionSet from file: " + path + 
-                                   "\nDetails: " + std::string(e.what()));
-        }
+        auto [it2, _] = csCache_.emplace(path, sp);
+        return it2->second;
     }
 
     // -------------------------------

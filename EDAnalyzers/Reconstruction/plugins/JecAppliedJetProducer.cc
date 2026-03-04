@@ -26,18 +26,34 @@ public:
 	void produce(edm::Event &iEvent, const edm::EventSetup &iSetup) override;
 
 private:
-	Bool_t isDebug_{false};
-	Bool_t isData_{false};
-	std::string year_ = "2022Pre";
-	std::string era_ = "";
+	// --- Config (from python)
+	edm::ParameterSet jetsPset_;
+	edm::InputTag srcJetsTag_;
+	edm::InputTag rhoTag_;
+
+	std::string year_;
+	bool isData_;
+	std::string era_; // required for data, optional/ignored for MC
+
+	// Systematics mode
+	std::string systKind_;	  // "Nominal" | "JES" | "JER"
+	std::string jesSystName_; // e.g. "AbsoluteStat" (empty => off)
+	std::string jesSystVar_;  // "Up" | "Down"
+	std::string jerVar_;	  // "nom" | "up" | "down"
+
+	// Optional JER region gate
+	bool useJerRegion_{false};
+	JecConfigReader::JerBin jerRegion_{};
+
+	bool isDebug_{false};
 
 	// --- Tokens
-	edm::EDGetTokenT<pat::JetCollection> srcJetsToken_;
-	edm::EDGetTokenT<Double_t> rhoToken_;
+	edm::EDGetTokenT<pat::JetCollection> jetsTok_;
+	edm::EDGetTokenT<double> rhoTok_;
 
 	// --- Config / correction backends
-	std::string jecConfigPath_ = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
-	std::string jerToolConfigPath_ = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
+	edm::FileInPath jecConfigPath_;
+	edm::FileInPath jerToolConfigPath_;
 
 	// Pointer to the global JEC config singleton
 	JecConfigReader::JecConfig *jecCfg_{nullptr};
@@ -46,18 +62,18 @@ private:
 	std::optional<correction::Correction::Ref> jesSystRef_;
 
 	// Helpers
-	static Double_t computeRawFactorFromMiniAOD(const pat::Jet &j)
+	static double computeRawFactorFromMiniAOD(const pat::Jet &j)
 	{
-		const Double_t ptCorr = j.pt();
-		const Double_t ptRaw = j.correctedP4("Uncorrected").pt(); // MiniAOD stored
+		const double ptCorr = j.pt();
+		const double ptRaw = j.correctedP4("Uncorrected").pt(); // MiniAOD stored
 		if (ptCorr <= 0.0)
 			return 0.0;
-		const Double_t rf = 1.0 - (ptRaw / ptCorr);
+		const double rf = 1.0 - (ptRaw / ptCorr);
 		// clamp to sane range
 		return std::min(std::max(rf, 0.0), 1.0);
 	}
 
-	static inline void setP4Scaled(pat::Jet &j, Double_t scale)
+	static inline void setP4Scaled(pat::Jet &j, double scale)
 	{
 		// Scale full p4 (JEC/JER are p4 scalings)
 		const auto p4 = j.p4();
@@ -67,10 +83,10 @@ private:
 	}
 
 	static inline void addUserFloats(pat::Jet &j,
-									 Double_t jes,
-									 Double_t jesSyst,
-									 Double_t jer,
-									 Double_t total)
+									 double jes,
+									 double jesSyst,
+									 double jer,
+									 double total)
 	{
 		j.addUserFloat("JERC:jesFactor", jes);
 		j.addUserFloat("JERC:jesSystFactor", jesSyst);
@@ -80,87 +96,170 @@ private:
 };
 
 JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet &iConfig)
+	: jetsPset_(iConfig.getParameter<edm::ParameterSet>("Jets")),
+	  srcJetsTag_(jetsPset_.getParameter<edm::InputTag>("srcAK4")),
+	  rhoTag_(jetsPset_.getParameter<edm::InputTag>("rho")),
+	  year_(jetsPset_.getParameter<std::string>("Year")),
+	  isData_(jetsPset_.getParameter<bool>("IsData")),
+	  systKind_(jetsPset_.getParameter<std::string>("SystKind")),
+	  jesSystName_(jetsPset_.getParameter<std::string>("JesSystName")),
+	  jesSystVar_(jetsPset_.getParameter<std::string>("JesSystVar")),
+	  jerVar_(jetsPset_.getParameter<std::string>("JerVar")),
+	  isDebug_(iConfig.existsAs<bool>("isDebug") ? iConfig.getParameter<bool>("isDebug") : false),
+	  jetsTok_(consumes<pat::JetCollection>(srcJetsTag_)),
+	  rhoTok_(consumes<double>(rhoTag_))
 {
-	// Read parameters from config with sensible defaults
-	isDebug_ = iConfig.getUntrackedParameter<bool>("IsDebug", false);
-	isData_ = iConfig.getUntrackedParameter<bool>("IsData", false);
-	year_ = iConfig.getUntrackedParameter<std::string>("Year", "2022Pre");
-	era_ = iConfig.getUntrackedParameter<std::string>("Era", "");
-	
-	edm::InputTag srcJetsTag = iConfig.getUntrackedParameter<edm::InputTag>("SrcJets", edm::InputTag("slimmedJetsPuppi"));
-	srcJetsToken_ = consumes<pat::JetCollection>(srcJetsTag);
-
-	edm::InputTag rhoTag = iConfig.getUntrackedParameter<edm::InputTag>("Rho", edm::InputTag("fixedGridRhoFastjetAll"));
-	rhoToken_ = consumes<Double_t>(rhoTag);
-
 	// Era (needed for data path)
+	if (jetsPset_.existsAs<std::string>("Era"))
+	{
+		era_ = jetsPset_.getParameter<std::string>("Era");
+	}
 	if (isData_ && era_.empty())
-		throw edm::Exception(edm::errors::Configuration) << "JecAppliedJetProducer: For data (IsData=true) you must provide a non-empty 'Era' in the Jets PSet.";
+	{
+		throw edm::Exception(edm::errors::Configuration)
+			<< "JecAppliedJetProducer: For data (IsData=true) you must provide a non-empty 'Era' in the Jets PSet.";
+	}
 
 	// Use the resolved filesystem path from edm::FileInPath and configure
 	// the singleton defaults *before* first construction.
+	jecConfigPath_ = jetsPset_.getParameter<edm::FileInPath>("JecConfig");
+	jerToolConfigPath_ = jetsPset_.getParameter<edm::FileInPath>("JerToolConfig");
+
 	JecConfigReader::ConfigPaths paths;
-	paths.ak4 = jecConfigPath_;
+	paths.ak4 = jecConfigPath_.fullPath();
+	// ak8 left at default for this producer (AK4 only)
 
 	JecConfigReader::JecConfig::setDefaultPaths(paths);
-	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_);
+	JecConfigReader::JecConfig::setDefaultJerSmearPath(jerToolConfigPath_.fullPath());
 
+	// Get the singleton instance
 	jecCfg_ = &JecConfigReader::JecConfig::defaultInstance();
 
-	produces<pat::JetCollection>("CorrectedJetsPuppi");
+	// Pre-compute JES syst ref for MC, if requested
+	if (!isData_ && systKind_ == "JES" && !jesSystName_.empty())
+	{
+		// AK4, MC, JES uncertainty sets
+		const auto jesUncSets = jecCfg_->getJesUncSetsMcAK4Ref(year_);
+
+		auto findRef = [&](const std::map<std::string, correction::Correction::Ref> &m)
+			-> std::optional<correction::Correction::Ref>
+		{
+			auto it = m.find(jesSystName_);
+			if (it != m.end())
+				return it->second;
+			return std::nullopt;
+		};
+
+		// Try "total" first, then "reduced", then "full"
+		jesSystRef_ = findRef(jesUncSets.total);
+		if (!jesSystRef_)
+			jesSystRef_ = findRef(jesUncSets.reduced);
+		if (!jesSystRef_)
+			jesSystRef_ = findRef(jesUncSets.full);
+
+		if (!jesSystRef_)
+		{
+			std::cout << "[JecAppliedJetProducer] Warning: JES syst name '"
+					  << jesSystName_ << "' not found in any uncertainty set for year "
+					  << year_ << " (AK4). JES systematics will be ignored.\n";
+		}
+	}
+
+	// Optional JER region
+	if (jetsPset_.existsAs<edm::ParameterSet>("JerRegion"))
+	{
+		const auto &p = jetsPset_.getParameter<edm::ParameterSet>("JerRegion");
+		jerRegion_.etaMin = p.getParameter<double>("etaMin");
+		jerRegion_.etaMax = p.getParameter<double>("etaMax");
+		jerRegion_.ptMin = p.getParameter<double>("ptMin");
+		jerRegion_.ptMax = p.getParameter<double>("ptMax");
+		useJerRegion_ = true;
+	}
+
+	produces<pat::JetCollection>("CorrectedAK4");
 }
 
 void JecAppliedJetProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
 
 	// Inputs
-	edm::Handle<pat::JetCollection> srcJetsHandle;
-	iEvent.getByToken(srcJetsToken_, srcJetsHandle);
+	edm::Handle<pat::JetCollection> hJets;
+	iEvent.getByToken(jetsTok_, hJets);
 
-	edm::Handle<Double_t> rhoHandle;
-	iEvent.getByToken(rhoToken_, rhoHandle);
-	const Double_t rho = rhoHandle.isValid() ? *rhoHandle : 0.0;
+	edm::Handle<double> hRho;
+	iEvent.getByToken(rhoTok_, hRho);
+	const double rho = hRho.isValid() ? *hRho : 0.0;
 
 	auto out = std::make_unique<pat::JetCollection>();
-	out->reserve(srcJetsHandle->size());
+	out->reserve(hJets->size());
 
 	// Build systematics payload
 	JecApplication::SystematicOptions systOpts{};
+	if (systKind_ == "JES")
+	{
+		if (jesSystRef_)
+		{
+			systOpts.jesSystRef = jesSystRef_;
+			systOpts.jesSystVar = jesSystVar_; // "Up" | "Down"
+		}
+	}
+	else if (systKind_ == "JER")
+	{
+		systOpts.jerVar = jerVar_; // "nom" | "up" | "down"
+		if (useJerRegion_)
+			systOpts.jerRegion = jerRegion_;
+	}
 
 	// Per-event Applier (handles JEC/JER handles and run-based residual logic)
-	JecApplication::Applier applier = [&]() -> JecApplication::Applier
+	JecApplication::Applier applier =
+		[&]() -> JecApplication::Applier
 	{
 		if (isData_)
 		{
-			std::optional<Double_t> runNumber;
+			std::optional<double> runNumber;
 			if (JecApplication::requiresRunBasedResidual(year_))
-				runNumber = static_cast<Double_t>(iEvent.id().run());
+			{
+				runNumber = static_cast<double>(iEvent.id().run());
+			}
 			return JecApplication::Applier::DataAK4(*jecCfg_, year_, era_, isDebug_, runNumber);
 		}
 		else
+		{
 			return JecApplication::Applier::McAK4(*jecCfg_, year_, isDebug_);
+		}
 	}();
 
 	// Loop jets
-	for (const auto &jet : *srcJetsHandle)
+	for (const auto &jet : *hJets)
 	{
-		pat::Jet outJet = jet;
+		pat::Jet outJet = jet; // copy
 
-		const Double_t rawFactor = computeRawFactorFromMiniAOD(jet);
+		// --- Build JES inputs from MiniAOD ---
+		const double rawFactor = computeRawFactorFromMiniAOD(jet);
 
 		JecApplication::JesInputs jesIn{
-			jet.pt(),
-			jet.eta(),
-			jet.phi(),
-			jet.jetArea(),
-			rho,
-			rawFactor};
+			/*pt=*/jet.pt(),
+			/*eta=*/jet.eta(),
+			/*phi=*/jet.phi(),
+			/*area=*/jet.jetArea(),
+			/*rho=*/rho,
+			/*rawFactor=*/rawFactor};
 
 		// --- JES nominal factor (via Applier) ---
-		const Double_t jesFactor = applier.jesFactorNominal(jesIn);
+		const double jesFactor = applier.jesFactorNominal(jesIn);
 
 		// Apply JES nominal
 		setP4Scaled(outJet, jesFactor);
+
+		// --- JES syst (MC only and if requested) ---
+		double jesSystFactor = 1.0;
+		if (!isData_ && systKind_ == "JES" && jesSystRef_)
+		{
+			const double ptAfterJes = jesIn.pt * jesFactor;
+			jesSystFactor = JecApplication::Applier::jesComponentSyst(
+				*jesSystRef_, jesSystVar_, jesIn.eta, ptAfterJes, isDebug_);
+			setP4Scaled(outJet, jesSystFactor);
+		}
 
 		// --- JER (MC only) ---
 		double jerFactor = 1.0;
@@ -168,12 +267,12 @@ void JecAppliedJetProducer::produce(edm::Event &iEvent, const edm::EventSetup &i
 		{
 			// State after JES (and optional JES syst)
 			JecApplication::JesInputs jAfter{
-				outJet.pt(),
-				outJet.eta(),
-				outJet.phi(),
-				jet.jetArea(),
-				rho,
-				0.0};
+				/*pt=*/outJet.pt(),
+				/*eta=*/outJet.eta(),
+				/*phi=*/outJet.phi(),
+				/*area=*/jet.jetArea(),
+				/*rho=*/rho,
+				/*rawFactor=*/0.0};
 
 			// Gen-matching if available
 			JecApplication::JerInputs jerIn{};
@@ -194,14 +293,13 @@ void JecAppliedJetProducer::produce(edm::Event &iEvent, const edm::EventSetup &i
 		}
 
 		// Attach userFloats for downstream bookkeeping
-		double jesSystFactor = 1.0;
-		const Double_t total = jesFactor * jesSystFactor * jerFactor;
+		const double total = jesFactor * jesSystFactor * jerFactor;
 		addUserFloats(outJet, jesFactor, jesSystFactor, jerFactor, total);
 
 		out->push_back(std::move(outJet));
 	}
 
-	iEvent.put(std::move(out), "CorrectedJetsPuppi");
+	iEvent.put(std::move(out), "CorrectedAK4");
 }
 
 // Register

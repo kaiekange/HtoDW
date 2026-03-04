@@ -16,53 +16,70 @@ public:
     ~JvmAppliedEventFilter();
 
 private:
-    std::string year_ = "2022Pre";
-
-    edm::EDGetTokenT<pat::JetCollection> srcJetsToken_;
-
-    std::string jvmConfigPath_ = "EDAnalyzers/Reconstruction/json/JvmConfig.json";
-
+    edm::ParameterSet configParamsJets_;
+    edm::InputTag edmTagJetAK4_;
+    std::string year_;
+    edm::EDGetTokenT<pat::JetCollection> edmTokenJetAK4_;
+    edm::FileInPath jvmConfigPath_;
     JvmApplication::VetoChecker jvmChecker_;
 
-    Bool_t filter(edm::Event &, const edm::EventSetup &) override;
+    bool filter(edm::Event &, const edm::EventSetup &) override;
 };
 
-JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet &iConfig) : jvmChecker_()
+JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet &iConfig)
+    : configParamsJets_(iConfig.getParameter<edm::ParameterSet>("Jets")),
+      edmTagJetAK4_(configParamsJets_.getParameter<edm::InputTag>("SourcesAK4")),
+      year_(configParamsJets_.getParameter<std::string>("Year")),
+      jvmConfigPath_(configParamsJets_.getParameter<edm::FileInPath>("JvmConfig")),
+      jvmChecker_()
 {
+
     // Configure the JVM config singleton with the path from edm::FileInPath
     auto &jvmCfg = JvmConfigReader::JvmConfig::defaultInstance();
-    jvmCfg.setConfigPath(jvmConfigPath_, /*reload=*/true);
+    jvmCfg.setConfigPath(jvmConfigPath_.fullPath(), /*reload=*/true);
 
     // Get the JVM for this year from the JSON config
     JvmConfigReader::Jvm jvm = jvmCfg.getJvmForYear(year_);
-
     if (jvm.use)
+    {
         jvmChecker_.setJvm(jvm.ref, jvm.key);
+    }
     else
-        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_ << "\" in config \"" << jvmConfigPath_ << "\". Filter will not veto any events.\n";
+    {
+        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_
+                  << "\" in config \"" << jvmConfigPath_.fullPath()
+                  << "\". Filter will not veto any events.\n";
+    }
 
     // Declare consumes using the EDFilter base API
-    edm::InputTag srcJetsTag_("slimmedJetsPuppi");
-    srcJetsToken_ = consumes<pat::JetCollection>(srcJetsTag_);
+    edmTokenJetAK4_ = consumes<pat::JetCollection>(edmTagJetAK4_);
 }
 
 JvmAppliedEventFilter::~JvmAppliedEventFilter() {}
 
-Bool_t JvmAppliedEventFilter::filter(edm::Event &iEvent, const edm::EventSetup &iSetup)
+bool JvmAppliedEventFilter::filter(edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
 
-    Bool_t passEvent = true;
+    bool passEvent = true;
     try
     {
-        edm::Handle<pat::JetCollection> srcJetsHandle;
-        iEvent.getByToken(srcJetsToken_, srcJetsHandle);
+        edm::Handle<pat::JetCollection> iJets;
+        iEvent.getByToken(edmTokenJetAK4_, iJets);
 
-        if (srcJetsHandle.isValid())
+        if (iJets.isValid())
         {
-            for (const auto &jIt : *srcJetsHandle)
+            for (const auto &jIt : *iJets)
             {
-                if (jvmChecker_.checkJetInVetoRegion(jIt.eta(), jIt.phi(), jIt.pt(), 6, jIt.chargedEmEnergyFraction(), jIt.neutralEmEnergyFraction()))
+                if (jvmChecker_.checkJetInVetoRegion(
+                        jIt.eta(),
+                        jIt.phi(),
+                        jIt.pt(),
+                        /* jetId: NanoAOD TightLepVeto not always available in MiniAOD */
+                        6,
+                        jIt.chargedEmEnergyFraction(),
+                        jIt.neutralEmEnergyFraction()))
                 {
+
                     passEvent = false;
                     break; // No need to loop over the remaining jets.
                 }
@@ -71,7 +88,8 @@ Bool_t JvmAppliedEventFilter::filter(edm::Event &iEvent, const edm::EventSetup &
     }
     catch (std::exception const &e)
     {
-        std::cout << "[JvmAppliedEventFilter] exception in filter -> " << e.what() << std::endl;
+        std::cout << "[JvmAppliedEventFilter] exception in filter -> "
+                  << e.what() << std::endl;
         // Be conservative on exception: do not veto the event.
         return true;
     }

@@ -6,7 +6,7 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 # OUTFILE = sys.argv[3]
 # source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
-INFILE = ['file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_{}.root'.format(i) for i in range(1, 11) if i != 185]
+INFILE = ["file:/eos/home-k/kakang/H2DW/Datasets/20260119/Simulation/PAT/2022/output_{}.root".format(i) for i in range(1, 11) if i != 185]
 OUTFILE = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/analysis/Signal/test.root"
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
@@ -24,15 +24,16 @@ process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(10))
 
 process.source = source
 
-process.jecAppliedJetProducer = cms.EDProducer("JecAppliedJetProducer")
-# process.jecAppliedMetProducer = cms.EDProducer("JecAppliedMetProducer")
-# process.jvmAppliedEventFilter = cms.EDFilter("JvmAppliedEventFilter")
+# process.load("EDAnalyzers.Reconstruction.JecAppliedJetProducer_cfi")
+process.load("EDAnalyzers.Reconstruction.JecAppliedMetProducer_cfi")
+# process.load("EDAnalyzers.Reconstruction.JvmAppliedEventFilter_cfi")
+# process.FullReco = cms.EDAnalyzer("FullReco")
 
 process.TFileService = cms.Service("TFileService", fileName=cms.string(OUTFILE), closeFileFast=cms.untracked.bool(True))
 
-process.options = cms.untracked.PSet(wantSummary=cms.untracked.bool(False))
+process.options = cms.untracked.PSet(wantSummary=cms.untracked.bool(True))
 
 # Run the JEC/JVM producers and filter before the FullReco analyzer
-# process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter)
-process.p = cms.Path(process.jecAppliedJetProducer)
+# process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter * process.FullReco)
+process.p = cms.Path(process.jecAppliedMetProducer)
 process.schedule = cms.Schedule(process.p)
