@@ -1,8 +1,11 @@
-Configuration/GenProduction/python/__pycache__/
-__init__.py
+**/__pycache__/
+**/__init__.py
 *.root
 *.log
 */thread0
 Simulation/tmp/
-Simulation/LHEGS/crab_*
-Simulation/LHEGS/__pycache__/
+**/crab_*
+**/__pycache__/
+**/condor_logs
+**/tmp
+Simulation/LHEGS/crabConfig.py

@@ -2,7 +2,7 @@
 # using: 
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py --python_filename LHEGS_cfg.py --eventcontent RAWSIM --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --fileout output.root --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM --geometry DB:Extended --era Run3 --number 10 --no_exec --mc
+# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_KKpimu_fragment_cff.py --python_filename LHEGS_ggHtoDsW_KKpimu_cfg.py --eventcontent RAWSIM --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --fileout output.root --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM --geometry DB:Extended --era Run3 --number 10 --no_exec --mc
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.Eras.Era_Run3_cff import Run3
@@ -65,7 +65,7 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_fragment_cff.py nevts:10'),
+    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsW_KKpimu_fragment_cff.py nevts:10'),
     name = cms.untracked.string('Applications'),
     version = cms.untracked.string('$Revision: 1.19 $')
 )
@@ -97,7 +97,22 @@ process.genstepfilter.triggerConditions=cms.vstring("generation_step")
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, '124X_mcRun3_2022_realistic_v12', '')
 
-process.generator = cms.EDFilter("Pythia8ConcurrentHadronizerFilter",
+process.generator = cms.EDFilter("Pythia8HadronizerFilter",
+    ExternalDecays = cms.PSet(
+        EvtGen130 = cms.untracked.PSet(
+            convertPythiaCodes = cms.untracked.bool(False),
+            decay_table = cms.string('GeneratorInterface/EvtGenInterface/data/DECAY_2014_NOLONGLIFE.DEC'),
+            list_forced_decays = cms.vstring(
+                'myD_s+',
+                'myD_s-'
+            ),
+            operates_on_particles = cms.vint32(431, -431),
+            particle_property_file = cms.FileInPath('GeneratorInterface/EvtGenInterface/data/evt_2014.pdl'),
+            user_decay_embedded = cms.vstring('\nAlias myD_s+ D_s+\nAlias myD_s- D_s-\nAlias myK+ K+\nAlias myK- K-\nAlias mypi+ pi+\nAlias mypi- pi-\nChargeConj myD_s+ myD_s-\nChargeConj myK+ myK-\nChargeConj mypi+ mypi-\n\nDecay myD_s+\n1.0 myK+ myK- mypi+ D_DALITZ;\nEnddecay\nCDecay myD_s-\n\nEnd\n'),
+            verbose = cms.untracked.int32(1)
+        ),
+        parameterSets = cms.vstring('EvtGen130')
+    ),
     PythiaParameters = cms.PSet(
         parameterSets = cms.vstring(
             'pythia8CommonSettings',
@@ -110,13 +125,14 @@ process.generator = cms.EDFilter("Pythia8ConcurrentHadronizerFilter",
             'POWHEG:nFinal = 1',
             '25:onMode = off',
             '25:addChannel = 1  1.00   103   -24   431',
+            '25:addChannel = 1  1.00   103   24   -431',
             '25:m0 = 125.0',
             '24:onMode = off',
+            '24:onIfMatch = -11 12',
             '24:onIfMatch = -13 14',
-            '431:onMode = off',
-            '431:onIfMatch = 333 211',
-            '333:onMode = off',
-            '333:onIfMatch = 321 -321'
+            '-24:onMode = off',
+            '-24:onIfMatch = 11 -12',
+            '-24:onIfMatch = 13 -14'
         ),
         pythia8CP5Settings = cms.vstring(
             'Tune:pp 14',
@@ -182,7 +198,7 @@ process.generator = cms.EDFilter("Pythia8ConcurrentHadronizerFilter",
 
 process.externalLHEProducer = cms.EDProducer("ExternalLHEProducer",
     args = cms.vstring('/cvmfs/cms.cern.ch/phys_generator/gridpacks/RunIII/13p6TeV/slc7_amd64_gcc10/powheg/V2/gg_H_quark-mass-effects_mwindow1d0_slc7_amd64_gcc10_CMSSW_12_4_8.tgz'),
-    generateConcurrently = cms.untracked.bool(True),
+    generateConcurrently = cms.untracked.bool(False),
     nEvents = cms.untracked.uint32(10),
     numberOfParameters = cms.uint32(1),
     outputFile = cms.string('cmsgrid_final.lhe'),
@@ -204,6 +220,10 @@ process.RAWSIMoutput_step = cms.EndPath(process.RAWSIMoutput)
 process.schedule = cms.Schedule(process.lhe_step,process.generation_step,process.genfiltersummary_step,process.simulation_step,process.endjob_step,process.RAWSIMoutput_step)
 from PhysicsTools.PatAlgos.tools.helpers import associatePatAlgosToolsTask
 associatePatAlgosToolsTask(process)
+
+#Setup FWK for multithreaded
+process.options.numberOfConcurrentLuminosityBlocks = 1
+process.options.eventSetup.numberOfConcurrentIOVs = 1
 # filter all path with the production filter sequence
 for path in process.paths:
 	if path in ['lhe_step']: continue

@@ -6,7 +6,7 @@ config.General.requestName = "REQUESTNAME"
 config.General.transferLogs = True
 
 config.section_("JobType")
-config.JobType.psetName = "./LHEGS_cfg.py"
+config.JobType.psetName = "CONFIGFILE"
 config.JobType.pluginName = "PrivateMC"
 
 config.section_("Data")
@@ -22,4 +22,4 @@ config.section_("User")
 config.User.voGroup = "becms"
 
 config.section_("Site")
-config.Site.storageSite = "T3_CH_CERNBOX"
+config.Site.storageSite = "T2_BE_IIHE"

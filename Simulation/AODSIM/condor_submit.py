@@ -1,26 +1,31 @@
 import sys
 import subprocess
-import os;
+import os
 
 def submit_jobs():
 
-    ver = 20260119
+    ver = 20260408
     year = 2022
-    indir = f"/eos/home-k/kakang/H2DW/Datasets/{ver}/Simulation/LHEGS/{year}/260119_142940/0000"
-    outdir = f"/eos/home-k/kakang/H2DW/Datasets/{ver}/Simulation/AODSIM/{year}"
+    # mode = "ggHtoDsW_KKpimu"
+    mode = "ggHtoDsstW_KKpimu"
 
-    os.makedirs(outdir, exist_ok=True)
-    os.makedirs(outdir+"/log", exist_ok=True)
+    indir = f"/store/user/kakang/Analysis/{mode}/{ver}/Simulation/LHEGS/{year}"
+    outdir = f"/store/user/kakang/Analysis/{mode}/{ver}/Simulation/AODSIM/{year}"
 
-    scheduler_log = f"./HTCondor_1.log"
+    os.makedirs("./tmp", exist_ok=True)
+
+    subprocess.run(["xrdfs", "root://maite.iihe.ac.be", "mkdir", "-p", f"{outdir}/log"])
+    subprocess.run(["./mkconfig.sh", mode])
+
+    scheduler_log = f"condor_logs/HTCondor_{mode}.log"
     if os.path.exists(scheduler_log):
         os.remove(scheduler_log)
 
     submit_description = f"""
 executable = run.sh
-arguments = {indir} {outdir} $(Process)
+arguments = {mode} {indir} {outdir} $(Process)
 log = {scheduler_log}
-JobBatchName = MC_ggHtoDsW_AODSIM_{year}_{ver}
+JobBatchName = MC_{mode}_AODSIM_{year}_{ver}
 request_cpus = 1
 request_memory = 8G
 request_disk = 10M
@@ -29,9 +34,9 @@ notify_user = kai.kang@cern.ch
 notification = error
 max_retries = 1
 should_transfer_files = NO
-queue 1
+queue 1000
 """
     subprocess.run(["condor_submit"], input=submit_description.encode())
 
 if __name__ == "__main__":
-    sys.exit(submit_jobs())
+    sys.exit(submit_jobs()) 
