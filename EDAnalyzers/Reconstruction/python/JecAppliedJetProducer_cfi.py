@@ -23,7 +23,7 @@ jecAppliedJetProducer = cms.EDProducer(
             ptMin=cms.double(0.0),
             ptMax=cms.double(1.0e9),
         ),
-        JecConfig=cms.FileInPath("EDAnalyzers/Reconstruction/json/JecConfigAK4.json"),
-        JerToolConfig=cms.FileInPath("EDAnalyzers/Reconstruction/json/jer_smear.json.gz"),
+        JecConfig=cms.FileInPath("EDAnalyzers/Reconstruction/data/JecConfigAK4.json"),
+        JerToolConfig=cms.FileInPath("EDAnalyzers/Reconstruction/data/jer_smear.json.gz"),
     ),
 )

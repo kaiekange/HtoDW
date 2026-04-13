@@ -27,7 +27,7 @@ namespace JvmConfigReader
     class JvmConfig
     {
     public:
-        explicit JvmConfig(std::string cfgPath = "EDAnalyzers/Reconstruction/json/JvmConfig.json")
+        explicit JvmConfig(std::string cfgPath = "EDAnalyzers/Reconstruction/data/JvmConfig.json")
             : cfgPath_(std::move(cfgPath)) {}
 
         JvmConfig(const JvmConfig &) = delete;

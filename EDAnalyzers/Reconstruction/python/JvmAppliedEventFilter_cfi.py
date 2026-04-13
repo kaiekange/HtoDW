@@ -7,6 +7,6 @@ jvmAppliedEventFilter = cms.EDFilter(
         minPt=cms.double(15.0),
         maxEta=cms.double(4.0),
         Year=cms.string("2022Pre"),
-        JvmConfig=cms.FileInPath("EDAnalyzers/Reconstruction/json/JvmConfig.json"),
+        JvmConfig=cms.FileInPath("EDAnalyzers/Reconstruction/data/JvmConfig.json"),
     ),
 )

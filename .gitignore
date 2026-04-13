@@ -4,3 +4,5 @@
 **/crab_*
 **/__pycache__
 **/kakang.cc
+analysis/macros/dataset
+analysis/macros/old_dataset

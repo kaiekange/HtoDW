@@ -24,8 +24,8 @@ jecAppliedMetProducer = cms.EDProducer(
         ),
         # Optional: name of userFloat on jets storing muon subtraction fraction (0..1)
         MuonSubtrUserFloat=cms.string(""),  # e.g. "muonSubtrFactor"; empty => ignore
-        JecConfig=cms.FileInPath("EDAnalyzers/Reconstruction/json/JecConfigAK4.json"),
-        JerToolConfig=cms.FileInPath("EDAnalyzers/Reconstruction/json/jer_smear.json.gz"),
+        JecConfig=cms.FileInPath("EDAnalyzers/Reconstruction/data/JecConfigAK4.json"),
+        JerToolConfig=cms.FileInPath("EDAnalyzers/Reconstruction/data/jer_smear.json.gz"),
     ),
     # MET sources
     srcMET_PF=cms.InputTag("slimmedMETs"),

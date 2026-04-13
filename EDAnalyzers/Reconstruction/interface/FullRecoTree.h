@@ -138,8 +138,45 @@ public:
 	Float_t Ds_IsoR04_PFIso;
 	Float_t Ds_IsoR04_RelIso;
 
-	Int_t num_ss_mu;
-	Int_t num_os_mu;
+	Int_t num_ss_mu_tight;
+	Int_t num_ss_mu_medium;
+	Int_t num_ss_mu_loose;
+	Int_t num_ss_mu_soft;
+	Int_t num_ss_mu_highpt;
+	Int_t num_ss_mu_tightglobal;
+	Int_t num_ss_mu_mediumglobal;
+	Int_t num_ss_mu_looseglobal;
+	Int_t num_ss_mu_softglobal;
+	Int_t num_ss_mu_highptglobal;
+
+	Int_t num_os_mu_tight;
+	Int_t num_os_mu_medium;
+	Int_t num_os_mu_loose;
+	Int_t num_os_mu_soft;
+	Int_t num_os_mu_highpt;
+	Int_t num_os_mu_tightglobal;
+	Int_t num_os_mu_mediumglobal;
+	Int_t num_os_mu_looseglobal;
+	Int_t num_os_mu_softglobal;
+	Int_t num_os_mu_highptglobal;
+
+	Int_t num_ss_el_cutloose;
+	Int_t num_ss_el_cutmedium;
+	Int_t num_ss_el_cuttight;
+	Int_t num_ss_el_cutveto;
+	Int_t num_ss_el_mvaiso80;
+	Int_t num_ss_el_mvaiso90;
+	Int_t num_ss_el_mvanoiso80;
+	Int_t num_ss_el_mvanoiso90;
+
+	Int_t num_os_el_cutloose;
+	Int_t num_os_el_cutmedium;
+	Int_t num_os_el_cuttight;
+	Int_t num_os_el_cutveto;
+	Int_t num_os_el_mvaiso80;
+	Int_t num_os_el_mvaiso90;
+	Int_t num_os_el_mvanoiso80;
+	Int_t num_os_el_mvanoiso90;
 
 	Int_t mu_charge;
 	Float_t mu_eta;
@@ -188,14 +225,19 @@ public:
 	Float_t met_py;
 	Float_t met_pt;
 	Float_t met_sumEt;
-	Float_t met_corphi;
-	Float_t met_corpx;
-	Float_t met_corpy;
-	Float_t met_corpt;
-	Float_t met_corsumEt;
 
-	Float_t num_jets;
-	Float_t num_jets_pt30;
+	Int_t num_jets;
+	Int_t num_jets_pt20;
+	Int_t num_jets_pt30;
+	Int_t num_jets_pt40;
+	Int_t num_jets_pt50;
+	Int_t num_jets_pt60;
+	Int_t num_jets_pt70;
+	Int_t num_jets_pt80;
+	Int_t num_jets_pt90;
+	Int_t num_jets_pt100;
+	std::vector<Float_t> jet_pt;
 	Float_t deltaR_Ds_Jet;
+
 };
 #endif

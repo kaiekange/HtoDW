@@ -132,8 +132,45 @@ void FullRecoTree::Init()
 	Ds_IsoR04_PFIso = null;
 	Ds_IsoR04_RelIso = null;
 
-	num_ss_mu = 0;
-	num_os_mu = 0;
+	num_ss_mu_tight = 0;
+	num_ss_mu_medium = 0;
+	num_ss_mu_loose = 0;
+	num_ss_mu_soft = 0;
+	num_ss_mu_highpt = 0;
+	num_ss_mu_tightglobal = 0;
+	num_ss_mu_mediumglobal = 0;
+	num_ss_mu_looseglobal = 0;
+	num_ss_mu_softglobal = 0;
+	num_ss_mu_highptglobal = 0;
+
+	num_os_mu_tight = 0;
+	num_os_mu_medium = 0;
+	num_os_mu_loose = 0;
+	num_os_mu_soft = 0;
+	num_os_mu_highpt = 0;
+	num_os_mu_tightglobal = 0;
+	num_os_mu_mediumglobal = 0;
+	num_os_mu_looseglobal = 0;
+	num_os_mu_softglobal = 0;
+	num_os_mu_highptglobal = 0;
+
+	num_ss_el_cutloose = 0;
+	num_ss_el_cutmedium = 0;
+	num_ss_el_cuttight = 0;
+	num_ss_el_cutveto = 0;
+	num_ss_el_mvaiso80 = 0;
+	num_ss_el_mvaiso90 = 0;
+	num_ss_el_mvanoiso80 = 0;
+	num_ss_el_mvanoiso90 = 0;
+
+	num_os_el_cutloose = 0;
+	num_os_el_cutmedium = 0;
+	num_os_el_cuttight = 0;
+	num_os_el_cutveto = 0;
+	num_os_el_mvaiso80 = 0;
+	num_os_el_mvaiso90 = 0;
+	num_os_el_mvanoiso80 = 0;
+	num_os_el_mvanoiso90 = 0;
 
 	mu_charge = null;
 	mu_eta = null;
@@ -182,14 +219,18 @@ void FullRecoTree::Init()
 	met_py = null;
 	met_pt = null;
 	met_sumEt = null;
-	met_corphi = null;
-	met_corpx = null;
-	met_corpy = null;
-	met_corpt = null;
-	met_corsumEt = null;
 
 	num_jets = null;
+	num_jets_pt20 = null;
 	num_jets_pt30 = null;
+	num_jets_pt40 = null;
+	num_jets_pt50 = null;
+	num_jets_pt60 = null;
+	num_jets_pt70 = null;
+	num_jets_pt80 = null;
+	num_jets_pt90 = null;
+	num_jets_pt100 = null;
+	jet_pt.clear();
 	deltaR_Ds_Jet = null;
 }
 
@@ -319,8 +360,45 @@ void FullRecoTree::CreateBranches()
 	tree->Branch("Ds_IsoR04_PFIso", &Ds_IsoR04_PFIso);
 	tree->Branch("Ds_IsoR04_RelIso", &Ds_IsoR04_RelIso);
 
-	tree->Branch("num_ss_mu", &num_ss_mu);
-	tree->Branch("num_os_mu", &num_os_mu);
+	tree->Branch("num_ss_mu_tight", &num_ss_mu_tight);
+	tree->Branch("num_ss_mu_medium", &num_ss_mu_medium);
+	tree->Branch("num_ss_mu_loose", &num_ss_mu_loose);
+	tree->Branch("num_ss_mu_soft", &num_ss_mu_soft);
+	tree->Branch("num_ss_mu_highpt", &num_ss_mu_highpt);
+	tree->Branch("num_ss_mu_tightglobal", &num_ss_mu_tightglobal);
+	tree->Branch("num_ss_mu_mediumglobal", &num_ss_mu_mediumglobal);
+	tree->Branch("num_ss_mu_looseglobal", &num_ss_mu_looseglobal);
+	tree->Branch("num_ss_mu_softglobal", &num_ss_mu_softglobal);
+	tree->Branch("num_ss_mu_highptglobal", &num_ss_mu_highptglobal);
+
+	tree->Branch("num_os_mu_tight", &num_os_mu_tight);
+	tree->Branch("num_os_mu_medium", &num_os_mu_medium);
+	tree->Branch("num_os_mu_loose", &num_os_mu_loose);
+	tree->Branch("num_os_mu_soft", &num_os_mu_soft);
+	tree->Branch("num_os_mu_highpt", &num_os_mu_highpt);
+	tree->Branch("num_os_mu_tightglobal", &num_os_mu_tightglobal);
+	tree->Branch("num_os_mu_mediumglobal", &num_os_mu_mediumglobal);
+	tree->Branch("num_os_mu_looseglobal", &num_os_mu_looseglobal);
+	tree->Branch("num_os_mu_softglobal", &num_os_mu_softglobal);
+	tree->Branch("num_os_mu_highptglobal", &num_os_mu_highptglobal);
+
+	tree->Branch("num_ss_el_cutloose", &num_ss_el_cutloose);
+	tree->Branch("num_ss_el_cutmedium", &num_ss_el_cutmedium);
+	tree->Branch("num_ss_el_cuttight", &num_ss_el_cuttight);
+	tree->Branch("num_ss_el_cutveto", &num_ss_el_cutveto);
+	tree->Branch("num_ss_el_mvaiso80", &num_ss_el_mvaiso80);
+	tree->Branch("num_ss_el_mvaiso90", &num_ss_el_mvaiso90);
+	tree->Branch("num_ss_el_mvanoiso80", &num_ss_el_mvanoiso80);
+	tree->Branch("num_ss_el_mvanoiso90", &num_ss_el_mvanoiso90);
+
+	tree->Branch("num_os_el_cutloose", &num_os_el_cutloose);
+	tree->Branch("num_os_el_cutmedium", &num_os_el_cutmedium);
+	tree->Branch("num_os_el_cuttight", &num_os_el_cuttight);
+	tree->Branch("num_os_el_cutveto", &num_os_el_cutveto);
+	tree->Branch("num_os_el_mvaiso80", &num_os_el_mvaiso80);
+	tree->Branch("num_os_el_mvaiso90", &num_os_el_mvaiso90);
+	tree->Branch("num_os_el_mvanoiso80", &num_os_el_mvanoiso80);
+	tree->Branch("num_os_el_mvanoiso90", &num_os_el_mvanoiso90);
 
 	tree->Branch("mu_charge", &mu_charge);
 	tree->Branch("mu_eta", &mu_eta);
@@ -369,13 +447,17 @@ void FullRecoTree::CreateBranches()
 	tree->Branch("met_py", &met_py);
 	tree->Branch("met_pt", &met_pt);
 	tree->Branch("met_sumEt", &met_sumEt);
-	tree->Branch("met_corphi", &met_corphi);
-	tree->Branch("met_corpx", &met_corpx);
-	tree->Branch("met_corpy", &met_corpy);
-	tree->Branch("met_corpt", &met_corpt);
-	tree->Branch("met_corsumEt", &met_corsumEt);
 
 	tree->Branch("num_jets", &num_jets);
+	tree->Branch("num_jets_pt20", &num_jets_pt20);
 	tree->Branch("num_jets_pt30", &num_jets_pt30);
+	tree->Branch("num_jets_pt40", &num_jets_pt40);
+	tree->Branch("num_jets_pt50", &num_jets_pt50);
+	tree->Branch("num_jets_pt60", &num_jets_pt60);
+	tree->Branch("num_jets_pt70", &num_jets_pt70);
+	tree->Branch("num_jets_pt80", &num_jets_pt80);
+	tree->Branch("num_jets_pt90", &num_jets_pt90);
+	tree->Branch("num_jets_pt100", &num_jets_pt100);
+	tree->Branch("jet_pt", &jet_pt);
 	tree->Branch("deltaR_Ds_Jet", &deltaR_Ds_Jet);
 }

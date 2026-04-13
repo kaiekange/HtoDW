@@ -27,8 +27,8 @@ namespace JecConfigReader
     /// File locations for config JSONs
     struct ConfigPaths
     {
-        std::string ak4 = "EDAnalyzers/Reconstruction/json/JecConfigAK4.json";
-        std::string ak8 = "EDAnalyzers/Reconstruction/json/JecConfigAK8.json";
+        std::string ak4 = "EDAnalyzers/Reconstruction/data/JecConfigAK4.json";
+        std::string ak8 = "EDAnalyzers/Reconstruction/data/JecConfigAK8.json";
     };
 
     /// Small PODs kept public for ergonomic access
@@ -80,7 +80,7 @@ namespace JecConfigReader
     public:
         /// Construct with config paths and optional JER smearing JSON path
         explicit JecConfig(ConfigPaths paths,
-                           std::string jerSmearPath = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz")
+                           std::string jerSmearPath = "EDAnalyzers/Reconstruction/data/jer_smear.json.gz")
             : paths_(std::move(paths)), jerSmearPath_(std::move(jerSmearPath)) {}
 
         JecConfig(const JecConfig &) = delete;

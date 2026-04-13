@@ -13,7 +13,7 @@ namespace JecConfigReader
     }
     std::string &JecConfig::defaults_jer_path_()
     {
-        static std::string p = "EDAnalyzers/Reconstruction/json/jer_smear.json.gz";
+        static std::string p = "EDAnalyzers/Reconstruction/data/jer_smear.json.gz";
         return p;
     }
     bool &JecConfig::instance_constructed_()

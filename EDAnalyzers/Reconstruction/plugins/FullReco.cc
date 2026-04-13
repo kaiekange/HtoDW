@@ -24,6 +24,7 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/Math/interface/deltaR.h"
@@ -67,16 +68,14 @@ private:
 	Measurement1D distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 	Measurement1D distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 
-	edm::EDGetTokenT<pat::JetCollection> srcJetsToken_;
-	edm::EDGetTokenT<Double_t> rhoToken_;
-	edm::EDGetTokenT<pat::METCollection> metPFToken_;
-	edm::EDGetTokenT<pat::METCollection> metPuppiToken_;
 	edm::EDGetTokenT<edm::TriggerResults> triggerToken_;
 	edm::EDGetTokenT<reco::VertexCollection> primvtxToken_;
 	edm::EDGetTokenT<pat::PackedCandidateCollection> PFCandToken_;
 	edm::EDGetTokenT<pat::MuonCollection> MuonToken_;
+	edm::EDGetTokenT<pat::ElectronCollection> ElectronToken_;
 	edm::EDGetTokenT<pat::METCollection> MetToken_;
 	edm::EDGetTokenT<pat::JetCollection> JetToken_;
+	edm::EDGetTokenT<edm::ValueMap<Int_t>> tightJetIdToken_;
 	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
 
 	KinematicParticleFactoryFromTransientTrack factory;
@@ -117,18 +116,24 @@ FullReco::FullReco(const edm::ParameterSet &iConfig)
 	edm::InputTag MuonTag_("slimmedMuons");
 	MuonToken_ = consumes<pat::MuonCollection>(MuonTag_);
 
+	edm::InputTag ElectronTag_("slimmedElectrons");
+	ElectronToken_ = consumes<pat::ElectronCollection>(ElectronTag_);
+
 	// edm::InputTag MetTag_("slimmedMETsPuppi");
 	// MetToken_ = consumes<pat::METCollection>(MetTag_);
 
 	// edm::InputTag JetTag_("slimmedJetsPuppi");
 	// JetToken_ = consumes<pat::JetCollection>(JetTag_);
 
-	edm::InputTag MetTag_("CorrectedMet");
+	edm::InputTag MetTag_("jecAppliedMetProducer", "CorrectedMet");
 	MetToken_ = consumes<pat::METCollection>(MetTag_);
 
-	edm::InputTag JetTag_("CorrectedJetsPuppi");
+	edm::InputTag JetTag_("jecAppliedJetProducer", "CorrectedAK4");
 	JetToken_ = consumes<pat::JetCollection>(JetTag_);
 
+	edm::InputTag tightJetIdTag_("tightJetId");
+	tightJetIdToken_ = consumes<edm::ValueMap<Int_t>>(tightJetIdTag_);
+	
 	edm::ESInputTag ttBuilderTag_("", "TransientTrackBuilder");
 	ttBuilderToken_ = esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttBuilderTag_);
 }
@@ -163,11 +168,17 @@ void FullReco::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	edm::Handle<pat::MuonCollection> MuonHandle;
 	iEvent.getByToken(MuonToken_, MuonHandle);
 
+	edm::Handle<pat::ElectronCollection> ElectronHandle;
+	iEvent.getByToken(ElectronToken_, ElectronHandle);
+
 	edm::Handle<pat::METCollection> MetHandle;
 	iEvent.getByToken(MetToken_, MetHandle);
 
 	edm::Handle<pat::JetCollection> JetHandle;
 	iEvent.getByToken(JetToken_, JetHandle);
+
+	edm::Handle<edm::ValueMap<Int_t>> tightJetIdHandle;
+	iEvent.getByToken(tightJetIdToken_, tightJetIdHandle);
 
 	edm::ESHandle<TransientTrackBuilder> ttBuilderHandle = iSetup.getHandle(ttBuilderToken_);
 	const TransientTrackBuilder *ttBuilder = ttBuilderHandle.product();
@@ -416,21 +427,105 @@ void FullReco::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 			best_mu_pt = muon.pt();
 		}
 	}
+	if (best_mu_idx == -1)
+		return;
 
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
 		const pat::Muon &muon = (*MuonHandle)[idx_mu];
-		if (!muon.isTightMuon(primvtx))
-			continue;
 
 		if (muon.charge() == best_pi_pf.charge())
-			ftree->num_ss_mu++;
+		{
+			if (muon.isTightMuon(primvtx))
+				ftree->num_ss_mu_tight++;
+			if (muon.isMediumMuon())
+				ftree->num_ss_mu_medium++;
+			if (muon.isLooseMuon())
+				ftree->num_ss_mu_loose++;
+			if (muon.isSoftMuon(primvtx))
+				ftree->num_ss_mu_soft++;
+			if (muon.isHighPtMuon(primvtx))
+				ftree->num_ss_mu_highpt++;
+
+			if (muon.isTightMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_ss_mu_tightglobal++;
+			if (muon.isMediumMuon() && muon.isGlobalMuon())
+				ftree->num_ss_mu_mediumglobal++;
+			if (muon.isLooseMuon() && muon.isGlobalMuon())
+				ftree->num_ss_mu_looseglobal++;
+			if (muon.isSoftMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_ss_mu_softglobal++;
+			if (muon.isHighPtMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_ss_mu_highptglobal++;
+		}
 		else if (muon.charge() == -best_pi_pf.charge())
-			ftree->num_os_mu++;
+		{
+			if (muon.isTightMuon(primvtx))
+				ftree->num_os_mu_tight++;
+			if (muon.isMediumMuon())
+				ftree->num_os_mu_medium++;
+			if (muon.isLooseMuon())
+				ftree->num_os_mu_loose++;
+			if (muon.isSoftMuon(primvtx))
+				ftree->num_os_mu_soft++;
+			if (muon.isHighPtMuon(primvtx))
+				ftree->num_os_mu_highpt++;
+
+			if (muon.isTightMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_os_mu_tightglobal++;
+			if (muon.isMediumMuon() && muon.isGlobalMuon())
+				ftree->num_os_mu_mediumglobal++;
+			if (muon.isLooseMuon() && muon.isGlobalMuon())
+				ftree->num_os_mu_looseglobal++;
+			if (muon.isSoftMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_os_mu_softglobal++;
+			if (muon.isHighPtMuon(primvtx) && muon.isGlobalMuon())
+				ftree->num_os_mu_highptglobal++;
+		}
 	}
 
-	if (best_mu_idx == -1)
-		return;
+	for (Int_t idx_el = 0; idx_el < static_cast<Int_t>(ElectronHandle->size()); idx_el++)
+	{
+		const pat::Electron &electron = (*ElectronHandle)[idx_el];
+		if (electron.charge() == best_pi_pf.charge())
+		{
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-loose"))
+				ftree->num_ss_el_cutloose++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-medium"))
+				ftree->num_ss_el_cutmedium++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-tight"))
+				ftree->num_ss_el_cuttight++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-veto"))
+				ftree->num_ss_el_cutveto++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-iso-V1-wp80"))
+				ftree->num_ss_el_mvaiso80++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-iso-V1-wp90"))
+				ftree->num_ss_el_mvaiso90++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-noIso-V1-wp80"))
+				ftree->num_ss_el_mvanoiso80++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-noIso-V1-wp90"))
+				ftree->num_ss_el_mvanoiso90++;
+		}
+		else if (electron.charge() == -best_pi_pf.charge())
+		{
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-loose"))
+				ftree->num_os_el_cutloose++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-medium"))
+				ftree->num_os_el_cutmedium++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-tight"))
+				ftree->num_os_el_cuttight++;
+			if (electron.electronID("cutBasedElectronID-RunIIIWinter22-V1-veto"))
+				ftree->num_os_el_cutveto++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-iso-V1-wp80"))
+				ftree->num_os_el_mvaiso80++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-iso-V1-wp90"))
+				ftree->num_os_el_mvaiso90++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-noIso-V1-wp80"))
+				ftree->num_os_el_mvanoiso80++;
+			if (electron.electronID("mvaEleID-RunIIIWinter22-noIso-V1-wp90"))
+				ftree->num_os_el_mvanoiso90++;
+		}
+	}
 
 	const pat::Muon &muon = (*MuonHandle)[best_mu_idx];
 
@@ -541,20 +636,55 @@ void FullReco::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
 	Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt);
 	Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
-
+	
 	Float_t deltaR_Ds_Jet = 100.;
+	Int_t num_jets_pt20 = 0;
 	Int_t num_jets_pt30 = 0;
+	Int_t num_jets_pt40 = 0;
+	Int_t num_jets_pt50 = 0;
+	Int_t num_jets_pt60 = 0;
+	Int_t num_jets_pt70 = 0;
+	Int_t num_jets_pt80 = 0;
+	Int_t num_jets_pt90 = 0;
+	Int_t num_jets_pt100 = 0;
+	std::vector<Float_t> jet_pt;
+	jet_pt.clear();
 	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
 	{
-		const pat::Jet &Jet = (*JetHandle)[idx_jet];
-		if (Jet.pt() < 30)
+		Int_t tightJetId = (*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)];
+		if (tightJetId == 0)
 			continue;
-		num_jets_pt30++;
-		Float_t tmp_deltaR_Ds_Jet = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
 
-		if (tmp_deltaR_Ds_Jet < deltaR_Ds_Jet)
-			deltaR_Ds_Jet = tmp_deltaR_Ds_Jet;
+		const pat::Jet &Jet = (*JetHandle)[idx_jet];
+		jet_pt.push_back(Jet.pt());
+
+		if (Jet.pt() > 20)
+			num_jets_pt20++;
+		if (Jet.pt() > 30)
+			num_jets_pt30++;
+		if (Jet.pt() > 40)
+			num_jets_pt40++;
+		if (Jet.pt() > 50)
+			num_jets_pt50++;
+		if (Jet.pt() > 60)
+			num_jets_pt60++;
+		if (Jet.pt() > 70)
+			num_jets_pt70++;
+		if (Jet.pt() > 80)
+			num_jets_pt80++;
+		if (Jet.pt() > 90)
+			num_jets_pt90++;
+		if (Jet.pt() > 100)
+			num_jets_pt100++;
+
+		if(Jet.pt() > 30)
+		{
+			Float_t tmp_deltaR_Ds_Jet = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
+			if (tmp_deltaR_Ds_Jet < deltaR_Ds_Jet)
+				deltaR_Ds_Jet = tmp_deltaR_Ds_Jet;
+		}
 	}
+
 
 	//--------------------------------------------------//
 	// muon candidate
@@ -760,15 +890,19 @@ void FullReco::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	ftree->met_py = Met.py();
 	ftree->met_pt = Met.pt();
 	ftree->met_sumEt = Met.sumEt();
-	ftree->met_corphi = Met.corPhi();
-	ftree->met_corpx = Met.corPx();
-	ftree->met_corpy = Met.corPy();
-	ftree->met_corpt = Met.corPt();
-	ftree->met_corsumEt = Met.corSumEt();
 
 	// Jets
 	ftree->num_jets = JetHandle->size();
+	ftree->num_jets_pt20 = num_jets_pt20;
 	ftree->num_jets_pt30 = num_jets_pt30;
+	ftree->num_jets_pt40 = num_jets_pt40;
+	ftree->num_jets_pt50 = num_jets_pt50;
+	ftree->num_jets_pt60 = num_jets_pt60;
+	ftree->num_jets_pt70 = num_jets_pt70;
+	ftree->num_jets_pt80 = num_jets_pt80;
+	ftree->num_jets_pt90 = num_jets_pt90;
+	ftree->num_jets_pt100 = num_jets_pt100;
+	ftree->jet_pt = jet_pt;
 	ftree->deltaR_Ds_Jet = deltaR_Ds_Jet;
 
 	ftree->tree->Fill();

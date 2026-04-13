@@ -7,7 +7,7 @@ namespace JvmConfigReader
     // ---- singleton defaults ----
     std::string &JvmConfig::default_cfg_path_()
     {
-        static std::string p = "EDAnalyzers/Reconstruction/json/JvmConfig.json";
+        static std::string p = "EDAnalyzers/Reconstruction/data/JvmConfig.json";
         return p;
     }
     bool &JvmConfig::instance_constructed_()
