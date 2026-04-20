@@ -580,9 +580,9 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 		else if (trigName.Contains("HLT_Mu50_v"))
 			ftree->trig_HLT_Mu50 = pass;
 	}
-	if (!(ftree->trig_HLT_IsoMu24) && !(ftree->trig_HLT_Mu50))
-		return;
-	nEventsTriggered_++;
+	// if (!(ftree->trig_HLT_IsoMu24) && !(ftree->trig_HLT_Mu50))
+	// 	return;
+	// nEventsTriggered_++;
 
 	//==================================================//
 	//--------------------------------------------------//

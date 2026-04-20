@@ -29,10 +29,10 @@ process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(-1))
 
 process.source = source
 
-process.load("EDAnalyzers.GenAnalyzer.JecAppliedJetProducer_cfi")
-process.load("EDAnalyzers.GenAnalyzer.JecAppliedMetProducer_cfi")
-process.load("EDAnalyzers.GenAnalyzer.JvmAppliedEventFilter_cfi")
-process.load("EDAnalyzers.GenAnalyzer.tightJetId_cfi")
+process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
+process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
+process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
+process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
 process.GenMatchDsWKKpimu = cms.EDAnalyzer("GenMatch_DsW_KKpimu")
 process.TFileService = cms.Service("TFileService", fileName=cms.string(options.OUTFILE), closeFileFast=cms.untracked.bool(True))
 
