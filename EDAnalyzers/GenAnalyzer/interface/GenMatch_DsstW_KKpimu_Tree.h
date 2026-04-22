@@ -14,9 +14,6 @@ public:
 	void CreateBranches();
 	void Init();
 
-	Float_t gamma_deltaR;
-	Float_t gamma_deltapt;
-
 	Float_t Gen_PV_vx;
 	Float_t Gen_PV_vy;
 	Float_t Gen_PV_vz;
@@ -259,6 +256,36 @@ public:
 	Float_t Ds_p;
 	Float_t Ds_mass;
 
+	Float_t gamma_charge;
+	Float_t gamma_eta;
+	Float_t gamma_phi;
+	Float_t gamma_px;
+	Float_t gamma_py;
+	Float_t gamma_pz;
+	Float_t gamma_pt;
+	Float_t gamma_p;
+	Float_t gamma_mass;
+
+	Float_t Dsst_charge;
+	Float_t Dsst_eta;
+	Float_t Dsst_phi;
+	Float_t Dsst_px;
+	Float_t Dsst_py;
+	Float_t Dsst_pz;
+	Float_t Dsst_pt;
+	Float_t Dsst_p;
+	Float_t Dsst_mass;
+
+	Float_t Dsmu_charge;
+	Float_t Dsmu_eta;
+	Float_t Dsmu_phi;
+	Float_t Dsmu_px;
+	Float_t Dsmu_py;
+	Float_t Dsmu_pz;
+	Float_t Dsmu_pt;
+	Float_t Dsmu_p;
+	Float_t Dsmu_mass;
+
 	Int_t vis_charge;
 	Float_t vis_eta;
 	Float_t vis_phi;
@@ -283,9 +310,24 @@ public:
 	Float_t dR_Kp_Km;
 	Float_t dR_Kp_pi;
 	Float_t dR_Kp_Ds;
+	Float_t dR_Kp_gamma;
+	Float_t dR_Kp_Dsst;
 	Float_t dR_Km_pi;
 	Float_t dR_Km_Ds;
+	Float_t dR_Km_gamma;
+	Float_t dR_Km_Dsst;
 	Float_t dR_pi_Ds;
+	Float_t dR_pi_gamma;
+	Float_t dR_pi_Dsst;
+	Float_t dR_Ds_gamma;
+	Float_t dR_Ds_Dsst;
+	Float_t dR_gamma_Dsst;
+	Float_t dR_Kp_mu;
+	Float_t dR_Km_mu;
+	Float_t dR_pi_mu;
+	Float_t dR_Ds_mu;
+	Float_t dR_gamma_mu;
+	Float_t dR_Dsst_mu;
 
 	Float_t Kp_ip;
 	Float_t Kp_iperr;
@@ -324,6 +366,20 @@ public:
 	Float_t Ds_IsoR04_PFIso;
 	Float_t Ds_IsoR04_RelIso;
 
+	Float_t Dsst_IsoR03_sumChargedHadronPt;
+	Float_t Dsst_IsoR03_sumNeutralHadronEt;
+	Float_t Dsst_IsoR03_sumPhotonEt;
+	Float_t Dsst_IsoR03_sumPUPt;
+	Float_t Dsst_IsoR03_PFIso;
+	Float_t Dsst_IsoR03_RelIso;
+
+	Float_t Dsst_IsoR04_sumChargedHadronPt;
+	Float_t Dsst_IsoR04_sumNeutralHadronEt;
+	Float_t Dsst_IsoR04_sumPhotonEt;
+	Float_t Dsst_IsoR04_sumPUPt;
+	Float_t Dsst_IsoR04_PFIso;
+	Float_t Dsst_IsoR04_RelIso;
+
 	Int_t mu_charge;
 	Float_t mu_eta;
 	Float_t mu_phi;
@@ -344,11 +400,6 @@ public:
 	Float_t mu_ip;
 	Float_t mu_iperr;
 	Float_t mu_ipsig;
-
-	Float_t dR_Kp_mu;
-	Float_t dR_Km_mu;
-	Float_t dR_pi_mu;
-	Float_t dR_Ds_mu;
 
 	Float_t mu_IsoR03_sumChargedHadronPt;
 	Float_t mu_IsoR03_sumNeutralHadronEt;
