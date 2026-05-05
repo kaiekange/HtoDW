@@ -24,7 +24,6 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/Common/interface/Association.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "DataFormats/JetReco/interface/GenJet.h"
 #include "DataFormats/METReco/interface/GenMET.h"
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
@@ -75,7 +74,6 @@ private:
 	Measurement1D distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 
 	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
-	edm::EDGetTokenT<reco::GenJetCollection> GenJetToken_;
 	edm::EDGetTokenT<std::vector<reco::GenMET>> GenMETToken_;
 	edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken_;
 	edm::EDGetTokenT<pat::PackedCandidateCollection> PFCandToken_;
@@ -121,9 +119,6 @@ GenMatch_DsstW_KKpimu::GenMatch_DsstW_KKpimu(const edm::ParameterSet &iConfig)
 
 	edm::InputTag GenPartTag_("prunedGenParticles");
 	GenPartToken_ = consumes<reco::GenParticleCollection>(GenPartTag_);
-
-	edm::InputTag GenJetTag_("slimmedGenJets");
-	GenJetToken_ = consumes<reco::GenJetCollection>(GenJetTag_);
 
 	edm::InputTag GenMETTag_("genMetTrue");
 	GenMETToken_ = consumes<std::vector<reco::GenMET>>(GenMETTag_);
@@ -339,41 +334,6 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	Gen_Dsmu_tlv = Gen_Ds_tlv + Gen_mu_tlv;
 	Gen_vis_tlv = Gen_Dsst_tlv + Gen_mu_tlv;
 
-	edm::Handle<reco::GenJetCollection> GenJetHandle;
-	iEvent.getByToken(GenJetToken_, GenJetHandle);
-
-	Int_t Gen_num_jets_pt20 = 0;
-	Int_t Gen_num_jets_pt30 = 0;
-	Int_t Gen_num_jets_pt40 = 0;
-	Int_t Gen_num_jets_pt50 = 0;
-	Int_t Gen_num_jets_pt60 = 0;
-	Int_t Gen_num_jets_pt70 = 0;
-	Int_t Gen_num_jets_pt80 = 0;
-	Int_t Gen_num_jets_pt90 = 0;
-	Int_t Gen_num_jets_pt100 = 0;
-	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(GenJetHandle->size()); idx_jet++)
-	{
-		const reco::Jet &Jet = (*GenJetHandle)[idx_jet];
-		if (Jet.pt() > 20)
-			Gen_num_jets_pt20++;
-		if (Jet.pt() > 30)
-			Gen_num_jets_pt30++;
-		if (Jet.pt() > 40)
-			Gen_num_jets_pt40++;
-		if (Jet.pt() > 50)
-			Gen_num_jets_pt50++;
-		if (Jet.pt() > 60)
-			Gen_num_jets_pt60++;
-		if (Jet.pt() > 70)
-			Gen_num_jets_pt70++;
-		if (Jet.pt() > 80)
-			Gen_num_jets_pt80++;
-		if (Jet.pt() > 90)
-			Gen_num_jets_pt90++;
-		if (Jet.pt() > 100)
-			Gen_num_jets_pt100++;
-	}
-
 	edm::Handle<std::vector<reco::GenMET>> GenMETHandle;
 	iEvent.getByToken(GenMETToken_, GenMETHandle);
 	const reco::MET &GenMET = GenMETHandle->front();
@@ -499,35 +459,26 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	ftree->Gen_dR_Kp_Km = reco::deltaR(Kp_gp, Km_gp);
 	ftree->Gen_dR_Kp_pi = reco::deltaR(Kp_gp, pi_gp);
 	ftree->Gen_dR_Kp_Ds = reco::deltaR(Kp_gp, Ds_gp);
-	ftree->Gen_dR_Kp_gamma = reco::deltaR(Kp_gp, gamma_gp);
-	ftree->Gen_dR_Kp_Dsst = reco::deltaR(Kp_gp, Dsst_gp);
 	ftree->Gen_dR_Km_pi = reco::deltaR(Km_gp, pi_gp);
 	ftree->Gen_dR_Km_Ds = reco::deltaR(Km_gp, Ds_gp);
+	ftree->Gen_dR_pi_Ds = reco::deltaR(pi_gp, Ds_gp);
+
+	ftree->Gen_dR_Kp_gamma = reco::deltaR(Kp_gp, gamma_gp);
+	ftree->Gen_dR_Kp_Dsst = reco::deltaR(Kp_gp, Dsst_gp);
 	ftree->Gen_dR_Km_gamma = reco::deltaR(Km_gp, gamma_gp);
 	ftree->Gen_dR_Km_Dsst = reco::deltaR(Km_gp, Dsst_gp);
-	ftree->Gen_dR_pi_Ds = reco::deltaR(pi_gp, Ds_gp);
 	ftree->Gen_dR_pi_gamma = reco::deltaR(pi_gp, gamma_gp);
 	ftree->Gen_dR_pi_Dsst = reco::deltaR(pi_gp, Dsst_gp);
 	ftree->Gen_dR_Ds_gamma = reco::deltaR(Ds_gp, gamma_gp);
 	ftree->Gen_dR_Ds_Dsst = reco::deltaR(Ds_gp, Dsst_gp);
 	ftree->Gen_dR_gamma_Dsst = reco::deltaR(gamma_gp, Dsst_gp);
+
 	ftree->Gen_dR_Kp_mu = reco::deltaR(Kp_gp, mu_gp);
 	ftree->Gen_dR_Km_mu = reco::deltaR(Km_gp, mu_gp);
 	ftree->Gen_dR_pi_mu = reco::deltaR(pi_gp, mu_gp);
 	ftree->Gen_dR_Ds_mu = reco::deltaR(Ds_gp, mu_gp);
 	ftree->Gen_dR_gamma_mu = reco::deltaR(gamma_gp, mu_gp);
 	ftree->Gen_dR_Dsst_mu = reco::deltaR(Dsst_gp, mu_gp);
-
-	ftree->Gen_num_jets = static_cast<Int_t>(GenJetHandle->size());
-	ftree->Gen_num_jets_pt20 = Gen_num_jets_pt20;
-	ftree->Gen_num_jets_pt30 = Gen_num_jets_pt30;
-	ftree->Gen_num_jets_pt40 = Gen_num_jets_pt40;
-	ftree->Gen_num_jets_pt50 = Gen_num_jets_pt50;
-	ftree->Gen_num_jets_pt60 = Gen_num_jets_pt60;
-	ftree->Gen_num_jets_pt70 = Gen_num_jets_pt70;
-	ftree->Gen_num_jets_pt80 = Gen_num_jets_pt80;
-	ftree->Gen_num_jets_pt90 = Gen_num_jets_pt90;
-	ftree->Gen_num_jets_pt100 = Gen_num_jets_pt100;
 
 	ftree->Gen_met_phi = GenMET.phi();
 	ftree->Gen_met_px = GenMET.px();
@@ -627,6 +578,7 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	if (gamma_match_idx < 0)
 		return;
 	const pat::PackedCandidate &gamma_pf = (*PFCandHandle)[gamma_match_idx];
+	ftree->gamma_deltaR = gamma_deltaR;
 
 	edm::Handle<pat::MuonCollection> MuonHandle;
 	iEvent.getByToken(MuonToken_, MuonHandle);
@@ -700,6 +652,7 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 		return;
 	GlobalPoint primvtx_pos(primvtx.x(), primvtx.y(), primvtx.z());
 	GlobalError primvtx_cov(primvtx.covariance());
+
 	ftree->primvtx_isValid = primvtx.isValid();
 	ftree->primvtx_isFake = primvtx.isFake();
 	ftree->primvtx_chi2 = primvtx.chi2();
@@ -711,6 +664,110 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	ftree->primvtx_vxerr = primvtx.xError();
 	ftree->primvtx_vyerr = primvtx.yError();
 	ftree->primvtx_vzerr = primvtx.zError();
+
+	//==================================================//
+	//--------------------------------------------------//
+	// MET
+	//--------------------------------------------------//
+	//==================================================//
+	edm::Handle<pat::METCollection> MetHandle;
+	iEvent.getByToken(MetToken_, MetHandle);
+
+	const pat::MET &Met = MetHandle->front();
+
+	// MET kinematics
+	ftree->met_sig = Met.metSignificance();
+	ftree->met_phi = Met.phi();
+	ftree->met_px = Met.px();
+	ftree->met_py = Met.py();
+	ftree->met_pt = Met.pt();
+	ftree->met_sumEt = Met.sumEt();
+
+	//==================================================//
+	//--------------------------------------------------//
+	// Jet
+	//--------------------------------------------------//
+	//==================================================//
+	edm::Handle<pat::JetCollection> JetHandle;
+	iEvent.getByToken(JetToken_, JetHandle);
+
+	edm::Handle<edm::ValueMap<Int_t>> tightJetIdHandle;
+	iEvent.getByToken(tightJetIdToken_, tightJetIdHandle);
+
+	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
+	{
+		Int_t tightJetId = (*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)];
+		if (tightJetId == 0)
+			continue;
+		ftree->num_jets++;
+		const pat::Jet &Jet = (*JetHandle)[idx_jet];
+		if (Jet.pt() > 20)
+			ftree->num_jets_pt20++;
+		if (Jet.pt() > 30)
+			ftree->num_jets_pt30++;
+		if (Jet.pt() > 40)
+			ftree->num_jets_pt40++;
+		if (Jet.pt() > 50)
+			ftree->num_jets_pt50++;
+		if (Jet.pt() > 60)
+			ftree->num_jets_pt60++;
+		if (Jet.pt() > 70)
+			ftree->num_jets_pt70++;
+		if (Jet.pt() > 80)
+			ftree->num_jets_pt80++;
+		if (Jet.pt() > 90)
+			ftree->num_jets_pt90++;
+		if (Jet.pt() > 100)
+			ftree->num_jets_pt100++;
+	}
+
+	//==================================================//
+	//--------------------------------------------------//
+	// muon candidate
+	//--------------------------------------------------//
+	//==================================================//
+	std::pair<Bool_t, Measurement1D> mu_ipresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(mu.muonBestTrack()), primvtx);
+	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt);
+	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt);
+
+	// muon kinematics
+	ftree->mu_charge = mu.charge();
+	ftree->mu_eta = mu.eta();
+	ftree->mu_phi = mu.phi();
+	ftree->mu_px = mu.px();
+	ftree->mu_py = mu.py();
+	ftree->mu_pz = mu.pz();
+	ftree->mu_pt = mu.pt();
+	ftree->mu_p = mu.p();
+	ftree->mu_isHighPt = mu.isHighPtMuon(primvtx);
+	ftree->mu_isLoose = mu.isLooseMuon();
+	ftree->mu_isMedium = mu.isMediumMuon();
+	ftree->mu_isSoft = mu.isSoftMuon(primvtx);
+	ftree->mu_isTight = mu.isTightMuon(primvtx);
+	ftree->mu_isPF = mu.isPFMuon();
+	ftree->mu_isTracker = mu.isTrackerMuon();
+	ftree->mu_isGlobal = mu.isGlobalMuon();
+
+	if (mu_ipresult.first)
+	{
+		ftree->mu_ip = mu_ipresult.second.value();
+		ftree->mu_iperr = mu_ipresult.second.error();
+		ftree->mu_ipsig = mu_ipresult.second.significance();
+	}
+
+	ftree->mu_IsoR03_sumChargedHadronPt = mu.pfIsolationR03().sumChargedHadronPt;
+	ftree->mu_IsoR03_sumNeutralHadronEt = mu.pfIsolationR03().sumNeutralHadronEt;
+	ftree->mu_IsoR03_sumPhotonEt = mu.pfIsolationR03().sumPhotonEt;
+	ftree->mu_IsoR03_sumPUPt = mu.pfIsolationR03().sumPUPt;
+	ftree->mu_IsoR03_PFIso = mu_IsoR03_PFIso;
+	ftree->mu_IsoR03_RelIso = mu_IsoR03_PFIso / mu.pt();
+
+	ftree->mu_IsoR04_sumChargedHadronPt = mu.pfIsolationR04().sumChargedHadronPt;
+	ftree->mu_IsoR04_sumNeutralHadronEt = mu.pfIsolationR04().sumNeutralHadronEt;
+	ftree->mu_IsoR04_sumPhotonEt = mu.pfIsolationR04().sumPhotonEt;
+	ftree->mu_IsoR04_sumPUPt = mu.pfIsolationR04().sumPUPt;
+	ftree->mu_IsoR04_PFIso = mu_IsoR04_PFIso;
+	ftree->mu_IsoR04_RelIso = mu_IsoR04_PFIso / mu.pt();
 
 	//==================================================//
 	//--------------------------------------------------//
@@ -828,9 +885,9 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 		}
 	}
 	Float_t Ds_IsoR03_PFIso = Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt);
-	Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
+	Float_t Ds_IsoR03_RelIso = Ds_IsoR03_PFIso / Ds_mtm.perp();
 	Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt);
-	Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
+	Float_t Ds_IsoR04_RelIso = Ds_IsoR03_RelIso / Ds_mtm.perp();
 
 	//--------------------------------------------------//
 	// photon candidate
@@ -885,84 +942,9 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 		}
 	}
 	Float_t Dsst_IsoR03_PFIso = Dsst_IsoR03_sumChargedHadronPt + std::max(0.0, Dsst_IsoR03_sumNeutralHadronEt + Dsst_IsoR03_sumPhotonEt - 0.5 * Dsst_IsoR03_sumPUPt);
-	Float_t Dsst_IsoR03_RelIso = (Dsst_IsoR03_sumChargedHadronPt + std::max(0.0, Dsst_IsoR03_sumNeutralHadronEt + Dsst_IsoR03_sumPhotonEt - 0.5 * Dsst_IsoR03_sumPUPt)) / Dsst_tlv.Pt();
+	Float_t Dsst_IsoR03_RelIso = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
 	Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChargedHadronPt + std::max(0.0, Dsst_IsoR04_sumNeutralHadronEt + Dsst_IsoR04_sumPhotonEt - 0.5 * Dsst_IsoR04_sumPUPt);
-	Float_t Dsst_IsoR04_RelIso = (Dsst_IsoR04_sumChargedHadronPt + std::max(0.0, Dsst_IsoR04_sumNeutralHadronEt + Dsst_IsoR04_sumPhotonEt - 0.5 * Dsst_IsoR04_sumPUPt)) / Dsst_tlv.Pt();
-
-	//--------------------------------------------------//
-	// muon candidate
-	//--------------------------------------------------//
-	std::pair<Bool_t, Measurement1D> mu_ipresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(mu.muonBestTrack()), primvtx);
-
-	Float_t mu_IsoR03_sumChargedHadronPt = mu.pfIsolationR03().sumChargedHadronPt;
-	Float_t mu_IsoR03_sumNeutralHadronEt = mu.pfIsolationR03().sumNeutralHadronEt;
-	Float_t mu_IsoR03_sumPhotonEt = mu.pfIsolationR03().sumPhotonEt;
-	Float_t mu_IsoR03_sumPUPt = mu.pfIsolationR03().sumPUPt;
-	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt);
-	Float_t mu_IsoR03_RelIso = (mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt)) / mu.pt();
-
-	Float_t mu_IsoR04_sumChargedHadronPt = mu.pfIsolationR04().sumChargedHadronPt;
-	Float_t mu_IsoR04_sumNeutralHadronEt = mu.pfIsolationR04().sumNeutralHadronEt;
-	Float_t mu_IsoR04_sumPhotonEt = mu.pfIsolationR04().sumPhotonEt;
-	Float_t mu_IsoR04_sumPUPt = mu.pfIsolationR04().sumPUPt;
-	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt);
-	Float_t mu_IsoR04_RelIso = (mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt)) / mu.pt();
-
-	//==================================================//
-	//--------------------------------------------------//
-	// MET
-	//--------------------------------------------------//
-	//==================================================//
-	edm::Handle<pat::METCollection> MetHandle;
-	iEvent.getByToken(MetToken_, MetHandle);
-
-	const pat::MET &Met = MetHandle->front();
-
-	//==================================================//
-	//--------------------------------------------------//
-	// Jet
-	//--------------------------------------------------//
-	//==================================================//
-	edm::Handle<pat::JetCollection> JetHandle;
-	iEvent.getByToken(JetToken_, JetHandle);
-
-	edm::Handle<edm::ValueMap<Int_t>> tightJetIdHandle;
-	iEvent.getByToken(tightJetIdToken_, tightJetIdHandle);
-
-	Int_t num_jets_pt20 = 0;
-	Int_t num_jets_pt30 = 0;
-	Int_t num_jets_pt40 = 0;
-	Int_t num_jets_pt50 = 0;
-	Int_t num_jets_pt60 = 0;
-	Int_t num_jets_pt70 = 0;
-	Int_t num_jets_pt80 = 0;
-	Int_t num_jets_pt90 = 0;
-	Int_t num_jets_pt100 = 0;
-	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
-	{
-		Int_t tightJetId = (*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)];
-		if (tightJetId == 0)
-			continue;
-		const pat::Jet &Jet = (*JetHandle)[idx_jet];
-		if (Jet.pt() > 20)
-			num_jets_pt20++;
-		if (Jet.pt() > 30)
-			num_jets_pt30++;
-		if (Jet.pt() > 40)
-			num_jets_pt40++;
-		if (Jet.pt() > 50)
-			num_jets_pt50++;
-		if (Jet.pt() > 60)
-			num_jets_pt60++;
-		if (Jet.pt() > 70)
-			num_jets_pt70++;
-		if (Jet.pt() > 80)
-			num_jets_pt80++;
-		if (Jet.pt() > 90)
-			num_jets_pt90++;
-		if (Jet.pt() > 100)
-			num_jets_pt100++;
-	}
+	Float_t Dsst_IsoR04_RelIso = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
 
 	//==================================================//
 	//--------------------------------------------------//
@@ -1096,13 +1078,14 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	ftree->dR_Kp_Km = reco::deltaR(Kp_mtm, Km_mtm);
 	ftree->dR_Kp_pi = reco::deltaR(Kp_mtm, pi_mtm);
 	ftree->dR_Kp_Ds = reco::deltaR(Kp_mtm, Ds_mtm);
-	ftree->dR_Kp_gamma = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
-	ftree->dR_Kp_Dsst = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
 	ftree->dR_Km_pi = reco::deltaR(Km_mtm, pi_mtm);
 	ftree->dR_Km_Ds = reco::deltaR(Km_mtm, Ds_mtm);
+	ftree->dR_pi_Ds = reco::deltaR(pi_mtm, Ds_mtm);
+
+	ftree->dR_Kp_gamma = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
+	ftree->dR_Kp_Dsst = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
 	ftree->dR_Km_gamma = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
 	ftree->dR_Km_Dsst = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-	ftree->dR_pi_Ds = reco::deltaR(pi_mtm, Ds_mtm);
 	ftree->dR_pi_gamma = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
 	ftree->dR_pi_Dsst = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
 	ftree->dR_Ds_gamma = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
@@ -1161,30 +1144,20 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	ftree->Ds_IsoR04_PFIso = Ds_IsoR04_PFIso;
 	ftree->Ds_IsoR04_RelIso = Ds_IsoR04_RelIso;
 
-	// muon kinematics
-	ftree->mu_charge = mu.charge();
-	ftree->mu_eta = mu.eta();
-	ftree->mu_phi = mu.phi();
-	ftree->mu_px = mu.px();
-	ftree->mu_py = mu.py();
-	ftree->mu_pz = mu.pz();
-	ftree->mu_pt = mu.pt();
-	ftree->mu_p = mu.p();
-	ftree->mu_isHighPt = mu.isHighPtMuon(primvtx);
-	ftree->mu_isLoose = mu.isLooseMuon();
-	ftree->mu_isMedium = mu.isMediumMuon();
-	ftree->mu_isSoft = mu.isSoftMuon(primvtx);
-	ftree->mu_isTight = mu.isTightMuon(primvtx);
-	ftree->mu_isPF = mu.isPFMuon();
-	ftree->mu_isTracker = mu.isTrackerMuon();
-	ftree->mu_isGlobal = mu.isGlobalMuon();
+	// Ds ioslation
+	ftree->Dsst_IsoR03_sumChargedHadronPt = Dsst_IsoR03_sumChargedHadronPt;
+	ftree->Dsst_IsoR03_sumNeutralHadronEt = Dsst_IsoR03_sumNeutralHadronEt;
+	ftree->Dsst_IsoR03_sumPhotonEt = Dsst_IsoR03_sumPhotonEt;
+	ftree->Dsst_IsoR03_sumPUPt = Dsst_IsoR03_sumPUPt;
+	ftree->Dsst_IsoR03_PFIso = Dsst_IsoR03_PFIso;
+	ftree->Dsst_IsoR03_RelIso = Dsst_IsoR03_RelIso;
 
-	if (mu_ipresult.first)
-	{
-		ftree->mu_ip = mu_ipresult.second.value();
-		ftree->mu_iperr = mu_ipresult.second.error();
-		ftree->mu_ipsig = mu_ipresult.second.significance();
-	}
+	ftree->Dsst_IsoR04_sumChargedHadronPt = Dsst_IsoR04_sumChargedHadronPt;
+	ftree->Dsst_IsoR04_sumNeutralHadronEt = Dsst_IsoR04_sumNeutralHadronEt;
+	ftree->Dsst_IsoR04_sumPhotonEt = Dsst_IsoR04_sumPhotonEt;
+	ftree->Dsst_IsoR04_sumPUPt = Dsst_IsoR04_sumPUPt;
+	ftree->Dsst_IsoR04_PFIso = Dsst_IsoR04_PFIso;
+	ftree->Dsst_IsoR04_RelIso = Dsst_IsoR04_RelIso;
 
 	ftree->dR_Kp_mu = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), mu.eta(), mu.phi());
 	ftree->dR_Km_mu = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), mu.eta(), mu.phi());
@@ -1192,42 +1165,6 @@ void GenMatch_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSe
 	ftree->dR_Ds_mu = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), mu.eta(), mu.phi());
 	ftree->dR_gamma_mu = reco::deltaR(gamma_pf.eta(), gamma_pf.phi(), mu.eta(), mu.phi());
 	ftree->dR_Dsst_mu = reco::deltaR(Dsst_tlv.Eta(), Dsst_tlv.Phi(), mu.eta(), mu.phi());
-	
-
-	// muon isolation
-	ftree->mu_IsoR03_sumChargedHadronPt = mu_IsoR03_sumChargedHadronPt;
-	ftree->mu_IsoR03_sumNeutralHadronEt = mu_IsoR03_sumNeutralHadronEt;
-	ftree->mu_IsoR03_sumPhotonEt = mu_IsoR03_sumPhotonEt;
-	ftree->mu_IsoR03_sumPUPt = mu_IsoR03_sumPUPt;
-	ftree->mu_IsoR03_PFIso = mu_IsoR03_PFIso;
-	ftree->mu_IsoR03_RelIso = mu_IsoR03_RelIso;
-
-	ftree->mu_IsoR04_sumChargedHadronPt = mu_IsoR04_sumChargedHadronPt;
-	ftree->mu_IsoR04_sumNeutralHadronEt = mu_IsoR04_sumNeutralHadronEt;
-	ftree->mu_IsoR04_sumPhotonEt = mu_IsoR04_sumPhotonEt;
-	ftree->mu_IsoR04_sumPUPt = mu_IsoR04_sumPUPt;
-	ftree->mu_IsoR04_PFIso = mu_IsoR04_PFIso;
-	ftree->mu_IsoR04_RelIso = mu_IsoR04_RelIso;
-
-	// MET kinematics
-	ftree->met_sig = Met.metSignificance();
-	ftree->met_phi = Met.phi();
-	ftree->met_px = Met.px();
-	ftree->met_py = Met.py();
-	ftree->met_pt = Met.pt();
-	ftree->met_sumEt = Met.sumEt();
-
-	// Jets
-	ftree->num_jets = JetHandle->size();
-	ftree->num_jets_pt20 = num_jets_pt20;
-	ftree->num_jets_pt30 = num_jets_pt30;
-	ftree->num_jets_pt40 = num_jets_pt40;
-	ftree->num_jets_pt50 = num_jets_pt50;
-	ftree->num_jets_pt60 = num_jets_pt60;
-	ftree->num_jets_pt70 = num_jets_pt70;
-	ftree->num_jets_pt80 = num_jets_pt80;
-	ftree->num_jets_pt90 = num_jets_pt90;
-	ftree->num_jets_pt100 = num_jets_pt100;
 
 	ftree->tree->Fill();
 }

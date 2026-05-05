@@ -61,7 +61,7 @@ public:
 	Float_t Gen_Ds_pt;
 	Float_t Gen_Ds_p;
 	Float_t Gen_Ds_mass;
-	
+
 	Int_t Gen_gamma_charge;
 	Float_t Gen_gamma_eta;
 	Float_t Gen_gamma_phi;
@@ -135,18 +135,20 @@ public:
 	Float_t Gen_dR_Kp_Km;
 	Float_t Gen_dR_Kp_pi;
 	Float_t Gen_dR_Kp_Ds;
-	Float_t Gen_dR_Kp_gamma;
-	Float_t Gen_dR_Kp_Dsst;
 	Float_t Gen_dR_Km_pi;
 	Float_t Gen_dR_Km_Ds;
+	Float_t Gen_dR_pi_Ds;
+
+	Float_t Gen_dR_Kp_gamma;
+	Float_t Gen_dR_Kp_Dsst;
 	Float_t Gen_dR_Km_gamma;
 	Float_t Gen_dR_Km_Dsst;
-	Float_t Gen_dR_pi_Ds;
 	Float_t Gen_dR_pi_gamma;
 	Float_t Gen_dR_pi_Dsst;
 	Float_t Gen_dR_Ds_gamma;
 	Float_t Gen_dR_Ds_Dsst;
 	Float_t Gen_dR_gamma_Dsst;
+
 	Float_t Gen_dR_Kp_mu;
 	Float_t Gen_dR_Km_mu;
 	Float_t Gen_dR_pi_mu;
@@ -154,22 +156,13 @@ public:
 	Float_t Gen_dR_gamma_mu;
 	Float_t Gen_dR_Dsst_mu;
 
-	Int_t Gen_num_jets;
-	Int_t Gen_num_jets_pt20;
-	Int_t Gen_num_jets_pt30;
-	Int_t Gen_num_jets_pt40;
-	Int_t Gen_num_jets_pt50;
-	Int_t Gen_num_jets_pt60;
-	Int_t Gen_num_jets_pt70;
-	Int_t Gen_num_jets_pt80;
-	Int_t Gen_num_jets_pt90;
-	Int_t Gen_num_jets_pt100;
-
 	Float_t Gen_met_phi;
 	Float_t Gen_met_px;
 	Float_t Gen_met_py;
 	Float_t Gen_met_pt;
 	Float_t Gen_met_sumEt;
+
+	Float_t gamma_deltaR;
 
 	Bool_t trig_HLT_IsoMu24;
 	Bool_t trig_HLT_Mu50;
@@ -185,6 +178,59 @@ public:
 	Float_t primvtx_vxerr;
 	Float_t primvtx_vyerr;
 	Float_t primvtx_vzerr;
+
+	Float_t met_sig;
+	Float_t met_phi;
+	Float_t met_px;
+	Float_t met_py;
+	Float_t met_pt;
+	Float_t met_sumEt;
+
+	Int_t num_jets;
+	Int_t num_jets_pt20;
+	Int_t num_jets_pt30;
+	Int_t num_jets_pt40;
+	Int_t num_jets_pt50;
+	Int_t num_jets_pt60;
+	Int_t num_jets_pt70;
+	Int_t num_jets_pt80;
+	Int_t num_jets_pt90;
+	Int_t num_jets_pt100;
+
+	Int_t mu_charge;
+	Float_t mu_eta;
+	Float_t mu_phi;
+	Float_t mu_px;
+	Float_t mu_py;
+	Float_t mu_pz;
+	Float_t mu_pt;
+	Float_t mu_p;
+	Int_t mu_isHighPt;
+	Int_t mu_isLoose;
+	Int_t mu_isMedium;
+	Int_t mu_isSoft;
+	Int_t mu_isTight;
+	Int_t mu_isPF;
+	Int_t mu_isTracker;
+	Int_t mu_isGlobal;
+
+	Float_t mu_ip;
+	Float_t mu_iperr;
+	Float_t mu_ipsig;
+
+	Float_t mu_IsoR03_sumChargedHadronPt;
+	Float_t mu_IsoR03_sumNeutralHadronEt;
+	Float_t mu_IsoR03_sumPhotonEt;
+	Float_t mu_IsoR03_sumPUPt;
+	Float_t mu_IsoR03_PFIso;
+	Float_t mu_IsoR03_RelIso;
+
+	Float_t mu_IsoR04_sumChargedHadronPt;
+	Float_t mu_IsoR04_sumNeutralHadronEt;
+	Float_t mu_IsoR04_sumPhotonEt;
+	Float_t mu_IsoR04_sumPUPt;
+	Float_t mu_IsoR04_PFIso;
+	Float_t mu_IsoR04_RelIso;
 
 	Int_t Kp_charge;
 	Float_t Kp_eta;
@@ -310,18 +356,20 @@ public:
 	Float_t dR_Kp_Km;
 	Float_t dR_Kp_pi;
 	Float_t dR_Kp_Ds;
-	Float_t dR_Kp_gamma;
-	Float_t dR_Kp_Dsst;
 	Float_t dR_Km_pi;
 	Float_t dR_Km_Ds;
+	Float_t dR_pi_Ds;
+
+	Float_t dR_Kp_gamma;
+	Float_t dR_Kp_Dsst;
 	Float_t dR_Km_gamma;
 	Float_t dR_Km_Dsst;
-	Float_t dR_pi_Ds;
 	Float_t dR_pi_gamma;
 	Float_t dR_pi_Dsst;
 	Float_t dR_Ds_gamma;
 	Float_t dR_Ds_Dsst;
 	Float_t dR_gamma_Dsst;
+
 	Float_t dR_Kp_mu;
 	Float_t dR_Km_mu;
 	Float_t dR_pi_mu;
@@ -379,58 +427,5 @@ public:
 	Float_t Dsst_IsoR04_sumPUPt;
 	Float_t Dsst_IsoR04_PFIso;
 	Float_t Dsst_IsoR04_RelIso;
-
-	Int_t mu_charge;
-	Float_t mu_eta;
-	Float_t mu_phi;
-	Float_t mu_px;
-	Float_t mu_py;
-	Float_t mu_pz;
-	Float_t mu_pt;
-	Float_t mu_p;
-	Int_t mu_isHighPt;
-	Int_t mu_isLoose;
-	Int_t mu_isMedium;
-	Int_t mu_isSoft;
-	Int_t mu_isTight;
-	Int_t mu_isPF;
-	Int_t mu_isTracker;
-	Int_t mu_isGlobal;
-
-	Float_t mu_ip;
-	Float_t mu_iperr;
-	Float_t mu_ipsig;
-
-	Float_t mu_IsoR03_sumChargedHadronPt;
-	Float_t mu_IsoR03_sumNeutralHadronEt;
-	Float_t mu_IsoR03_sumPhotonEt;
-	Float_t mu_IsoR03_sumPUPt;
-	Float_t mu_IsoR03_PFIso;
-	Float_t mu_IsoR03_RelIso;
-
-	Float_t mu_IsoR04_sumChargedHadronPt;
-	Float_t mu_IsoR04_sumNeutralHadronEt;
-	Float_t mu_IsoR04_sumPhotonEt;
-	Float_t mu_IsoR04_sumPUPt;
-	Float_t mu_IsoR04_PFIso;
-	Float_t mu_IsoR04_RelIso;
-
-	Float_t met_sig;
-	Float_t met_phi;
-	Float_t met_px;
-	Float_t met_py;
-	Float_t met_pt;
-	Float_t met_sumEt;
-
-	Int_t num_jets;
-	Int_t num_jets_pt20;
-	Int_t num_jets_pt30;
-	Int_t num_jets_pt40;
-	Int_t num_jets_pt50;
-	Int_t num_jets_pt60;
-	Int_t num_jets_pt70;
-	Int_t num_jets_pt80;
-	Int_t num_jets_pt90;
-	Int_t num_jets_pt100;
 };
 #endif

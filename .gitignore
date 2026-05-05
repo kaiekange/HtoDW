@@ -1,6 +1,9 @@
 *.root
 *.log
 *.txt
+*.png
+**/figures
+**/Model*
 **/crab_*
 **/__pycache__
 **/kakang.cc

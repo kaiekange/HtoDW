@@ -475,6 +475,12 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 		const pat::PackedCandidate &pf = (*PFCandHandle)[i];
 		const pat::PackedCandidateRef pfRef(PFCandHandle, i);
 		const reco::GenParticleRef genRef = (*associationHandle)[pfRef];
+		if (abs(pf.pdgId())!= 211)
+			continue;
+		if (!pf.hasTrackDetails())
+			continue;
+		if (!pf.trackHighPurity())
+			continue;
 		if (genRef.isNull())
 			continue;
 		const reco::GenParticle &gp = *genRef;
