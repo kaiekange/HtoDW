@@ -182,6 +182,10 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 
 	ftree->Init();
 
+	ftree->event_id = iEvent.id().event();
+	ftree->run_id = iEvent.id().run();
+	ftree->lumi_id = iEvent.luminosityBlock();
+
 	Int_t Gen_H_idx = 0;
 	Int_t Gen_Ds_idx = 0;
 	Int_t Gen_W_idx = 0;
@@ -292,6 +296,8 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 
 	edm::Handle<std::vector<reco::GenMET>> GenMETHandle;
 	iEvent.getByToken(GenMETToken_, GenMETHandle);
+	if (GenMETHandle->empty())
+		return;
 	const reco::MET &GenMET = GenMETHandle->front();
 
 	ftree->Gen_PV_vx = H_gp.vx();
@@ -533,7 +539,8 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 	//==================================================//
 	edm::Handle<reco::VertexCollection> primvtxHandle;
 	iEvent.getByToken(primvtxToken_, primvtxHandle);
-
+	if (primvtxHandle->empty())
+		return;
 	const reco::Vertex &primvtx = primvtxHandle->front();
 	if (!primvtx.isValid())
 		return;
@@ -559,7 +566,8 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 	//==================================================//
 	edm::Handle<pat::METCollection> MetHandle;
 	iEvent.getByToken(MetToken_, MetHandle);
-
+	if (MetHandle->empty())
+		return;
 	const pat::MET &Met = MetHandle->front();
 
 	// MET kinematics
@@ -642,8 +650,8 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 	std::pair<Bool_t, Measurement1D> mu_ipresult = IPTools::absoluteImpactParameter3D((*ttBuilder).build(mu.muonBestTrack()), primvtx);
 	std::pair<Bool_t, Measurement1D> mu_ipxyresult = IPTools::absoluteTransverseImpactParameter((*ttBuilder).build(mu.muonBestTrack()), primvtx);
 
-	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt);
-	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt);
+	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5f * mu.pfIsolationR03().sumPUPt);
+	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5f * mu.pfIsolationR04().sumPUPt);
 
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
@@ -930,254 +938,252 @@ void RecoAll_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup
 							Ds_IsoR04_sumPUPt += pf.pt();
 					}
 				}
-				Float_t Ds_IsoR03_PFIso = Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt);
-				Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
-				Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt);
-				Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
+				Float_t Ds_IsoR03_PFIso = Ds_IsoR03_sumChargedHadronPt + std::max(0.0f, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5f * Ds_IsoR03_sumPUPt);
+				Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0f, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5f * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
+				Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f * Ds_IsoR04_sumPUPt);
+				Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
 
 				// refitted info from Kinematic Fit
-				ftree->Kp_charge.push_back(Kp_pf.charge());
-				ftree->Kp_eta.push_back(Kp_mtm.eta());
-				ftree->Kp_phi.push_back(Kp_mtm.phi());
-				ftree->Kp_px.push_back(Kp_mtm.x());
-				ftree->Kp_py.push_back(Kp_mtm.y());
-				ftree->Kp_pz.push_back(Kp_mtm.z());
-				ftree->Kp_pt.push_back(Kp_mtm.perp());
-				ftree->Kp_p.push_back(Kp_mtm.mag());
-				ftree->Kp_mass.push_back(Kp->currentState().mass());
-				ftree->Kp_PVassoc.push_back(Kp_pf.pvAssociationQuality());
+				ftree->Kp_charge = Kp_pf.charge();
+				ftree->Kp_eta = Kp_mtm.eta();
+				ftree->Kp_phi = Kp_mtm.phi();
+				ftree->Kp_px = Kp_mtm.x();
+				ftree->Kp_py = Kp_mtm.y();
+				ftree->Kp_pz = Kp_mtm.z();
+				ftree->Kp_pt = Kp_mtm.perp();
+				ftree->Kp_p = Kp_mtm.mag();
+				ftree->Kp_mass = Kp->currentState().mass();
+				ftree->Kp_PVassoc = Kp_pf.pvAssociationQuality();
 
-				ftree->Km_charge.push_back(Km_pf.charge());
-				ftree->Km_eta.push_back(Km_mtm.eta());
-				ftree->Km_phi.push_back(Km_mtm.phi());
-				ftree->Km_px.push_back(Km_mtm.x());
-				ftree->Km_py.push_back(Km_mtm.y());
-				ftree->Km_pz.push_back(Km_mtm.z());
-				ftree->Km_pt.push_back(Km_mtm.perp());
-				ftree->Km_p.push_back(Km_mtm.mag());
-				ftree->Km_mass.push_back(Km->currentState().mass());
-				ftree->Km_PVassoc.push_back(Km_pf.pvAssociationQuality());
+				ftree->Km_charge = Km_pf.charge();
+				ftree->Km_eta = Km_mtm.eta();
+				ftree->Km_phi = Km_mtm.phi();
+				ftree->Km_px = Km_mtm.x();
+				ftree->Km_py = Km_mtm.y();
+				ftree->Km_pz = Km_mtm.z();
+				ftree->Km_pt = Km_mtm.perp();
+				ftree->Km_p = Km_mtm.mag();
+				ftree->Km_mass = Km->currentState().mass();
+				ftree->Km_PVassoc = Km_pf.pvAssociationQuality();
 
-				ftree->pi_charge.push_back(pi_pf.charge());
-				ftree->pi_eta.push_back(pi_mtm.eta());
-				ftree->pi_phi.push_back(pi_mtm.phi());
-				ftree->pi_px.push_back(pi_mtm.x());
-				ftree->pi_py.push_back(pi_mtm.y());
-				ftree->pi_pz.push_back(pi_mtm.z());
-				ftree->pi_pt.push_back(pi_mtm.perp());
-				ftree->pi_p.push_back(pi_mtm.mag());
-				ftree->pi_mass.push_back(pi->currentState().mass());
-				ftree->pi_PVassoc.push_back(pi_pf.pvAssociationQuality());
+				ftree->pi_charge = pi_pf.charge();
+				ftree->pi_eta = pi_mtm.eta();
+				ftree->pi_phi = pi_mtm.phi();
+				ftree->pi_px = pi_mtm.x();
+				ftree->pi_py = pi_mtm.y();
+				ftree->pi_pz = pi_mtm.z();
+				ftree->pi_pt = pi_mtm.perp();
+				ftree->pi_p = pi_mtm.mag();
+				ftree->pi_mass = pi->currentState().mass();
+				ftree->pi_PVassoc = pi_pf.pvAssociationQuality();
 
-				ftree->KK_charge.push_back(Kp_pf.charge() + Km_pf.charge());
-				ftree->KK_eta.push_back(KK_tlv.Eta());
-				ftree->KK_phi.push_back(KK_tlv.Phi());
-				ftree->KK_px.push_back(KK_tlv.Px());
-				ftree->KK_py.push_back(KK_tlv.Py());
-				ftree->KK_pz.push_back(KK_tlv.Pz());
-				ftree->KK_pt.push_back(KK_tlv.Pt());
-				ftree->KK_p.push_back(KK_tlv.P());
-				ftree->KK_mass.push_back(KK_tlv.M());
+				ftree->KK_charge = Kp_pf.charge() + Km_pf.charge();
+				ftree->KK_eta = KK_tlv.Eta();
+				ftree->KK_phi = KK_tlv.Phi();
+				ftree->KK_px = KK_tlv.Px();
+				ftree->KK_py = KK_tlv.Py();
+				ftree->KK_pz = KK_tlv.Pz();
+				ftree->KK_pt = KK_tlv.Pt();
+				ftree->KK_p = KK_tlv.P();
+				ftree->KK_mass = KK_tlv.M();
 
-				ftree->Kppi_charge.push_back(Kp_pf.charge() + pi_pf.charge());
-				ftree->Kppi_eta.push_back(Kppi_tlv.Eta());
-				ftree->Kppi_phi.push_back(Kppi_tlv.Phi());
-				ftree->Kppi_px.push_back(Kppi_tlv.Px());
-				ftree->Kppi_py.push_back(Kppi_tlv.Py());
-				ftree->Kppi_pz.push_back(Kppi_tlv.Pz());
-				ftree->Kppi_pt.push_back(Kppi_tlv.Pt());
-				ftree->Kppi_p.push_back(Kppi_tlv.P());
-				ftree->Kppi_mass.push_back(Kppi_tlv.M());
+				ftree->Kppi_charge = Kp_pf.charge() + pi_pf.charge();
+				ftree->Kppi_eta = Kppi_tlv.Eta();
+				ftree->Kppi_phi = Kppi_tlv.Phi();
+				ftree->Kppi_px = Kppi_tlv.Px();
+				ftree->Kppi_py = Kppi_tlv.Py();
+				ftree->Kppi_pz = Kppi_tlv.Pz();
+				ftree->Kppi_pt = Kppi_tlv.Pt();
+				ftree->Kppi_p = Kppi_tlv.P();
+				ftree->Kppi_mass = Kppi_tlv.M();
 
-				ftree->Kmpi_charge.push_back(Km_pf.charge() + pi_pf.charge());
-				ftree->Kmpi_eta.push_back(Kmpi_tlv.Eta());
-				ftree->Kmpi_phi.push_back(Kmpi_tlv.Phi());
-				ftree->Kmpi_px.push_back(Kmpi_tlv.Px());
-				ftree->Kmpi_py.push_back(Kmpi_tlv.Py());
-				ftree->Kmpi_pz.push_back(Kmpi_tlv.Pz());
-				ftree->Kmpi_pt.push_back(Kmpi_tlv.Pt());
-				ftree->Kmpi_p.push_back(Kmpi_tlv.P());
-				ftree->Kmpi_mass.push_back(Kmpi_tlv.M());
+				ftree->Kmpi_charge = Km_pf.charge() + pi_pf.charge();
+				ftree->Kmpi_eta = Kmpi_tlv.Eta();
+				ftree->Kmpi_phi = Kmpi_tlv.Phi();
+				ftree->Kmpi_px = Kmpi_tlv.Px();
+				ftree->Kmpi_py = Kmpi_tlv.Py();
+				ftree->Kmpi_pz = Kmpi_tlv.Pz();
+				ftree->Kmpi_pt = Kmpi_tlv.Pt();
+				ftree->Kmpi_p = Kmpi_tlv.P();
+				ftree->Kmpi_mass = Kmpi_tlv.M();
 
-				ftree->Ds_charge.push_back(Kp_pf.charge() + Km_pf.charge() + pi_pf.charge());
-				ftree->Ds_eta.push_back(Ds_mtm.eta());
-				ftree->Ds_phi.push_back(Ds_mtm.phi());
-				ftree->Ds_px.push_back(Ds_mtm.x());
-				ftree->Ds_py.push_back(Ds_mtm.y());
-				ftree->Ds_pz.push_back(Ds_mtm.z());
-				ftree->Ds_pt.push_back(Ds_mtm.perp());
-				ftree->Ds_p.push_back(Ds_mtm.mag());
-				ftree->Ds_mass.push_back(Ds->currentState().mass());
+				ftree->Ds_charge = Kp_pf.charge() + Km_pf.charge() + pi_pf.charge();
+				ftree->Ds_eta = Ds_mtm.eta();
+				ftree->Ds_phi = Ds_mtm.phi();
+				ftree->Ds_px = Ds_mtm.x();
+				ftree->Ds_py = Ds_mtm.y();
+				ftree->Ds_pz = Ds_mtm.z();
+				ftree->Ds_pt = Ds_mtm.perp();
+				ftree->Ds_p = Ds_mtm.mag();
+				ftree->Ds_mass = Ds->currentState().mass();
 
-				ftree->vis_charge.push_back(Kp_pf.charge() + Km_pf.charge() + pi_pf.charge() + mu.charge());
-				ftree->vis_eta.push_back(vis_tlv.Eta());
-				ftree->vis_phi.push_back(vis_tlv.Phi());
-				ftree->vis_px.push_back(vis_tlv.Px());
-				ftree->vis_py.push_back(vis_tlv.Py());
-				ftree->vis_pz.push_back(vis_tlv.Pz());
-				ftree->vis_pt.push_back(vis_tlv.Pt());
-				ftree->vis_p.push_back(vis_tlv.P());
-				ftree->vis_mass.push_back(vis_tlv.M());
+				ftree->vis_charge = Kp_pf.charge() + Km_pf.charge() + pi_pf.charge() + mu.charge();
+				ftree->vis_eta = vis_tlv.Eta();
+				ftree->vis_phi = vis_tlv.Phi();
+				ftree->vis_px = vis_tlv.Px();
+				ftree->vis_py = vis_tlv.Py();
+				ftree->vis_pz = vis_tlv.Pz();
+				ftree->vis_pt = vis_tlv.Pt();
+				ftree->vis_p = vis_tlv.P();
+				ftree->vis_mass = vis_tlv.M();
 
 				// refitted vertex
-				ftree->Ds_vx.push_back(Ds_vtx_pos.x());
-				ftree->Ds_vy.push_back(Ds_vtx_pos.y());
-				ftree->Ds_vz.push_back(Ds_vtx_pos.z());
-				ftree->Ds_vxerr.push_back(Ds_vtx_cov.cxx());
-				ftree->Ds_vyerr.push_back(Ds_vtx_cov.cyy());
-				ftree->Ds_vzerr.push_back(Ds_vtx_cov.czz());
-				ftree->Ds_chi2.push_back(Ds_vertex->chiSquared());
-				ftree->Ds_ndf.push_back(Ds_vertex->degreesOfFreedom());
-				ftree->Ds_chi2ndf.push_back(Ds_vertex->chiSquared() / Ds_vertex->degreesOfFreedom());
-				ftree->Ds_prob.push_back(TMath::Prob(Ds_vertex->chiSquared(), Ds_vertex->degreesOfFreedom()));
+				ftree->Ds_vx = Ds_vtx_pos.x();
+				ftree->Ds_vy = Ds_vtx_pos.y();
+				ftree->Ds_vz = Ds_vtx_pos.z();
+				ftree->Ds_vxerr = Ds_vtx_cov.cxx();
+				ftree->Ds_vyerr = Ds_vtx_cov.cyy();
+				ftree->Ds_vzerr = Ds_vtx_cov.czz();
+				ftree->Ds_chi2 = Ds_vertex->chiSquared();
+				ftree->Ds_ndf = Ds_vertex->degreesOfFreedom();
+				ftree->Ds_chi2ndf = Ds_vertex->chiSquared() / Ds_vertex->degreesOfFreedom();
+				ftree->Ds_prob = TMath::Prob(Ds_vertex->chiSquared(), Ds_vertex->degreesOfFreedom());
 
 				// angular distance
-				ftree->dR_Kp_Km.push_back(reco::deltaR(Kp_mtm, Km_mtm));
-				ftree->dR_Kp_pi.push_back(reco::deltaR(Kp_mtm, pi_mtm));
-				ftree->dR_Kp_Ds.push_back(reco::deltaR(Kp_mtm, Ds_mtm));
-				ftree->dR_Km_pi.push_back(reco::deltaR(Km_mtm, pi_mtm));
-				ftree->dR_Km_Ds.push_back(reco::deltaR(Km_mtm, Ds_mtm));
-				ftree->dR_pi_Ds.push_back(reco::deltaR(pi_mtm, Ds_mtm));
-				ftree->dR_Kp_mu.push_back(reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), mu.eta(), mu.phi()));
-				ftree->dR_Km_mu.push_back(reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), mu.eta(), mu.phi()));
-				ftree->dR_pi_mu.push_back(reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), mu.eta(), mu.phi()));
-				ftree->dR_Ds_mu.push_back(reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), mu.eta(), mu.phi()));
+				ftree->dR_Kp_Km = reco::deltaR(Kp_mtm, Km_mtm);
+				ftree->dR_Kp_pi = reco::deltaR(Kp_mtm, pi_mtm);
+				ftree->dR_Kp_Ds = reco::deltaR(Kp_mtm, Ds_mtm);
+				ftree->dR_Km_pi = reco::deltaR(Km_mtm, pi_mtm);
+				ftree->dR_Km_Ds = reco::deltaR(Km_mtm, Ds_mtm);
+				ftree->dR_pi_Ds = reco::deltaR(pi_mtm, Ds_mtm);
+				ftree->dR_Kp_mu = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), mu.eta(), mu.phi());
+				ftree->dR_Km_mu = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), mu.eta(), mu.phi());
+				ftree->dR_pi_mu = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), mu.eta(), mu.phi());
+				ftree->dR_Ds_mu = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), mu.eta(), mu.phi());
 
 				// IP
 				if (Kp_ipresult.first)
 				{
-					ftree->Kp_ip.push_back(Kp_ipresult.second.value());
-					ftree->Kp_iperr.push_back(Kp_ipresult.second.error());
-					ftree->Kp_ipsig.push_back(Kp_ipresult.second.significance());
+					ftree->Kp_ip = Kp_ipresult.second.value();
+					ftree->Kp_iperr = Kp_ipresult.second.error();
+					ftree->Kp_ipsig = Kp_ipresult.second.significance();
 				}
 				else
 				{
-					ftree->Kp_ip.push_back(null);
-					ftree->Kp_iperr.push_back(null);
-					ftree->Kp_ipsig.push_back(null);
+					ftree->Kp_ip = null;
+					ftree->Kp_iperr = null;
+					ftree->Kp_ipsig = null;
 				}
 				if (Kp_ipxyresult.first)
 				{
-					ftree->Kp_ipxy.push_back(Kp_ipxyresult.second.value());
-					ftree->Kp_ipxyerr.push_back(Kp_ipxyresult.second.error());
-					ftree->Kp_ipxysig.push_back(Kp_ipxyresult.second.significance());
+					ftree->Kp_ipxy = Kp_ipxyresult.second.value();
+					ftree->Kp_ipxyerr = Kp_ipxyresult.second.error();
+					ftree->Kp_ipxysig = Kp_ipxyresult.second.significance();
 				}
 				else
 				{
-					ftree->Kp_ipxy.push_back(null);
-					ftree->Kp_ipxyerr.push_back(null);
-					ftree->Kp_ipxysig.push_back(null);
+					ftree->Kp_ipxy = null;
+					ftree->Kp_ipxyerr = null;
+					ftree->Kp_ipxysig = null;
 				}
 				if (Km_ipresult.first)
 				{
-					ftree->Km_ip.push_back(Km_ipresult.second.value());
-					ftree->Km_iperr.push_back(Km_ipresult.second.error());
-					ftree->Km_ipsig.push_back(Km_ipresult.second.significance());
+					ftree->Km_ip = Km_ipresult.second.value();
+					ftree->Km_iperr = Km_ipresult.second.error();
+					ftree->Km_ipsig = Km_ipresult.second.significance();
 				}
 				else
 				{
-					ftree->Km_ip.push_back(null);
-					ftree->Km_iperr.push_back(null);
-					ftree->Km_ipsig.push_back(null);
+					ftree->Km_ip = null;
+					ftree->Km_iperr = null;
+					ftree->Km_ipsig = null;
 				}
 				if (Km_ipxyresult.first)
 				{
-					ftree->Km_ipxy.push_back(Km_ipxyresult.second.value());
-					ftree->Km_ipxyerr.push_back(Km_ipxyresult.second.error());
-					ftree->Km_ipxysig.push_back(Km_ipxyresult.second.significance());
+					ftree->Km_ipxy = Km_ipxyresult.second.value();
+					ftree->Km_ipxyerr = Km_ipxyresult.second.error();
+					ftree->Km_ipxysig = Km_ipxyresult.second.significance();
 				}
 				else
 				{
-					ftree->Km_ipxy.push_back(null);
-					ftree->Km_ipxyerr.push_back(null);
-					ftree->Km_ipxysig.push_back(null);
+					ftree->Km_ipxy = null;
+					ftree->Km_ipxyerr = null;
+					ftree->Km_ipxysig = null;
 				}
 				if (pi_ipresult.first)
 				{
-					ftree->pi_ip.push_back(pi_ipresult.second.value());
-					ftree->pi_iperr.push_back(pi_ipresult.second.error());
-					ftree->pi_ipsig.push_back(pi_ipresult.second.significance());
+					ftree->pi_ip = pi_ipresult.second.value();
+					ftree->pi_iperr = pi_ipresult.second.error();
+					ftree->pi_ipsig = pi_ipresult.second.significance();
 				}
 				else
 				{
-					ftree->pi_ip.push_back(null);
-					ftree->pi_iperr.push_back(null);
-					ftree->pi_ipsig.push_back(null);
+					ftree->pi_ip = null;
+					ftree->pi_iperr = null;
+					ftree->pi_ipsig = null;
 				}
 				if (pi_ipxyresult.first)
 				{
-					ftree->pi_ipxy.push_back(pi_ipxyresult.second.value());
-					ftree->pi_ipxyerr.push_back(pi_ipxyresult.second.error());
-					ftree->pi_ipxysig.push_back(pi_ipxyresult.second.significance());
+					ftree->pi_ipxy = pi_ipxyresult.second.value();
+					ftree->pi_ipxyerr = pi_ipxyresult.second.error();
+					ftree->pi_ipxysig = pi_ipxyresult.second.significance();
 				}
 				else
 				{
-					ftree->pi_ipxy.push_back(null);
-					ftree->pi_ipxyerr.push_back(null);
-					ftree->pi_ipxysig.push_back(null);
+					ftree->pi_ipxy = null;
+					ftree->pi_ipxyerr = null;
+					ftree->pi_ipxysig = null;
 				}
 				if (Ds_ipresult.first)
 				{
-					ftree->Ds_ip.push_back(Ds_ipresult.second.value());
-					ftree->Ds_iperr.push_back(Ds_ipresult.second.error());
-					ftree->Ds_ipsig.push_back(Ds_ipresult.second.significance());
+					ftree->Ds_ip = Ds_ipresult.second.value();
+					ftree->Ds_iperr = Ds_ipresult.second.error();
+					ftree->Ds_ipsig = Ds_ipresult.second.significance();
 				}
 				else
 				{
-					ftree->Ds_ip.push_back(null);
-					ftree->Ds_iperr.push_back(null);
-					ftree->Ds_ipsig.push_back(null);
+					ftree->Ds_ip = null;
+					ftree->Ds_iperr = null;
+					ftree->Ds_ipsig = null;
 				}
 				if (Ds_ipxyresult.first)
 				{
-					ftree->Ds_ipxy.push_back(Ds_ipxyresult.second.value());
-					ftree->Ds_ipxyerr.push_back(Ds_ipxyresult.second.error());
-					ftree->Ds_ipxysig.push_back(Ds_ipxyresult.second.significance());
+					ftree->Ds_ipxy = Ds_ipxyresult.second.value();
+					ftree->Ds_ipxyerr = Ds_ipxyresult.second.error();
+					ftree->Ds_ipxysig = Ds_ipxyresult.second.significance();
 				}
 				else
 				{
-					ftree->Ds_ipxy.push_back(null);
-					ftree->Ds_ipxyerr.push_back(null);
-					ftree->Ds_ipxysig.push_back(null);
+					ftree->Ds_ipxy = null;
+					ftree->Ds_ipxyerr = null;
+					ftree->Ds_ipxysig = null;
 				}
 
 				// PV-SV variable
-				ftree->dira.push_back(dira);
+				ftree->dira = dira;
 
-				ftree->Ds_FDxy.push_back(Ds_FD_XY.value());
-				ftree->Ds_FDxyerr.push_back(Ds_FD_XY.error());
-				ftree->Ds_FDxysig.push_back(Ds_FD_XY.significance());
+				ftree->Ds_FDxy = Ds_FD_XY.value();
+				ftree->Ds_FDxyerr = Ds_FD_XY.error();
+				ftree->Ds_FDxysig = Ds_FD_XY.significance();
 
-				ftree->Ds_FD.push_back(Ds_FD_3D.value());
-				ftree->Ds_FDerr.push_back(Ds_FD_3D.error());
-				ftree->Ds_FDsig.push_back(Ds_FD_3D.significance());
+				ftree->Ds_FD = Ds_FD_3D.value();
+				ftree->Ds_FDerr = Ds_FD_3D.error();
+				ftree->Ds_FDsig = Ds_FD_3D.significance();
 
-				// Ds ioslation
-				ftree->Ds_IsoR03_sumChargedHadronPt.push_back(Ds_IsoR03_sumChargedHadronPt);
-				ftree->Ds_IsoR03_sumNeutralHadronEt.push_back(Ds_IsoR03_sumNeutralHadronEt);
-				ftree->Ds_IsoR03_sumPhotonEt.push_back(Ds_IsoR03_sumPhotonEt);
-				ftree->Ds_IsoR03_sumPUPt.push_back(Ds_IsoR03_sumPUPt);
-				ftree->Ds_IsoR03_PFIso.push_back(Ds_IsoR03_PFIso);
-				ftree->Ds_IsoR03_RelIso.push_back(Ds_IsoR03_RelIso);
+				// Ds isolation
+				ftree->Ds_IsoR03_sumChargedHadronPt = Ds_IsoR03_sumChargedHadronPt;
+				ftree->Ds_IsoR03_sumNeutralHadronEt = Ds_IsoR03_sumNeutralHadronEt;
+				ftree->Ds_IsoR03_sumPhotonEt = Ds_IsoR03_sumPhotonEt;
+				ftree->Ds_IsoR03_sumPUPt = Ds_IsoR03_sumPUPt;
+				ftree->Ds_IsoR03_PFIso = Ds_IsoR03_PFIso;
+				ftree->Ds_IsoR03_RelIso = Ds_IsoR03_RelIso;
 
-				ftree->Ds_IsoR04_sumChargedHadronPt.push_back(Ds_IsoR04_sumChargedHadronPt);
-				ftree->Ds_IsoR04_sumNeutralHadronEt.push_back(Ds_IsoR04_sumNeutralHadronEt);
-				ftree->Ds_IsoR04_sumPhotonEt.push_back(Ds_IsoR04_sumPhotonEt);
-				ftree->Ds_IsoR04_sumPUPt.push_back(Ds_IsoR04_sumPUPt);
-				ftree->Ds_IsoR04_PFIso.push_back(Ds_IsoR04_PFIso);
-				ftree->Ds_IsoR04_RelIso.push_back(Ds_IsoR04_RelIso);
+				ftree->Ds_IsoR04_sumChargedHadronPt = Ds_IsoR04_sumChargedHadronPt;
+				ftree->Ds_IsoR04_sumNeutralHadronEt = Ds_IsoR04_sumNeutralHadronEt;
+				ftree->Ds_IsoR04_sumPhotonEt = Ds_IsoR04_sumPhotonEt;
+				ftree->Ds_IsoR04_sumPUPt = Ds_IsoR04_sumPUPt;
+				ftree->Ds_IsoR04_PFIso = Ds_IsoR04_PFIso;
+				ftree->Ds_IsoR04_RelIso = Ds_IsoR04_RelIso;
 
-				ftree->Kp_match.push_back((idx_Kp == Kp_match_idx));
-				ftree->Km_match.push_back((idx_Km == Km_match_idx));
-				ftree->pi_match.push_back((idx_pi == pi_match_idx));
-				ftree->Ds_match.push_back((idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx));
-				ftree->event_match.push_back((idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx) && ftree->mu_match);
+				ftree->Kp_match = (idx_Kp == Kp_match_idx);
+				ftree->Km_match = (idx_Km == Km_match_idx);
+				ftree->pi_match = (idx_pi == pi_match_idx);
+				ftree->Ds_match = (idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx);
+				ftree->event_match = (idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx) && ftree->mu_match;
+				ftree->tree->Fill();
 			}
 		}
 	}
-
-	ftree->nCandidates = ftree->Ds_match.size();
-	ftree->tree->Fill();
 }
 
 void RecoAll_DsW_KKpimu::endJob()

@@ -194,176 +194,182 @@ void RecoAll_DsW_KKpimu_Tree::Init()
 
 	mu_match = false;
 
+	event_id = 0;
+	run_id = 0;
+	lumi_id = 0;
+
 	// refitted info from Kinematic Fit
-	Kp_charge.clear();
-	Kp_eta.clear();
-	Kp_phi.clear();
-	Kp_px.clear();
-	Kp_py.clear();
-	Kp_pz.clear();
-	Kp_pt.clear();
-	Kp_p.clear();
-	Kp_mass.clear();
-	Kp_PVassoc.clear();
+	Kp_charge = null;
+	Kp_eta = null;
+	Kp_phi = null;
+	Kp_px = null;
+	Kp_py = null;
+	Kp_pz = null;
+	Kp_pt = null;
+	Kp_p = null;
+	Kp_mass = null;
+	Kp_PVassoc = null;
 
-	Km_charge.clear();
-	Km_eta.clear();
-	Km_phi.clear();
-	Km_px.clear();
-	Km_py.clear();
-	Km_pz.clear();
-	Km_pt.clear();
-	Km_p.clear();
-	Km_mass.clear();
-	Km_PVassoc.clear();
+	Km_charge = null;
+	Km_eta = null;
+	Km_phi = null;
+	Km_px = null;
+	Km_py = null;
+	Km_pz = null;
+	Km_pt = null;
+	Km_p = null;
+	Km_mass = null;
+	Km_PVassoc = null;
 
-	pi_charge.clear();
-	pi_eta.clear();
-	pi_phi.clear();
-	pi_px.clear();
-	pi_py.clear();
-	pi_pz.clear();
-	pi_pt.clear();
-	pi_p.clear();
-	pi_mass.clear();
-	Km_PVassoc.clear();
+	pi_charge = null;
+	pi_eta = null;
+	pi_phi = null;
+	pi_px = null;
+	pi_py = null;
+	pi_pz = null;
+	pi_pt = null;
+	pi_p = null;
+	pi_mass = null;
+	pi_PVassoc = null;
 
-	KK_charge.clear();
-	KK_eta.clear();
-	KK_phi.clear();
-	KK_px.clear();
-	KK_py.clear();
-	KK_pz.clear();
-	KK_pt.clear();
-	KK_p.clear();
-	KK_mass.clear();
+	KK_charge = null;
+	KK_eta = null;
+	KK_phi = null;
+	KK_px = null;
+	KK_py = null;
+	KK_pz = null;
+	KK_pt = null;
+	KK_p = null;
+	KK_mass = null;
 
-	Kppi_charge.clear();
-	Kppi_eta.clear();
-	Kppi_phi.clear();
-	Kppi_px.clear();
-	Kppi_py.clear();
-	Kppi_pz.clear();
-	Kppi_pt.clear();
-	Kppi_p.clear();
-	Kppi_mass.clear();
+	Kppi_charge = null;
+	Kppi_eta = null;
+	Kppi_phi = null;
+	Kppi_px = null;
+	Kppi_py = null;
+	Kppi_pz = null;
+	Kppi_pt = null;
+	Kppi_p = null;
+	Kppi_mass = null;
 
-	Kmpi_charge.clear();
-	Kmpi_eta.clear();
-	Kmpi_phi.clear();
-	Kmpi_px.clear();
-	Kmpi_py.clear();
-	Kmpi_pz.clear();
-	Kmpi_pt.clear();
-	Kmpi_p.clear();
-	Kmpi_mass.clear();
+	Kmpi_charge = null;
+	Kmpi_eta = null;
+	Kmpi_phi = null;
+	Kmpi_px = null;
+	Kmpi_py = null;
+	Kmpi_pz = null;
+	Kmpi_pt = null;
+	Kmpi_p = null;
+	Kmpi_mass = null;
 
-	Ds_charge.clear();
-	Ds_eta.clear();
-	Ds_phi.clear();
-	Ds_px.clear();
-	Ds_py.clear();
-	Ds_pz.clear();
-	Ds_pt.clear();
-	Ds_p.clear();
-	Ds_mass.clear();
+	Ds_charge = null;
+	Ds_eta = null;
+	Ds_phi = null;
+	Ds_px = null;
+	Ds_py = null;
+	Ds_pz = null;
+	Ds_pt = null;
+	Ds_p = null;
+	Ds_mass = null;
 
-	vis_charge.clear();
-	vis_eta.clear();
-	vis_phi.clear();
-	vis_px.clear();
-	vis_py.clear();
-	vis_pz.clear();
-	vis_pt.clear();
-	vis_p.clear();
-	vis_mass.clear();
+	vis_charge = null;
+	vis_eta = null;
+	vis_phi = null;
+	vis_px = null;
+	vis_py = null;
+	vis_pz = null;
+	vis_pt = null;
+	vis_p = null;
+	vis_mass = null;
 
 	// refitted vertex
-	Ds_vx.clear();
-	Ds_vy.clear();
-	Ds_vz.clear();
-	Ds_vxerr.clear();
-	Ds_vyerr.clear();
-	Ds_vzerr.clear();
-	Ds_chi2.clear();
-	Ds_ndf.clear();
-	Ds_chi2ndf.clear();
-	Ds_prob.clear();
+	Ds_vx = null;
+	Ds_vy = null;
+	Ds_vz = null;
+	Ds_vxerr = null;
+	Ds_vyerr = null;
+	Ds_vzerr = null;
+	Ds_chi2 = null;
+	Ds_ndf = null;
+	Ds_chi2ndf = null;
+	Ds_prob = null;
 
 	// angular distance
-	dR_Kp_Km.clear();
-	dR_Kp_pi.clear();
-	dR_Kp_Ds.clear();
-	dR_Km_pi.clear();
-	dR_Km_Ds.clear();
-	dR_pi_Ds.clear();
-	dR_Kp_mu.clear();
-	dR_Km_mu.clear();
-	dR_pi_mu.clear();
-	dR_Ds_mu.clear();
+	dR_Kp_Km = null;
+	dR_Kp_pi = null;
+	dR_Kp_Ds = null;
+	dR_Km_pi = null;
+	dR_Km_Ds = null;
+	dR_pi_Ds = null;
+	dR_Kp_mu = null;
+	dR_Km_mu = null;
+	dR_pi_mu = null;
+	dR_Ds_mu = null;
 
-	Kp_ip.clear();
-	Kp_iperr.clear();
-	Kp_ipsig.clear();
-	Kp_ipxy.clear();
-	Kp_ipxyerr.clear();
-	Kp_ipxysig.clear();
-	Km_ip.clear();
-	Km_iperr.clear();
-	Km_ipsig.clear();
-	Km_ipxy.clear();
-	Km_ipxyerr.clear();
-	Km_ipxysig.clear();
-	pi_ip.clear();
-	pi_iperr.clear();
-	pi_ipsig.clear();
-	pi_ipxy.clear();
-	pi_ipxyerr.clear();
-	pi_ipxysig.clear();
-	Ds_ip.clear();
-	Ds_iperr.clear();
-	Ds_ipsig.clear();
-	Ds_ipxy.clear();
-	Ds_ipxyerr.clear();
-	Ds_ipxysig.clear();
+	Kp_ip = null;
+	Kp_iperr = null;
+	Kp_ipsig = null;
+	Kp_ipxy = null;
+	Kp_ipxyerr = null;
+	Kp_ipxysig = null;
+	Km_ip = null;
+	Km_iperr = null;
+	Km_ipsig = null;
+	Km_ipxy = null;
+	Km_ipxyerr = null;
+	Km_ipxysig = null;
+	pi_ip = null;
+	pi_iperr = null;
+	pi_ipsig = null;
+	pi_ipxy = null;
+	pi_ipxyerr = null;
+	pi_ipxysig = null;
+	Ds_ip = null;
+	Ds_iperr = null;
+	Ds_ipsig = null;
+	Ds_ipxy = null;
+	Ds_ipxyerr = null;
+	Ds_ipxysig = null;
 
 	// PV-SV variable
-	dira.clear();
+	dira = null;
 
-	Ds_FDxy.clear();
-	Ds_FDxyerr.clear();
-	Ds_FDxysig.clear();
+	Ds_FDxy = null;
+	Ds_FDxyerr = null;
+	Ds_FDxysig = null;
 
-	Ds_FD.clear();
-	Ds_FDerr.clear();
-	Ds_FDsig.clear();
+	Ds_FD = null;
+	Ds_FDerr = null;
+	Ds_FDsig = null;
 
-	// Ds ioslation
-	Ds_IsoR03_sumChargedHadronPt.clear();
-	Ds_IsoR03_sumNeutralHadronEt.clear();
-	Ds_IsoR03_sumPhotonEt.clear();
-	Ds_IsoR03_sumPUPt.clear();
-	Ds_IsoR03_PFIso.clear();
-	Ds_IsoR03_RelIso.clear();
+	// Ds isolation
+	Ds_IsoR03_sumChargedHadronPt = null;
+	Ds_IsoR03_sumNeutralHadronEt = null;
+	Ds_IsoR03_sumPhotonEt = null;
+	Ds_IsoR03_sumPUPt = null;
+	Ds_IsoR03_PFIso = null;
+	Ds_IsoR03_RelIso = null;
 
-	Ds_IsoR04_sumChargedHadronPt.clear();
-	Ds_IsoR04_sumNeutralHadronEt.clear();
-	Ds_IsoR04_sumPhotonEt.clear();
-	Ds_IsoR04_sumPUPt.clear();
-	Ds_IsoR04_PFIso.clear();
-	Ds_IsoR04_RelIso.clear();
+	Ds_IsoR04_sumChargedHadronPt = null;
+	Ds_IsoR04_sumNeutralHadronEt = null;
+	Ds_IsoR04_sumPhotonEt = null;
+	Ds_IsoR04_sumPUPt = null;
+	Ds_IsoR04_PFIso = null;
+	Ds_IsoR04_RelIso = null;
 
-	Kp_match.clear();
-	Km_match.clear();
-	pi_match.clear();
-	Ds_match.clear();
-	event_match.clear();
-
-	nCandidates = null;
+	Kp_match = false;
+	Km_match = false;
+	pi_match = false;
+	Ds_match = false;
+	event_match = false;
 }
 
 void RecoAll_DsW_KKpimu_Tree::CreateBranches()
 {
+	tree->Branch("event_id", &event_id);
+	tree->Branch("run_id", &run_id);
+	tree->Branch("lumi_id", &lumi_id);
+
 	tree->Branch("Gen_PV_vx", &Gen_PV_vx);
 	tree->Branch("Gen_PV_vy", &Gen_PV_vy);
 	tree->Branch("Gen_PV_vz", &Gen_PV_vz);
@@ -716,6 +722,4 @@ void RecoAll_DsW_KKpimu_Tree::CreateBranches()
 	tree->Branch("pi_match", &pi_match);
 	tree->Branch("Ds_match", &Ds_match);
 	tree->Branch("event_match", &event_match);
-
-	tree->Branch("nCandidates", &nCandidates);
 }

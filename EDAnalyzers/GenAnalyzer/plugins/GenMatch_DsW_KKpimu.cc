@@ -333,6 +333,8 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 
 	edm::Handle<std::vector<reco::GenMET>> GenMETHandle;
 	iEvent.getByToken(GenMETToken_, GenMETHandle);
+	if (GenMETHandle->empty())
+		return;
 	const reco::MET &GenMET = GenMETHandle->front();
 
 	ftree->Gen_PV_vx = H_gp.vx();
@@ -598,6 +600,8 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 	edm::Handle<reco::VertexCollection> primvtxHandle;
 	iEvent.getByToken(primvtxToken_, primvtxHandle);
 
+	if (primvtxHandle->empty())
+		return;
 	const reco::Vertex &primvtx = primvtxHandle->front();
 	if (!primvtx.isValid())
 		return;
@@ -730,10 +734,10 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 				Ds_IsoR04_sumPUPt += pf.pt();
 		}
 	}
-	Float_t Ds_IsoR03_PFIso = Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt);
-	Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5 * Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
-	Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt);
-	Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5 * Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
+	Float_t Ds_IsoR03_PFIso = Ds_IsoR03_sumChargedHadronPt + std::max(0.0f, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5f *Ds_IsoR03_sumPUPt);
+	Float_t Ds_IsoR03_RelIso = (Ds_IsoR03_sumChargedHadronPt + std::max(0.0f, Ds_IsoR03_sumNeutralHadronEt + Ds_IsoR03_sumPhotonEt - 0.5f *Ds_IsoR03_sumPUPt)) / Ds_mtm.perp();
+	Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f *Ds_IsoR04_sumPUPt);
+	Float_t Ds_IsoR04_RelIso = (Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f *Ds_IsoR04_sumPUPt)) / Ds_mtm.perp();
 
 	//--------------------------------------------------//
 	// muon candidate
@@ -744,15 +748,15 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 	Float_t mu_IsoR03_sumNeutralHadronEt = mu.pfIsolationR03().sumNeutralHadronEt;
 	Float_t mu_IsoR03_sumPhotonEt = mu.pfIsolationR03().sumPhotonEt;
 	Float_t mu_IsoR03_sumPUPt = mu.pfIsolationR03().sumPUPt;
-	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt);
-	Float_t mu_IsoR03_RelIso = (mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5 * mu.pfIsolationR03().sumPUPt)) / mu.pt();
+	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5f *mu.pfIsolationR03().sumPUPt);
+	Float_t mu_IsoR03_RelIso = (mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5f *mu.pfIsolationR03().sumPUPt)) / mu.pt();
 
 	Float_t mu_IsoR04_sumChargedHadronPt = mu.pfIsolationR04().sumChargedHadronPt;
 	Float_t mu_IsoR04_sumNeutralHadronEt = mu.pfIsolationR04().sumNeutralHadronEt;
 	Float_t mu_IsoR04_sumPhotonEt = mu.pfIsolationR04().sumPhotonEt;
 	Float_t mu_IsoR04_sumPUPt = mu.pfIsolationR04().sumPUPt;
-	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt);
-	Float_t mu_IsoR04_RelIso = (mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5 * mu.pfIsolationR04().sumPUPt)) / mu.pt();
+	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5f *mu.pfIsolationR04().sumPUPt);
+	Float_t mu_IsoR04_RelIso = (mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5f *mu.pfIsolationR04().sumPUPt)) / mu.pt();
 
 	//==================================================//
 	//--------------------------------------------------//
@@ -761,7 +765,8 @@ void GenMatch_DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetu
 	//==================================================//
 	edm::Handle<pat::METCollection> MetHandle;
 	iEvent.getByToken(MetToken_, MetHandle);
-
+	if (MetHandle->empty())
+		return;
 	const pat::MET &Met = MetHandle->front();
 
 	//==================================================//
