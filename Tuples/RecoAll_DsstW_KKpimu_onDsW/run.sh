@@ -2,16 +2,18 @@
 
 export X509_USER_PROXY="/afs/cern.ch/user/k/kakang/tmp/x509up_u158898"
 
-OUTDIR="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/GenRecoDsstW"
+OUTDIR=$1
+GROUPSIZE=$2
+JOBID=$3
 
 OUTFILE="${OUTDIR}/output_${JOBID}.root"
-LOGFILE="${OUTDIR}/run_${JOBID}.log"
+LOGFILE="${OUTDIR}/log/run_${JOBID}.log"
 rm -f $OUTFILE $LOGFILE
 
-CFGFILE="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/EDAnalyzers/GenAnalyzer/test/GenRecoDsstW.py"
+CFGFILE="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/EDAnalyzers/Reconstruction/test/RecoAll_DsstW_KKpimu_onDsW.py"
 
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/
 cmsenv
 voms-proxy-info -all -file $X509_USER_PROXY
-cmsRun ${CFGFILE} OUTFILE="${OUTFILE}" &> ${LOGFILE}
+cmsRun ${CFGFILE} JOBID=${JOBID} GROUPSIZE=${GROUPSIZE} OUTFILE="${OUTFILE}" &> ${LOGFILE}

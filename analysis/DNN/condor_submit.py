@@ -2,15 +2,17 @@ import sys
 import subprocess
 import os;
 
-def submit_jobs():
+model_name = "Model_200ep_0p3do_4ly"
 
-    scheduler_log = f"./HTCondor.log"
-    if os.path.exists(scheduler_log):
-        os.remove(scheduler_log)
+os.makedirs(f"/eos/user/k/kakang/H2DW/Analysis/MVA/DsstW_KKpimu/DNN/{model_name}", exist_ok=True)
+
+def submit_jobs():
 
     submit_description = f"""
 executable = run.sh
-log = {scheduler_log}
+arguments = {model_name}
+log = ./HTCondor.log
+JobBatchName = Ds_DNN
 request_cpus = 1
 request_memory = 8G
 request_disk = 100M

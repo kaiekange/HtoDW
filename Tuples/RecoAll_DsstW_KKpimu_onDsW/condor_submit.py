@@ -2,11 +2,11 @@ import sys
 import subprocess
 import os;
 
-GroupSize = 1
+GroupSize = 20
 
 def submit_jobs():
 
-    outdir="/eos/home-k/kakang/H2DW/Analysis/MC/2022/Reco_DsW_KKpimu"
+    outdir="/eos/home-k/kakang/H2DW/Analysis/MC/2022/RecoAll_DsstW_KKpimu_onDsW"
 
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(outdir+"/log", exist_ok=True)
@@ -21,7 +21,7 @@ def submit_jobs():
 executable = run.sh
 arguments = {outdir} {GroupSize} $(Process)
 log = {scheduler_log}
-JobBatchName = Reco_DsW_KKpimu
+JobBatchName = RecoAll_DsstW_KKpimu_onDsW
 request_cpus = 1
 request_memory = 8G
 request_disk = 100M

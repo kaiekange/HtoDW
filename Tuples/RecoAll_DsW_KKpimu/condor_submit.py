@@ -2,7 +2,7 @@ import sys
 import subprocess
 import os
 
-GroupSize = 1
+GroupSize = 20
 
 def submit_jobs():
 
