@@ -50,16 +50,16 @@
 #include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 
-#include "EDAnalyzers/Reconstruction/interface/RecoAll_DsstW_KKpimu_Tree.h"
+#include "EDAnalyzers/Reconstruction/interface/DsstW_KKpimu_Tree.h"
 
 #include "TLorentzVector.h"
 #include "TTree.h"
 
-class RecoAll_DsstW_KKpimu : public edm::one::EDAnalyzer<>
+class DsstW_KKpimu : public edm::one::EDAnalyzer<>
 {
 public:
-	explicit RecoAll_DsstW_KKpimu(const edm::ParameterSet &);
-	~RecoAll_DsstW_KKpimu() override {};
+	explicit DsstW_KKpimu(const edm::ParameterSet &);
+	~DsstW_KKpimu() override {};
 
 	static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
@@ -101,16 +101,18 @@ private:
 	Float_t Mass_pi_sigma = 0.00000017;
 
 	const edm::Service<TFileService> fs;
-	RecoAll_DsstW_KKpimu_Tree *ftree;
+	DsstW_KKpimu_Tree *ftree;
 	TTree *InfoTree;
 
 	unsigned long nEventsProcessed_;
 	unsigned long nEventsLepton_;
 	unsigned long nEventsGen_;
 	unsigned long nEventsTriggered_;
+
+	bool doTruth_;
 };
 
-RecoAll_DsstW_KKpimu::RecoAll_DsstW_KKpimu(const edm::ParameterSet &iConfig)
+DsstW_KKpimu::DsstW_KKpimu(const edm::ParameterSet &iConfig)
 {
 	edm::ESInputTag ttBuilderTag_("", "TransientTrackBuilder");
 	ttBuilderToken_ = esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttBuilderTag_);
@@ -150,11 +152,13 @@ RecoAll_DsstW_KKpimu::RecoAll_DsstW_KKpimu(const edm::ParameterSet &iConfig)
 
 	edm::InputTag tightJetIdTag_("tightJetId");
 	tightJetIdToken_ = consumes<edm::ValueMap<Int_t>>(tightJetIdTag_);
+
+	doTruth_ = iConfig.getParameter<bool>("doTruth");
 }
 
-void RecoAll_DsstW_KKpimu::beginJob()
+void DsstW_KKpimu::beginJob()
 {
-	ftree = new RecoAll_DsstW_KKpimu_Tree(fs->make<TTree>("Events", "Events"));
+	ftree = new DsstW_KKpimu_Tree(fs->make<TTree>("Events", "Events"));
 	ftree->CreateBranches();
 	InfoTree = fs->make<TTree>("RunInfo", "RunInfo");
 
@@ -169,7 +173,7 @@ void RecoAll_DsstW_KKpimu::beginJob()
 	nEventsTriggered_ = 0;
 }
 
-void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
+void DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
 	nEventsProcessed_++;
 
@@ -181,6 +185,21 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 	ftree->event_id = iEvent.id().event();
 	ftree->run_id = iEvent.id().run();
 	ftree->lumi_id = iEvent.luminosityBlock();
+
+	edm::Handle<pat::PackedCandidateCollection> PFCandHandle;
+	iEvent.getByToken(PFCandToken_, PFCandHandle);
+
+	edm::Handle<pat::MuonCollection> MuonHandle;
+	iEvent.getByToken(MuonToken_, MuonHandle);
+
+	Int_t Kp_match_idx = -1;
+	Int_t Km_match_idx = -1;
+	Int_t pi_match_idx = -1;
+	Int_t gamma_match_idx = -1;
+	Int_t mu_match_idx = -1;
+
+	if (doTruth_)
+	{
 
 	Int_t Gen_H_idx = 0;
 	Int_t Gen_Dsst_idx = 0;
@@ -491,15 +510,8 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 	// Gen Match
 	//--------------------------------------------------//
 	//==================================================//
-	edm::Handle<pat::PackedCandidateCollection> PFCandHandle;
-	iEvent.getByToken(PFCandToken_, PFCandHandle);
-
 	edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
 	iEvent.getByToken(associationToken_, associationHandle);
-
-	Int_t Kp_match_idx = -1;
-	Int_t Km_match_idx = -1;
-	Int_t pi_match_idx = -1;
 
 	Float_t Kp_deltaR = 1.0;
 	Float_t Km_deltaR = 1.0;
@@ -555,7 +567,6 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 		}
 	}
 
-	Int_t gamma_match_idx = -1;
 	Float_t gamma_deltaR = 0.02;
 
 	for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
@@ -574,10 +585,6 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 		}
 	}
 
-	edm::Handle<pat::MuonCollection> MuonHandle;
-	iEvent.getByToken(MuonToken_, MuonHandle);
-
-	Int_t mu_match_idx = -1;
 	Float_t mu_deltaR = 1.0;
 
 	for (Int_t i = 0; i < static_cast<Int_t>(MuonHandle->size()); i++)
@@ -604,6 +611,8 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 			}
 		}
 	}
+
+	} // if (doTruth_)
 
 	//==================================================//
 	//--------------------------------------------------//
@@ -1247,6 +1256,9 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 				Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f * Ds_IsoR04_sumPUPt);
 				Float_t Ds_IsoR04_RelIso = Ds_IsoR04_PFIso / Ds_mtm.perp();
 
+				if (Ds_IsoR04_RelIso >= 1.0f)
+					continue;
+
 				Float_t dR_Kp_Km = reco::deltaR(Kp_mtm, Km_mtm);
 				Float_t dR_Kp_pi = reco::deltaR(Kp_mtm, pi_mtm);
 				Float_t dR_Kp_Ds = reco::deltaR(Kp_mtm, Ds_mtm);
@@ -1315,6 +1327,7 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 					Float_t vis_pt = vis_tlv.Pt();
 					Float_t vis_p = vis_tlv.P();
 					Float_t vis_mass = vis_tlv.M();
+					Float_t vis_Ht = Kp_mtm.perp() + Km_mtm.perp() + pi_mtm.perp() + gamma_tlv.Pt() + mu_tlv.Pt();
 
 					// Dsst Isolation
 					Float_t Dsst_IsoR03_sumChargedHadronPt = 0;
@@ -1366,6 +1379,9 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 					Float_t Dsst_IsoR03_RelIso = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
 					Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChargedHadronPt + std::max(0.0f, Dsst_IsoR04_sumNeutralHadronEt + Dsst_IsoR04_sumPhotonEt - 0.5f * Dsst_IsoR04_sumPUPt);
 					Float_t Dsst_IsoR04_RelIso = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
+
+					if (Dsst_IsoR04_RelIso >= 1.0f)
+						continue;
 
 					Float_t dR_Kp_gamma = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
 					Float_t dR_Kp_Dsst = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
@@ -1494,6 +1510,7 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 					ftree->vis_pt = vis_pt;
 					ftree->vis_p = vis_p;
 					ftree->vis_mass = vis_mass;
+					ftree->vis_Ht = vis_Ht;
 
 					// refitted vertex
 					ftree->Ds_vx = Ds_vx;
@@ -1615,12 +1632,12 @@ void RecoAll_DsstW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSet
 	}
 }
 
-void RecoAll_DsstW_KKpimu::endJob()
+void DsstW_KKpimu::endJob()
 {
 	InfoTree->Fill();
 }
 
-Bool_t RecoAll_DsstW_KKpimu::ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const
+Bool_t DsstW_KKpimu::ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const
 {
 	if (gp.numberOfMothers() == 0)
 		return false;
@@ -1657,7 +1674,7 @@ Bool_t RecoAll_DsstW_KKpimu::ThreeBodyDecay(const reco::GenParticle &gp, const I
 	return false;
 }
 
-Bool_t RecoAll_DsstW_KKpimu::TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const
+Bool_t DsstW_KKpimu::TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const
 {
 	if (gp.numberOfMothers() == 0)
 		return false;
@@ -1691,7 +1708,7 @@ Bool_t RecoAll_DsstW_KKpimu::TwoBodyDecay(const reco::GenParticle &gp, const Int
 	return false;
 }
 
-Measurement1D RecoAll_DsstW_KKpimu::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
+Measurement1D DsstW_KKpimu::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
 {
 	AlgebraicSymMatrix33 error = vtx1PositionError.matrix() + vtx2PositionError.matrix();
 	GlobalVector diff = vtx1Position - vtx2Position;
@@ -1710,7 +1727,7 @@ Measurement1D RecoAll_DsstW_KKpimu::distanceXY(const GlobalPoint &vtx1Position, 
 	return Measurement1D(dist, err);
 }
 
-Measurement1D RecoAll_DsstW_KKpimu::distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
+Measurement1D DsstW_KKpimu::distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
 {
 	AlgebraicSymMatrix33 error = vtx1PositionError.matrix() + vtx2PositionError.matrix();
 	GlobalVector diff = vtx1Position - vtx2Position;
@@ -1729,11 +1746,11 @@ Measurement1D RecoAll_DsstW_KKpimu::distance3D(const GlobalPoint &vtx1Position, 
 	return Measurement1D(dist, err);
 }
 
-void RecoAll_DsstW_KKpimu::fillDescriptions(edm::ConfigurationDescriptions &descriptions)
+void DsstW_KKpimu::fillDescriptions(edm::ConfigurationDescriptions &descriptions)
 {
 	edm::ParameterSetDescription desc;
-	desc.setUnknown();
+	desc.add<bool>("doTruth", true);
 	descriptions.addDefault(desc);
 }
 
-DEFINE_FWK_MODULE(RecoAll_DsstW_KKpimu);
+DEFINE_FWK_MODULE(DsstW_KKpimu);

@@ -50,16 +50,16 @@
 #include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
 #include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 
-#include "EDAnalyzers/Reconstruction/interface/RecoAll_DsstW_KKpimu_Tree.h"
+#include "EDAnalyzers/Reconstruction/interface/DsstW_KKpimu_Tree.h"
 
 #include "TLorentzVector.h"
 #include "TTree.h"
 
-class RecoAll_DsstW_KKpimu_onDsW : public edm::one::EDAnalyzer<>
+class DsstW_KKpimu_onDsW : public edm::one::EDAnalyzer<>
 {
 public:
-	explicit RecoAll_DsstW_KKpimu_onDsW(const edm::ParameterSet &);
-	~RecoAll_DsstW_KKpimu_onDsW() override {};
+	explicit DsstW_KKpimu_onDsW(const edm::ParameterSet &);
+	~DsstW_KKpimu_onDsW() override {};
 
 	static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
@@ -101,7 +101,7 @@ private:
 	Float_t Mass_pi_sigma = 0.00000017;
 
 	const edm::Service<TFileService> fs;
-	RecoAll_DsstW_KKpimu_Tree *ftree;
+	DsstW_KKpimu_Tree *ftree;
 	TTree *InfoTree;
 
 	unsigned long nEventsProcessed_;
@@ -110,7 +110,7 @@ private:
 	unsigned long nEventsTriggered_;
 };
 
-RecoAll_DsstW_KKpimu_onDsW::RecoAll_DsstW_KKpimu_onDsW(const edm::ParameterSet &iConfig)
+DsstW_KKpimu_onDsW::DsstW_KKpimu_onDsW(const edm::ParameterSet &iConfig)
 {
 	edm::ESInputTag ttBuilderTag_("", "TransientTrackBuilder");
 	ttBuilderToken_ = esConsumes<TransientTrackBuilder, TransientTrackRecord>(ttBuilderTag_);
@@ -152,9 +152,9 @@ RecoAll_DsstW_KKpimu_onDsW::RecoAll_DsstW_KKpimu_onDsW(const edm::ParameterSet &
 	tightJetIdToken_ = consumes<edm::ValueMap<Int_t>>(tightJetIdTag_);
 }
 
-void RecoAll_DsstW_KKpimu_onDsW::beginJob()
+void DsstW_KKpimu_onDsW::beginJob()
 {
-	ftree = new RecoAll_DsstW_KKpimu_Tree(fs->make<TTree>("Events", "Events"));
+	ftree = new DsstW_KKpimu_Tree(fs->make<TTree>("Events", "Events"));
 	ftree->CreateBranches();
 	InfoTree = fs->make<TTree>("RunInfo", "RunInfo");
 
@@ -169,7 +169,7 @@ void RecoAll_DsstW_KKpimu_onDsW::beginJob()
 	nEventsTriggered_ = 0;
 }
 
-void RecoAll_DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
+void DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
 	nEventsProcessed_++;
 
@@ -1512,12 +1512,12 @@ void RecoAll_DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::Ev
 	}
 }
 
-void RecoAll_DsstW_KKpimu_onDsW::endJob()
+void DsstW_KKpimu_onDsW::endJob()
 {
 	InfoTree->Fill();
 }
 
-Bool_t RecoAll_DsstW_KKpimu_onDsW::ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const
+Bool_t DsstW_KKpimu_onDsW::ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const
 {
 	if (gp.numberOfMothers() == 0)
 		return false;
@@ -1554,7 +1554,7 @@ Bool_t RecoAll_DsstW_KKpimu_onDsW::ThreeBodyDecay(const reco::GenParticle &gp, c
 	return false;
 }
 
-Bool_t RecoAll_DsstW_KKpimu_onDsW::TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const
+Bool_t DsstW_KKpimu_onDsW::TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const
 {
 	if (gp.numberOfMothers() == 0)
 		return false;
@@ -1588,7 +1588,7 @@ Bool_t RecoAll_DsstW_KKpimu_onDsW::TwoBodyDecay(const reco::GenParticle &gp, con
 	return false;
 }
 
-Measurement1D RecoAll_DsstW_KKpimu_onDsW::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
+Measurement1D DsstW_KKpimu_onDsW::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
 {
 	AlgebraicSymMatrix33 error = vtx1PositionError.matrix() + vtx2PositionError.matrix();
 	GlobalVector diff = vtx1Position - vtx2Position;
@@ -1607,7 +1607,7 @@ Measurement1D RecoAll_DsstW_KKpimu_onDsW::distanceXY(const GlobalPoint &vtx1Posi
 	return Measurement1D(dist, err);
 }
 
-Measurement1D RecoAll_DsstW_KKpimu_onDsW::distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
+Measurement1D DsstW_KKpimu_onDsW::distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
 {
 	AlgebraicSymMatrix33 error = vtx1PositionError.matrix() + vtx2PositionError.matrix();
 	GlobalVector diff = vtx1Position - vtx2Position;
@@ -1626,11 +1626,11 @@ Measurement1D RecoAll_DsstW_KKpimu_onDsW::distance3D(const GlobalPoint &vtx1Posi
 	return Measurement1D(dist, err);
 }
 
-void RecoAll_DsstW_KKpimu_onDsW::fillDescriptions(edm::ConfigurationDescriptions &descriptions)
+void DsstW_KKpimu_onDsW::fillDescriptions(edm::ConfigurationDescriptions &descriptions)
 {
 	edm::ParameterSetDescription desc;
 	desc.setUnknown();
 	descriptions.addDefault(desc);
 }
 
-DEFINE_FWK_MODULE(RecoAll_DsstW_KKpimu_onDsW);
+DEFINE_FWK_MODULE(DsstW_KKpimu_onDsW);

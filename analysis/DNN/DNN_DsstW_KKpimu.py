@@ -219,6 +219,9 @@ with PdfPages(f"{out_dir}/variable_comparison.pdf") as pdf:
 
 print("Saved variable_comparison.pdf")
 
+np.save(f"{out_dir}/X_sig.npy", X_sig_plot)
+np.save(f"{out_dir}/X_bkg.npy", X_bkg_plot)
+
 # ========= 5. 划分数据 =========
 # stratify=y preserves the signal fraction in every split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
@@ -357,6 +360,10 @@ for epoch in range(EPOCHS):
 model.load_state_dict(best_state)
 print(f"\nBest val AUC: {best_val_auc:.4f}")
 
+np.save(f"{out_dir}/train_losses.npy", np.array(train_losses))
+np.save(f"{out_dir}/val_losses.npy", np.array(val_losses))
+np.save(f"{out_dir}/val_aucs.npy", np.array(val_aucs))
+
 # ========= 11. 测试 =========
 model.eval()
 with torch.no_grad():
@@ -420,6 +427,7 @@ for i in range(len(FEATURE_NAMES)):
         perm_scores = torch.sigmoid(model(to_tensor(X_perm))).numpy().flatten()
     importances[i] = auc - roc_auc_score(y_test, perm_scores)
 
+np.save(f"{out_dir}/feature_importances.npy", importances)
 sorted_idx = np.argsort(importances)  # ascending → most important at top of barh
 colors = ["firebrick" if importances[i] > 0 else "steelblue" for i in sorted_idx]
 

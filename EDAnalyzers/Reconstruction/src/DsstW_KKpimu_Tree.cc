@@ -8,6 +8,154 @@ DsstW_KKpimu_Tree::DsstW_KKpimu_Tree(TTree *tree_)
 
 void DsstW_KKpimu_Tree::Init()
 {
+	Gen_PV_vx = null;
+	Gen_PV_vy = null;
+	Gen_PV_vz = null;
+
+	Gen_SV_vx = null;
+	Gen_SV_vy = null;
+	Gen_SV_vz = null;
+
+	Gen_H_charge = null;
+	Gen_H_eta = null;
+	Gen_H_phi = null;
+	Gen_H_px = null;
+	Gen_H_py = null;
+	Gen_H_pz = null;
+	Gen_H_pt = null;
+	Gen_H_p = null;
+	Gen_H_mass = null;
+
+	Gen_Dsst_charge = null;
+	Gen_Dsst_eta = null;
+	Gen_Dsst_phi = null;
+	Gen_Dsst_px = null;
+	Gen_Dsst_py = null;
+	Gen_Dsst_pz = null;
+	Gen_Dsst_pt = null;
+	Gen_Dsst_p = null;
+	Gen_Dsst_mass = null;
+
+	Gen_W_charge = null;
+	Gen_W_eta = null;
+	Gen_W_phi = null;
+	Gen_W_px = null;
+	Gen_W_py = null;
+	Gen_W_pz = null;
+	Gen_W_pt = null;
+	Gen_W_p = null;
+	Gen_W_mass = null;
+
+	Gen_Ds_charge = null;
+	Gen_Ds_eta = null;
+	Gen_Ds_phi = null;
+	Gen_Ds_px = null;
+	Gen_Ds_py = null;
+	Gen_Ds_pz = null;
+	Gen_Ds_pt = null;
+	Gen_Ds_p = null;
+	Gen_Ds_mass = null;
+
+	Gen_gamma_charge = null;
+	Gen_gamma_eta = null;
+	Gen_gamma_phi = null;
+	Gen_gamma_px = null;
+	Gen_gamma_py = null;
+	Gen_gamma_pz = null;
+	Gen_gamma_pt = null;
+	Gen_gamma_p = null;
+	Gen_gamma_mass = null;
+
+	Gen_Kp_charge = null;
+	Gen_Kp_eta = null;
+	Gen_Kp_phi = null;
+	Gen_Kp_px = null;
+	Gen_Kp_py = null;
+	Gen_Kp_pz = null;
+	Gen_Kp_pt = null;
+	Gen_Kp_p = null;
+	Gen_Kp_mass = null;
+
+	Gen_Km_charge = null;
+	Gen_Km_eta = null;
+	Gen_Km_phi = null;
+	Gen_Km_px = null;
+	Gen_Km_py = null;
+	Gen_Km_pz = null;
+	Gen_Km_pt = null;
+	Gen_Km_p = null;
+	Gen_Km_mass = null;
+
+	Gen_pi_charge = null;
+	Gen_pi_eta = null;
+	Gen_pi_phi = null;
+	Gen_pi_px = null;
+	Gen_pi_py = null;
+	Gen_pi_pz = null;
+	Gen_pi_pt = null;
+	Gen_pi_p = null;
+	Gen_pi_mass = null;
+
+	Gen_mu_charge = null;
+	Gen_mu_eta = null;
+	Gen_mu_phi = null;
+	Gen_mu_px = null;
+	Gen_mu_py = null;
+	Gen_mu_pz = null;
+	Gen_mu_pt = null;
+	Gen_mu_p = null;
+	Gen_mu_mass = null;
+
+	Gen_Dsmu_charge = null;
+	Gen_Dsmu_eta = null;
+	Gen_Dsmu_phi = null;
+	Gen_Dsmu_px = null;
+	Gen_Dsmu_py = null;
+	Gen_Dsmu_pz = null;
+	Gen_Dsmu_pt = null;
+	Gen_Dsmu_p = null;
+	Gen_Dsmu_mass = null;
+
+	Gen_vis_charge = null;
+	Gen_vis_eta = null;
+	Gen_vis_phi = null;
+	Gen_vis_px = null;
+	Gen_vis_py = null;
+	Gen_vis_pz = null;
+	Gen_vis_pt = null;
+	Gen_vis_p = null;
+	Gen_vis_mass = null;
+
+	Gen_dR_Kp_Km = null;
+	Gen_dR_Kp_pi = null;
+	Gen_dR_Kp_Ds = null;
+	Gen_dR_Km_pi = null;
+	Gen_dR_Km_Ds = null;
+	Gen_dR_pi_Ds = null;
+
+	Gen_dR_Kp_gamma = null;
+	Gen_dR_Kp_Dsst = null;
+	Gen_dR_Km_gamma = null;
+	Gen_dR_Km_Dsst = null;
+	Gen_dR_pi_gamma = null;
+	Gen_dR_pi_Dsst = null;
+	Gen_dR_Ds_gamma = null;
+	Gen_dR_Ds_Dsst = null;
+	Gen_dR_gamma_Dsst = null;
+
+	Gen_dR_Kp_mu = null;
+	Gen_dR_Km_mu = null;
+	Gen_dR_pi_mu = null;
+	Gen_dR_Ds_mu = null;
+	Gen_dR_gamma_mu = null;
+	Gen_dR_Dsst_mu = null;
+
+	Gen_met_phi = null;
+	Gen_met_px = null;
+	Gen_met_py = null;
+	Gen_met_pt = null;
+	Gen_met_sumEt = null;
+
 	trig_HLT_IsoMu24 = false;
 	trig_HLT_Mu50 = false;
 
@@ -22,6 +170,7 @@ void DsstW_KKpimu_Tree::Init()
 	primvtx_vxerr = null;
 	primvtx_vyerr = null;
 	primvtx_vzerr = null;
+
 
 	// MET kinematics
 	met_sig = null;
@@ -85,6 +234,8 @@ void DsstW_KKpimu_Tree::Init()
 	mu_IsoR04_sumPUPt = null;
 	mu_IsoR04_PFIso = null;
 	mu_IsoR04_RelIso = null;
+
+	mu_match = false;
 
 	event_id = 0;
 	run_id = 0;
@@ -204,6 +355,7 @@ void DsstW_KKpimu_Tree::Init()
 	vis_pt = null;
 	vis_p = null;
 	vis_mass = null;
+	vis_Ht = null;
 
 	// refitted vertex
 	Ds_vx = null;
@@ -293,7 +445,6 @@ void DsstW_KKpimu_Tree::Init()
 	Ds_IsoR04_PFIso = null;
 	Ds_IsoR04_RelIso = null;
 
-	// Dsst isolation
 	Dsst_IsoR03_sumChargedHadronPt = null;
 	Dsst_IsoR03_sumNeutralHadronEt = null;
 	Dsst_IsoR03_sumPhotonEt = null;
@@ -307,6 +458,14 @@ void DsstW_KKpimu_Tree::Init()
 	Dsst_IsoR04_sumPUPt = null;
 	Dsst_IsoR04_PFIso = null;
 	Dsst_IsoR04_RelIso = null;
+
+	Kp_match = false;
+	Km_match = false;
+	pi_match = false;
+	Ds_match = false;
+	gamma_match = false;
+	Dsst_match = false;
+	event_match = false;
 }
 
 void DsstW_KKpimu_Tree::CreateBranches()
@@ -314,6 +473,154 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("event_id", &event_id);
 	tree->Branch("run_id", &run_id);
 	tree->Branch("lumi_id", &lumi_id);
+
+	tree->Branch("Gen_PV_vx", &Gen_PV_vx);
+	tree->Branch("Gen_PV_vy", &Gen_PV_vy);
+	tree->Branch("Gen_PV_vz", &Gen_PV_vz);
+
+	tree->Branch("Gen_SV_vx", &Gen_SV_vx);
+	tree->Branch("Gen_SV_vy", &Gen_SV_vy);
+	tree->Branch("Gen_SV_vz", &Gen_SV_vz);
+
+	tree->Branch("Gen_H_charge", &Gen_H_charge);
+	tree->Branch("Gen_H_eta", &Gen_H_eta);
+	tree->Branch("Gen_H_phi", &Gen_H_phi);
+	tree->Branch("Gen_H_px", &Gen_H_px);
+	tree->Branch("Gen_H_py", &Gen_H_py);
+	tree->Branch("Gen_H_pz", &Gen_H_pz);
+	tree->Branch("Gen_H_pt", &Gen_H_pt);
+	tree->Branch("Gen_H_p", &Gen_H_p);
+	tree->Branch("Gen_H_mass", &Gen_H_mass);
+
+	tree->Branch("Gen_Dsst_charge", &Gen_Dsst_charge);
+	tree->Branch("Gen_Dsst_eta", &Gen_Dsst_eta);
+	tree->Branch("Gen_Dsst_phi", &Gen_Dsst_phi);
+	tree->Branch("Gen_Dsst_px", &Gen_Dsst_px);
+	tree->Branch("Gen_Dsst_py", &Gen_Dsst_py);
+	tree->Branch("Gen_Dsst_pz", &Gen_Dsst_pz);
+	tree->Branch("Gen_Dsst_pt", &Gen_Dsst_pt);
+	tree->Branch("Gen_Dsst_p", &Gen_Dsst_p);
+	tree->Branch("Gen_Dsst_mass", &Gen_Dsst_mass);
+
+	tree->Branch("Gen_W_charge", &Gen_W_charge);
+	tree->Branch("Gen_W_eta", &Gen_W_eta);
+	tree->Branch("Gen_W_phi", &Gen_W_phi);
+	tree->Branch("Gen_W_px", &Gen_W_px);
+	tree->Branch("Gen_W_py", &Gen_W_py);
+	tree->Branch("Gen_W_pz", &Gen_W_pz);
+	tree->Branch("Gen_W_pt", &Gen_W_pt);
+	tree->Branch("Gen_W_p", &Gen_W_p);
+	tree->Branch("Gen_W_mass", &Gen_W_mass);
+
+	tree->Branch("Gen_Ds_charge", &Gen_Ds_charge);
+	tree->Branch("Gen_Ds_eta", &Gen_Ds_eta);
+	tree->Branch("Gen_Ds_phi", &Gen_Ds_phi);
+	tree->Branch("Gen_Ds_px", &Gen_Ds_px);
+	tree->Branch("Gen_Ds_py", &Gen_Ds_py);
+	tree->Branch("Gen_Ds_pz", &Gen_Ds_pz);
+	tree->Branch("Gen_Ds_pt", &Gen_Ds_pt);
+	tree->Branch("Gen_Ds_p", &Gen_Ds_p);
+	tree->Branch("Gen_Ds_mass", &Gen_Ds_mass);
+
+	tree->Branch("Gen_gamma_charge", &Gen_gamma_charge);
+	tree->Branch("Gen_gamma_eta", &Gen_gamma_eta);
+	tree->Branch("Gen_gamma_phi", &Gen_gamma_phi);
+	tree->Branch("Gen_gamma_px", &Gen_gamma_px);
+	tree->Branch("Gen_gamma_py", &Gen_gamma_py);
+	tree->Branch("Gen_gamma_pz", &Gen_gamma_pz);
+	tree->Branch("Gen_gamma_pt", &Gen_gamma_pt);
+	tree->Branch("Gen_gamma_p", &Gen_gamma_p);
+	tree->Branch("Gen_gamma_mass", &Gen_gamma_mass);
+
+	tree->Branch("Gen_Kp_charge", &Gen_Kp_charge);
+	tree->Branch("Gen_Kp_eta", &Gen_Kp_eta);
+	tree->Branch("Gen_Kp_phi", &Gen_Kp_phi);
+	tree->Branch("Gen_Kp_px", &Gen_Kp_px);
+	tree->Branch("Gen_Kp_py", &Gen_Kp_py);
+	tree->Branch("Gen_Kp_pz", &Gen_Kp_pz);
+	tree->Branch("Gen_Kp_pt", &Gen_Kp_pt);
+	tree->Branch("Gen_Kp_p", &Gen_Kp_p);
+	tree->Branch("Gen_Kp_mass", &Gen_Kp_mass);
+
+	tree->Branch("Gen_Km_charge", &Gen_Km_charge);
+	tree->Branch("Gen_Km_eta", &Gen_Km_eta);
+	tree->Branch("Gen_Km_phi", &Gen_Km_phi);
+	tree->Branch("Gen_Km_px", &Gen_Km_px);
+	tree->Branch("Gen_Km_py", &Gen_Km_py);
+	tree->Branch("Gen_Km_pz", &Gen_Km_pz);
+	tree->Branch("Gen_Km_pt", &Gen_Km_pt);
+	tree->Branch("Gen_Km_p", &Gen_Km_p);
+	tree->Branch("Gen_Km_mass", &Gen_Km_mass);
+
+	tree->Branch("Gen_pi_charge", &Gen_pi_charge);
+	tree->Branch("Gen_pi_eta", &Gen_pi_eta);
+	tree->Branch("Gen_pi_phi", &Gen_pi_phi);
+	tree->Branch("Gen_pi_px", &Gen_pi_px);
+	tree->Branch("Gen_pi_py", &Gen_pi_py);
+	tree->Branch("Gen_pi_pz", &Gen_pi_pz);
+	tree->Branch("Gen_pi_pt", &Gen_pi_pt);
+	tree->Branch("Gen_pi_p", &Gen_pi_p);
+	tree->Branch("Gen_pi_mass", &Gen_pi_mass);
+
+	tree->Branch("Gen_mu_charge", &Gen_mu_charge);
+	tree->Branch("Gen_mu_eta", &Gen_mu_eta);
+	tree->Branch("Gen_mu_phi", &Gen_mu_phi);
+	tree->Branch("Gen_mu_px", &Gen_mu_px);
+	tree->Branch("Gen_mu_py", &Gen_mu_py);
+	tree->Branch("Gen_mu_pz", &Gen_mu_pz);
+	tree->Branch("Gen_mu_pt", &Gen_mu_pt);
+	tree->Branch("Gen_mu_p", &Gen_mu_p);
+	tree->Branch("Gen_mu_mass", &Gen_mu_mass);
+
+	tree->Branch("Gen_Dsmu_charge", &Gen_Dsmu_charge);
+	tree->Branch("Gen_Dsmu_eta", &Gen_Dsmu_eta);
+	tree->Branch("Gen_Dsmu_phi", &Gen_Dsmu_phi);
+	tree->Branch("Gen_Dsmu_px", &Gen_Dsmu_px);
+	tree->Branch("Gen_Dsmu_py", &Gen_Dsmu_py);
+	tree->Branch("Gen_Dsmu_pz", &Gen_Dsmu_pz);
+	tree->Branch("Gen_Dsmu_pt", &Gen_Dsmu_pt);
+	tree->Branch("Gen_Dsmu_p", &Gen_Dsmu_p);
+	tree->Branch("Gen_Dsmu_mass", &Gen_Dsmu_mass);
+
+	tree->Branch("Gen_vis_charge", &Gen_vis_charge);
+	tree->Branch("Gen_vis_eta", &Gen_vis_eta);
+	tree->Branch("Gen_vis_phi", &Gen_vis_phi);
+	tree->Branch("Gen_vis_px", &Gen_vis_px);
+	tree->Branch("Gen_vis_py", &Gen_vis_py);
+	tree->Branch("Gen_vis_pz", &Gen_vis_pz);
+	tree->Branch("Gen_vis_pt", &Gen_vis_pt);
+	tree->Branch("Gen_vis_p", &Gen_vis_p);
+	tree->Branch("Gen_vis_mass", &Gen_vis_mass);
+
+	tree->Branch("Gen_dR_Kp_Km", &Gen_dR_Kp_Km);
+	tree->Branch("Gen_dR_Kp_pi", &Gen_dR_Kp_pi);
+	tree->Branch("Gen_dR_Kp_Ds", &Gen_dR_Kp_Ds);
+	tree->Branch("Gen_dR_Km_pi", &Gen_dR_Km_pi);
+	tree->Branch("Gen_dR_Km_Ds", &Gen_dR_Km_Ds);
+	tree->Branch("Gen_dR_pi_Ds", &Gen_dR_pi_Ds);
+
+	tree->Branch("Gen_dR_Kp_gamma", &Gen_dR_Kp_gamma);
+	tree->Branch("Gen_dR_Kp_Dsst", &Gen_dR_Kp_Dsst);
+	tree->Branch("Gen_dR_Km_gamma", &Gen_dR_Km_gamma);
+	tree->Branch("Gen_dR_Km_Dsst", &Gen_dR_Km_Dsst);
+	tree->Branch("Gen_dR_pi_gamma", &Gen_dR_pi_gamma);
+	tree->Branch("Gen_dR_pi_Dsst", &Gen_dR_pi_Dsst);
+	tree->Branch("Gen_dR_Ds_gamma", &Gen_dR_Ds_gamma);
+	tree->Branch("Gen_dR_Ds_Dsst", &Gen_dR_Ds_Dsst);
+	tree->Branch("Gen_dR_gamma_Dsst", &Gen_dR_gamma_Dsst);
+
+	tree->Branch("Gen_dR_Kp_mu", &Gen_dR_Kp_mu);
+	tree->Branch("Gen_dR_Km_mu", &Gen_dR_Km_mu);
+	tree->Branch("Gen_dR_pi_mu", &Gen_dR_pi_mu);
+	tree->Branch("Gen_dR_Ds_mu", &Gen_dR_Ds_mu);
+	tree->Branch("Gen_dR_gamma_mu", &Gen_dR_gamma_mu);
+	tree->Branch("Gen_dR_Dsst_mu", &Gen_dR_Dsst_mu);
+
+	tree->Branch("Gen_met_phi", &Gen_met_phi);
+	tree->Branch("Gen_met_px", &Gen_met_px);
+	tree->Branch("Gen_met_py", &Gen_met_py);
+	tree->Branch("Gen_met_pt", &Gen_met_pt);
+	tree->Branch("Gen_met_sumEt", &Gen_met_sumEt);
 
 	// trigger
 	tree->Branch("trig_HLT_IsoMu24", &trig_HLT_IsoMu24);
@@ -395,6 +702,8 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("mu_IsoR04_sumPUPt", &mu_IsoR04_sumPUPt);
 	tree->Branch("mu_IsoR04_PFIso", &mu_IsoR04_PFIso);
 	tree->Branch("mu_IsoR04_RelIso", &mu_IsoR04_RelIso);
+
+	tree->Branch("mu_match", &mu_match);
 
 	// refitted info from Kinematic Fit
 	tree->Branch("Kp_charge", &Kp_charge);
@@ -510,6 +819,7 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("vis_pt", &vis_pt);
 	tree->Branch("vis_p", &vis_p);
 	tree->Branch("vis_mass", &vis_mass);
+	tree->Branch("vis_Ht", &vis_Ht);
 
 	// refitted vertex
 	tree->Branch("Ds_vx", &Ds_vx);
@@ -584,7 +894,7 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("Ds_FDerr", &Ds_FDerr);
 	tree->Branch("Ds_FDsig", &Ds_FDsig);
 
-	// Ds isolation
+	// Ds ioslation
 	tree->Branch("Ds_IsoR03_sumChargedHadronPt", &Ds_IsoR03_sumChargedHadronPt);
 	tree->Branch("Ds_IsoR03_sumNeutralHadronEt", &Ds_IsoR03_sumNeutralHadronEt);
 	tree->Branch("Ds_IsoR03_sumPhotonEt", &Ds_IsoR03_sumPhotonEt);
@@ -599,7 +909,6 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("Ds_IsoR04_PFIso", &Ds_IsoR04_PFIso);
 	tree->Branch("Ds_IsoR04_RelIso", &Ds_IsoR04_RelIso);
 
-	// Dsst isolation
 	tree->Branch("Dsst_IsoR03_sumChargedHadronPt", &Dsst_IsoR03_sumChargedHadronPt);
 	tree->Branch("Dsst_IsoR03_sumNeutralHadronEt", &Dsst_IsoR03_sumNeutralHadronEt);
 	tree->Branch("Dsst_IsoR03_sumPhotonEt", &Dsst_IsoR03_sumPhotonEt);
@@ -613,4 +922,12 @@ void DsstW_KKpimu_Tree::CreateBranches()
 	tree->Branch("Dsst_IsoR04_sumPUPt", &Dsst_IsoR04_sumPUPt);
 	tree->Branch("Dsst_IsoR04_PFIso", &Dsst_IsoR04_PFIso);
 	tree->Branch("Dsst_IsoR04_RelIso", &Dsst_IsoR04_RelIso);
+
+	tree->Branch("Kp_match", &Kp_match);
+	tree->Branch("Km_match", &Km_match);
+	tree->Branch("pi_match", &pi_match);
+	tree->Branch("Ds_match", &Ds_match);
+	tree->Branch("gamma_match", &gamma_match);
+	tree->Branch("Dsst_match", &Dsst_match);
+	tree->Branch("event_match", &event_match);
 }

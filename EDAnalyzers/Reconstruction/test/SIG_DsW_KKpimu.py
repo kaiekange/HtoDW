@@ -1,11 +1,18 @@
 import FWCore.ParameterSet.Config as cms
+from FWCore.ParameterSet.VarParsing import VarParsing
 from Configuration.AlCa.GlobalTag import GlobalTag
 
-# source = cms.Source("PoolSource", fileNames=cms.untracked.vstring("/store/mc/Run3Summer22MiniAODv4/WtoLNu-2Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/MINIAODSIM/130X_mcRun3_2022_realistic_v5-v2/2520000/03d57826-8e8d-4b11-8683-c75d0310b16f.root"))
-# OUTFILE = "file:output.root"
+options = VarParsing('analysis')
+options.register("JOBID", 0, VarParsing.multiplicity.singleton, VarParsing.varType.int, "Job ID")
+options.register("GROUPSIZE", 1, VarParsing.multiplicity.singleton, VarParsing.varType.int, "Group size")
+options.register('OUTFILE', 'file:output.root', VarParsing.multiplicity.singleton, VarParsing.varType.string, 'Output file')
+options.parseArguments()
 
-source = cms.Source("PoolSource", fileNames=cms.untracked.vstring())
-OUTFILE = "output.root"
+start = options.JOBID * options.GROUPSIZE + 1
+end = start + options.GROUPSIZE
+
+INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/20260408/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end)]
+source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
 process = cms.Process("DsWKKpimu")
 process.load("PhysicsTools.UtilAlgos.TFileService_cfi")
@@ -16,7 +23,7 @@ process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 process.GlobalTag = GlobalTag(process.GlobalTag, "130X_mcRun3_2022_realistic_v5", "")
-process.MessageLogger.cerr.FwkReport.reportEvery = 1000
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
 process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(-1))
 
@@ -26,8 +33,8 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
-process.DsWKKpimu = cms.EDAnalyzer("DsW_KKpimu")
-process.TFileService = cms.Service("TFileService", fileName=cms.string(OUTFILE), closeFileFast=cms.untracked.bool(True))
+process.DsWKKpimu = cms.EDAnalyzer("DsW_KKpimu", doTruth=cms.bool(True))
+process.TFileService = cms.Service("TFileService", fileName=cms.string(options.OUTFILE), closeFileFast=cms.untracked.bool(True))
 
 process.options = cms.untracked.PSet(wantSummary=cms.untracked.bool(True))
 
