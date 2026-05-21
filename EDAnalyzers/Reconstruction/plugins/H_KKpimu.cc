@@ -174,6 +174,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	ftree->event_id = iEvent.id().event();
 	ftree->run_id   = iEvent.id().run();
 	ftree->lumi_id  = iEvent.luminosityBlock();
+	Int_t cand_counter = 0;
 
 	edm::Handle<pat::PackedCandidateCollection> PFCandHandle;
 	iEvent.getByToken(PFCandToken_, PFCandHandle);
@@ -724,6 +725,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	ftree->mu_IsoR04_PFIso              = mu_IsoR04_PFIso;
 	ftree->mu_IsoR04_RelIso             = mu_IsoR04_PFIso / mu.pt();
 	ftree->mu_match = (best_mu_idx == mu_match_idx);
+	ftree->W_tmass = std::sqrt(2.0f * mu.pt() * Met.pt() * (1.0f - std::cos(mu.phi() - Met.phi())));
 
 	//==================================================//
 	// PF hadron candidates
@@ -910,113 +912,42 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				if (Ds_IsoR04_RelIso >= 1.0f) continue;
 
 				//--------------------------------------------------//
-				// Best gamma search: one row per Ds candidate
+				// Unconstrained gamma summary (no iso/mass cut)
 				//--------------------------------------------------//
-				Int_t best_gamma_idx = -1;
-				Float_t best_dM = 999.0f;
-				const Float_t dM_nominal = Mass_Dsst - Mass_Ds; // ~138 MeV
-
-				for (Int_t igamma = 0; igamma < static_cast<Int_t>(idx_photon.size()); igamma++)
 				{
-					const Int_t idx_g = idx_photon[igamma];
-					const pat::PackedCandidate &gamma_pf = (*PFCandHandle)[idx_g];
-					TLorentzVector g_tlv;
-					g_tlv.SetXYZM(gamma_pf.px(), gamma_pf.py(), gamma_pf.pz(), 0.0);
-					TLorentzVector Dsst_tlv = Ds_tlv + g_tlv;
-					Float_t dM = Dsst_tlv.M() - Ds_tlv.M();
-					if (dM < 0.05 || dM > 0.25) continue;
-					Float_t dist = std::abs(dM - dM_nominal);
-					if (dist < best_dM) { best_gamma_idx = idx_g; best_dM = dist; }
-				}
-
-				//--------------------------------------------------//
-				// Fill gamma/Dsst/Dsstmu branches if gamma found
-				//--------------------------------------------------//
-				TLorentzVector gamma_tlv, Dsst_tlv, Dsstmu_tlv;
-				Float_t Dsst_IsoR03_sumChHadPt = 0, Dsst_IsoR03_sumNeuHadEt = 0, Dsst_IsoR03_sumPhoEt = 0, Dsst_IsoR03_sumPUPt = 0;
-				Float_t Dsst_IsoR04_sumChHadPt = 0, Dsst_IsoR04_sumNeuHadEt = 0, Dsst_IsoR04_sumPhoEt = 0, Dsst_IsoR04_sumPUPt = 0;
-
-				if (best_gamma_idx >= 0)
-				{
-					const pat::PackedCandidate &gamma_pf = (*PFCandHandle)[best_gamma_idx];
-					gamma_tlv.SetXYZM(gamma_pf.px(), gamma_pf.py(), gamma_pf.pz(), 0.0);
-					Dsst_tlv   = Ds_tlv + gamma_tlv;
-					Dsstmu_tlv = Dsst_tlv + mu_tlv;
-
-					// Dsst isolation (exclude Kp, Km, pi, gamma)
-					for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
+					const Float_t dM_nominal = Mass_Dsst - Mass_Ds;
+					Int_t uc_best_idx = -1;
+					Float_t uc_best_dist = 999.0f;
+					Int_t n_window = 0;
+					for (Int_t igamma = 0; igamma < static_cast<Int_t>(idx_photon.size()); igamma++)
 					{
-						if (i == idx_Kp || i == idx_Km || i == idx_pi || i == best_gamma_idx) continue;
-						const pat::PackedCandidate &pf = (*PFCandHandle)[i];
-						Float_t iso_dR = reco::deltaR(Dsst_tlv.Eta(), Dsst_tlv.Phi(), pf.eta(), pf.phi());
-						if (iso_dR < 0.4)
-						{
-							if (std::abs(pf.pdgId()) == 211 && pf.fromPV() > 1) Dsst_IsoR04_sumChHadPt  += pf.pt();
-							else if (pf.pdgId() == 130)                          Dsst_IsoR04_sumNeuHadEt += pf.et();
-							else if (pf.pdgId() == 22)                           Dsst_IsoR04_sumPhoEt    += pf.et();
-							if (pf.fromPV() <= 1) Dsst_IsoR04_sumPUPt += pf.pt();
-							if (iso_dR < 0.3)
-							{
-								if (std::abs(pf.pdgId()) == 211 && pf.fromPV() > 1) Dsst_IsoR03_sumChHadPt  += pf.pt();
-								else if (pf.pdgId() == 130)                          Dsst_IsoR03_sumNeuHadEt += pf.et();
-								else if (pf.pdgId() == 22)                           Dsst_IsoR03_sumPhoEt    += pf.et();
-								if (pf.fromPV() <= 1) Dsst_IsoR03_sumPUPt += pf.pt();
-							}
-						}
+						const Int_t idx_g = idx_photon[igamma];
+						const pat::PackedCandidate &gpf = (*PFCandHandle)[idx_g];
+						TLorentzVector g_tlv;
+						g_tlv.SetXYZM(gpf.px(), gpf.py(), gpf.pz(), 0.0f);
+						Float_t dM = (Ds_tlv + g_tlv).M() - Ds_tlv.M();
+						if (dM < 0.05f || dM > 0.25f) continue;
+						n_window++;
+						Float_t dist = std::abs(dM - dM_nominal);
+						if (dist < uc_best_dist) { uc_best_idx = idx_g; uc_best_dist = dist; }
 					}
-
-					ftree->has_gamma      = true;
-					ftree->gamma_charge   = gamma_pf.charge();
-					ftree->gamma_eta      = gamma_tlv.Eta();  ftree->gamma_phi  = gamma_tlv.Phi();
-					ftree->gamma_px       = gamma_tlv.Px();   ftree->gamma_py   = gamma_tlv.Py();   ftree->gamma_pz   = gamma_tlv.Pz();
-					ftree->gamma_pt       = gamma_tlv.Pt();   ftree->gamma_p    = gamma_tlv.P();    ftree->gamma_mass = gamma_tlv.M();
-					ftree->gamma_PVassoc  = gamma_pf.pvAssociationQuality();
-
-					ftree->Dsst_charge = Kp_charge + Km_charge + pi_charge;
-					ftree->Dsst_eta    = Dsst_tlv.Eta();  ftree->Dsst_phi  = Dsst_tlv.Phi();
-					ftree->Dsst_px     = Dsst_tlv.Px();   ftree->Dsst_py   = Dsst_tlv.Py();   ftree->Dsst_pz   = Dsst_tlv.Pz();
-					ftree->Dsst_pt     = Dsst_tlv.Pt();   ftree->Dsst_p    = Dsst_tlv.P();    ftree->Dsst_mass = Dsst_tlv.M();
-
-					ftree->Dsstmu_charge = Kp_charge + Km_charge + pi_charge + mu.charge();
-					ftree->Dsstmu_eta    = Dsstmu_tlv.Eta();  ftree->Dsstmu_phi  = Dsstmu_tlv.Phi();
-					ftree->Dsstmu_px     = Dsstmu_tlv.Px();   ftree->Dsstmu_py   = Dsstmu_tlv.Py();   ftree->Dsstmu_pz   = Dsstmu_tlv.Pz();
-					ftree->Dsstmu_pt     = Dsstmu_tlv.Pt();   ftree->Dsstmu_p    = Dsstmu_tlv.P();    ftree->Dsstmu_mass = Dsstmu_tlv.M();
-					ftree->Dsstmu_Ht     = Kp_mtm.perp() + Km_mtm.perp() + pi_mtm.perp() + gamma_tlv.Pt() + mu_tlv.Pt();
-
-					ftree->dR_Kp_gamma   = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
-					ftree->dR_Kp_Dsst    = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-					ftree->dR_Km_gamma   = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
-					ftree->dR_Km_Dsst    = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-					ftree->dR_pi_gamma   = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
-					ftree->dR_pi_Dsst    = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-					ftree->dR_Ds_gamma   = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
-					ftree->dR_Ds_Dsst    = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-					ftree->dR_gamma_Dsst = reco::deltaR(gamma_pf.eta(), gamma_pf.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
-					ftree->dR_gamma_mu   = reco::deltaR(gamma_pf.eta(), gamma_pf.phi(), mu.eta(), mu.phi());
-					ftree->dR_Dsst_mu    = reco::deltaR(Dsst_tlv.Eta(), Dsst_tlv.Phi(), mu.eta(), mu.phi());
-
-					Float_t Dsst_IsoR03_PFIso = Dsst_IsoR03_sumChHadPt + std::max(0.0f, Dsst_IsoR03_sumNeuHadEt + Dsst_IsoR03_sumPhoEt - 0.5f * Dsst_IsoR03_sumPUPt);
-					Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChHadPt + std::max(0.0f, Dsst_IsoR04_sumNeuHadEt + Dsst_IsoR04_sumPhoEt - 0.5f * Dsst_IsoR04_sumPUPt);
-					ftree->Dsst_IsoR03_sumChargedHadronPt = Dsst_IsoR03_sumChHadPt;
-					ftree->Dsst_IsoR03_sumNeutralHadronEt = Dsst_IsoR03_sumNeuHadEt;
-					ftree->Dsst_IsoR03_sumPhotonEt        = Dsst_IsoR03_sumPhoEt;
-					ftree->Dsst_IsoR03_sumPUPt            = Dsst_IsoR03_sumPUPt;
-					ftree->Dsst_IsoR03_PFIso              = Dsst_IsoR03_PFIso;
-					ftree->Dsst_IsoR03_RelIso             = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
-					ftree->Dsst_IsoR04_sumChargedHadronPt = Dsst_IsoR04_sumChHadPt;
-					ftree->Dsst_IsoR04_sumNeutralHadronEt = Dsst_IsoR04_sumNeuHadEt;
-					ftree->Dsst_IsoR04_sumPhotonEt        = Dsst_IsoR04_sumPhoEt;
-					ftree->Dsst_IsoR04_sumPUPt            = Dsst_IsoR04_sumPUPt;
-					ftree->Dsst_IsoR04_PFIso              = Dsst_IsoR04_PFIso;
-					ftree->Dsst_IsoR04_RelIso             = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
-
-					ftree->gamma_match = (best_gamma_idx == gamma_match_idx);
-					ftree->Dsst_match  = ftree->gamma_match && ((idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx));
+					ftree->n_gamma_window = n_window;
+					if (uc_best_idx >= 0)
+					{
+						const pat::PackedCandidate &gpf = (*PFCandHandle)[uc_best_idx];
+						TLorentzVector g_tlv;
+						g_tlv.SetXYZM(gpf.px(), gpf.py(), gpf.pz(), 0.0f);
+						ftree->gamma_uc_dM     = (Ds_tlv + g_tlv).M() - Ds_tlv.M();
+						ftree->gamma_uc_pt     = g_tlv.Pt();
+						ftree->gamma_uc_dR_Ds  = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), gpf.eta(), gpf.phi());
+					}
 				}
 
 				//--------------------------------------------------//
-				// Fill Ds-level and common branches
+				// Fill Ds-level branches (common to all gamma rows)
 				//--------------------------------------------------//
+				ftree->cand_id = cand_counter++;
+
 				ftree->Kp_charge  = Kp_charge;
 				ftree->Kp_eta     = Kp_mtm.eta();  ftree->Kp_phi  = Kp_mtm.phi();
 				ftree->Kp_px      = Kp_mtm.x();    ftree->Kp_py   = Kp_mtm.y();   ftree->Kp_pz   = Kp_mtm.z();
@@ -1103,13 +1034,116 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				ftree->Ds_IsoR04_RelIso             = Ds_IsoR04_RelIso;
 
 				Bool_t Ds_match = (idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx) && (idx_pi == pi_match_idx);
-				ftree->Kp_match    = (idx_Kp == Kp_match_idx);
-				ftree->Km_match    = (idx_Km == Km_match_idx);
-				ftree->pi_match    = (idx_pi == pi_match_idx);
-				ftree->Ds_match    = Ds_match;
-				ftree->event_match = Ds_match && ftree->mu_match && (ftree->has_gamma ? ftree->Dsst_match : true);
+				ftree->Kp_match = (idx_Kp == Kp_match_idx);
+				ftree->Km_match = (idx_Km == Km_match_idx);
+				ftree->pi_match = (idx_pi == pi_match_idx);
+				ftree->Ds_match = Ds_match;
 
-				ftree->tree->Fill();
+				//--------------------------------------------------//
+				// Gamma loop: one row per (Ds, gamma) pair
+				// Cuts: dM in [50,250] MeV, Dsstmu_mass<125, Dsst_IsoR04<1
+				//--------------------------------------------------//
+				bool any_gamma = false;
+				for (Int_t igamma = 0; igamma < static_cast<Int_t>(idx_photon.size()); igamma++)
+				{
+					const Int_t idx_g = idx_photon[igamma];
+					const pat::PackedCandidate &gamma_pf = (*PFCandHandle)[idx_g];
+					TLorentzVector gamma_tlv;
+					gamma_tlv.SetXYZM(gamma_pf.px(), gamma_pf.py(), gamma_pf.pz(), 0.0);
+					TLorentzVector Dsst_tlv   = Ds_tlv + gamma_tlv;
+					Float_t dM = Dsst_tlv.M() - Ds_tlv.M();
+					if (dM < 0.05f || dM > 0.25f) continue;
+
+					TLorentzVector Dsstmu_tlv = Dsst_tlv + mu_tlv;
+					if (Dsstmu_tlv.M() > 125.0f) continue;
+
+					// Dsst isolation (exclude Kp, Km, pi, gamma)
+					Float_t Dsst_IsoR03_sumChHadPt = 0, Dsst_IsoR03_sumNeuHadEt = 0, Dsst_IsoR03_sumPhoEt = 0, Dsst_IsoR03_sumPUPt = 0;
+					Float_t Dsst_IsoR04_sumChHadPt = 0, Dsst_IsoR04_sumNeuHadEt = 0, Dsst_IsoR04_sumPhoEt = 0, Dsst_IsoR04_sumPUPt = 0;
+					for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
+					{
+						if (i == idx_Kp || i == idx_Km || i == idx_pi || i == idx_g) continue;
+						const pat::PackedCandidate &pf = (*PFCandHandle)[i];
+						Float_t iso_dR = reco::deltaR(Dsst_tlv.Eta(), Dsst_tlv.Phi(), pf.eta(), pf.phi());
+						if (iso_dR < 0.4)
+						{
+							if (std::abs(pf.pdgId()) == 211 && pf.fromPV() > 1) Dsst_IsoR04_sumChHadPt  += pf.pt();
+							else if (pf.pdgId() == 130)                          Dsst_IsoR04_sumNeuHadEt += pf.et();
+							else if (pf.pdgId() == 22)                           Dsst_IsoR04_sumPhoEt    += pf.et();
+							if (pf.fromPV() <= 1) Dsst_IsoR04_sumPUPt += pf.pt();
+							if (iso_dR < 0.3)
+							{
+								if (std::abs(pf.pdgId()) == 211 && pf.fromPV() > 1) Dsst_IsoR03_sumChHadPt  += pf.pt();
+								else if (pf.pdgId() == 130)                          Dsst_IsoR03_sumNeuHadEt += pf.et();
+								else if (pf.pdgId() == 22)                           Dsst_IsoR03_sumPhoEt    += pf.et();
+								if (pf.fromPV() <= 1) Dsst_IsoR03_sumPUPt += pf.pt();
+							}
+						}
+					}
+					Float_t Dsst_IsoR03_PFIso = Dsst_IsoR03_sumChHadPt + std::max(0.0f, Dsst_IsoR03_sumNeuHadEt + Dsst_IsoR03_sumPhoEt - 0.5f * Dsst_IsoR03_sumPUPt);
+					Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChHadPt + std::max(0.0f, Dsst_IsoR04_sumNeuHadEt + Dsst_IsoR04_sumPhoEt - 0.5f * Dsst_IsoR04_sumPUPt);
+					if (Dsst_IsoR04_PFIso >= 1.0f) continue;
+
+					// Fill gamma/Dsst/Dsstmu branches
+					ftree->has_gamma      = true;
+					ftree->gamma_charge   = gamma_pf.charge();
+					ftree->gamma_eta      = gamma_tlv.Eta();  ftree->gamma_phi  = gamma_tlv.Phi();
+					ftree->gamma_px       = gamma_tlv.Px();   ftree->gamma_py   = gamma_tlv.Py();   ftree->gamma_pz   = gamma_tlv.Pz();
+					ftree->gamma_pt       = gamma_tlv.Pt();   ftree->gamma_p    = gamma_tlv.P();    ftree->gamma_mass = gamma_tlv.M();
+					ftree->gamma_PVassoc  = gamma_pf.pvAssociationQuality();
+
+					ftree->Dsst_charge = Kp_charge + Km_charge + pi_charge;
+					ftree->Dsst_eta    = Dsst_tlv.Eta();  ftree->Dsst_phi  = Dsst_tlv.Phi();
+					ftree->Dsst_px     = Dsst_tlv.Px();   ftree->Dsst_py   = Dsst_tlv.Py();   ftree->Dsst_pz   = Dsst_tlv.Pz();
+					ftree->Dsst_pt     = Dsst_tlv.Pt();   ftree->Dsst_p    = Dsst_tlv.P();    ftree->Dsst_mass = Dsst_tlv.M();
+
+					ftree->Dsstmu_charge = Kp_charge + Km_charge + pi_charge + mu.charge();
+					ftree->Dsstmu_eta    = Dsstmu_tlv.Eta();  ftree->Dsstmu_phi  = Dsstmu_tlv.Phi();
+					ftree->Dsstmu_px     = Dsstmu_tlv.Px();   ftree->Dsstmu_py   = Dsstmu_tlv.Py();   ftree->Dsstmu_pz   = Dsstmu_tlv.Pz();
+					ftree->Dsstmu_pt     = Dsstmu_tlv.Pt();   ftree->Dsstmu_p    = Dsstmu_tlv.P();    ftree->Dsstmu_mass = Dsstmu_tlv.M();
+					ftree->Dsstmu_Ht     = Kp_mtm.perp() + Km_mtm.perp() + pi_mtm.perp() + gamma_tlv.Pt() + mu_tlv.Pt();
+
+					ftree->dR_Kp_gamma   = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
+					ftree->dR_Kp_Dsst    = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
+					ftree->dR_Km_gamma   = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
+					ftree->dR_Km_Dsst    = reco::deltaR(Km_mtm.eta(), Km_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
+					ftree->dR_pi_gamma   = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
+					ftree->dR_pi_Dsst    = reco::deltaR(pi_mtm.eta(), pi_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
+					ftree->dR_Ds_gamma   = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
+					ftree->dR_Ds_Dsst    = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
+					ftree->dR_gamma_Dsst = reco::deltaR(gamma_pf.eta(), gamma_pf.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
+					ftree->dR_gamma_mu   = reco::deltaR(gamma_pf.eta(), gamma_pf.phi(), mu.eta(), mu.phi());
+					ftree->dR_Dsst_mu    = reco::deltaR(Dsst_tlv.Eta(), Dsst_tlv.Phi(), mu.eta(), mu.phi());
+
+					ftree->Dsst_IsoR03_sumChargedHadronPt = Dsst_IsoR03_sumChHadPt;
+					ftree->Dsst_IsoR03_sumNeutralHadronEt = Dsst_IsoR03_sumNeuHadEt;
+					ftree->Dsst_IsoR03_sumPhotonEt        = Dsst_IsoR03_sumPhoEt;
+					ftree->Dsst_IsoR03_sumPUPt            = Dsst_IsoR03_sumPUPt;
+					ftree->Dsst_IsoR03_PFIso              = Dsst_IsoR03_PFIso;
+					ftree->Dsst_IsoR03_RelIso             = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
+					ftree->Dsst_IsoR04_sumChargedHadronPt = Dsst_IsoR04_sumChHadPt;
+					ftree->Dsst_IsoR04_sumNeutralHadronEt = Dsst_IsoR04_sumNeuHadEt;
+					ftree->Dsst_IsoR04_sumPhotonEt        = Dsst_IsoR04_sumPhoEt;
+					ftree->Dsst_IsoR04_sumPUPt            = Dsst_IsoR04_sumPUPt;
+					ftree->Dsst_IsoR04_PFIso              = Dsst_IsoR04_PFIso;
+					ftree->Dsst_IsoR04_RelIso             = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
+
+					ftree->gamma_match = (idx_g == gamma_match_idx);
+					ftree->Dsst_match  = ftree->gamma_match && Ds_match;
+					ftree->event_match = Ds_match && ftree->mu_match && ftree->Dsst_match;
+
+					ftree->tree->Fill();
+					ftree->InitGamma();
+					any_gamma = true;
+				}
+
+				// No passing gamma: one row with has_gamma=false
+				if (!any_gamma)
+				{
+					ftree->event_match = Ds_match && ftree->mu_match;
+					ftree->tree->Fill();
+					ftree->InitGamma();
+				}
 			} // pi loop
 		} // Km loop
 	} // Kp loop

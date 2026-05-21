@@ -75,7 +75,7 @@ void H_KKpimu_Tree::Init()
 	primvtx_vx = null; primvtx_vy = null; primvtx_vz = null;
 	primvtx_vxerr = null; primvtx_vyerr = null; primvtx_vzerr = null;
 
-	met_sig = null; met_phi = null; met_px = null; met_py = null; met_pt = null; met_sumEt = null;
+	met_sig = null; met_phi = null; met_px = null; met_py = null; met_pt = null; met_sumEt = null; W_tmass = null;
 
 	num_jets = 0;
 	num_jets_pt20 = 0; num_jets_pt30 = 0; num_jets_pt40 = 0; num_jets_pt50 = 0;
@@ -97,7 +97,7 @@ void H_KKpimu_Tree::Init()
 	mu_IsoR04_PFIso = null; mu_IsoR04_RelIso = null;
 	mu_match = false;
 
-	event_id = 0; run_id = 0; lumi_id = 0;
+	event_id = 0; run_id = 0; lumi_id = 0; cand_id = 0;
 
 	Kp_charge = null; Kp_eta = null; Kp_phi = null; Kp_px = null; Kp_py = null; Kp_pz = null;
 	Kp_pt = null; Kp_p = null; Kp_mass = null; Kp_PVassoc = null;
@@ -122,6 +122,8 @@ void H_KKpimu_Tree::Init()
 
 	Dsmu_charge = null; Dsmu_eta = null; Dsmu_phi = null; Dsmu_px = null; Dsmu_py = null; Dsmu_pz = null;
 	Dsmu_pt = null; Dsmu_p = null; Dsmu_mass = null; Dsmu_Ht = null;
+
+	n_gamma_window = 0; gamma_uc_dM = null; gamma_uc_pt = null; gamma_uc_dR_Ds = null;
 
 	has_gamma = false;
 	gamma_charge = null; gamma_eta = null; gamma_phi = null; gamma_px = null; gamma_py = null; gamma_pz = null;
@@ -177,11 +179,40 @@ void H_KKpimu_Tree::Init()
 	gamma_match = false; Dsst_match = false; mu_match = false; event_match = false;
 }
 
+void H_KKpimu_Tree::InitGamma()
+{
+	has_gamma = false;
+	gamma_charge = null; gamma_eta = null; gamma_phi = null; gamma_px = null; gamma_py = null; gamma_pz = null;
+	gamma_pt = null; gamma_p = null; gamma_mass = null; gamma_PVassoc = null;
+
+	Dsst_charge = null; Dsst_eta = null; Dsst_phi = null; Dsst_px = null; Dsst_py = null; Dsst_pz = null;
+	Dsst_pt = null; Dsst_p = null; Dsst_mass = null;
+
+	Dsstmu_charge = null; Dsstmu_eta = null; Dsstmu_phi = null; Dsstmu_px = null; Dsstmu_py = null; Dsstmu_pz = null;
+	Dsstmu_pt = null; Dsstmu_p = null; Dsstmu_mass = null; Dsstmu_Ht = null;
+
+	dR_Kp_gamma = null; dR_Kp_Dsst = null;
+	dR_Km_gamma = null; dR_Km_Dsst = null;
+	dR_pi_gamma = null; dR_pi_Dsst = null;
+	dR_Ds_gamma = null; dR_Ds_Dsst = null;
+	dR_gamma_Dsst = null; dR_gamma_mu = null; dR_Dsst_mu = null;
+
+	Dsst_IsoR03_sumChargedHadronPt = null; Dsst_IsoR03_sumNeutralHadronEt = null;
+	Dsst_IsoR03_sumPhotonEt = null; Dsst_IsoR03_sumPUPt = null;
+	Dsst_IsoR03_PFIso = null; Dsst_IsoR03_RelIso = null;
+	Dsst_IsoR04_sumChargedHadronPt = null; Dsst_IsoR04_sumNeutralHadronEt = null;
+	Dsst_IsoR04_sumPhotonEt = null; Dsst_IsoR04_sumPUPt = null;
+	Dsst_IsoR04_PFIso = null; Dsst_IsoR04_RelIso = null;
+
+	gamma_match = false; Dsst_match = false; event_match = false;
+}
+
 void H_KKpimu_Tree::CreateBranches()
 {
 	tree->Branch("event_id", &event_id);
 	tree->Branch("run_id", &run_id);
 	tree->Branch("lumi_id", &lumi_id);
+	tree->Branch("cand_id", &cand_id);
 
 	tree->Branch("Gen_PV_vx", &Gen_PV_vx);
 	tree->Branch("Gen_PV_vy", &Gen_PV_vy);
@@ -269,6 +300,7 @@ void H_KKpimu_Tree::CreateBranches()
 
 	tree->Branch("met_sig", &met_sig); tree->Branch("met_phi", &met_phi);
 	tree->Branch("met_px", &met_px); tree->Branch("met_py", &met_py); tree->Branch("met_pt", &met_pt); tree->Branch("met_sumEt", &met_sumEt);
+	tree->Branch("W_tmass", &W_tmass);
 
 	tree->Branch("num_jets", &num_jets);
 	tree->Branch("num_jets_pt20", &num_jets_pt20); tree->Branch("num_jets_pt30", &num_jets_pt30);
@@ -344,6 +376,9 @@ void H_KKpimu_Tree::CreateBranches()
 	tree->Branch("Dsmu_px", &Dsmu_px); tree->Branch("Dsmu_py", &Dsmu_py); tree->Branch("Dsmu_pz", &Dsmu_pz);
 	tree->Branch("Dsmu_pt", &Dsmu_pt); tree->Branch("Dsmu_p", &Dsmu_p);
 	tree->Branch("Dsmu_mass", &Dsmu_mass); tree->Branch("Dsmu_Ht", &Dsmu_Ht);
+
+	tree->Branch("n_gamma_window", &n_gamma_window);
+	tree->Branch("gamma_uc_dM", &gamma_uc_dM); tree->Branch("gamma_uc_pt", &gamma_uc_pt); tree->Branch("gamma_uc_dR_Ds", &gamma_uc_dR_Ds);
 
 	tree->Branch("has_gamma", &has_gamma);
 	tree->Branch("gamma_charge", &gamma_charge);

@@ -13,10 +13,12 @@ public:
 
 	void CreateBranches();
 	void Init();
+	void InitGamma();
 
 	ULong64_t event_id;
 	UInt_t run_id;
 	UInt_t lumi_id;
+	Int_t cand_id;
 
 	// Gen PV / SV
 	Float_t Gen_PV_vx;
@@ -205,6 +207,7 @@ public:
 	Float_t met_py;
 	Float_t met_pt;
 	Float_t met_sumEt;
+	Float_t W_tmass;
 
 	// jets
 	Int_t num_jets;
@@ -355,6 +358,12 @@ public:
 	Float_t Dsmu_p;
 	Float_t Dsmu_mass;
 	Float_t Dsmu_Ht;
+
+	// unconstrained gamma summary per Ds candidate (no iso/mass cut, only dM window [50,250] MeV)
+	Int_t   n_gamma_window;    // number of photons with dM in [50,250] MeV
+	Float_t gamma_uc_dM;      // dM of argmin|dM-138 MeV| photon (null if n_gamma_window==0)
+	Float_t gamma_uc_pt;      // pT of that photon
+	Float_t gamma_uc_dR_Ds;   // dR(Ds, gamma_uc)
 
 	// gamma (null if has_gamma == false)
 	Bool_t has_gamma;
