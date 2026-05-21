@@ -15,7 +15,7 @@ import mplhep as hep
 plt.style.use(hep.style.CMS)
 
 model_name = sys.argv[1]
-out_dir = f"/eos/user/k/kakang/H2DW/Analysis/MVA/DsstW_KKpimu/DNN/{model_name}"
+out_dir = f"/eos/user/k/kakang/H2DW/Analysis/MVA/DsW_KKpimu/DNN/{model_name}"
 
 FEATURE_NAMES = [
     # MET
@@ -59,19 +59,7 @@ FEATURE_NAMES = [
     "Ds_eta",
     "Ds_pt",
     "Ds_p",
-    # Ds+mu system
-    "Dsmu_eta",
-    "Dsmu_pt",
-    "Dsmu_p",
-    # photon
-    "gamma_eta",
-    "gamma_pt",
-    "gamma_p",
-    # Ds*
-    "Dsst_eta",
-    "Dsst_pt",
-    "Dsst_p",
-    # vis (Ds* + mu)
+    # vis (Ds + mu)
     "vis_eta",
     "vis_pt",
     "vis_p",
@@ -85,23 +73,11 @@ FEATURE_NAMES = [
     "dR_Km_pi",
     "dR_Km_Ds",
     "dR_pi_Ds",
-    # dR (gamma / Ds* topology)
-    "dR_Kp_gamma",
-    "dR_Kp_Dsst",
-    "dR_Km_gamma",
-    "dR_Km_Dsst",
-    "dR_pi_gamma",
-    "dR_pi_Dsst",
-    "dR_Ds_gamma",
-    "dR_Ds_Dsst",
-    "dR_gamma_Dsst",
     # dR (muon)
     "dR_Kp_mu",
     "dR_Km_mu",
     "dR_pi_mu",
     "dR_Ds_mu",
-    "dR_gamma_mu",
-    "dR_Dsst_mu",
     # IP significances
     "Kp_ipsig",
     "Kp_ipxysig",
@@ -119,7 +95,6 @@ FEATURE_NAMES = [
     # isolation
     "mu_IsoR04_RelIso",
     "Ds_IsoR04_RelIso",
-    "Dsst_IsoR04_RelIso",
 ]
 
 # ========= Load artifacts =========
@@ -162,9 +137,9 @@ with PdfPages(f"{out_dir}/variable_comparison.pdf") as pdf:
             ax.hist(s_vals, bins=bins, density=True, alpha=0.6, color="firebrick", label="Signal")
             ax.set_xlabel(feat)
             ax.set_ylabel("a.u.")
-            ax.legend(fontsize=10)
+            ax.legend(fontsize=13)
             if i == 0:
-                hep.cms.label("Simulation Preliminary", ax=ax, data=False, fontsize=14)
+                hep.cms.label("Preliminary", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
 
         for j in range(len(page_feats), len(axes_flat)):
             axes_flat[j].set_visible(False)
@@ -177,7 +152,7 @@ print("Saved variable_comparison.pdf")
 
 # ========= Training results =========
 print("Drawing results.png...")
-fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+fig, axes = plt.subplots(2, 3, figsize=(21, 12))
 axes = axes.flatten()
 
 axes[0].plot(train_losses, label="Train Loss")
@@ -185,12 +160,12 @@ axes[0].plot(val_losses, label="Val Loss")
 axes[0].set_xlabel("Epoch")
 axes[0].set_ylabel("Loss")
 axes[0].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[0], data=False)
+hep.cms.label("Preliminary", ax=axes[0], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
 
 axes[1].plot(val_aucs, color="steelblue")
 axes[1].set_xlabel("Epoch")
 axes[1].set_ylabel("Val AUC")
-hep.cms.label("Simulation Preliminary", ax=axes[1], data=False)
+hep.cms.label("Preliminary", ax=axes[1], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
 
 fpr, tpr, _ = roc_curve(y_test, scores)
 axes[2].plot(fpr, tpr, label=f"AUC = {auc:.4f}")
@@ -198,16 +173,28 @@ axes[2].plot([0, 1], [0, 1], "k--")
 axes[2].set_xlabel("False Positive Rate")
 axes[2].set_ylabel("True Positive Rate")
 axes[2].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[2], data=False)
+hep.cms.label("Preliminary", ax=axes[2], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
 
 sig_scores = scores[y_test == 1]
 bkg_scores = scores[y_test == 0]
-axes[3].hist(bkg_scores, bins=50, alpha=0.6, color="steelblue", label="Background", density=True)
-axes[3].hist(sig_scores, bins=50, alpha=0.6, color="firebrick", label="Signal", density=True)
+bins = np.linspace(0, 1, 51)
+
+axes[3].hist(bkg_scores, bins=bins, alpha=0.6, color="steelblue", label="Background", density=True)
+axes[3].hist(sig_scores, bins=bins, alpha=0.6, color="firebrick", label="Signal", density=True)
 axes[3].set_xlabel("DNN Score")
 axes[3].set_ylabel("a.u.")
 axes[3].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[3], data=False)
+hep.cms.label("Preliminary", ax=axes[3], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+
+axes[4].hist(bkg_scores, bins=bins, alpha=0.6, color="steelblue", label="Background", density=True)
+axes[4].hist(sig_scores, bins=bins, alpha=0.6, color="firebrick", label="Signal", density=True)
+axes[4].set_xlabel("DNN Score")
+axes[4].set_ylabel("a.u.")
+axes[4].set_yscale("log")
+axes[4].legend()
+hep.cms.label("Preliminary", ax=axes[4], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+
+axes[5].set_visible(False)
 
 plt.tight_layout()
 plt.savefig(f"{out_dir}/results.png", dpi=150)
@@ -222,10 +209,10 @@ colors = ["firebrick" if importances[i] > 0 else "steelblue" for i in sorted_idx
 fig, ax = plt.subplots(figsize=(8, len(FEATURE_NAMES) * 0.28))
 ax.barh(range(len(sorted_idx)), importances[sorted_idx], color=colors)
 ax.set_yticks(range(len(sorted_idx)))
-ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=8)
+ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=13)
 ax.set_xlabel("AUC drop when feature permuted")
 ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-hep.cms.label("Simulation Preliminary", ax=ax, data=False)
+hep.cms.label("Preliminary", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
 plt.tight_layout()
 plt.savefig(f"{out_dir}/feature_importance.png", dpi=150)
 plt.close(fig)

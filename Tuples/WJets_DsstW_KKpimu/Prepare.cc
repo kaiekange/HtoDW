@@ -4,27 +4,21 @@
 
 Int_t Prepare()
 {
-    TFile *fin = TFile::Open("root://maite.iihe.ac.be//store/user/kakang/H2DW/Analysis/MC/2022/WtoLNu-2Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/WJets_DsstW_KKpimu/260507_150721/0000/WJets_DsstW_KKpimu.root");
+    TFile *fin = TFile::Open("root://maite.iihe.ac.be//store/user/kakang/H2DW/Analysis/MC/2022/WtoLNu-2Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/WJets_DsstW_KKpimu/260511_105314/0000/WJets_DsstW_KKpimu.root");
     TTree *tree = fin->Get<TTree>("DsstWKKpimu/Events");
 
     // Pass 1: collect entries passing isolation cuts, grouped by event_id
     tree->SetBranchStatus("*", 0);
     tree->SetBranchStatus("event_id", 1);
-    tree->SetBranchStatus("Ds_IsoR04_RelIso", 1);
-    tree->SetBranchStatus("Dsst_IsoR04_RelIso", 1);
 
     ULong64_t event_id;
-    Float_t ds_iso, dsst_iso;
     tree->SetBranchAddress("event_id", &event_id);
-    tree->SetBranchAddress("Ds_IsoR04_RelIso", &ds_iso);
-    tree->SetBranchAddress("Dsst_IsoR04_RelIso", &dsst_iso);
 
     std::map<ULong64_t, std::vector<Long64_t>> evtEntries;
     Long64_t nEntries = tree->GetEntries();
     for (Long64_t i = 0; i < nEntries; i++) {
         tree->GetEntry(i);
-        if (ds_iso < 1.0f && dsst_iso < 1.0f)
-            evtEntries[event_id].push_back(i);
+        evtEntries[event_id].push_back(i);
     }
 
     // Randomly select one candidate per event

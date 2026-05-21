@@ -2,10 +2,11 @@ from WMCore.Configuration import Configuration
 config = Configuration()
 
 config.section_('General')
-config.General.requestName = 'WJets_DsstW_KKpimu'
+config.General.requestName = 'WJets_DsstW_KKpimu1'
 config.General.transferLogs = True
 config.section_('JobType')
 config.JobType.psetName = '/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/EDAnalyzers/Reconstruction/test/BKG_DsstW_KKpimu.py'
+
 config.JobType.pluginName = 'Analysis'
 config.JobType.allowUndistributedCMSSW = True
 ##config.JobType.maxMemoryMB = 2500
@@ -14,7 +15,7 @@ config.JobType.maxJobRuntimeMin = 2750 #3000 # min
 config.section_('Data')
 config.Data.splitting='FileBased'
 config.Data.totalUnits = -1
-config.Data.unitsPerJob = 20
+config.Data.unitsPerJob = 10
 
 #config.Data.allowNonValidInputDataset = True
 config.Data.publication = False

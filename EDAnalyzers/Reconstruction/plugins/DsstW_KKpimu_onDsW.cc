@@ -1144,6 +1144,9 @@ void DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup
 				Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChargedHadronPt + std::max(0.0f, Ds_IsoR04_sumNeutralHadronEt + Ds_IsoR04_sumPhotonEt - 0.5f * Ds_IsoR04_sumPUPt);
 				Float_t Ds_IsoR04_RelIso = Ds_IsoR04_PFIso / Ds_mtm.perp();
 
+				if (Ds_IsoR04_RelIso >= 1.0f)
+					continue;
+
 				Float_t dR_Kp_Km = reco::deltaR(Kp_mtm, Km_mtm);
 				Float_t dR_Kp_pi = reco::deltaR(Kp_mtm, pi_mtm);
 				Float_t dR_Kp_Ds = reco::deltaR(Kp_mtm, Ds_mtm);
@@ -1212,6 +1215,7 @@ void DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup
 					Float_t vis_pt = vis_tlv.Pt();
 					Float_t vis_p = vis_tlv.P();
 					Float_t vis_mass = vis_tlv.M();
+					Float_t vis_Ht = Kp_mtm.perp() + Km_mtm.perp() + pi_mtm.perp() + gamma_tlv.Pt() + mu_tlv.Pt();
 
 					// Dsst Isolation
 					Float_t Dsst_IsoR03_sumChargedHadronPt = 0;
@@ -1263,6 +1267,9 @@ void DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup
 					Float_t Dsst_IsoR03_RelIso = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
 					Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChargedHadronPt + std::max(0.0f, Dsst_IsoR04_sumNeutralHadronEt + Dsst_IsoR04_sumPhotonEt - 0.5f * Dsst_IsoR04_sumPUPt);
 					Float_t Dsst_IsoR04_RelIso = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
+
+					if (Dsst_IsoR04_RelIso >= 1.0f)
+						continue;
 
 					Float_t dR_Kp_gamma = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), gamma_pf.eta(), gamma_pf.phi());
 					Float_t dR_Kp_Dsst = reco::deltaR(Kp_mtm.eta(), Kp_mtm.phi(), Dsst_tlv.Eta(), Dsst_tlv.Phi());
@@ -1391,6 +1398,7 @@ void DsstW_KKpimu_onDsW::analyze(const edm::Event &iEvent, const edm::EventSetup
 					ftree->vis_pt = vis_pt;
 					ftree->vis_p = vis_p;
 					ftree->vis_mass = vis_mass;
+					ftree->vis_Ht = vis_Ht;
 
 					// refitted vertex
 					ftree->Ds_vx = Ds_vx;

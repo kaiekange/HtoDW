@@ -14,7 +14,7 @@ config.JobType.maxJobRuntimeMin = 2750 #3000 # min
 config.section_('Data')
 config.Data.splitting='FileBased'
 config.Data.totalUnits = -1
-config.Data.unitsPerJob = 20
+config.Data.unitsPerJob = 10
 
 #config.Data.allowNonValidInputDataset = True
 config.Data.publication = False

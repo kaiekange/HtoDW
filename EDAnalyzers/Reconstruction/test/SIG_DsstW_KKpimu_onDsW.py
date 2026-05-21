@@ -14,7 +14,7 @@ end = start + options.GROUPSIZE
 INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/20260408/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end)]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
-process = cms.Process("RecoAllDsstWKKpimuonDsW")
+process = cms.Process("DsstWKKpimuonDsW")
 process.load("PhysicsTools.UtilAlgos.TFileService_cfi")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration.StandardSequences.Services_cff")
@@ -33,11 +33,11 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
-process.RecoAllDsstWKKpimuonDsW = cms.EDAnalyzer("RecoAll_DsstW_KKpimu_onDsW")
+process.DsstWKKpimuonDsW = cms.EDAnalyzer("DsstW_KKpimu_onDsW")
 process.TFileService = cms.Service("TFileService", fileName=cms.string(options.OUTFILE), closeFileFast=cms.untracked.bool(True))
 
 process.options = cms.untracked.PSet(wantSummary=cms.untracked.bool(True))
 
-# Run the JEC/JVM producers and filter before the RecoAllDsstWKKpimuonDsW analyzer
-process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter * process.tightJetId * process.RecoAllDsstWKKpimuonDsW)
+# Run the JEC/JVM producers and filter before the DsstWKKpimuonDsW analyzer
+process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter * process.tightJetId * process.DsstWKKpimuonDsW)
 process.schedule = cms.Schedule(process.p)

@@ -206,9 +206,9 @@ with PdfPages(f"{out_dir}/variable_comparison.pdf") as pdf:
             ax.hist(s_vals, bins=bins, density=True, alpha=0.6, color="firebrick", label="Signal")
             ax.set_xlabel(feat)
             ax.set_ylabel("a.u.")
-            ax.legend(fontsize=10)
+            ax.legend(fontsize=12)
             if i == 0:
-                hep.cms.label("Simulation Preliminary", ax=ax, data=False, fontsize=14)
+                hep.cms.label("Preliminary", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 
         for j in range(len(page_feats), len(axes_flat)):
             axes_flat[j].set_visible(False)
@@ -255,11 +255,7 @@ class DsNet(nn.Module):
     def __init__(self, n_features, dropout=0.3):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_features, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(256, 128),
+            nn.Linear(n_features, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -270,7 +266,11 @@ class DsNet(nn.Module):
             nn.Linear(64, 32),
             nn.BatchNorm1d(32),
             nn.ReLU(),
-            nn.Linear(32, 1),
+            nn.Dropout(dropout),
+            nn.Linear(32, 16),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.Linear(16, 1),
             # no Sigmoid — BCEWithLogitsLoss expects raw logits
         )
 
@@ -382,13 +382,13 @@ axes[0].plot(val_losses, label="Val Loss")
 axes[0].set_xlabel("Epoch")
 axes[0].set_ylabel("Loss")
 axes[0].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[0], data=False)
+hep.cms.label("Preliminary", ax=axes[0], rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 
 # Val AUC curve
 axes[1].plot(val_aucs, color="steelblue")
 axes[1].set_xlabel("Epoch")
 axes[1].set_ylabel("Val AUC")
-hep.cms.label("Simulation Preliminary", ax=axes[1], data=False)
+hep.cms.label("Preliminary", ax=axes[1], rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 
 # ROC curve
 fpr, tpr, _ = roc_curve(y_test, scores)
@@ -397,7 +397,7 @@ axes[2].plot([0, 1], [0, 1], "k--")
 axes[2].set_xlabel("False Positive Rate")
 axes[2].set_ylabel("True Positive Rate")
 axes[2].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[2], data=False)
+hep.cms.label("Preliminary", ax=axes[2], rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 
 # Score distribution
 sig_scores = scores[y_test == 1]
@@ -407,7 +407,7 @@ axes[3].hist(sig_scores, bins=50, alpha=0.6, color="firebrick", label="Signal", 
 axes[3].set_xlabel("DNN Score")
 axes[3].set_ylabel("a.u.")
 axes[3].legend()
-hep.cms.label("Simulation Preliminary", ax=axes[3], data=False)
+hep.cms.label("Preliminary", ax=axes[3], rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 
 plt.tight_layout()
 plt.savefig(f"{out_dir}/results.png", dpi=150)
@@ -437,7 +437,7 @@ ax.set_yticks(range(len(sorted_idx)))
 ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=8)
 ax.set_xlabel("AUC drop when feature permuted")
 ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-hep.cms.label("Simulation Preliminary", ax=ax, data=False)
+hep.cms.label("Preliminary", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=12)
 plt.tight_layout()
 plt.savefig(f"{out_dir}/feature_importance.png", dpi=150)
 plt.close(fig)
