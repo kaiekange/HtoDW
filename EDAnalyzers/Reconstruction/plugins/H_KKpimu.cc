@@ -259,7 +259,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		const reco::MET &GenMET = GenMETHandle->front();
 
 		ftree->Gen_PV_vx = H_gp.vx();  ftree->Gen_PV_vy = H_gp.vy();  ftree->Gen_PV_vz = H_gp.vz();
-		ftree->Gen_SV_vx = Ds_gp.vx(); ftree->Gen_SV_vy = Ds_gp.vy(); ftree->Gen_SV_vz = Ds_gp.vz();
+		ftree->Gen_SV_vx = Kp_gp.vx(); ftree->Gen_SV_vy = Kp_gp.vy(); ftree->Gen_SV_vz = Kp_gp.vz();
 
 		ftree->Gen_H_charge = H_gp.charge(); ftree->Gen_H_eta = H_gp.eta(); ftree->Gen_H_phi = H_gp.phi();
 		ftree->Gen_H_px = H_gp.px(); ftree->Gen_H_py = H_gp.py(); ftree->Gen_H_pz = H_gp.pz();
@@ -448,7 +448,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		const reco::MET &GenMET = GenMETHandle->front();
 
 		ftree->Gen_PV_vx = H_gp.vx();   ftree->Gen_PV_vy = H_gp.vy();   ftree->Gen_PV_vz = H_gp.vz();
-		ftree->Gen_SV_vx = Ds_gp.vx();  ftree->Gen_SV_vy = Ds_gp.vy();  ftree->Gen_SV_vz = Ds_gp.vz();
+		ftree->Gen_SV_vx = Kp_gp.vx();  ftree->Gen_SV_vy = Kp_gp.vy();  ftree->Gen_SV_vz = Kp_gp.vz();
 
 		ftree->Gen_H_charge = H_gp.charge(); ftree->Gen_H_eta = H_gp.eta(); ftree->Gen_H_phi = H_gp.phi();
 		ftree->Gen_H_px = H_gp.px(); ftree->Gen_H_py = H_gp.py(); ftree->Gen_H_pz = H_gp.pz();

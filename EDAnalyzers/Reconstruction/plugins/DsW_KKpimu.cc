@@ -322,9 +322,9 @@ void DsW_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup
 	ftree->Gen_PV_vy = H_gp.vy();
 	ftree->Gen_PV_vz = H_gp.vz();
 
-	ftree->Gen_SV_vx = Ds_gp.vx();
-	ftree->Gen_SV_vy = Ds_gp.vy();
-	ftree->Gen_SV_vz = Ds_gp.vz();
+	ftree->Gen_SV_vx = Kp_gp.vx();
+	ftree->Gen_SV_vy = Kp_gp.vy();
+	ftree->Gen_SV_vz = Kp_gp.vz();
 
 	ftree->Gen_H_charge = H_gp.charge();
 	ftree->Gen_H_eta = H_gp.eta();
