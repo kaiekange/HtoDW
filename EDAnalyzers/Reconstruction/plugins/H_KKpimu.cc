@@ -111,10 +111,10 @@ H_KKpimu::H_KKpimu(const edm::ParameterSet &iConfig)
 	edm::InputTag MuonTag_("slimmedMuons");
 	MuonToken_ = consumes<pat::MuonCollection>(MuonTag_);
 
-	edm::InputTag MetTag_("CorrectedMet");
+	edm::InputTag MetTag_("jecAppliedMetProducer", "CorrectedMet");
 	MetToken_ = consumes<pat::METCollection>(MetTag_);
 
-	edm::InputTag JetTag_("CorrectedAK4");
+	edm::InputTag JetTag_("jecAppliedJetProducer", "CorrectedAK4");
 	JetToken_ = consumes<pat::JetCollection>(JetTag_);
 
 	edm::InputTag tightJetIdTag_("tightJetId");
