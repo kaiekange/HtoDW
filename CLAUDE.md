@@ -99,3 +99,19 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Ds mass: 1.96835 GeV, φ mass: 1.019460 GeV, K: 0.493677 GeV, π: 0.13957039 GeV, μ: 0.1056583755 GeV
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/`
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
+
+## Last Session (2026-05-26)
+
+### DNN_Dsmu (v1 重新训练完成)
+- 路径：`analysis/DNN_Dsmu/`；模型 128→64→32→16→1
+- 特征：61→46（移除 9 个 `_p` 冗余变量、6 个 `_ipxysig`/`FDxysig`）；新增 dira sentinel 过滤（`> -1`）
+- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/Dsmu/v1/Prediction/` 下的 scored/best 文件
+- 性能：多候选 Ds 选对率 DsstW 85.3%，DsW 83.7%（vs baseline Ds_pt 60.1%/58.8%，提升 +25%）
+
+### DNN_gamma (v1 训练完成)
+- 路径：`analysis/DNN_gamma/`；模型 **32→16→8→1**（缩小）
+- 特征：15→13（移除 dM 防 mass sculpting，移除 Dsstmu_p 冗余）
+- 输入文件从 `MVA/Dsmu/v1/Prediction/` 读取（硬编码 v1）
+- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/gamma/v1/Prediction/` 下的 best_scored/best_gamma 文件
+- 性能：有真光子时选中率 95.9%（vs baseline 最高pT 94.0%）；仅 13.4% DsstW 事例有真光子入选
+- run.sh 包含全流程（训练+predict+best_cand，3个样本串行）

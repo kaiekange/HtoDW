@@ -3,6 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <correction.h>
 
+#include <iostream>
 #include <fstream>
 #include <string>
 #include <optional>
@@ -52,6 +53,7 @@ namespace JecConfigReader
         std::shared_ptr<correction::CorrectionSet> cs;
         correction::Correction::Ref ptResolution;
         correction::Correction::Ref scaleFactor;
+        std::optional<correction::Correction::Ref> sfUncertainty;
     };
 
     struct JerBin
@@ -211,6 +213,8 @@ namespace JecConfigReader
         [[nodiscard]] const nlohmann::json &requireYear(const std::string &year,
                                                         JetKind kind);
         [[nodiscard]] static std::string requireString(const nlohmann::json &j, const char *key);
+        [[nodiscard]] static std::optional<std::string> optionalString(const nlohmann::json &j,
+                                                                       const char *key);
 
         [[nodiscard]] static correction::Correction::Ref
         safeAt(const std::shared_ptr<correction::CorrectionSet> &cs, const std::string &name);

@@ -22,7 +22,12 @@ namespace JecApplication
     }
     inline bool requiresRunBasedResidual(const std::string &year)
     {
-        return (year == "2023Pre" || year == "2023Post" || year == "2024" || year == "2025");
+        return (
+            year == "2016Pre" || year == "2016Post" ||
+            year == "2017" || year == "2018" ||
+            year == "2022Pre" || year == "2022Post" ||
+            year == "2023Pre" || year == "2023Post" ||
+            year == "2024" || year == "2025");
     }
     inline bool usesPuppiMet(const std::string &year)
     {
@@ -97,9 +102,10 @@ namespace JecApplication
 
     struct JerHandles
     {
-        std::optional<correction::Correction::Ref> ptResolution; // MC only
-        std::optional<correction::Correction::Ref> scaleFactor;  // MC only
-        correction::Correction::Ref smear;                       // always (json-based RNG)
+        std::optional<correction::Correction::Ref> ptResolution;  // MC only
+        std::optional<correction::Correction::Ref> scaleFactor;   // MC only
+        std::optional<correction::Correction::Ref> sfUncertainty; // MC only, new split JER SF uncertainty
+        correction::Correction::Ref smear;                        // always (json-based RNG)
     };
 
     struct JecContext

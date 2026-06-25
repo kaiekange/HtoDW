@@ -1,10 +1,10 @@
 import sys
 import subprocess
-import os;
+import os
 
-model_name = "Model_200ep_0p3do_4ly"
+model_name = "v2"
 
-os.makedirs(f"/eos/user/k/kakang/H2DW/Analysis/MVA/DsW_KKpimu/DNN/{model_name}", exist_ok=True)
+os.makedirs(f"/eos/home-k/kakang/H2DW/Analysis/MVA/Dsmu/{model_name}", exist_ok=True)
 
 def submit_jobs():
 
@@ -12,7 +12,7 @@ def submit_jobs():
 executable = run.sh
 arguments = {model_name}
 log = ./HTCondor.log
-JobBatchName = Ds_DNN
+JobBatchName = Dsmu_DNN
 request_cpus = 1
 request_memory = 8G
 request_disk = 100M

@@ -9,3 +9,9 @@
 **/kakang.cc
 analysis/macros/dataset
 analysis/macros/old_dataset
+check_combined_selection.py
+check_ds_selection.py
+check_dsstw_summary.py
+check_dsw_summary.py
+check_gamma_pt.C
+check_gamma_pt.py

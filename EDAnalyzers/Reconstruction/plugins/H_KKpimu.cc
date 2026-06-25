@@ -747,6 +747,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
 	{
 		if (abs((*PFCandHandle)[i].pdgId()) != 22) continue;
+		if ((*PFCandHandle)[i].pt() < 0.5) continue;
 		idx_photon.push_back(i);
 	}
 
@@ -909,7 +910,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				Float_t Ds_IsoR04_PFIso = Ds_IsoR04_sumChHadPt + std::max(0.0f, Ds_IsoR04_sumNeuHadEt + Ds_IsoR04_sumPhoEt - 0.5f * Ds_IsoR04_sumPUPt);
 				Float_t Ds_IsoR04_RelIso = Ds_IsoR04_PFIso / Ds_mtm.perp();
 
-				if (Ds_IsoR04_RelIso >= 1.0f) continue;
+				if (Ds_IsoR04_RelIso > 1.0f) continue;
 
 				//--------------------------------------------------//
 				// Unconstrained gamma summary (no iso/mass cut)
@@ -1051,6 +1052,7 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 					TLorentzVector gamma_tlv;
 					gamma_tlv.SetXYZM(gamma_pf.px(), gamma_pf.py(), gamma_pf.pz(), 0.0);
 					TLorentzVector Dsst_tlv   = Ds_tlv + gamma_tlv;
+					if (std::abs(Dsst_tlv.M() - Mass_Dsst) > 0.15f) continue;
 					Float_t dM = Dsst_tlv.M() - Ds_tlv.M();
 					if (dM < 0.05f || dM > 0.25f) continue;
 
@@ -1081,8 +1083,10 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 						}
 					}
 					Float_t Dsst_IsoR03_PFIso = Dsst_IsoR03_sumChHadPt + std::max(0.0f, Dsst_IsoR03_sumNeuHadEt + Dsst_IsoR03_sumPhoEt - 0.5f * Dsst_IsoR03_sumPUPt);
+					Float_t Dsst_IsoR03_RelIso = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
 					Float_t Dsst_IsoR04_PFIso = Dsst_IsoR04_sumChHadPt + std::max(0.0f, Dsst_IsoR04_sumNeuHadEt + Dsst_IsoR04_sumPhoEt - 0.5f * Dsst_IsoR04_sumPUPt);
-					if (Dsst_IsoR04_PFIso >= 1.0f) continue;
+					Float_t Dsst_IsoR04_RelIso = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
+					if (Dsst_IsoR04_RelIso > 1.0f) continue;
 
 					// Fill gamma/Dsst/Dsstmu branches
 					ftree->has_gamma      = true;
@@ -1120,13 +1124,13 @@ void H_KKpimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 					ftree->Dsst_IsoR03_sumPhotonEt        = Dsst_IsoR03_sumPhoEt;
 					ftree->Dsst_IsoR03_sumPUPt            = Dsst_IsoR03_sumPUPt;
 					ftree->Dsst_IsoR03_PFIso              = Dsst_IsoR03_PFIso;
-					ftree->Dsst_IsoR03_RelIso             = Dsst_IsoR03_PFIso / Dsst_tlv.Pt();
+					ftree->Dsst_IsoR03_RelIso             = Dsst_IsoR03_RelIso;
 					ftree->Dsst_IsoR04_sumChargedHadronPt = Dsst_IsoR04_sumChHadPt;
 					ftree->Dsst_IsoR04_sumNeutralHadronEt = Dsst_IsoR04_sumNeuHadEt;
 					ftree->Dsst_IsoR04_sumPhotonEt        = Dsst_IsoR04_sumPhoEt;
 					ftree->Dsst_IsoR04_sumPUPt            = Dsst_IsoR04_sumPUPt;
 					ftree->Dsst_IsoR04_PFIso              = Dsst_IsoR04_PFIso;
-					ftree->Dsst_IsoR04_RelIso             = Dsst_IsoR04_PFIso / Dsst_tlv.Pt();
+					ftree->Dsst_IsoR04_RelIso             = Dsst_IsoR04_RelIso;
 
 					ftree->gamma_match = (idx_g == gamma_match_idx);
 					ftree->Dsst_match  = ftree->gamma_match && Ds_match;

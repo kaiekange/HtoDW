@@ -35,7 +35,7 @@ namespace JecApplication
         ctx.isDebug = debug;
         ctx.runNumber = run;
         ctx.jes = JesHandles{jesEra.l1FastJet, jesEra.l2Relative, jesEra.l2l3Residual};
-        ctx.jer = JerHandles{std::nullopt, std::nullopt, cfg.getJerSmearRef()};
+        ctx.jer = JerHandles{std::nullopt, std::nullopt, std::nullopt, cfg.getJerSmearRef()};
         return ctx;
     }
 
@@ -54,7 +54,7 @@ namespace JecApplication
         ctx.isData = false;
         ctx.isDebug = debug;
         ctx.jes = JesHandles{jes.l1FastJet, jes.l2Relative, std::nullopt};
-        ctx.jer = JerHandles{jer.ptResolution, jer.scaleFactor, cfg.getJerSmearRef()};
+        ctx.jer = JerHandles{jer.ptResolution, jer.scaleFactor, jer.sfUncertainty, cfg.getJerSmearRef()};
         return ctx;
     }
 
@@ -177,20 +177,47 @@ namespace JecApplication
 
         const double reso = (*ctx_.jer.ptResolution)->evaluate({jAfterJes.eta, jAfterJes.pt, jAfterJes.rho});
 
-        double sf = 1.0;
-        if (usesPuppiMet(ctx_.year))
+        auto evalScaleFactor = [&](const std::string &var)
         {
-            sf = (*ctx_.jer.scaleFactor)->evaluate({jAfterJes.eta, jAfterJes.pt, useVar});
+            try
+            {
+                return (*ctx_.jer.scaleFactor)->evaluate({jAfterJes.eta, jAfterJes.pt});
+            }
+            catch (const std::exception &)
+            {
+                if (usesPuppiMet(ctx_.year))
+                {
+                    return (*ctx_.jer.scaleFactor)->evaluate({jAfterJes.eta, jAfterJes.pt, var});
+                }
+                return (*ctx_.jer.scaleFactor)->evaluate({jAfterJes.eta, var});
+            }
+        };
+
+        double sf = 1.0;
+        double sfUnc = 0.0;
+        if (ctx_.jer.sfUncertainty)
+        {
+            sf = evalScaleFactor("nom");
+            sfUnc = (*ctx_.jer.sfUncertainty)->evaluate({jAfterJes.eta, jAfterJes.pt});
+            if (useVar == "up")
+            {
+                sf = sf * (1 + sfUnc);
+            }
+            else if (useVar == "down")
+            {
+                sf = sf * (1 - sfUnc);
+            }
         }
         else
         {
-            sf = (*ctx_.jer.scaleFactor)->evaluate({jAfterJes.eta, useVar});
+            sf = evalScaleFactor(useVar);
         }
 
         dbg(ctx_.isDebug, "JER inputs: useVar=" + useVar +
                               ", pT=" + std::to_string(jAfterJes.pt) +
                               ", reso=" + std::to_string(reso) +
-                              ", sf=" + std::to_string(sf));
+                              ", sf=" + std::to_string(sf) +
+                              ", sfUnc=" + std::to_string(sfUnc));
 
         bool matched = false;
         double genPtForSmear = -1.0;
