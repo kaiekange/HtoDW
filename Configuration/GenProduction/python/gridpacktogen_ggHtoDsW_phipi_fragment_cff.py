@@ -36,7 +36,9 @@ generator = cms.EDFilter("Pythia8HadronizerFilter",
             '24:onIfMatch = -13 14',
             '-24:onMode = off',
             '-24:onIfMatch = 11 -12',
-            '-24:onIfMatch = 13 -14'
+            '-24:onIfMatch = 13 -14',
+            '431:onMode = off',
+            '-431:onMode = off'
         ),
         parameterSets = cms.vstring('pythia8CommonSettings',
                                     'pythia8CP5Settings',
@@ -51,25 +53,31 @@ generator = cms.EDFilter("Pythia8HadronizerFilter",
             verbose = cms.untracked.int32(1),
             decay_table = cms.string('GeneratorInterface/EvtGenInterface/data/DECAY_2014_NOLONGLIFE.DEC'),
             particle_property_file = cms.FileInPath('GeneratorInterface/EvtGenInterface/data/evt_2014.pdl'),
-            list_forced_decays = cms.vstring('myD_s+','myD_s-'),
+            list_forced_decays = cms.vstring('myD_s+','myD_s-', 'myphi'),
             operates_on_particles = cms.vint32(431,-431),
-            convertPythiaCodes = cms.untracked.bool(False),
+            convertPythiaCodes = cms.untracked.bool(True),
             user_decay_embedded= cms.vstring(
 """
 Alias myD_s+ D_s+
 Alias myD_s- D_s-
+Alias myphi phi
 Alias myK+ K+
 Alias myK- K-
 Alias mypi+ pi+
 Alias mypi- pi-
 ChargeConj myD_s+ myD_s-
+ChargeConj myphi myphi
 ChargeConj myK+ myK-
 ChargeConj mypi+ mypi-
 
 Decay myD_s+
-1.0 myK+ myK- mypi+ D_DALITZ;
+1.0 myphi mypi+ SVS;
 Enddecay
 CDecay myD_s-
+
+Decay myphi
+1.0 myK+ myK- VSS;
+Enddecay
 
 End
 """

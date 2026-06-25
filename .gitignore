@@ -9,3 +9,4 @@ Simulation/tmp/
 **/condor_logs
 **/tmp
 Simulation/LHEGS/crabConfig.py
+**/kakang.cc

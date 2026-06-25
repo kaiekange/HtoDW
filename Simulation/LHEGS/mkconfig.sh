@@ -1,10 +1,12 @@
 #!/bin/bash
 
 step="LHEGS"
-# mode="ggHtoDsW_KKpimu"
-# mode="ggHtoDsstW_KKpimu"
+# mode="ggHtoDsW_KKpi"
+# mode="ggHtoDsstW_KKpi"
+# mode="ggHtoDsW_phipi"
+mode="ggHtoDsstW_phipi"
 
-ver=20260408
+ver=20260624
 year=2022
 outdir="/store/user/kakang/Analysis/${mode}/${ver}/Simulation"
 
@@ -19,7 +21,7 @@ cmsDriver.py "Configuration/GenProduction/python/gridpacktogen_${mode}_fragment_
     --step LHE,GEN,SIM \
     --geometry DB:Extended \
     --era Run3 \
-    --number 10 \
+    --number 500 \
     --no_exec \
     --mc || exit $? ;
 

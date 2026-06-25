@@ -12,7 +12,7 @@ externalLHEProducer = cms.EDProducer("ExternalLHEProducer",
 from Configuration.Generator.Pythia8CommonSettings_cfi import *
 from Configuration.Generator.PSweightsPythia.PythiaPSweightsSettings_cfi import *
 from Configuration.Generator.MCTunesRun3ECM13p6TeV.PythiaCP5Settings_cfi import *
-from Configuration.Generator.Pythia8PowhegEmissionVetoSettings_cfi import * 
+from Configuration.Generator.Pythia8PowhegEmissionVetoSettings_cfi import *
 
 generator = cms.EDFilter("Pythia8HadronizerFilter",
     maxEventsToPrint = cms.untracked.int32(1),
@@ -31,6 +31,8 @@ generator = cms.EDFilter("Pythia8HadronizerFilter",
             '25:addChannel = 1  1.00   103   -24   433',
             '25:addChannel = 1  1.00   103   24   -433',
             '25:m0 = 125.0',
+            '433:onMode = off',
+            '-433:onMode = off',
             '24:onMode = off',
             '24:onIfMatch = -11 12',
             '24:onIfMatch = -13 14',
@@ -51,7 +53,7 @@ generator = cms.EDFilter("Pythia8HadronizerFilter",
             verbose = cms.untracked.int32(1),
             decay_table = cms.string('GeneratorInterface/EvtGenInterface/data/DECAY_2014_NOLONGLIFE.DEC'),
             particle_property_file = cms.FileInPath('GeneratorInterface/EvtGenInterface/data/evt_2014.pdl'),
-            list_forced_decays = cms.vstring('myD_s*+','myD_s*-'),
+            list_forced_decays = cms.vstring('myD_s*+','myD_s*-','myphi'),
             operates_on_particles = cms.vint32(433,-433),
             convertPythiaCodes = cms.untracked.bool(False),
             user_decay_embedded= cms.vstring(
@@ -60,6 +62,7 @@ Alias myD_s*+ D_s*+
 Alias myD_s*- D_s*-
 Alias myD_s+ D_s+
 Alias myD_s- D_s-
+Alias myphi phi
 Alias myK+ K+
 Alias myK- K-
 Alias mypi+ pi+
@@ -67,6 +70,7 @@ Alias mypi- pi-
 Alias mygamma gamma
 ChargeConj myD_s*+ myD_s*-
 ChargeConj myD_s+ myD_s-
+ChargeConj myphi myphi
 ChargeConj myK+ myK-
 ChargeConj mypi+ mypi-
 ChargeConj mygamma mygamma
@@ -77,9 +81,13 @@ Enddecay
 CDecay myD_s*-
 
 Decay myD_s+
-1.0 myK+ myK- mypi+ D_DALITZ;
+1.0 myphi mypi+ SVS;
 Enddecay
 CDecay myD_s-
+
+Decay myphi
+1.0 myK+ myK- VSS;
+Enddecay
 
 End
 """

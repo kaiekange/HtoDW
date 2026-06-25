@@ -4,10 +4,12 @@ import os
 
 def submit_jobs():
 
-    ver = 20260408
+    ver = 20260624
     year = 2022
-    # mode = "ggHtoDsW_KKpimu"
-    mode = "ggHtoDsstW_KKpimu"
+    # mode = "ggHtoDsW_KKpi"
+    # mode = "ggHtoDsstW_KKpi"
+    # mode = "ggHtoDsW_phipi"
+    mode = "ggHtoDsstW_phipi"
 
     indir = f"/store/user/kakang/Analysis/{mode}/{ver}/Simulation/LHEGS/{year}"
     outdir = f"/store/user/kakang/Analysis/{mode}/{ver}/Simulation/AODSIM/{year}"
@@ -39,4 +41,4 @@ queue 1000
     subprocess.run(["condor_submit"], input=submit_description.encode())
 
 if __name__ == "__main__":
-    sys.exit(submit_jobs()) 
+    sys.exit(submit_jobs())
