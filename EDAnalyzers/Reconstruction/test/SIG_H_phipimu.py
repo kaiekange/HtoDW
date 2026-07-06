@@ -11,7 +11,7 @@ options.parseArguments()
 start = options.JOBID * options.GROUPSIZE + 1
 end = start + options.GROUPSIZE
 
-INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipimu/20260624/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end)]
+INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/20260624/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end)]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
 process = cms.Process("HphipimuDsW")

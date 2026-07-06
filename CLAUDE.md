@@ -100,18 +100,23 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/`
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-05-26)
+## Last Session (2026-07-06)
 
-### DNN_Dsmu (v1 重新训练完成)
-- 路径：`analysis/DNN_Dsmu/`；模型 128→64→32→16→1
-- 特征：61→46（移除 9 个 `_p` 冗余变量、6 个 `_ipxysig`/`FDxysig`）；新增 dira sentinel 过滤（`> -1`）
-- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/Dsmu/v1/Prediction/` 下的 scored/best 文件
-- 性能：多候选 Ds 选对率 DsstW 85.3%，DsW 83.7%（vs baseline Ds_pt 60.1%/58.8%，提升 +25%）
+### phipimu channel MVA（新衰变道 Ds→φπ，φ→KK）
 
-### DNN_gamma (v1 训练完成)
-- 路径：`analysis/DNN_gamma/`；模型 **32→16→8→1**（缩小）
-- 特征：15→13（移除 dM 防 mass sculpting，移除 Dsstmu_p 冗余）
-- 输入文件从 `MVA/Dsmu/v1/Prediction/` 读取（硬编码 v1）
-- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/gamma/v1/Prediction/` 下的 best_scored/best_gamma 文件
-- 性能：有真光子时选中率 95.9%（vs baseline 最高pT 94.0%）；仅 13.4% DsstW 事例有真光子入选
-- run.sh 包含全流程（训练+predict+best_cand，3个样本串行）
+#### DNN_phipimu (v1 训练完成)
+- 路径：`analysis/DNN_phipimu/`；模型 128→64→32→16→1
+- 特征：46 个（vs KKpimu：移除 KK/Kppi/Kmpi 组合变量，新增 phi_eta/pt/dR 系列）
+- 训练过滤：Ds_match&&mu_match（phi_match 在 tuplizer 恒为 false，不可用）
+- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/phipimu/v1/Prediction/`
+
+#### BDT_phipimu (XGBoost v2 训练完成)
+- 路径：`analysis/BDT/`；XGBClassifier n_estimators=2000, max_depth=5, lr=0.05
+- v1 撞上限（best=998），升至 2000；v2 best_iter=1113，Test AUC=0.9900
+- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/v2/Prediction/`
+- BDT 在紧切割点比 DNN 多保留 ~2000-2400 信号事例（phipimu WJets 样本小 ~40k，BDT 更鲁棒）
+
+#### ROC 对比图
+- `/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/v2/BDT_vs_DNN.png`
+- x: W+jets efficiency（log），y: signal efficiency（linear）
+- 归一化：DsW_phipimu=225720，DsstW_phipimu=232565，WJets total=74491333
