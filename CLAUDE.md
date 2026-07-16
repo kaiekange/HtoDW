@@ -100,23 +100,40 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/`
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-07-06)
+## Last Session (2026-07-16)
 
-### phipimu channel MVA（新衰变道 Ds→φπ，φ→KK）
+### phipimu MVA 训练配比研究：v1 / v2 / v3
 
-#### DNN_phipimu (v1 训练完成)
-- 路径：`analysis/DNN_phipimu/`；模型 128→64→32→16→1
-- 特征：46 个（vs KKpimu：移除 KK/Kppi/Kmpi 组合变量，新增 phi_eta/pt/dR 系列）
-- 训练过滤：Ds_match&&mu_match（phi_match 在 tuplizer 恒为 false，不可用）
-- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/phipimu/v1/Prediction/`
+三个 version 共用同一套 **37 特征**（旧 46 特征会 sculpt 拟合变量，已废弃）和同一份代码，只有 `CONFIG[model_name]` 的背景组成 + 采样模式不同。旧 v1/v2/v3 产物已删除，原 v4(flat) 改名为 v3。
 
-#### BDT_phipimu (XGBoost v2 训练完成)
-- 路径：`analysis/BDT/`；XGBClassifier n_estimators=2000, max_depth=5, lr=0.05
-- v1 撞上限（best=998），升至 2000；v2 best_iter=1113，Test AUC=0.9900
-- 产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/v2/Prediction/`
-- BDT 在紧切割点比 DNN 多保留 ~2000-2400 信号事例（phipimu WJets 样本小 ~40k，BDT 更鲁棒）
+| version | 训练背景 | 采样 |
+|---------|----------|------|
+| v1 | 只 WtoLNu_2Jets | — |
+| **v2** | 4 个 | **proportional**（38715:3418:3570:2024） |
+| v3 | 4 个 | flat（等量） |
 
-#### ROC 对比图
-- `/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/v2/BDT_vs_DNN.png`
-- x: W+jets efficiency（log），y: signal efficiency（linear）
-- 归一化：DsW_phipimu=225720，DsstW_phipimu=232565，WJets total=74491333
+4 个训练背景 = WtoLNu_2Jets, TTtoLNu2Q, TTto2L2Nu, DYto2L_MLL50。
+产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/{BDT,phipimu}/{v1,v2,v3}/`，各 36 个 Prediction。
+
+#### 裁决：**v2 (proportional) + BDT 最优**
+
+指标 = 全 34 背景加权残留（基线 B0=14,444,602）。BDT 残留 @ 50%/30%/10% 信号效率：
+
+| version | 50% | 30% | 10% |
+|---------|-----|-----|-----|
+| v1 | 20,823 | 7,498 | 2,077 |
+| **v2** | **11,417** | **3,105** | **788** |
+| v3 | 14,580 | 3,970 | 940 |
+
+排序稳定 **v2 < v3 < v1**；BDT 全面优于 DNN。
+
+**反直觉的机制**：per-background 看 v3(flat) 几乎压每个背景都最狠，唯独 W+jets 是 v1 最狠（0.041% vs v3 0.114%）。但 W+jets 占加权背景 **77%**（基线 11,147,414），v3 在它上面多放走的量超过在 TT/DY 上省下的量 → 总残留输给 v2。要优化的是加权总背景，不是 per-sample 存活率。
+
+#### 对比图
+- `/eos/home-k/kakang/H2DW/Analysis/MVA/version_comparison.png`（双面板 BDT|DNN）
+- `/eos/home-k/kakang/H2DW/Analysis/MVA/version_comparison_overlay.png`（6 条同图，实线 BDT / 虚线 DNN）
+- x = signal efficiency %，y = background retention %（log）
+
+#### 未完成
+- v2-BDT 的 mass sculpting 复查未做
+- 本轮代码改动（CONFIG 三模式 + proportional 采样 + condor 参数化）**未 commit**

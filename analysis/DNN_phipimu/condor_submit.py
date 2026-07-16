@@ -2,7 +2,7 @@ import sys
 import subprocess
 import os
 
-model_name = "v1"
+model_name = sys.argv[1] if len(sys.argv) > 1 else "v3"
 
 os.makedirs(f"/eos/home-k/kakang/H2DW/Analysis/MVA/phipimu/{model_name}", exist_ok=True)
 

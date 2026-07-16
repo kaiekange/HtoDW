@@ -1,12 +1,12 @@
-"""Apply a trained DsmuNet model to a ROOT file and write a new file with a 'score_dsmu' branch added.
+"""Score every Samples/ file with a trained DNN and write a copy with score_dsmu added.
 
-Usage:
-    python3 predict.py <model_name> <input_root> <tree_name> [output_root]
+All 36 samples are scored (2 signals + 34 backgrounds), not just the ones used in
+training: the diagnostics need the per-process survival rates and the mass spectra
+of the backgrounds the MVA never saw.
 
-Outputs:
-    <output_root>  (default: input file with _scored.root suffix)
-      copy of the input tree with an extra float32 branch 'score_dsmu' in [0,1].
-      Entries that fail the finite filter get score_dsmu = -777.
+Rows whose features are non-finite get score_dsmu = -777.
+
+Usage:  python3 predict.py <model_name>
 """
 
 import sys
@@ -16,74 +16,65 @@ import uproot
 import torch
 import torch.nn as nn
 
-# ========= config =========
-model_name = sys.argv[1]
-input_file = sys.argv[2]
-tree_name  = sys.argv[3]
-out_root   = sys.argv[4] if len(sys.argv) > 4 else input_file.replace(".root", "_scored.root")
+model_name  = sys.argv[1]
+model_dir   = f"/eos/home-k/kakang/H2DW/Analysis/MVA/phipimu/{model_name}"
+SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
+OUT_DIR     = f"{model_dir}/Prediction"
+TREE        = "Hphipimu/Events"
 
-model_dir = f"/eos/home-k/kakang/H2DW/Analysis/MVA/phipimu/{model_name}"
+os.makedirs(OUT_DIR, exist_ok=True)
 
+# Must stay identical to DNN_phipimu.py.
 FEATURE_NAMES = [
-    # MET / event
-    "met_sig",
+    # lifetime / vertex -- prompt-from-H vs displaced-from-B (the real-Ds background)
+    "Ds_ipsig",
+    "Ds_FDsig",
+    "dira",
+    "Ds_prob",
+    "Kp_ipsig",
+    "Km_ipsig",
+    "pi_ipsig",
+    "mu_ipsig",
+    # 2D lifetime/vertex: transverse resolution beats longitudinal.
+    # FDxysig separates DY (fake Ds from prompt tracks -> no flight distance);
+    # ipxysig separates TT (real Ds from a displaced B -> momentum misses the PV).
+    "Ds_FDxysig",
+    "Ds_ipxysig",
+    # Are the Ds tracks from the primary vertex? (DY's fakes are prompt tracks)
+    "Kp_PVassoc",
+    "Km_PVassoc",
+    "pi_PVassoc",
+    # isolation -- the components, not just RelIso. sumChargedHadronPt is the single
+    # strongest variable against every background (AUC 0.91 vs TT): a Ds buried in a
+    # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
+    "Ds_IsoR04_sumChargedHadronPt",
+    "Ds_IsoR04_sumNeutralHadronEt",
+    "Ds_IsoR04_sumPhotonEt",
+    "Ds_IsoR04_sumPUPt",
+    "Ds_IsoR04_RelIso",
+    "Ds_IsoR03_RelIso",
+    "mu_IsoR04_RelIso",
+    # MET / event. num_jets_pt20..pt60 are near-duplicates (AUC all ~0.80), so only
+    # one threshold is kept; num_jets (no threshold) adds the soft-jet activity.
     "met_pt",
+    "met_sig",
     "met_sumEt",
     "W_tmass",
+    "num_jets",
     "num_jets_pt30",
-    # muon
-    "mu_eta",
-    "mu_pt",
-    # K+
-    "Kp_eta",
-    "Kp_pt",
-    "Kp_PVassoc",
-    # K-
-    "Km_eta",
-    "Km_pt",
-    "Km_PVassoc",
-    # pi
-    "pi_eta",
-    "pi_pt",
-    "pi_PVassoc",
-    # phi
-    "phi_eta",
-    "phi_pt",
-    # Ds
-    "Ds_eta",
+    # Ds + mu kinematics -- hard from a 125 GeV H vs soft inside a jet
     "Ds_pt",
-    # Ds+mu system
-    "Dsmu_eta",
     "Dsmu_pt",
-    # Ds fit quality
-    "Ds_prob",
-    "dira",
-    # dR (KKpi subsystem)
-    "dR_Kp_Km",
-    "dR_Kp_pi",
-    "dR_Kp_Ds",
-    "dR_Km_pi",
-    "dR_Km_Ds",
-    "dR_pi_Ds",
-    "dR_phi_pi",
-    "dR_phi_Ds",
-    # dR (muon)
+    "Dsmu_eta",
+    "mu_pt",
+    "mu_eta",
+    "dR_Ds_mu",
     "dR_Kp_mu",
     "dR_Km_mu",
     "dR_pi_mu",
     "dR_phi_mu",
-    "dR_Ds_mu",
-    # IP significances (3D)
-    "Kp_ipsig",
-    "Km_ipsig",
-    "pi_ipsig",
-    "Ds_ipsig",
-    "mu_ipsig",
-    # Ds flight distance (3D)
-    "Ds_FDsig",
-    # isolation
-    "mu_IsoR04_RelIso",
-    "Ds_IsoR04_RelIso",
+    # Ds+mu mass: H-mass constrained for signal, continuum for background
+    "Dsmu_mass",
 ]
 
 LOG_FEATURES = [
@@ -93,13 +84,31 @@ LOG_FEATURES = [
     "Ds_ipsig",
     "mu_ipsig",
     "Ds_FDsig",
+    "Ds_FDxysig",
+    "Ds_ipxysig",
+    "Ds_IsoR04_sumChargedHadronPt",
+    "Ds_IsoR04_sumNeutralHadronEt",
+    "Ds_IsoR04_sumPhotonEt",
+    "Ds_IsoR04_sumPUPt",
 ]
 
-log_idx  = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
+SAMPLES = [
+    "HtoDsW", "HtoDsstW",
+    "WtoLNu_2Jets", "TTtoLNu2Q", "WGtoLNuG_1Jets", "TQbartoLNu", "TbarQtoLNu",
+    "WWtoLNu2Q", "VBFtoLNu", "TbarWplustoLNu2Q", "TWminustoLNu2Q", "WZtoLNu2Q",
+    "WWGtoLNu2QG", "TTZ_ZtoQQ_TTtoLNu2Q", "WZto3LNu", "WZtoL3Nu",
+    "TTto2L2Nu", "TbarWplusto2L2Nu", "TWminusto2L2Nu", "WWto2L2Nu",
+    "ggWWto2L2Nu_LL", "ggWWto2L2Nu_LT", "ggWWto2L2Nu_TL", "ggWWto2L2Nu_TT",
+    "ZZto2L2Nu", "DYto2L_MLL4to10", "DYto2L_MLL10to50", "DYto2L_MLL50",
+    "DYGto2LG_MLL4to50_PTG10to100", "DYGto2LG_MLL4to50_PTG100to200",
+    "DYGto2LG_MLL4to50_PTG200", "DYGto2LG_MLL50", "VBFto2L_MLL50",
+    "WZto2L2Q", "ZZto2L2Q", "ZGto2LG",
+]
+
 dira_idx = FEATURE_NAMES.index("dira")
+log_idx  = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
 
 
-# ========= model definition (must match DNN_phipimu.py) =========
 class phipimuNet(nn.Module):
     def __init__(self, n_in, dropout=0.3):
         super().__init__()
@@ -110,61 +119,44 @@ class phipimuNet(nn.Module):
             nn.Linear(32, 16),   nn.BatchNorm1d(16),  nn.ReLU(),
             nn.Linear(16, 1),
         )
+
     def forward(self, x):
         return self.net(x)
 
 
-# ========= load artifacts =========
 print(f"Loading model from {model_dir}...")
-scaler_mean  = np.load(f"{model_dir}/scaler_mean.npy")
-scaler_scale = np.load(f"{model_dir}/scaler_scale.npy")
-
 model = phipimuNet(len(FEATURE_NAMES))
 model.load_state_dict(torch.load(f"{model_dir}/phipimu_model.pt", map_location="cpu"))
 model.eval()
 
-# ========= load data =========
-print(f"Reading {input_file} [{tree_name}]...")
-with uproot.open(input_file) as f:
-    all_data = f[tree_name].arrays(library="np")
+scaler_mean  = np.load(f"{model_dir}/scaler_mean.npy")
+scaler_scale = np.load(f"{model_dir}/scaler_scale.npy")
 
-X = np.column_stack([all_data[b] for b in FEATURE_NAMES])
-n_entries = len(X)
-print(f"Loaded {n_entries} entries")
+for name in SAMPLES:
+    with uproot.open(f"{SAMPLES_DIR}/{name}.root")[TREE] as t:
+        data = t.arrays(library="np")
 
-# ========= preprocessing (must match DNN_Dsmu.py exactly) =========
-mask = np.isfinite(X).all(axis=1)
-mask &= X[:, dira_idx] > -1
-n_dropped = int((~mask).sum())
-if n_dropped:
-    print(f"Dropping {n_dropped} non-finite entries (score_dsmu = -777)")
-X_pass = X[mask].copy()
+    X = np.column_stack([data[b].astype(np.float64) for b in FEATURE_NAMES])
+    n = len(X)
 
-X_pass[:, log_idx]  = np.log1p(X_pass[:, log_idx])
-X_pass[:, dira_idx] = np.log(1.01 - X_pass[:, dira_idx])
-X_pass = (X_pass - scaler_mean) / scaler_scale
+    mask = np.isfinite(X).all(axis=1) & (X[:, dira_idx] > -1)
+    scores = np.full(n, -777.0, dtype=np.float32)
 
-# ========= inference =========
-print("Running inference...")
-with torch.no_grad():
-    scores_pass = torch.sigmoid(
-        model(torch.tensor(X_pass, dtype=torch.float32))
-    ).numpy().flatten()
+    Xp = X[mask]
+    Xp[:, log_idx]  = np.log1p(Xp[:, log_idx])
+    Xp[:, dira_idx] = np.log(1.01 - Xp[:, dira_idx])
+    Xp = (Xp - scaler_mean) / scaler_scale
 
-scores_full = np.full(n_entries, -777.0, dtype=np.float32)
-scores_full[mask] = scores_pass
+    with torch.no_grad():
+        s = torch.sigmoid(model(torch.tensor(Xp, dtype=torch.float32))).numpy().flatten()
+    scores[mask] = s.astype(np.float32)
 
-passing = scores_full[mask]
-print(f"Score stats: min={passing.min():.4f}  max={passing.max():.4f}  mean={passing.mean():.4f}")
+    data["score_dsmu"] = scores
+    out_file = f"{OUT_DIR}/{name}.root"
+    with uproot.recreate(out_file) as f:
+        f.mktree(TREE, {k: v.dtype for k, v in data.items()})
+        f[TREE].extend(data)
 
-# ========= write output ROOT file =========
-print(f"Writing {out_root}...")
-out_branches = dict(all_data)
-out_branches["score_dsmu"] = scores_full
+    print(f"  {name:32s} {n:>8,} events, {int((~mask).sum()):>4} non-finite -> {out_file}")
 
-branch_types = {k: v.dtype for k, v in out_branches.items()}
-with uproot.recreate(out_root) as f_out:
-    f_out.mktree(tree_name, branch_types)
-    f_out[tree_name].extend(out_branches)
-
-print(f"Done. {n_entries} entries with 'score_dsmu' branch → {out_root}")
+print("Done.")
