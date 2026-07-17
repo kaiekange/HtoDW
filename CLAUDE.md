@@ -104,48 +104,68 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 
 ### association vs geometric truth-matching（phipimu）
 
+> 代码已移出本 branch，全部在 **`study/truthmatch-lostrack`**（已 push）。
+> `git checkout study/truthmatch-lostrack` 即可取回。
+
 问题：现在 truth matching 用 `packedPFCandidateToGenAssociation`，换成 geometric matching to genParticle 会更好还是更差？
 
-**结论：不要换。工作点上效率与 association 统计上无法区分，而 geometric 白白多出纯度代价。**
+**结论：两者在同一 working point 下等价。建议不换，理由只是「等价、没必要动 association」**（它是 hit-based truth，更有原则，且是现成的）——**不是** geometric 有害。这是个不强的理由。
 
-三元组（三条腿全中）层级，两条臂跑在同一批事例上（相关 ⇒ 只有 discordant 带信息，用 McNemar）：
+三元组（K+/K−/π 全 match）层级。两种方法跑在**同一批 event** 上（相关 ⇒ 只有 discordant 带信息，用 McNemar）：
 
 | 通道 | assoc-only | geo-only | geo − assoc |
 |---|---|---|---|
-| DsW | 58 | 53 | **-0.14 ± 0.30 pp**（z=-0.47） |
-| DsstW | 68 | 67 | **-0.03 ± 0.33 pp**（z=-0.09） |
+| DsW | 58 | 57 | −0.03 ± 0.31 pp（z=−0.09） |
+| DsstW | 65 | 68 | +0.08 ± 0.33 pp（z=+0.26） |
 
-⚠️ 别把 -0.1pp 说成"geometric 输"——统计上就是**打平**。真正的理由是打平之余还多出代价。
+#### ⚠️ geometric matching 的正确写法（第一版写错了）
 
-**源码核实的关键事实**（非推测）：
+**正确**（= 原版 `H_phipimu` gamma matching 的写法，`H_phipimu.cc:548-556`）：
+```
+对每个 gen 粒子：
+  收集所有同电荷 charged-hadron PF 中 dR<0.05 且 |dpt|<0.3 的
+  在通过的候选里取 min dR
+```
+两个 cut 都在 loop **里面**。
+
+**错的写法**（第一版）：dR<0.3 里取 min dR（loop 里没有 dpt cut），拿到唯一候选，离线再加 cut。
+⇒ 最近的那条是软 track 时，会选中它然后离线被砍 → 记为 no match；正确写法会跳过它、继续找次近的合格 track → match 上。**人为削弱了 geometric**。
+
+**教训**：cut 决定「选哪个候选」时**不能**推迟到离线。ungated 记录只对 association 成立（它靠 map 认粒子，cut 纯属事后质量检查）；套到 geometric 上逻辑不成立。这个错误也无法离线补救——每个粒子只存了一个候选。
+
+#### 修正后的数字（第一版全部作废）
+
+| | 错的写法 | 正确写法 |
+|---|---|---|
+| purity cost | 0.9–1.8% | **0.00–0.03%**（一致率 99.97–100%） |
+| K+/π 撞同一条 track | 7–8% | **0.06–0.17%** |
+| assoc-null bucket dpt | −0.65~−0.78（据此误判为软垃圾） | **−0.01~−0.07, RMS 0.11 = 和真 match 无异** |
+| bucket 大小 | 210–333 | 22–32 |
+
+**原先「证伪」的假说其实是对的**：assoc-null bucket 里那 ~25 条 **是真的 track**，是 association 被 `quickTrackAssociatorByHits` 的 `Cut_RecoToSim=0.75`（须与 TrackingParticle 共享 >75% hits，否则完全没有 association）丢掉的。只是量少（~0.7%），而 geometric 自己也漏掉差不多同样多，净值为零。
+
+#### 源码核实的事实（CMSSW 15.0.5，非推测）
 - **association 是 hit-based MC truth**：`packedPFCandidateToGenAssociation` → `prunedTrackMCMatch`(`MCTrackMatcher`) → `quickPrunedTrackAssociatorByHits`（cluster→TrackingParticle→genParticle）。geometric 没有 sim hit，一般不可能更正确。
-- **Association 建在 `prunedGenParticles`**（`PackedCandidateGenAssociationProducer.cc:78,85,134`）＝ tuplizer `GenPartToken_` 的同一集合 ⇒ `genRef.key()` 可直接比 `Gen_<leg>_idx`。**实测 ~6000 条腿 0 mismatch**。
+- **Association 建在 `prunedGenParticles`**（`PackedCandidateGenAssociationProducer.cc:78,85,134`）＝ tuplizer `GenPartToken_` 的同一集合 ⇒ `genRef.key()` 可直接比 `Gen_<粒子>_idx`。**实测 ~6000 条 0 mismatch**。
 - **TP-pruning 假说错了**：`prunedTrackingParticles` = `keep++ (400<|pdgId|<600)` + `drop status!=1` + `drop charge==0` ⇒ Ds/Ds* 后代（K±/π±）**按设计保留**。
-- **assoc 的 `dR<0.05` 门完全不起作用**：hit-based 的 dR 最大只有 ~0.012。只有 `|dpt|<0.3` 切掉 ~2.5%。
+- **assoc 的 `dR<0.05` 完全不起作用**：hit-based 的 dR 最大只有 ~0.012。只有 `|dpt|<0.3` 去掉 ~2.5%。
+- **geometric 必须 gen 驱动**：`prunedGenParticles` 有 `drop status==1` + 选择性 re-keep，不是完整末态清单。若写成 PF 驱动（PF→最近 gen）必须改用 `packedGenParticles`，否则会把 PF 错判给我们的粒子、系统性高估 geo 效率。
 
-**geometric 为什么赢不了**：裸效率 geo 94.5% vs assoc 85%（+9pp），但加质量门后收益全蒸发（ungated +9pp → dR<0.05 +1.4pp → 再加 |dpt|<0.3 ≈ **0**）。
-决定性证据：多出的 9pp 里 ~70% 是 `assoc_key == null`，**该桶 dpt 均值 -0.65~-0.78**（真匹配是 -0.01，RMS 0.11）——geo 捡到的 PF 只带 gen 腿 ~25% 的 pT，根本不是同一个粒子。真腿没被重建成 PF 时，geometric 不返回"无匹配"，而是抓最近的软 PU/UE 径迹，几乎全被 `|dpt|<0.3` 杀掉。
-⟹ **association 那 16% 缺失是真实重建低效，不是记账假象**（与 lostTracks 研究一致：PF 漏掉的腿只有 7.8% 能在 lostTracks 找回）。
+**验证**：key 对拍 0 mismatch；association 离线重加 cut 后与原版 `LostTrack_phipimu` **逐项相等**（101/102/101），证明语义没被动过；geometric 与 hit-based truth 一致率 99.97–100%（新代码没写错的凭据）。
 
-**换过去的额外代价**：纯度——assoc 成功的腿上 geo 有 **0.9-1.8%** 选中不同 PF；**同号撞车 7-8%**（`Kp_geo_idx==pi_geo_idx`，K+/π 同号，association 靠真身份不会犯）。
-
-**geo 臂没写错**：两臂都匹配的腿上，geo 与 hit-based truth 选同一个 PF 达 **98.2-99.1%**——有 bug 不可能符合到 99%。
-
-产物：`plugins/GeoMatch_phipimu.cc` + `interface/GeoMatch_phipimu_Tree.h` + `src/GeoMatch_phipimu_Tree.cc`（由 `LostTrack_phipimu` **完整复制**而来）、`test/SIG_{,DsstW_}GeoMatch_phipimu.py`、`Tuples/phipimu/Signal_GeoMatch/geomatch.C`（一个宏出全部数字）。
-
-**设计要点（可复用）**：两条臂同树 + **ungated 记录**（门离线加）⟹ 一次跑扫遍工作点、零重跑。assoc 臂去门后离线重加门，计数与原版 `LostTrack_phipimu` **逐项相等**（101/102/101），证明语义没被动过。
-
-**没做**：没提 condor（本地 25 文件 × 双通道 ≈ 7000 事例，且差值已 consistent with zero，加统计动不了结论）；计划里的 M(KKπ) 闭合图没做——dpt 残差已经是不依赖 association 的判据，够定论了，除非要写 note/talk。
+**没做**：没提 condor（本地 25 file × 双通道 ≈ 7000 event，差值已 consistent with zero）；M(KKπ) 闭合图没做（dpt 残差已够定论，除非要写 note/talk）。
 
 ### lostTracks recovery 研究（phipimu）
 
-问题：MiniAOD 里有 `lostTracks` 和 `lostTracksToGenAssociation`，把它们加进 Ds 的径迹池能回收多少信号、组合本底涨多少？
+> 代码已移出本 branch，全部在 **`study/truthmatch-lostrack`**（已 push）。
+
+问题：MiniAOD 里有 `lostTracks` 和 `lostTracksToGenAssociation`，把它们加进 Ds 的 track 池能回收多少信号、组合本底涨多少？
 
 **结论：不做。S/√B 净降约 1%**（信号 +1.7% 且质量差 2 倍，真本底 +5.2%）。
 
 两个新分析器，都由 `H_phipimu` **完整复制**而来再删改（不手写重实现，见 memory `feedback_copy_original_not_rewrite`）：
 
-- **`LostTrack_phipimu`**（gen 上限，砍掉 reco 起；不加载 JMEcorr）：每条腿 PF 匹配率 ~84%，PF 缺失的腿只有 **7.8%** 能在 lostTracks 找回；池子级上限 **+2.0%**。匹配质量：lostTracks 的 Δpt/pt σ68 = **6.5%** vs PF **1.5%**（差 4.3 倍）。
+- **`LostTrack_phipimu`**（gen 上限，砍掉 reco 起；不加载 JMEcorr）：每个粒子的 PF match rate ~84%，PF 没 match 上的粒子只有 **7.8%** 能在 lostTracks 找回；池子层面的上限 **+2.0%**。匹配质量：lostTracks 的 Δpt/pt σ68 = **6.5%** vs PF **1.5%**（差 4.3 倍）。
 - **`LostTrackReco_phipimu`**（完整 reco，保留 JMEcorr）：信号 **+1.73%**（DsW）/ **+1.40%**（DsstW）；组合本底 **+3.72%**；pT 排序纯度 99.925%→99.917%（**没被破坏**，现有选候选策略安全）；含 LT 候选的 M(KKπ) 分辨差 **2.11 倍**。
 
 **lostTracks 关键事实**：约 30/事例，`hasTrackDetails()` 恒 100%，pdgId 只有 ±211 和极少 ±13——**没有光子**（它装的是 generalTracks 里没被 PF 用掉的径迹，结构上不可能有中性粒子）。所以对 DsstW 的 gamma 完全帮不上忙。pt>1 的只有 ~66% 过 `trackHighPurity`。
@@ -153,7 +173,7 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 **双来源池子用边界法**：`idx_pf` 类型/名字不变、仍存原生下标；PF 先 push 并记 `const Int_t n_pf_pool = idx_pf.size()`，再 push lostTracks；`Kp_isLost = (iKp >= n_pf_pool)`。**池子绝不可重排**（如按 pT 排序）否则身份判定静默崩坏。必改三处：
 1. `idx_pf.size()<3` 挪到**合并后**判（否则 2PF+1LT 的 recovery 事例被提前扔掉）
 2. 孤立度排除加 `!isLost` 保护（原版 `i==idx_Kp` 在双来源下会误伤 PF 里同号候选）；**求和仍只用 PF**，鉴别变量不能中途改定义
-3. `Ds_match` 每条腿按各自集合比对
+3. `Ds_match` 每个粒子按各自集合比对
 
 **不变式**：`n_lost==0` 的候选 = 只用 PF 池子的候选（已对同文件的原版 H_phipimu 逐项验证：80 行/79 事例/74 gen-matched 全等）。所以**跑一遍同时得到 PF-only 和 PF+LT**。
 
