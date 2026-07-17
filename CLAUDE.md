@@ -42,9 +42,9 @@ cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py JOBID=0 GROUPSIZE=1 OUTF
 
 ## HTCondor Submission
 
-Each subdirectory under `Tuples/phipimu/` corresponds to one sample. To submit:
+Each subdirectory under `Tuples/` corresponds to one sample. To submit:
 ```bash
-cd Tuples/phipimu/Signal/
+cd Tuples/Signal/
 python3 condor_submit.py
 ```
 
