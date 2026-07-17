@@ -8,7 +8,7 @@
 // remember which row of the previous group had the largest gamma_pt.
 //
 // Usage:
-//   root -l -b -q 'analysis/macros/best_gamma_tuple.cc("INPUT.root", "OUTPUT.root", "HKKpimu")'
+//   root -l -b -q 'analysis/macros/best_gamma_tuple.cc("INPUT.root", "OUTPUT.root", "Hphipimu")'
 // The third argument is the in-file directory that holds the Events and Info trees.
 
 #include "TFile.h"

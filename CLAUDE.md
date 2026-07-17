@@ -30,20 +30,21 @@ scram b -j8 EDAnalyzers/Reconstruction
 ## Running Analyzers Locally
 
 ```bash
-cmsRun EDAnalyzers/Reconstruction/test/RecoAll_DsW_KKpimu.py
-cmsRun EDAnalyzers/GenAnalyzer/test/GenMatch_DsW_KKpimu.py
+cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py        # DsW signal
+cmsRun EDAnalyzers/Reconstruction/test/SIG_DsstW_H_phipimu.py  # DsstW signal
+cmsRun EDAnalyzers/Reconstruction/test/BKG_H_phipimu.py        # background (doTruth=False)
 ```
 
 Config files accept `JOBID`, `GROUPSIZE`, and `OUTFILE` arguments:
 ```bash
-cmsRun EDAnalyzers/Reconstruction/test/RecoAll_DsW_KKpimu.py JOBID=0 GROUPSIZE=1 OUTFILE=file:output.root
+cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py JOBID=0 GROUPSIZE=1 OUTFILE=file:output.root
 ```
 
 ## HTCondor Submission
 
-Each subdirectory under `Tuples/` corresponds to one analyzer job type. To submit:
+Each subdirectory under `Tuples/phipimu/` corresponds to one sample. To submit:
 ```bash
-cd Tuples/RecoAll_DsW_KKpimu/
+cd Tuples/phipimu/Signal/
 python3 condor_submit.py
 ```
 
@@ -56,15 +57,17 @@ Analysis macros in `Tuples/<JobType>/` (e.g., `bestcand.cc`, `compare.cc`, `Prep
 ## Architecture
 
 ### Physics Goal
-Search for H→DsW→(KKπ)(μν). Also studies the Ds* variant. The decay chain is:
-- H(125) → Ds±(→K+K-π±) + W∓(→μ∓ν)
+Search for H→DsW, with **Ds± → φπ±, φ → K+K−** only. The non-resonant Ds→KKπ mode
+was dropped on 2026-07-16 and its code deleted; recover it from git history if ever
+needed. Also studies the Ds* variant. The decay chains are:
+- H(125) → Ds±(→φπ± → K+K−π±) + W∓(→μ∓ν)
+- H(125) → Ds*±(→Ds±γ) + W∓(→μ∓ν)
+
+Note the final state is the same K+K−π± either way; what makes this the φπ mode is
+the φ requirement — the gen filter demands the φ ancestry and the candidate loop
+applies a ±30 MeV window on M(KK).
 
 ### EDAnalyzers Package Structure
-
-**`EDAnalyzers/GenAnalyzer/`** — gen-level and gen-reco matching analyzers:
-- `GenMatch_DsW_KKpimu` / `GenMatch_DsstW_KKpimu`: gen-level particle matching with PF candidates
-- `GenRecoDsW` / `GenRecoDsstW`: gen+reco combined ntuples
-- `TrigAnalyzer`, `Count_DsW_KKpimu`: utility analyzers
 
 **`EDAnalyzers/JMEcorr/`** — jet/MET energy correction producers (must run before the main analyzer):
 - `JecAppliedJetProducer`: applies JEC to slimmedJetsPuppi → `CorrectedAK4`
@@ -74,18 +77,21 @@ Search for H→DsW→(KKπ)(μν). Also studies the Ds* variant. The decay chain
 
 The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmAppliedEventFilter * tightJetId * <MainAnalyzer>`
 
-**`EDAnalyzers/Reconstruction/`** — full reco analyzers:
-- `RecoAll_DsW_KKpimu` / `RecoAll_DsstW_KKpimu`: full event reconstruction including kinematic vertex fit
+**`EDAnalyzers/Reconstruction/`** — the analyzer:
+- `H_phipimu`: the only analyzer. Handles both channels via `channel = "DsW" | "DsstW"`,
+  and both signal and background via `doTruth`. Full reconstruction including the
+  kinematic vertex fit.
 
-### Analyzer Data Flow (RecoAll_DsW_KKpimu)
+### Analyzer Data Flow (H_phipimu)
 
-1. **Gen filter**: require exactly 1H + 1Ds + 1W + 1μ + 0e (hard process), then find gen K+, K-, π daughters. Returns early if not found.
-2. **Gen matching**: match PF candidates to gen particles via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3. Match muon via `muon.genParticle()`.
+1. **Gen filter** (`doTruth` only): require exactly 1H + 1Ds + 1W + 1μ + 0e (hard process), then find the status-1 gen K+, K−, π with the full φ ancestry chain (`TwoBodyDecay(gp, 333, 321, -321)` etc.). Returns early if not found.
+2. **Gen matching**: match PF candidates via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3. The γ (DsstW) is matched geometrically instead — ΔR<0.02, Δpt/pt<0.5 — because it has no association. Muon via `muon.genParticle()`.
 3. **Trigger**: require `HLT_IsoMu24_v` or `HLT_Mu50_v`. Returns early if not fired.
 4. **Primary vertex**: take `offlineSlimmedPrimaryVertices.front()`.
 5. **Best muon**: highest-pT tight muon with pT>24 GeV.
-6. **Ds candidate loop**: triple nested loop over PF candidates (charged hadrons with `hasTrackDetails`, `trackHighPurity`, pT>1 GeV). Pre-cuts on Ds pT>5 and |M-MDs|<0.3. Kinematic vertex fit via `KinematicParticleVertexFitter`. Post-fit cuts: |M-MDs|<0.15, pT>7, dira>0.99, (Ds+μ) mass<125.
-7. **Output**: per-event scalars (gen info, PV, MET, triggers, muon) + per-Ds-candidate vectors. `nCandidates` = number of candidates passing all cuts. Tree filled once per event.
+6. **Ds candidate loop**: triple nested loop over the charged-hadron pool (`hasTrackDetails`, `trackHighPurity`, pT>1, |pdgId|=211). Per-track: K± pT>2, K+ and π opposite in charge to the muon, K− same as the muon. Pre-fit: (KKπ) pT>5, |M−MDs|<0.3. Kinematic vertex fit via `KinematicParticleVertexFitter`. Post-fit: vertex prob>0.001, |M−MDs|<0.15, pT>7, dira>0.99, (Ds+μ) mass<125, **φ: pT(KK)>3 and |M(KK)−Mφ|<0.03**.
+7. **Ds* (DsstW only)**: photon pool is |pdgId|=22, pT>0.5; (Ds*+μ) mass<125.
+8. **Output**: per-event scalars (gen info, PV, MET, jets, triggers, muon) + per-candidate vectors. `nCandidates` = number passing all cuts. Tree filled once per event.
 
 ### Tree Structure Convention
 - `interface/<Name>_Tree.h` declares all branches as public members
@@ -97,7 +103,7 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 ### Key Constants
 - GlobalTag (2022 MC): `130X_mcRun3_2022_realistic_v5`
 - Ds mass: 1.96835 GeV, φ mass: 1.019460 GeV, K: 0.493677 GeV, π: 0.13957039 GeV, μ: 0.1056583755 GeV
-- Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_KKpimu/`
+- Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
 ## Last Session (2026-07-16)
