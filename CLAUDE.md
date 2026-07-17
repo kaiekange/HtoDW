@@ -102,6 +102,74 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 
 ## Last Session (2026-07-16)
 
+### association vs geometric truth-matching（phipimu）
+
+问题：现在 truth matching 用 `packedPFCandidateToGenAssociation`，换成 geometric matching to genParticle 会更好还是更差？
+
+**结论：不要换。工作点上效率与 association 统计上无法区分，而 geometric 白白多出纯度代价。**
+
+三元组（三条腿全中）层级，两条臂跑在同一批事例上（相关 ⇒ 只有 discordant 带信息，用 McNemar）：
+
+| 通道 | assoc-only | geo-only | geo − assoc |
+|---|---|---|---|
+| DsW | 58 | 53 | **-0.14 ± 0.30 pp**（z=-0.47） |
+| DsstW | 68 | 67 | **-0.03 ± 0.33 pp**（z=-0.09） |
+
+⚠️ 别把 -0.1pp 说成"geometric 输"——统计上就是**打平**。真正的理由是打平之余还多出代价。
+
+**源码核实的关键事实**（非推测）：
+- **association 是 hit-based MC truth**：`packedPFCandidateToGenAssociation` → `prunedTrackMCMatch`(`MCTrackMatcher`) → `quickPrunedTrackAssociatorByHits`（cluster→TrackingParticle→genParticle）。geometric 没有 sim hit，一般不可能更正确。
+- **Association 建在 `prunedGenParticles`**（`PackedCandidateGenAssociationProducer.cc:78,85,134`）＝ tuplizer `GenPartToken_` 的同一集合 ⇒ `genRef.key()` 可直接比 `Gen_<leg>_idx`。**实测 ~6000 条腿 0 mismatch**。
+- **TP-pruning 假说错了**：`prunedTrackingParticles` = `keep++ (400<|pdgId|<600)` + `drop status!=1` + `drop charge==0` ⇒ Ds/Ds* 后代（K±/π±）**按设计保留**。
+- **assoc 的 `dR<0.05` 门完全不起作用**：hit-based 的 dR 最大只有 ~0.012。只有 `|dpt|<0.3` 切掉 ~2.5%。
+
+**geometric 为什么赢不了**：裸效率 geo 94.5% vs assoc 85%（+9pp），但加质量门后收益全蒸发（ungated +9pp → dR<0.05 +1.4pp → 再加 |dpt|<0.3 ≈ **0**）。
+决定性证据：多出的 9pp 里 ~70% 是 `assoc_key == null`，**该桶 dpt 均值 -0.65~-0.78**（真匹配是 -0.01，RMS 0.11）——geo 捡到的 PF 只带 gen 腿 ~25% 的 pT，根本不是同一个粒子。真腿没被重建成 PF 时，geometric 不返回"无匹配"，而是抓最近的软 PU/UE 径迹，几乎全被 `|dpt|<0.3` 杀掉。
+⟹ **association 那 16% 缺失是真实重建低效，不是记账假象**（与 lostTracks 研究一致：PF 漏掉的腿只有 7.8% 能在 lostTracks 找回）。
+
+**换过去的额外代价**：纯度——assoc 成功的腿上 geo 有 **0.9-1.8%** 选中不同 PF；**同号撞车 7-8%**（`Kp_geo_idx==pi_geo_idx`，K+/π 同号，association 靠真身份不会犯）。
+
+**geo 臂没写错**：两臂都匹配的腿上，geo 与 hit-based truth 选同一个 PF 达 **98.2-99.1%**——有 bug 不可能符合到 99%。
+
+产物：`plugins/GeoMatch_phipimu.cc` + `interface/GeoMatch_phipimu_Tree.h` + `src/GeoMatch_phipimu_Tree.cc`（由 `LostTrack_phipimu` **完整复制**而来）、`test/SIG_{,DsstW_}GeoMatch_phipimu.py`、`Tuples/phipimu/Signal_GeoMatch/geomatch.C`（一个宏出全部数字）。
+
+**设计要点（可复用）**：两条臂同树 + **ungated 记录**（门离线加）⟹ 一次跑扫遍工作点、零重跑。assoc 臂去门后离线重加门，计数与原版 `LostTrack_phipimu` **逐项相等**（101/102/101），证明语义没被动过。
+
+**没做**：没提 condor（本地 25 文件 × 双通道 ≈ 7000 事例，且差值已 consistent with zero，加统计动不了结论）；计划里的 M(KKπ) 闭合图没做——dpt 残差已经是不依赖 association 的判据，够定论了，除非要写 note/talk。
+
+### lostTracks recovery 研究（phipimu）
+
+问题：MiniAOD 里有 `lostTracks` 和 `lostTracksToGenAssociation`，把它们加进 Ds 的径迹池能回收多少信号、组合本底涨多少？
+
+**结论：不做。S/√B 净降约 1%**（信号 +1.7% 且质量差 2 倍，真本底 +5.2%）。
+
+两个新分析器，都由 `H_phipimu` **完整复制**而来再删改（不手写重实现，见 memory `feedback_copy_original_not_rewrite`）：
+
+- **`LostTrack_phipimu`**（gen 上限，砍掉 reco 起；不加载 JMEcorr）：每条腿 PF 匹配率 ~84%，PF 缺失的腿只有 **7.8%** 能在 lostTracks 找回；池子级上限 **+2.0%**。匹配质量：lostTracks 的 Δpt/pt σ68 = **6.5%** vs PF **1.5%**（差 4.3 倍）。
+- **`LostTrackReco_phipimu`**（完整 reco，保留 JMEcorr）：信号 **+1.73%**（DsW）/ **+1.40%**（DsstW）；组合本底 **+3.72%**；pT 排序纯度 99.925%→99.917%（**没被破坏**，现有选候选策略安全）；含 LT 候选的 M(KKπ) 分辨差 **2.11 倍**。
+
+**lostTracks 关键事实**：约 30/事例，`hasTrackDetails()` 恒 100%，pdgId 只有 ±211 和极少 ±13——**没有光子**（它装的是 generalTracks 里没被 PF 用掉的径迹，结构上不可能有中性粒子）。所以对 DsstW 的 gamma 完全帮不上忙。pt>1 的只有 ~66% 过 `trackHighPurity`。
+
+**双来源池子用边界法**：`idx_pf` 类型/名字不变、仍存原生下标；PF 先 push 并记 `const Int_t n_pf_pool = idx_pf.size()`，再 push lostTracks；`Kp_isLost = (iKp >= n_pf_pool)`。**池子绝不可重排**（如按 pT 排序）否则身份判定静默崩坏。必改三处：
+1. `idx_pf.size()<3` 挪到**合并后**判（否则 2PF+1LT 的 recovery 事例被提前扔掉）
+2. 孤立度排除加 `!isLost` 保护（原版 `i==idx_Kp` 在双来源下会误伤 PF 里同号候选）；**求和仍只用 PF**，鉴别变量不能中途改定义
+3. `Ds_match` 每条腿按各自集合比对
+
+**不变式**：`n_lost==0` 的候选 = 只用 PF 池子的候选（已对同文件的原版 H_phipimu 逐项验证：80 行/79 事例/74 gen-matched 全等）。所以**跑一遍同时得到 PF-only 和 PF+LT**。
+
+**最终裁决**：WJets 真本底（CRAB `260716_135152`，99/99 成功，产出在 IIHE `/store/user/kakang/.../WJets_LostTrackReco_phipimu/output_{1..99}.root`）：去重事例 **39995 → 42067，+5.18% ± 0.11%**——比信号事例内的假候选 +3.7% 还高，是信号增幅的 3 倍。
+
+| 道 | S | B | S/√B |
+|---|---|---|---|
+| DsW | ×1.0173 | ×1.0518 | **0.992（−0.8%）** |
+| DsstW | ×1.0140 | ×1.0518 | **0.989（−1.1%）** |
+
+两个道都变差约 1%，且未计入多出信号质量差 2 倍的贬值。WJets 占加权本底 77%，可代表总本底。本底 yield = **事例数**（每事例只留一个候选），不是候选数。
+
+**另一条线（与 lostTracks 无关，仍开着）**：DsstW 的真正瓶颈是**光子**——gamma PF 匹配率仅 **28%**，vs 带电腿 84%。要提效率得往光子重建找（放宽 gamma 匹配的 dR<0.02 / Δpt/pt<0.5，或看 slimmedPhotons / ECAL）。
+
+图：`/eos/.../Signal_LostTrack_phipimu/match_quality_dpt.png`、`/eos/.../Signal_LostTrackReco_phipimu/{pt,mass}_resolution.png`
+
 ### phipimu MVA 训练配比研究：v1 / v2 / v3
 
 三个 version 共用同一套 **37 特征**（旧 46 特征会 sculpt 拟合变量，已废弃）和同一份代码，只有 `CONFIG[model_name]` 的背景组成 + 采样模式不同。旧 v1/v2/v3 产物已删除，原 v4(flat) 改名为 v3。
