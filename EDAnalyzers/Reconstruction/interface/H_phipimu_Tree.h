@@ -20,168 +20,21 @@ public:
 	UInt_t lumi_id;
 	Int_t cand_id;
 
-	// Gen PV / SV
-	Float_t Gen_PV_vx;
-	Float_t Gen_PV_vy;
-	Float_t Gen_PV_vz;
-	Float_t Gen_SV_vx;
-	Float_t Gen_SV_vy;
-	Float_t Gen_SV_vz;
+	// Gen truth: which decay channel this event is, plus PF/muon truth-match flags below.
+	// No Gen-level kinematics are stored (unused downstream) -- only categorical tags and match bools.
 
-	// Gen H
-	Int_t Gen_H_charge;
-	Float_t Gen_H_eta;
-	Float_t Gen_H_phi;
-	Float_t Gen_H_px;
-	Float_t Gen_H_py;
-	Float_t Gen_H_pz;
-	Float_t Gen_H_pt;
-	Float_t Gen_H_p;
-	Float_t Gen_H_mass;
+	// Gen W lepton flavor (signed pdgId of the direct W daughter: +-11/13/15)
+	Int_t Gen_W_lep_pdgId;
 
-	// Gen Ds* (DsstW channel only, else null)
-	Int_t Gen_Dsst_charge;
-	Float_t Gen_Dsst_eta;
-	Float_t Gen_Dsst_phi;
-	Float_t Gen_Dsst_px;
-	Float_t Gen_Dsst_py;
-	Float_t Gen_Dsst_pz;
-	Float_t Gen_Dsst_pt;
-	Float_t Gen_Dsst_p;
-	Float_t Gen_Dsst_mass;
+	// tau decay mode: 0=hadronic, 1=leptonic-e, 2=leptonic-mu (null unless Gen_W_lep_pdgId == +-15)
+	Int_t Gen_tau_decay_mode;
 
-	// Gen Ds
-	Int_t Gen_Ds_charge;
-	Float_t Gen_Ds_eta;
-	Float_t Gen_Ds_phi;
-	Float_t Gen_Ds_px;
-	Float_t Gen_Ds_py;
-	Float_t Gen_Ds_pz;
-	Float_t Gen_Ds_pt;
-	Float_t Gen_Ds_p;
-	Float_t Gen_Ds_mass;
+	// Gen Ds* decay mode (DsstW channel only, else null): 0=Ds*->Ds gamma, 1=Ds*->Ds pi0(->gamma gamma)
+	Int_t Gen_Dsst_mode;
 
-	// Gen gamma (DsstW channel only, else null)
-	Int_t Gen_gamma_charge;
-	Float_t Gen_gamma_eta;
-	Float_t Gen_gamma_phi;
-	Float_t Gen_gamma_px;
-	Float_t Gen_gamma_py;
-	Float_t Gen_gamma_pz;
-	Float_t Gen_gamma_pt;
-	Float_t Gen_gamma_p;
-	Float_t Gen_gamma_mass;
-
-	// Gen W
-	Int_t Gen_W_charge;
-	Float_t Gen_W_eta;
-	Float_t Gen_W_phi;
-	Float_t Gen_W_px;
-	Float_t Gen_W_py;
-	Float_t Gen_W_pz;
-	Float_t Gen_W_pt;
-	Float_t Gen_W_p;
-	Float_t Gen_W_mass;
-
-	// Gen K+
-	Int_t Gen_Kp_charge;
-	Float_t Gen_Kp_eta;
-	Float_t Gen_Kp_phi;
-	Float_t Gen_Kp_px;
-	Float_t Gen_Kp_py;
-	Float_t Gen_Kp_pz;
-	Float_t Gen_Kp_pt;
-	Float_t Gen_Kp_p;
-	Float_t Gen_Kp_mass;
-
-	// Gen K-
-	Int_t Gen_Km_charge;
-	Float_t Gen_Km_eta;
-	Float_t Gen_Km_phi;
-	Float_t Gen_Km_px;
-	Float_t Gen_Km_py;
-	Float_t Gen_Km_pz;
-	Float_t Gen_Km_pt;
-	Float_t Gen_Km_p;
-	Float_t Gen_Km_mass;
-
-	// Gen pi
-	Int_t Gen_pi_charge;
-	Float_t Gen_pi_eta;
-	Float_t Gen_pi_phi;
-	Float_t Gen_pi_px;
-	Float_t Gen_pi_py;
-	Float_t Gen_pi_pz;
-	Float_t Gen_pi_pt;
-	Float_t Gen_pi_p;
-	Float_t Gen_pi_mass;
-
-	// Gen mu
-	Int_t Gen_mu_charge;
-	Float_t Gen_mu_eta;
-	Float_t Gen_mu_phi;
-	Float_t Gen_mu_px;
-	Float_t Gen_mu_py;
-	Float_t Gen_mu_pz;
-	Float_t Gen_mu_pt;
-	Float_t Gen_mu_p;
-	Float_t Gen_mu_mass;
-
-	// Gen Ds+mu
-	Int_t Gen_Dsmu_charge;
-	Float_t Gen_Dsmu_eta;
-	Float_t Gen_Dsmu_phi;
-	Float_t Gen_Dsmu_px;
-	Float_t Gen_Dsmu_py;
-	Float_t Gen_Dsmu_pz;
-	Float_t Gen_Dsmu_pt;
-	Float_t Gen_Dsmu_p;
-	Float_t Gen_Dsmu_mass;
-
-	// Gen Ds*+mu (DsstW channel only, else null)
-	Int_t Gen_Dsstmu_charge;
-	Float_t Gen_Dsstmu_eta;
-	Float_t Gen_Dsstmu_phi;
-	Float_t Gen_Dsstmu_px;
-	Float_t Gen_Dsstmu_py;
-	Float_t Gen_Dsstmu_pz;
-	Float_t Gen_Dsstmu_pt;
-	Float_t Gen_Dsstmu_p;
-	Float_t Gen_Dsstmu_mass;
-
-	// Gen dR (Ds daughters)
-	Float_t Gen_dR_Kp_Km;
-	Float_t Gen_dR_Kp_pi;
-	Float_t Gen_dR_Kp_Ds;
-	Float_t Gen_dR_Km_pi;
-	Float_t Gen_dR_Km_Ds;
-	Float_t Gen_dR_pi_Ds;
-
-	// Gen dR (gamma/Dsst, DsstW channel only, else null)
-	Float_t Gen_dR_Kp_gamma;
-	Float_t Gen_dR_Kp_Dsst;
-	Float_t Gen_dR_Km_gamma;
-	Float_t Gen_dR_Km_Dsst;
-	Float_t Gen_dR_pi_gamma;
-	Float_t Gen_dR_pi_Dsst;
-	Float_t Gen_dR_Ds_gamma;
-	Float_t Gen_dR_Ds_Dsst;
-	Float_t Gen_dR_gamma_Dsst;
-
-	// Gen dR (mu)
-	Float_t Gen_dR_Kp_mu;
-	Float_t Gen_dR_Km_mu;
-	Float_t Gen_dR_pi_mu;
-	Float_t Gen_dR_Ds_mu;
-	Float_t Gen_dR_gamma_mu;   // DsstW channel only
-	Float_t Gen_dR_Dsst_mu;    // DsstW channel only
-
-	// Gen MET
-	Float_t Gen_met_phi;
-	Float_t Gen_met_px;
-	Float_t Gen_met_py;
-	Float_t Gen_met_pt;
-	Float_t Gen_met_sumEt;
+	// PF gen-match for the pi0 photons (false if Gen_Dsst_mode!=1 or no PF match found)
+	Bool_t Gen_pi0gamma1_match;
+	Bool_t Gen_pi0gamma2_match;
 
 	// trigger
 	Bool_t trig_HLT_IsoMu24;

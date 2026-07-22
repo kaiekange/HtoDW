@@ -60,12 +60,18 @@ Analysis macros in `Tuples/<JobType>/` (e.g., `bestcand.cc`, `compare.cc`, `Prep
 Search for H→DsW, with **Ds± → φπ±, φ → K+K−** only. The non-resonant Ds→KKπ mode
 was dropped on 2026-07-16 and its code deleted; recover it from git history if ever
 needed. Also studies the Ds* variant. The decay chains are:
-- H(125) → Ds±(→φπ± → K+K−π±) + W∓(→μ∓ν)
-- H(125) → Ds*±(→Ds±γ) + W∓(→μ∓ν)
+- H(125) → Ds±(→φπ± → K+K−π±) + W∓(→ℓ∓ν, ℓ=e/μ/τ)
+- H(125) → Ds*±(→Ds±γ or Ds±π0(→γγ)) + W∓(→ℓ∓ν, ℓ=e/μ/τ)
 
 Note the final state is the same K+K−π± either way; what makes this the φπ mode is
 the φ requirement — the gen filter demands the φ ancestry and the candidate loop
 applies a ±30 MeV window on M(KK).
+
+**Reco/selection is μ-only regardless of the gen-level W flavor**: the analyzer always
+requires a reco tight muon with pT>24 GeV before filling the tree (see Data Flow below).
+So on disk, only prompt W→μ and W→τ→μ events ever produce rows; W→e and W→τ→(e/hadronic)
+pass the gen filter (and increment `nEventsGen_`/`nEventsLepton_`) but never reach `Fill()`.
+This was a deliberate 2026-07-22 decision — gen truth generalized, reco untouched.
 
 ### EDAnalyzers Package Structure
 
@@ -84,8 +90,8 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 
 ### Analyzer Data Flow (H_phipimu)
 
-1. **Gen filter** (`doTruth` only): require exactly 1H + 1Ds + 1W + 1μ + 0e (hard process), then find the status-1 gen K+, K−, π with the full φ ancestry chain (`TwoBodyDecay(gp, 333, 321, -321)` etc.). Returns early if not found.
-2. **Gen matching**: match PF candidates via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3. The γ (DsstW) is matched geometrically instead — ΔR<0.02, Δpt/pt<0.5 — because it has no association. Muon via `muon.genParticle()`.
+1. **Gen filter** (`doTruth` only): require exactly 1H + 1Ds(*) + 1W + 1 hard-process W-daughter lepton (e/μ/τ, any flavor — `Gen_W_lep_pdgId`), then find the status-1 gen K+, K−, π with the full φ ancestry chain (`TwoBodyDecay(gp, 333, 321, -321)` etc.). Returns early if not found. DsstW additionally requires the Ds* to go via γ **or** π0(→γγ) (`Gen_Dsst_mode`: 0=γ, 1=π0), both ancestry-checked the same way. If the W-lepton is a τ, a second pass over `isDirectHardProcessTauDecayProductFinalState()` particles classifies `Gen_tau_decay_mode` (0=hadronic, 1=e, 2=μ) and — only for τ→μ — supplies the muon used below. **The tree stores no gen-level kinematics** (no Gen_H/Ds/Dsst/W/Kp/Km/pi/mu/gamma/pi0/tau 4-vectors, no PV/SV, no Gen MET, no gen dR family) — only the categorical tags (`Gen_W_lep_pdgId`, `Gen_tau_decay_mode`, `Gen_Dsst_mode`) and the match booleans below. This was a deliberate 2026-07-22 simplification; the local `reco::GenParticle` objects needed for matching still exist in `analyze()`, just aren't written out.
+2. **Gen matching**: match PF candidates via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3 (ancestry checks accept either Ds* submode). The γ (DsstW, γ-mode) is matched geometrically instead — ΔR<0.02, Δpt/pt<0.5 — because it has no association; in π0-mode the two π0 daughter photons are matched the same way, producing `Gen_pi0gamma1_match`/`Gen_pi0gamma2_match`. Muon via `muon.genParticle()`; for a τ→μ event the ancestry check uses `isDirectHardProcessTauDecayProductFinalState()` instead of the direct W→μν chain.
 3. **Trigger**: require `HLT_IsoMu24_v` or `HLT_Mu50_v`. Returns early if not fired.
 4. **Primary vertex**: take `offlineSlimmedPrimaryVertices.front()`.
 5. **Best muon**: highest-pT tight muon with pT>24 GeV.
@@ -106,128 +112,27 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-07-16)
+## Last Session (2026-07-22)
 
-### association vs geometric truth-matching（phipimu）
+### H_phipimu gen truth generalized to e/μ/τ and Ds*→γ/π0 (gen-only; reco untouched)
 
-> 代码已移出本 branch，全部在 **`study/truthmatch-lostrack`**（已 push）。
-> `git checkout study/truthmatch-lostrack` 即可取回。
+新信号样本里 W 已经是 e/μ/τ inclusive（`24:onIfMatch` 三个都开着，フラグメント本来就这样，不是新改的），DsstW 的 Ds* 现在也按真实 BR 分两支：Ds*→Dsγ（94.2%）和 Ds*→Dsπ0(→γγ)（5.8%）。原来的代码只认 W→μ（`num_Gen_mu==1 && num_Gen_e==0`，τ 隐性被当场 return 掉）和 Ds*→Dsγ 单一模式。这次把 gen filter 泛化到能识别全部分支，**但 reco/选择完全没动**——用户明确要求只改 gen 部分。
 
-问题：现在 truth matching 用 `packedPFCandidateToGenAssociation`，换成 geometric matching to genParticle 会更好还是更差？
+**改了什么**（`H_phipimu.cc` 两个 channel 块 + `H_phipimu_Tree.h`/`.cc`）：
+- `Gen_W_lep_pdgId`（±11/13/15，W 的直接 hard-process 带电轻子）；若是 τ，用 `isDirectHardProcessTauDecayProductFinalState()`（CMSSW 内建 flag，`GenParticle.h:85`）找它的直接衰变产物，得到 `Gen_tau_decay_mode`（0=hadronic/1=lep-e/2=lep-mu）
+- PF/muon truth-match 的祖先检查按 τ 分支：τ→μ 时用上面那个 flag，不再走"muon 的 mother 必须是 W"那条链（原来这条链对 τ→μ 会静默漏判，是这次一起修的 bug，不是新引入的）
+- DsstW：`Gen_Dsst_mode`（0=γ/1=π0）；K+/K−/π 的祖先检查两种模式都认（原来只认 γ 模式，会导致 π0 事件在 KKπ finder 那步就被吞掉）；π0 模式新增 `Gen_pi0gamma1_match`/`Gen_pi0gamma2_match`（PF dR<0.02 匹配两个光子）
+- **Gen 树上不再存任何动力学量**（H/Ds/Ds*/W/K+/K−/π/μ/γ/π0/τ 的四矢量、PV/SV、Gen MET、dR 族、Dsmu/Dsstmu 全删）——这是中途用户明确要求的简化："只要知道这个事例是 mu 还是 e 还是 tau，然后能 truth-match，其他动力学数据可以删掉"。gen-finding 用到的本地 `reco::GenParticle` 对象（`Kp_gp`/`Km_gp`/`pi_gp`/`Ds_gp`/`mu_gp`/`gamma_gp`/`pi0gamma1_gp`/`pi0gamma2_gp` 等）全部保留，只删了写到 tree 上的那些行；truth-match 的产出仍然是原有的那批 Bool 分支（`Kp_match`…`event_match`）+ 新的两个 pi0gamma match。
+- Ds→KKπ 的判定逻辑没变（φ→KK 本来就是 EvtGen 强制的 Br=1）
 
-**结论：两者在同一 working point 下等价。建议不换，理由只是「等价、没必要动 association」**（它是 hit-based truth，更有原则，且是现成的）——**不是** geometric 有害。这是个不强的理由。
+**关键：reco 端的 muon gate（`if (best_mu_idx == -1) return;`）在 Fill() 之前，一行没动**。所以 W→e、W→τ→e、W→τ→hadronic 的事件会在 gen filter 通过、`nEventsGen_`/`nEventsLepton_` 计数之后，在 reco 选择阶段被挡掉，不会写进 tree。只有 prompt W→μ 和 W→τ→μ 真正落盘。
 
-三元组（K+/K−/π 全 match）层级。两种方法跑在**同一批 event** 上（相关 ⇒ 只有 discordant 带信息，用 McNemar）：
+**没验证的地方**（新 MiniAOD 还没产生，只能靠 CMSSW 文档保证语义）：
+1. τ 作为 hard-process 粒子时 `num_Gen_Wlep==1` 会不会像 μ 一样干净地计一次——如果 Pythia 给 τ 弄出多个 hard-process copy，τ 支路会在计数 return 那一步被静默清零。样本出来后第一件事：画 `num_Gen_Wlep` 分布确认 τ 事件也稳定是 1。
+2. `nEventsGen_`/`nEventsLepton_` 现在把 e/μ/τ 全部计进去了（以前这两个计数器只算 W→μ，e/τ 都被旧的 return 挡在外面）。如果下游拿它当 μ-channel 分母做归一化会被摊高，类似 [[project_gencount_normalization]] 那次的坑。**这个问题问了用户两次，用户都还没直接回答**——下次话题回到这里时记得追问，别让它再滑过去。
 
-| 通道 | assoc-only | geo-only | geo − assoc |
-|---|---|---|---|
-| DsW | 58 | 57 | −0.03 ± 0.31 pp（z=−0.09） |
-| DsstW | 65 | 68 | +0.08 ± 0.33 pp（z=+0.26） |
+编译过（`-Werror=unused-but-set-variable` 逼着把改动过程中变成 dead code 的 `H_gp`/`Ds_gp`（DsstW 那份）/`Gen_H_idx`/`Gen_pi0_idx` 一起清掉了），没有跑 cmsRun（没有新 MiniAOD）。
 
-#### ⚠️ geometric matching 的正确写法（第一版写错了）
+**同一 session 后续又删了 GenJet/GenMET**（token、`consumes<>`、include、两处 fetch 全删）：`GenJetToken_` 在原版代码里本来就从没被 `getByToken` 过，是死代码，删它不改变任何行为；`GenMETToken_` 原来在两个 channel 里各有一次 `if (GenMETHandle->empty()) return;`，是个事件级 gate，这次跟着 fills 一起删掉了——**这是唯一一处真的改变了选择逻辑的删除**（虽然标准 MiniAOD 里 GenMET collection 几乎不可能是空的，实际影响预期为零，但如果哪天诡异地空过，行为跟以前不一样了）。
 
-**正确**（= 原版 `H_phipimu` gamma matching 的写法，`H_phipimu.cc:548-556`）：
-```
-对每个 gen 粒子：
-  收集所有同电荷 charged-hadron PF 中 dR<0.05 且 |dpt|<0.3 的
-  在通过的候选里取 min dR
-```
-两个 cut 都在 loop **里面**。
-
-**错的写法**（第一版）：dR<0.3 里取 min dR（loop 里没有 dpt cut），拿到唯一候选，离线再加 cut。
-⇒ 最近的那条是软 track 时，会选中它然后离线被砍 → 记为 no match；正确写法会跳过它、继续找次近的合格 track → match 上。**人为削弱了 geometric**。
-
-**教训**：cut 决定「选哪个候选」时**不能**推迟到离线。ungated 记录只对 association 成立（它靠 map 认粒子，cut 纯属事后质量检查）；套到 geometric 上逻辑不成立。这个错误也无法离线补救——每个粒子只存了一个候选。
-
-#### 修正后的数字（第一版全部作废）
-
-| | 错的写法 | 正确写法 |
-|---|---|---|
-| purity cost | 0.9–1.8% | **0.00–0.03%**（一致率 99.97–100%） |
-| K+/π 撞同一条 track | 7–8% | **0.06–0.17%** |
-| assoc-null bucket dpt | −0.65~−0.78（据此误判为软垃圾） | **−0.01~−0.07, RMS 0.11 = 和真 match 无异** |
-| bucket 大小 | 210–333 | 22–32 |
-
-**原先「证伪」的假说其实是对的**：assoc-null bucket 里那 ~25 条 **是真的 track**，是 association 被 `quickTrackAssociatorByHits` 的 `Cut_RecoToSim=0.75`（须与 TrackingParticle 共享 >75% hits，否则完全没有 association）丢掉的。只是量少（~0.7%），而 geometric 自己也漏掉差不多同样多，净值为零。
-
-#### 源码核实的事实（CMSSW 15.0.5，非推测）
-- **association 是 hit-based MC truth**：`packedPFCandidateToGenAssociation` → `prunedTrackMCMatch`(`MCTrackMatcher`) → `quickPrunedTrackAssociatorByHits`（cluster→TrackingParticle→genParticle）。geometric 没有 sim hit，一般不可能更正确。
-- **Association 建在 `prunedGenParticles`**（`PackedCandidateGenAssociationProducer.cc:78,85,134`）＝ tuplizer `GenPartToken_` 的同一集合 ⇒ `genRef.key()` 可直接比 `Gen_<粒子>_idx`。**实测 ~6000 条 0 mismatch**。
-- **TP-pruning 假说错了**：`prunedTrackingParticles` = `keep++ (400<|pdgId|<600)` + `drop status!=1` + `drop charge==0` ⇒ Ds/Ds* 后代（K±/π±）**按设计保留**。
-- **assoc 的 `dR<0.05` 完全不起作用**：hit-based 的 dR 最大只有 ~0.012。只有 `|dpt|<0.3` 去掉 ~2.5%。
-- **geometric 必须 gen 驱动**：`prunedGenParticles` 有 `drop status==1` + 选择性 re-keep，不是完整末态清单。若写成 PF 驱动（PF→最近 gen）必须改用 `packedGenParticles`，否则会把 PF 错判给我们的粒子、系统性高估 geo 效率。
-
-**验证**：key 对拍 0 mismatch；association 离线重加 cut 后与原版 `LostTrack_phipimu` **逐项相等**（101/102/101），证明语义没被动过；geometric 与 hit-based truth 一致率 99.97–100%（新代码没写错的凭据）。
-
-**没做**：没提 condor（本地 25 file × 双通道 ≈ 7000 event，差值已 consistent with zero）；M(KKπ) 闭合图没做（dpt 残差已够定论，除非要写 note/talk）。
-
-### lostTracks recovery 研究（phipimu）
-
-> 代码已移出本 branch，全部在 **`study/truthmatch-lostrack`**（已 push）。
-
-问题：MiniAOD 里有 `lostTracks` 和 `lostTracksToGenAssociation`，把它们加进 Ds 的 track 池能回收多少信号、组合本底涨多少？
-
-**结论：不做。S/√B 净降约 1%**（信号 +1.7% 且质量差 2 倍，真本底 +5.2%）。
-
-两个新分析器，都由 `H_phipimu` **完整复制**而来再删改（不手写重实现，见 memory `feedback_copy_original_not_rewrite`）：
-
-- **`LostTrack_phipimu`**（gen 上限，砍掉 reco 起；不加载 JMEcorr）：每个粒子的 PF match rate ~84%，PF 没 match 上的粒子只有 **7.8%** 能在 lostTracks 找回；池子层面的上限 **+2.0%**。匹配质量：lostTracks 的 Δpt/pt σ68 = **6.5%** vs PF **1.5%**（差 4.3 倍）。
-- **`LostTrackReco_phipimu`**（完整 reco，保留 JMEcorr）：信号 **+1.73%**（DsW）/ **+1.40%**（DsstW）；组合本底 **+3.72%**；pT 排序纯度 99.925%→99.917%（**没被破坏**，现有选候选策略安全）；含 LT 候选的 M(KKπ) 分辨差 **2.11 倍**。
-
-**lostTracks 关键事实**：约 30/事例，`hasTrackDetails()` 恒 100%，pdgId 只有 ±211 和极少 ±13——**没有光子**（它装的是 generalTracks 里没被 PF 用掉的径迹，结构上不可能有中性粒子）。所以对 DsstW 的 gamma 完全帮不上忙。pt>1 的只有 ~66% 过 `trackHighPurity`。
-
-**双来源池子用边界法**：`idx_pf` 类型/名字不变、仍存原生下标；PF 先 push 并记 `const Int_t n_pf_pool = idx_pf.size()`，再 push lostTracks；`Kp_isLost = (iKp >= n_pf_pool)`。**池子绝不可重排**（如按 pT 排序）否则身份判定静默崩坏。必改三处：
-1. `idx_pf.size()<3` 挪到**合并后**判（否则 2PF+1LT 的 recovery 事例被提前扔掉）
-2. 孤立度排除加 `!isLost` 保护（原版 `i==idx_Kp` 在双来源下会误伤 PF 里同号候选）；**求和仍只用 PF**，鉴别变量不能中途改定义
-3. `Ds_match` 每个粒子按各自集合比对
-
-**不变式**：`n_lost==0` 的候选 = 只用 PF 池子的候选（已对同文件的原版 H_phipimu 逐项验证：80 行/79 事例/74 gen-matched 全等）。所以**跑一遍同时得到 PF-only 和 PF+LT**。
-
-**最终裁决**：WJets 真本底（CRAB `260716_135152`，99/99 成功，产出在 IIHE `/store/user/kakang/.../WJets_LostTrackReco_phipimu/output_{1..99}.root`）：去重事例 **39995 → 42067，+5.18% ± 0.11%**——比信号事例内的假候选 +3.7% 还高，是信号增幅的 3 倍。
-
-| 道 | S | B | S/√B |
-|---|---|---|---|
-| DsW | ×1.0173 | ×1.0518 | **0.992（−0.8%）** |
-| DsstW | ×1.0140 | ×1.0518 | **0.989（−1.1%）** |
-
-两个道都变差约 1%，且未计入多出信号质量差 2 倍的贬值。WJets 占加权本底 77%，可代表总本底。本底 yield = **事例数**（每事例只留一个候选），不是候选数。
-
-**另一条线（与 lostTracks 无关，仍开着）**：DsstW 的真正瓶颈是**光子**——gamma PF 匹配率仅 **28%**，vs 带电腿 84%。要提效率得往光子重建找（放宽 gamma 匹配的 dR<0.02 / Δpt/pt<0.5，或看 slimmedPhotons / ECAL）。
-
-图：`/eos/.../Signal_LostTrack_phipimu/match_quality_dpt.png`、`/eos/.../Signal_LostTrackReco_phipimu/{pt,mass}_resolution.png`
-
-### phipimu MVA 训练配比研究：v1 / v2 / v3
-
-三个 version 共用同一套 **37 特征**（旧 46 特征会 sculpt 拟合变量，已废弃）和同一份代码，只有 `CONFIG[model_name]` 的背景组成 + 采样模式不同。旧 v1/v2/v3 产物已删除，原 v4(flat) 改名为 v3。
-
-| version | 训练背景 | 采样 |
-|---------|----------|------|
-| v1 | 只 WtoLNu_2Jets | — |
-| **v2** | 4 个 | **proportional**（38715:3418:3570:2024） |
-| v3 | 4 个 | flat（等量） |
-
-4 个训练背景 = WtoLNu_2Jets, TTtoLNu2Q, TTto2L2Nu, DYto2L_MLL50。
-产物：`/eos/home-k/kakang/H2DW/Analysis/MVA/{BDT,phipimu}/{v1,v2,v3}/`，各 36 个 Prediction。
-
-#### 裁决：**v2 (proportional) + BDT 最优**
-
-指标 = 全 34 背景加权残留（基线 B0=14,444,602）。BDT 残留 @ 50%/30%/10% 信号效率：
-
-| version | 50% | 30% | 10% |
-|---------|-----|-----|-----|
-| v1 | 20,823 | 7,498 | 2,077 |
-| **v2** | **11,417** | **3,105** | **788** |
-| v3 | 14,580 | 3,970 | 940 |
-
-排序稳定 **v2 < v3 < v1**；BDT 全面优于 DNN。
-
-**反直觉的机制**：per-background 看 v3(flat) 几乎压每个背景都最狠，唯独 W+jets 是 v1 最狠（0.041% vs v3 0.114%）。但 W+jets 占加权背景 **77%**（基线 11,147,414），v3 在它上面多放走的量超过在 TT/DY 上省下的量 → 总残留输给 v2。要优化的是加权总背景，不是 per-sample 存活率。
-
-#### 对比图
-- `/eos/home-k/kakang/H2DW/Analysis/MVA/version_comparison.png`（双面板 BDT|DNN）
-- `/eos/home-k/kakang/H2DW/Analysis/MVA/version_comparison_overlay.png`（6 条同图，实线 BDT / 虚线 DNN）
-- x = signal efficiency %，y = background retention %（log）
-
-#### 未完成
-- v2-BDT 的 mass sculpting 复查未做
-- 本轮代码改动（CONFIG 三模式 + proportional 采样 + condor 参数化）**未 commit**
+> 之前几次 session 的详细记录（geometric matching 研究、lostTracks recovery 研究、MVA v1/v2/v3 训练配比）已经归档进 memory（见 `[[project_geometric_matching]]`、`[[project_lostrack_recovery]]`、`[[project_phipimu_mva]]`），不再重复贴在这里。

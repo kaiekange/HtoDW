@@ -23,8 +23,6 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/Common/interface/Association.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "DataFormats/JetReco/interface/GenJet.h"
-#include "DataFormats/METReco/interface/GenMET.h"
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
@@ -76,8 +74,6 @@ private:
 	edm::EDGetTokenT<edm::ValueMap<Int_t>> tightJetIdToken_;
 	edm::EDGetTokenT<reco::VertexCollection> primvtxToken_;
 	edm::EDGetTokenT<edm::TriggerResults> triggerToken_;
-	edm::EDGetTokenT<reco::GenJetCollection> GenJetToken_;
-	edm::EDGetTokenT<std::vector<reco::GenMET>> GenMETToken_;
 	edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken_;
 	edm::EDGetTokenT<edm::Association<reco::GenParticleCollection>> associationToken_;
 	edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttBuilderToken_;
@@ -129,12 +125,6 @@ H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
 
 	edm::InputTag GenPartTag_("prunedGenParticles");
 	GenPartToken_ = consumes<reco::GenParticleCollection>(GenPartTag_);
-
-	edm::InputTag GenJetTag_("slimmedGenJets");
-	GenJetToken_ = consumes<reco::GenJetCollection>(GenJetTag_);
-
-	edm::InputTag GenMETTag_("genMetTrue");
-	GenMETToken_ = consumes<std::vector<reco::GenMET>>(GenMETTag_);
 
 	edm::InputTag assotiationTag_("packedPFCandidateToGenAssociation");
 	associationToken_ = consumes<edm::Association<reco::GenParticleCollection>>(assotiationTag_);
@@ -194,9 +184,9 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	//==================================================//
 	if (doTruth_ && channel_ == "DsW")
 	{
-		Int_t Gen_H_idx = 0, Gen_Ds_idx = 0, Gen_W_idx = 0, Gen_mu_idx = 0;
+		Int_t Gen_Ds_idx = 0, Gen_W_idx = 0, Gen_Wlep_idx = 0;
 		Int_t Gen_Kp_idx = 0, Gen_Km_idx = 0, Gen_pi_idx = 0;
-		Int_t num_Gen_H = 0, num_Gen_Ds = 0, num_Gen_W = 0, num_Gen_mu = 0, num_Gen_e = 0;
+		Int_t num_Gen_H = 0, num_Gen_Ds = 0, num_Gen_W = 0, num_Gen_Wlep = 0;
 		Int_t num_Gen_Kp = 0, num_Gen_Km = 0, num_Gen_pi = 0;
 
 		edm::Handle<reco::GenParticleCollection> GenPartHandle;
@@ -206,21 +196,39 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		{
 			const reco::GenParticle &gp = (*GenPartHandle)[i];
 			if (!gp.isHardProcess()) continue;
-			if      (gp.pdgId() == 25)             { Gen_H_idx = i;  num_Gen_H++;   }
+			if      (gp.pdgId() == 25)             { num_Gen_H++; }
 			else if (abs(gp.pdgId()) == 431)        { Gen_Ds_idx = i; num_Gen_Ds++;  }
 			else if (abs(gp.pdgId()) == 24)         { Gen_W_idx = i;  num_Gen_W++;   }
-			else if (abs(gp.pdgId()) == 13)         { Gen_mu_idx = i; num_Gen_mu++;  }
-			else if (abs(gp.pdgId()) == 11)         { num_Gen_e++;                   }
+			else if (abs(gp.pdgId()) == 11 || abs(gp.pdgId()) == 13 || abs(gp.pdgId()) == 15)
+			                                         { Gen_Wlep_idx = i; num_Gen_Wlep++; }
 		}
-		if (!((num_Gen_H == 1) && (num_Gen_Ds == 1) && (num_Gen_W == 1) && (num_Gen_mu == 1) && (num_Gen_e == 0)))
+		if (!((num_Gen_H == 1) && (num_Gen_Ds == 1) && (num_Gen_W == 1) && (num_Gen_Wlep == 1)))
 			return;
 		nEventsLepton_++;
 
-		const reco::GenParticle &H_gp  = (*GenPartHandle)[Gen_H_idx];
-		const reco::GenParticle &Ds_gp = (*GenPartHandle)[Gen_Ds_idx];
-		const reco::GenParticle &W_gp  = (*GenPartHandle)[Gen_W_idx];
-		const reco::GenParticle &mu_gp = (*GenPartHandle)[Gen_mu_idx];
+		const reco::GenParticle &Ds_gp   = (*GenPartHandle)[Gen_Ds_idx];
+		const reco::GenParticle &W_gp    = (*GenPartHandle)[Gen_W_idx];
+		const reco::GenParticle &Wlep_gp = (*GenPartHandle)[Gen_Wlep_idx];
 		const Int_t Ds_charge = Ds_gp.charge();
+
+		// W lepton flavor: direct e/mu, or tau (possibly ->mu, ->e, or hadronic)
+		ftree->Gen_W_lep_pdgId = Wlep_gp.pdgId();
+		const reco::GenParticle *mu_gp = nullptr;
+		if (abs(Wlep_gp.pdgId()) == 15)
+		{
+			for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
+			{
+				const reco::GenParticle &gp = (*GenPartHandle)[i];
+				if (!gp.isDirectHardProcessTauDecayProductFinalState()) continue;
+				if (abs(gp.pdgId()) == 13) { ftree->Gen_tau_decay_mode = 2; mu_gp = &gp; break; }
+				if (abs(gp.pdgId()) == 11) { ftree->Gen_tau_decay_mode = 1; }
+			}
+			if (ftree->Gen_tau_decay_mode == null) ftree->Gen_tau_decay_mode = 0;
+		}
+		else if (abs(Wlep_gp.pdgId()) == 13)
+		{
+			mu_gp = &Wlep_gp;
+		}
 
 		for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
 		{
@@ -249,61 +257,6 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		const reco::GenParticle &Km_gp = (*GenPartHandle)[Gen_Km_idx];
 		const reco::GenParticle &pi_gp = (*GenPartHandle)[Gen_pi_idx];
 		nEventsGen_++;
-
-		TLorentzVector Gen_Ds_tlv, Gen_mu_tlv, Gen_Dsmu_tlv;
-		Gen_Ds_tlv.SetXYZM(Ds_gp.px(), Ds_gp.py(), Ds_gp.pz(), Mass_Ds);
-		Gen_mu_tlv.SetXYZM(mu_gp.px(), mu_gp.py(), mu_gp.pz(), Mass_mu);
-		Gen_Dsmu_tlv = Gen_Ds_tlv + Gen_mu_tlv;
-
-		edm::Handle<std::vector<reco::GenMET>> GenMETHandle;
-		iEvent.getByToken(GenMETToken_, GenMETHandle);
-		if (GenMETHandle->empty()) return;
-		const reco::MET &GenMET = GenMETHandle->front();
-
-		ftree->Gen_PV_vx = H_gp.vx();  ftree->Gen_PV_vy = H_gp.vy();  ftree->Gen_PV_vz = H_gp.vz();
-		ftree->Gen_SV_vx = Kp_gp.vx(); ftree->Gen_SV_vy = Kp_gp.vy(); ftree->Gen_SV_vz = Kp_gp.vz();
-
-		ftree->Gen_H_charge = H_gp.charge(); ftree->Gen_H_eta = H_gp.eta(); ftree->Gen_H_phi = H_gp.phi();
-		ftree->Gen_H_px = H_gp.px(); ftree->Gen_H_py = H_gp.py(); ftree->Gen_H_pz = H_gp.pz();
-		ftree->Gen_H_pt = H_gp.pt(); ftree->Gen_H_p = H_gp.p(); ftree->Gen_H_mass = H_gp.mass();
-
-		ftree->Gen_Ds_charge = Ds_gp.charge(); ftree->Gen_Ds_eta = Ds_gp.eta(); ftree->Gen_Ds_phi = Ds_gp.phi();
-		ftree->Gen_Ds_px = Ds_gp.px(); ftree->Gen_Ds_py = Ds_gp.py(); ftree->Gen_Ds_pz = Ds_gp.pz();
-		ftree->Gen_Ds_pt = Ds_gp.pt(); ftree->Gen_Ds_p = Ds_gp.p(); ftree->Gen_Ds_mass = Ds_gp.mass();
-
-		ftree->Gen_W_charge = W_gp.charge(); ftree->Gen_W_eta = W_gp.eta(); ftree->Gen_W_phi = W_gp.phi();
-		ftree->Gen_W_px = W_gp.px(); ftree->Gen_W_py = W_gp.py(); ftree->Gen_W_pz = W_gp.pz();
-		ftree->Gen_W_pt = W_gp.pt(); ftree->Gen_W_p = W_gp.p(); ftree->Gen_W_mass = W_gp.mass();
-
-		ftree->Gen_Kp_charge = Kp_gp.charge(); ftree->Gen_Kp_eta = Kp_gp.eta(); ftree->Gen_Kp_phi = Kp_gp.phi();
-		ftree->Gen_Kp_px = Kp_gp.px(); ftree->Gen_Kp_py = Kp_gp.py(); ftree->Gen_Kp_pz = Kp_gp.pz();
-		ftree->Gen_Kp_pt = Kp_gp.pt(); ftree->Gen_Kp_p = Kp_gp.p(); ftree->Gen_Kp_mass = Kp_gp.mass();
-
-		ftree->Gen_Km_charge = Km_gp.charge(); ftree->Gen_Km_eta = Km_gp.eta(); ftree->Gen_Km_phi = Km_gp.phi();
-		ftree->Gen_Km_px = Km_gp.px(); ftree->Gen_Km_py = Km_gp.py(); ftree->Gen_Km_pz = Km_gp.pz();
-		ftree->Gen_Km_pt = Km_gp.pt(); ftree->Gen_Km_p = Km_gp.p(); ftree->Gen_Km_mass = Km_gp.mass();
-
-		ftree->Gen_pi_charge = pi_gp.charge(); ftree->Gen_pi_eta = pi_gp.eta(); ftree->Gen_pi_phi = pi_gp.phi();
-		ftree->Gen_pi_px = pi_gp.px(); ftree->Gen_pi_py = pi_gp.py(); ftree->Gen_pi_pz = pi_gp.pz();
-		ftree->Gen_pi_pt = pi_gp.pt(); ftree->Gen_pi_p = pi_gp.p(); ftree->Gen_pi_mass = pi_gp.mass();
-
-		ftree->Gen_mu_charge = mu_gp.charge(); ftree->Gen_mu_eta = mu_gp.eta(); ftree->Gen_mu_phi = mu_gp.phi();
-		ftree->Gen_mu_px = mu_gp.px(); ftree->Gen_mu_py = mu_gp.py(); ftree->Gen_mu_pz = mu_gp.pz();
-		ftree->Gen_mu_pt = mu_gp.pt(); ftree->Gen_mu_p = mu_gp.p(); ftree->Gen_mu_mass = mu_gp.mass();
-
-		ftree->Gen_Dsmu_charge = Ds_gp.charge() + mu_gp.charge();
-		ftree->Gen_Dsmu_eta = Gen_Dsmu_tlv.Eta(); ftree->Gen_Dsmu_phi = Gen_Dsmu_tlv.Phi();
-		ftree->Gen_Dsmu_px = Gen_Dsmu_tlv.Px(); ftree->Gen_Dsmu_py = Gen_Dsmu_tlv.Py(); ftree->Gen_Dsmu_pz = Gen_Dsmu_tlv.Pz();
-		ftree->Gen_Dsmu_pt = Gen_Dsmu_tlv.Pt(); ftree->Gen_Dsmu_p = Gen_Dsmu_tlv.P(); ftree->Gen_Dsmu_mass = Gen_Dsmu_tlv.M();
-
-		ftree->Gen_dR_Kp_Km = reco::deltaR(Kp_gp, Km_gp); ftree->Gen_dR_Kp_pi = reco::deltaR(Kp_gp, pi_gp);
-		ftree->Gen_dR_Kp_Ds = reco::deltaR(Kp_gp, Ds_gp); ftree->Gen_dR_Km_pi = reco::deltaR(Km_gp, pi_gp);
-		ftree->Gen_dR_Km_Ds = reco::deltaR(Km_gp, Ds_gp); ftree->Gen_dR_pi_Ds = reco::deltaR(pi_gp, Ds_gp);
-		ftree->Gen_dR_Kp_mu = reco::deltaR(Kp_gp, mu_gp); ftree->Gen_dR_Km_mu = reco::deltaR(Km_gp, mu_gp);
-		ftree->Gen_dR_pi_mu = reco::deltaR(pi_gp, mu_gp); ftree->Gen_dR_Ds_mu = reco::deltaR(Ds_gp, mu_gp);
-
-		ftree->Gen_met_phi = GenMET.phi(); ftree->Gen_met_px = GenMET.px(); ftree->Gen_met_py = GenMET.py();
-		ftree->Gen_met_pt = GenMET.pt(); ftree->Gen_met_sumEt = GenMET.sumEt();
 
 		// Gen match
 		edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
@@ -338,18 +291,24 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 			}
 		}
 
-		Float_t mu_deltaR = 1.0;
-		for (Int_t i = 0; i < static_cast<Int_t>(MuonHandle->size()); i++)
+		if (mu_gp)
 		{
-			const pat::Muon &muon = (*MuonHandle)[i];
-			if (!muon.genParticle()) continue;
-			const reco::GenParticle &gp = *(muon.genParticle());
-			Float_t dR = reco::deltaR(gp.eta(), gp.phi(), muon.eta(), muon.phi());
-			if (dR > 0.05) continue;
-			if (std::abs((gp.pt() - muon.pt()) / gp.pt()) > 0.3) continue;
-			if (gp.pdgId() != mu_gp.pdgId()) continue;
-			if (TwoBodyDecay(gp, W_gp.pdgId(), mu_gp.pdgId(), mu_gp.charge() * 14) && TwoBodyDecay(gp, 25, Ds_gp.pdgId(), W_gp.pdgId()))
-			{ if (dR < mu_deltaR) { mu_match_idx = i; mu_deltaR = dR; } }
+			Float_t mu_deltaR = 1.0;
+			for (Int_t i = 0; i < static_cast<Int_t>(MuonHandle->size()); i++)
+			{
+				const pat::Muon &muon = (*MuonHandle)[i];
+				if (!muon.genParticle()) continue;
+				const reco::GenParticle &gp = *(muon.genParticle());
+				Float_t dR = reco::deltaR(gp.eta(), gp.phi(), muon.eta(), muon.phi());
+				if (dR > 0.05) continue;
+				if (std::abs((gp.pt() - muon.pt()) / gp.pt()) > 0.3) continue;
+				if (gp.pdgId() != mu_gp->pdgId()) continue;
+				Bool_t ancestryOk = (ftree->Gen_tau_decay_mode == 2)
+					? gp.isDirectHardProcessTauDecayProductFinalState()
+					: (TwoBodyDecay(gp, W_gp.pdgId(), mu_gp->pdgId(), mu_gp->charge() * 14) && TwoBodyDecay(gp, 25, Ds_gp.pdgId(), W_gp.pdgId()));
+				if (ancestryOk)
+				{ if (dR < mu_deltaR) { mu_match_idx = i; mu_deltaR = dR; } }
+			}
 		}
 	} // DsW gen
 
@@ -358,10 +317,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	//==================================================//
 	else if (doTruth_ && channel_ == "DsstW")
 	{
-		Int_t Gen_H_idx = 0, Gen_Dsst_idx = 0, Gen_W_idx = 0, Gen_mu_idx = 0;
-		Int_t Gen_Ds_idx = 0, Gen_gamma_idx = 0, Gen_Kp_idx = 0, Gen_Km_idx = 0, Gen_pi_idx = 0;
-		Int_t num_Gen_H = 0, num_Gen_Dsst = 0, num_Gen_W = 0, num_Gen_mu = 0, num_Gen_e = 0;
+		Int_t Gen_Dsst_idx = 0, Gen_W_idx = 0, Gen_Wlep_idx = 0;
+		Int_t Gen_gamma_idx = 0, Gen_Kp_idx = 0, Gen_Km_idx = 0, Gen_pi_idx = 0;
+		Int_t Gen_pi0gamma1_idx = 0, Gen_pi0gamma2_idx = 0;
+		Int_t num_Gen_H = 0, num_Gen_Dsst = 0, num_Gen_W = 0, num_Gen_Wlep = 0;
 		Int_t num_Gen_Ds = 0, num_Gen_gamma = 0, num_Gen_Kp = 0, num_Gen_Km = 0, num_Gen_pi = 0;
+		Int_t num_Gen_pi0 = 0, num_Gen_pi0gamma = 0;
 
 		edm::Handle<reco::GenParticleCollection> GenPartHandle;
 		iEvent.getByToken(GenPartToken_, GenPartHandle);
@@ -370,28 +331,48 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		{
 			const reco::GenParticle &gp = (*GenPartHandle)[i];
 			if (!gp.isHardProcess()) continue;
-			if      (gp.pdgId() == 25)             { Gen_H_idx = i;    num_Gen_H++;    }
+			if      (gp.pdgId() == 25)             { num_Gen_H++; }
 			else if (abs(gp.pdgId()) == 433)        { Gen_Dsst_idx = i; num_Gen_Dsst++; }
 			else if (abs(gp.pdgId()) == 24)         { Gen_W_idx = i;    num_Gen_W++;    }
-			else if (abs(gp.pdgId()) == 13)         { Gen_mu_idx = i;   num_Gen_mu++;   }
-			else if (abs(gp.pdgId()) == 11)         { num_Gen_e++;                      }
+			else if (abs(gp.pdgId()) == 11 || abs(gp.pdgId()) == 13 || abs(gp.pdgId()) == 15)
+			                                         { Gen_Wlep_idx = i; num_Gen_Wlep++; }
 		}
-		if (!((num_Gen_H == 1) && (num_Gen_Dsst == 1) && (num_Gen_W == 1) && (num_Gen_mu == 1) && (num_Gen_e == 0)))
+		if (!((num_Gen_H == 1) && (num_Gen_Dsst == 1) && (num_Gen_W == 1) && (num_Gen_Wlep == 1)))
 			return;
 		nEventsLepton_++;
 
-		const reco::GenParticle &H_gp    = (*GenPartHandle)[Gen_H_idx];
 		const reco::GenParticle &Dsst_gp = (*GenPartHandle)[Gen_Dsst_idx];
 		const reco::GenParticle &W_gp    = (*GenPartHandle)[Gen_W_idx];
-		const reco::GenParticle &mu_gp   = (*GenPartHandle)[Gen_mu_idx];
+		const reco::GenParticle &Wlep_gp = (*GenPartHandle)[Gen_Wlep_idx];
 		const Int_t Dsst_charge = Dsst_gp.charge();
+
+		// W lepton flavor: direct e/mu, or tau (possibly ->mu, ->e, or hadronic)
+		ftree->Gen_W_lep_pdgId = Wlep_gp.pdgId();
+		const reco::GenParticle *mu_gp = nullptr;
+		if (abs(Wlep_gp.pdgId()) == 15)
+		{
+			for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
+			{
+				const reco::GenParticle &gp = (*GenPartHandle)[i];
+				if (!gp.isDirectHardProcessTauDecayProductFinalState()) continue;
+				if (abs(gp.pdgId()) == 13) { ftree->Gen_tau_decay_mode = 2; mu_gp = &gp; break; }
+				if (abs(gp.pdgId()) == 11) { ftree->Gen_tau_decay_mode = 1; }
+			}
+			if (ftree->Gen_tau_decay_mode == null) ftree->Gen_tau_decay_mode = 0;
+		}
+		else if (abs(Wlep_gp.pdgId()) == 13)
+		{
+			mu_gp = &Wlep_gp;
+		}
 
 		for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
 		{
 			const reco::GenParticle &gp = (*GenPartHandle)[i];
 			if ((gp.status() == 2) && gp.pdgId() == (Dsst_charge * 431))
 			{
-				if (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()) && (gp.numberOfDaughters() > 1))
+				Bool_t via_gamma = TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22);
+				Bool_t via_pi0   = TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111);
+				if ((via_gamma || via_pi0) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()) && (gp.numberOfDaughters() > 1))
 				{
 					Bool_t d1 = false, d2 = false;
 					for (size_t j = 0; j < gp.numberOfDaughters(); j++)
@@ -399,118 +380,67 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 						if (gp.daughter(j)->pdgId() == 333)               d1 = true;
 						if (gp.daughter(j)->pdgId() == (Dsst_charge*211)) d2 = true;
 					}
-					if (d1 && d2) { Gen_Ds_idx = i; num_Gen_Ds++; }
+					if (d1 && d2) { num_Gen_Ds++; ftree->Gen_Dsst_mode = via_gamma ? 0 : 1; }
 				}
+			}
+			else if ((gp.status() == 2) && gp.pdgId() == 111)
+			{
+				if (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+				{ num_Gen_pi0++; }
 			}
 			else if (gp.status() == 1)
 			{
 				if (gp.pdgId() == (Dsst_charge * 321))
 				{
-					if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+					if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 					{ Gen_Kp_idx = i; num_Gen_Kp++; }
 				}
 				else if (gp.pdgId() == (-Dsst_charge * 321))
 				{
-					if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+					if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 					{ Gen_Km_idx = i; num_Gen_Km++; }
 				}
 				else if (gp.pdgId() == (Dsst_charge * 211))
 				{
-					if (TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+					if (TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 					{ Gen_pi_idx = i; num_Gen_pi++; }
 				}
 				else if (gp.pdgId() == 22)
 				{
 					if ((gp.mother(0)->pdgId() == Dsst_gp.pdgId()) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 					{ Gen_gamma_idx = i; num_Gen_gamma++; }
+					else if (TwoBodyDecay(gp, 111, 22, 22) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+					{
+						if      (num_Gen_pi0gamma == 0) { Gen_pi0gamma1_idx = i; }
+						else if (num_Gen_pi0gamma == 1) { Gen_pi0gamma2_idx = i; }
+						num_Gen_pi0gamma++;
+					}
 				}
 			}
 		}
-		if (!((num_Gen_Ds == 1) && (num_Gen_Kp == 1) && (num_Gen_Km == 1) && (num_Gen_pi == 1) && (num_Gen_gamma == 1)))
+		Bool_t Dsst_mode_ok = (ftree->Gen_Dsst_mode == 0) ? (num_Gen_gamma == 1)
+		                    : (ftree->Gen_Dsst_mode == 1) ? (num_Gen_pi0 == 1 && num_Gen_pi0gamma == 2)
+		                    : false;
+		if (!((num_Gen_Ds == 1) && (num_Gen_Kp == 1) && (num_Gen_Km == 1) && (num_Gen_pi == 1) && Dsst_mode_ok))
 			return;
 
-		const reco::GenParticle &Ds_gp    = (*GenPartHandle)[Gen_Ds_idx];
 		const reco::GenParticle &Kp_gp    = (*GenPartHandle)[Gen_Kp_idx];
 		const reco::GenParticle &Km_gp    = (*GenPartHandle)[Gen_Km_idx];
 		const reco::GenParticle &pi_gp    = (*GenPartHandle)[Gen_pi_idx];
-		const reco::GenParticle &gamma_gp = (*GenPartHandle)[Gen_gamma_idx];
 		nEventsGen_++;
 
-		TLorentzVector Gen_Dsst_tlv, Gen_Ds_tlv, Gen_mu_tlv, Gen_Dsmu_tlv, Gen_Dsstmu_tlv;
-		Gen_Dsst_tlv.SetXYZM(Dsst_gp.px(), Dsst_gp.py(), Dsst_gp.pz(), Mass_Dsst);
-		Gen_Ds_tlv.SetXYZM(Ds_gp.px(), Ds_gp.py(), Ds_gp.pz(), Mass_Ds);
-		Gen_mu_tlv.SetXYZM(mu_gp.px(), mu_gp.py(), mu_gp.pz(), Mass_mu);
-		Gen_Dsmu_tlv  = Gen_Ds_tlv   + Gen_mu_tlv;
-		Gen_Dsstmu_tlv = Gen_Dsst_tlv + Gen_mu_tlv;
-
-		edm::Handle<std::vector<reco::GenMET>> GenMETHandle;
-		iEvent.getByToken(GenMETToken_, GenMETHandle);
-		if (GenMETHandle->empty()) return;
-		const reco::MET &GenMET = GenMETHandle->front();
-
-		ftree->Gen_PV_vx = H_gp.vx();   ftree->Gen_PV_vy = H_gp.vy();   ftree->Gen_PV_vz = H_gp.vz();
-		ftree->Gen_SV_vx = Kp_gp.vx();  ftree->Gen_SV_vy = Kp_gp.vy();  ftree->Gen_SV_vz = Kp_gp.vz();
-
-		ftree->Gen_H_charge = H_gp.charge(); ftree->Gen_H_eta = H_gp.eta(); ftree->Gen_H_phi = H_gp.phi();
-		ftree->Gen_H_px = H_gp.px(); ftree->Gen_H_py = H_gp.py(); ftree->Gen_H_pz = H_gp.pz();
-		ftree->Gen_H_pt = H_gp.pt(); ftree->Gen_H_p = H_gp.p(); ftree->Gen_H_mass = H_gp.mass();
-
-		ftree->Gen_Dsst_charge = Dsst_gp.charge(); ftree->Gen_Dsst_eta = Dsst_gp.eta(); ftree->Gen_Dsst_phi = Dsst_gp.phi();
-		ftree->Gen_Dsst_px = Dsst_gp.px(); ftree->Gen_Dsst_py = Dsst_gp.py(); ftree->Gen_Dsst_pz = Dsst_gp.pz();
-		ftree->Gen_Dsst_pt = Dsst_gp.pt(); ftree->Gen_Dsst_p = Dsst_gp.p(); ftree->Gen_Dsst_mass = Dsst_gp.mass();
-
-		ftree->Gen_Ds_charge = Ds_gp.charge(); ftree->Gen_Ds_eta = Ds_gp.eta(); ftree->Gen_Ds_phi = Ds_gp.phi();
-		ftree->Gen_Ds_px = Ds_gp.px(); ftree->Gen_Ds_py = Ds_gp.py(); ftree->Gen_Ds_pz = Ds_gp.pz();
-		ftree->Gen_Ds_pt = Ds_gp.pt(); ftree->Gen_Ds_p = Ds_gp.p(); ftree->Gen_Ds_mass = Ds_gp.mass();
-
-		ftree->Gen_gamma_charge = gamma_gp.charge(); ftree->Gen_gamma_eta = gamma_gp.eta(); ftree->Gen_gamma_phi = gamma_gp.phi();
-		ftree->Gen_gamma_px = gamma_gp.px(); ftree->Gen_gamma_py = gamma_gp.py(); ftree->Gen_gamma_pz = gamma_gp.pz();
-		ftree->Gen_gamma_pt = gamma_gp.pt(); ftree->Gen_gamma_p = gamma_gp.p(); ftree->Gen_gamma_mass = gamma_gp.mass();
-
-		ftree->Gen_W_charge = W_gp.charge(); ftree->Gen_W_eta = W_gp.eta(); ftree->Gen_W_phi = W_gp.phi();
-		ftree->Gen_W_px = W_gp.px(); ftree->Gen_W_py = W_gp.py(); ftree->Gen_W_pz = W_gp.pz();
-		ftree->Gen_W_pt = W_gp.pt(); ftree->Gen_W_p = W_gp.p(); ftree->Gen_W_mass = W_gp.mass();
-
-		ftree->Gen_Kp_charge = Kp_gp.charge(); ftree->Gen_Kp_eta = Kp_gp.eta(); ftree->Gen_Kp_phi = Kp_gp.phi();
-		ftree->Gen_Kp_px = Kp_gp.px(); ftree->Gen_Kp_py = Kp_gp.py(); ftree->Gen_Kp_pz = Kp_gp.pz();
-		ftree->Gen_Kp_pt = Kp_gp.pt(); ftree->Gen_Kp_p = Kp_gp.p(); ftree->Gen_Kp_mass = Kp_gp.mass();
-
-		ftree->Gen_Km_charge = Km_gp.charge(); ftree->Gen_Km_eta = Km_gp.eta(); ftree->Gen_Km_phi = Km_gp.phi();
-		ftree->Gen_Km_px = Km_gp.px(); ftree->Gen_Km_py = Km_gp.py(); ftree->Gen_Km_pz = Km_gp.pz();
-		ftree->Gen_Km_pt = Km_gp.pt(); ftree->Gen_Km_p = Km_gp.p(); ftree->Gen_Km_mass = Km_gp.mass();
-
-		ftree->Gen_pi_charge = pi_gp.charge(); ftree->Gen_pi_eta = pi_gp.eta(); ftree->Gen_pi_phi = pi_gp.phi();
-		ftree->Gen_pi_px = pi_gp.px(); ftree->Gen_pi_py = pi_gp.py(); ftree->Gen_pi_pz = pi_gp.pz();
-		ftree->Gen_pi_pt = pi_gp.pt(); ftree->Gen_pi_p = pi_gp.p(); ftree->Gen_pi_mass = pi_gp.mass();
-
-		ftree->Gen_mu_charge = mu_gp.charge(); ftree->Gen_mu_eta = mu_gp.eta(); ftree->Gen_mu_phi = mu_gp.phi();
-		ftree->Gen_mu_px = mu_gp.px(); ftree->Gen_mu_py = mu_gp.py(); ftree->Gen_mu_pz = mu_gp.pz();
-		ftree->Gen_mu_pt = mu_gp.pt(); ftree->Gen_mu_p = mu_gp.p(); ftree->Gen_mu_mass = mu_gp.mass();
-
-		ftree->Gen_Dsmu_charge = Ds_gp.charge() + mu_gp.charge();
-		ftree->Gen_Dsmu_eta = Gen_Dsmu_tlv.Eta(); ftree->Gen_Dsmu_phi = Gen_Dsmu_tlv.Phi();
-		ftree->Gen_Dsmu_px = Gen_Dsmu_tlv.Px(); ftree->Gen_Dsmu_py = Gen_Dsmu_tlv.Py(); ftree->Gen_Dsmu_pz = Gen_Dsmu_tlv.Pz();
-		ftree->Gen_Dsmu_pt = Gen_Dsmu_tlv.Pt(); ftree->Gen_Dsmu_p = Gen_Dsmu_tlv.P(); ftree->Gen_Dsmu_mass = Gen_Dsmu_tlv.M();
-
-		ftree->Gen_Dsstmu_charge = Dsst_gp.charge() + mu_gp.charge();
-		ftree->Gen_Dsstmu_eta = Gen_Dsstmu_tlv.Eta(); ftree->Gen_Dsstmu_phi = Gen_Dsstmu_tlv.Phi();
-		ftree->Gen_Dsstmu_px = Gen_Dsstmu_tlv.Px(); ftree->Gen_Dsstmu_py = Gen_Dsstmu_tlv.Py(); ftree->Gen_Dsstmu_pz = Gen_Dsstmu_tlv.Pz();
-		ftree->Gen_Dsstmu_pt = Gen_Dsstmu_tlv.Pt(); ftree->Gen_Dsstmu_p = Gen_Dsstmu_tlv.P(); ftree->Gen_Dsstmu_mass = Gen_Dsstmu_tlv.M();
-
-		ftree->Gen_dR_Kp_Km = reco::deltaR(Kp_gp, Km_gp);     ftree->Gen_dR_Kp_pi = reco::deltaR(Kp_gp, pi_gp);
-		ftree->Gen_dR_Kp_Ds = reco::deltaR(Kp_gp, Ds_gp);     ftree->Gen_dR_Km_pi = reco::deltaR(Km_gp, pi_gp);
-		ftree->Gen_dR_Km_Ds = reco::deltaR(Km_gp, Ds_gp);     ftree->Gen_dR_pi_Ds = reco::deltaR(pi_gp, Ds_gp);
-		ftree->Gen_dR_Kp_gamma = reco::deltaR(Kp_gp, gamma_gp);   ftree->Gen_dR_Kp_Dsst = reco::deltaR(Kp_gp, Dsst_gp);
-		ftree->Gen_dR_Km_gamma = reco::deltaR(Km_gp, gamma_gp);   ftree->Gen_dR_Km_Dsst = reco::deltaR(Km_gp, Dsst_gp);
-		ftree->Gen_dR_pi_gamma = reco::deltaR(pi_gp, gamma_gp);   ftree->Gen_dR_pi_Dsst = reco::deltaR(pi_gp, Dsst_gp);
-		ftree->Gen_dR_Ds_gamma = reco::deltaR(Ds_gp, gamma_gp);   ftree->Gen_dR_Ds_Dsst = reco::deltaR(Ds_gp, Dsst_gp);
-		ftree->Gen_dR_gamma_Dsst = reco::deltaR(gamma_gp, Dsst_gp);
-		ftree->Gen_dR_Kp_mu = reco::deltaR(Kp_gp, mu_gp);     ftree->Gen_dR_Km_mu = reco::deltaR(Km_gp, mu_gp);
-		ftree->Gen_dR_pi_mu = reco::deltaR(pi_gp, mu_gp);     ftree->Gen_dR_Ds_mu = reco::deltaR(Ds_gp, mu_gp);
-		ftree->Gen_dR_gamma_mu = reco::deltaR(gamma_gp, mu_gp); ftree->Gen_dR_Dsst_mu = reco::deltaR(Dsst_gp, mu_gp);
-
-		ftree->Gen_met_phi = GenMET.phi(); ftree->Gen_met_px = GenMET.px(); ftree->Gen_met_py = GenMET.py();
-		ftree->Gen_met_pt = GenMET.pt(); ftree->Gen_met_sumEt = GenMET.sumEt();
+		const reco::GenParticle *gamma_gp = nullptr;
+		const reco::GenParticle *pi0gamma1_gp = nullptr;
+		const reco::GenParticle *pi0gamma2_gp = nullptr;
+		if (ftree->Gen_Dsst_mode == 0)
+		{
+			gamma_gp = &(*GenPartHandle)[Gen_gamma_idx];
+		}
+		else
+		{
+			pi0gamma1_gp = &(*GenPartHandle)[Gen_pi0gamma1_idx];
+			pi0gamma2_gp = &(*GenPartHandle)[Gen_pi0gamma2_idx];
+		}
 
 		// Gen match
 		edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
@@ -530,43 +460,67 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 
 			if (gp.pdgId() == Kp_gp.pdgId())
 			{
-				if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+				if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 				{ if (dR < Kp_deltaR) { Kp_match_idx = i; Kp_deltaR = dR; } }
 			}
 			else if (gp.pdgId() == Km_gp.pdgId())
 			{
-				if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+				if (TwoBodyDecay(gp, 333, 321, -321) && TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 				{ if (dR < Km_deltaR) { Km_match_idx = i; Km_deltaR = dR; } }
 			}
 			else if (gp.pdgId() == pi_gp.pdgId())
 			{
-				if (TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
+				if (TwoBodyDecay(gp, Dsst_charge * 431, 333, Dsst_charge * 211) && (TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) || TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111)) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 				{ if (dR < pi_deltaR) { pi_match_idx = i; pi_deltaR = dR; } }
 			}
 		}
 
-		Float_t gamma_deltaR = 0.02;
-		for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
+		if (gamma_gp)
 		{
-			const pat::PackedCandidate &pf = (*PFCandHandle)[i];
-			if (pf.pdgId() != 22) continue;
-			Float_t dR = reco::deltaR(pf.eta(), pf.phi(), gamma_gp.eta(), gamma_gp.phi());
-			if (std::abs((gamma_gp.pt() - pf.pt()) / gamma_gp.pt()) > 0.5) continue;
-			if (dR < gamma_deltaR) { gamma_match_idx = i; gamma_deltaR = dR; }
+			Float_t gamma_deltaR = 0.02;
+			for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
+			{
+				const pat::PackedCandidate &pf = (*PFCandHandle)[i];
+				if (pf.pdgId() != 22) continue;
+				Float_t dR = reco::deltaR(pf.eta(), pf.phi(), gamma_gp->eta(), gamma_gp->phi());
+				if (std::abs((gamma_gp->pt() - pf.pt()) / gamma_gp->pt()) > 0.5) continue;
+				if (dR < gamma_deltaR) { gamma_match_idx = i; gamma_deltaR = dR; }
+			}
+		}
+		else
+		{
+			Float_t pi0gamma1_deltaR = 0.02, pi0gamma2_deltaR = 0.02;
+			for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
+			{
+				const pat::PackedCandidate &pf = (*PFCandHandle)[i];
+				if (pf.pdgId() != 22) continue;
+				Float_t dR1 = reco::deltaR(pf.eta(), pf.phi(), pi0gamma1_gp->eta(), pi0gamma1_gp->phi());
+				if (std::abs((pi0gamma1_gp->pt() - pf.pt()) / pi0gamma1_gp->pt()) <= 0.5 && dR1 < pi0gamma1_deltaR)
+				{ ftree->Gen_pi0gamma1_match = true; pi0gamma1_deltaR = dR1; }
+				Float_t dR2 = reco::deltaR(pf.eta(), pf.phi(), pi0gamma2_gp->eta(), pi0gamma2_gp->phi());
+				if (std::abs((pi0gamma2_gp->pt() - pf.pt()) / pi0gamma2_gp->pt()) <= 0.5 && dR2 < pi0gamma2_deltaR)
+				{ ftree->Gen_pi0gamma2_match = true; pi0gamma2_deltaR = dR2; }
+			}
 		}
 
-		Float_t mu_deltaR = 1.0;
-		for (Int_t i = 0; i < static_cast<Int_t>(MuonHandle->size()); i++)
+		if (mu_gp)
 		{
-			const pat::Muon &muon = (*MuonHandle)[i];
-			if (!muon.genParticle()) continue;
-			const reco::GenParticle &gp = *(muon.genParticle());
-			Float_t dR = reco::deltaR(gp.eta(), gp.phi(), muon.eta(), muon.phi());
-			if (dR > 0.05) continue;
-			if (std::abs((gp.pt() - muon.pt()) / gp.pt()) > 0.3) continue;
-			if (gp.pdgId() != mu_gp.pdgId()) continue;
-			if (TwoBodyDecay(gp, W_gp.pdgId(), mu_gp.pdgId(), mu_gp.charge() * 14) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
-			{ if (dR < mu_deltaR) { mu_match_idx = i; mu_deltaR = dR; } }
+			Float_t mu_deltaR = 1.0;
+			for (Int_t i = 0; i < static_cast<Int_t>(MuonHandle->size()); i++)
+			{
+				const pat::Muon &muon = (*MuonHandle)[i];
+				if (!muon.genParticle()) continue;
+				const reco::GenParticle &gp = *(muon.genParticle());
+				Float_t dR = reco::deltaR(gp.eta(), gp.phi(), muon.eta(), muon.phi());
+				if (dR > 0.05) continue;
+				if (std::abs((gp.pt() - muon.pt()) / gp.pt()) > 0.3) continue;
+				if (gp.pdgId() != mu_gp->pdgId()) continue;
+				Bool_t ancestryOk = (ftree->Gen_tau_decay_mode == 2)
+					? gp.isDirectHardProcessTauDecayProductFinalState()
+					: (TwoBodyDecay(gp, W_gp.pdgId(), mu_gp->pdgId(), mu_gp->charge() * 14) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()));
+				if (ancestryOk)
+				{ if (dR < mu_deltaR) { mu_match_idx = i; mu_deltaR = dR; } }
+			}
 		}
 	} // DsstW gen
 
