@@ -44,7 +44,7 @@ cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py JOBID=0 GROUPSIZE=1 OUTF
 
 Each subdirectory under `Tuples/` corresponds to one sample. To submit:
 ```bash
-cd Tuples/Signal/
+cd Tuples/HtoDsW/
 python3 condor_submit.py
 ```
 
@@ -68,7 +68,7 @@ the φ requirement — the gen filter demands the φ ancestry and the candidate 
 applies a ±30 MeV window on M(KK).
 
 **Reco/selection is μ-only regardless of the gen-level W flavor**: the analyzer always
-requires a reco tight muon with pT>24 GeV before filling the tree (see Data Flow below).
+requires a reco tight muon with pT>26 GeV before filling the tree (see Data Flow below).
 So on disk, only prompt W→μ and W→τ→μ events ever produce rows; W→e and W→τ→(e/hadronic)
 pass the gen filter (and increment `nEventsGen_`/`nEventsLepton_`) but never reach `Fill()`.
 This was a deliberate 2026-07-22 decision — gen truth generalized, reco untouched.
@@ -94,10 +94,10 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 2. **Gen matching**: match PF candidates via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3 (ancestry checks accept either Ds* submode). The γ (DsstW, γ-mode) is matched geometrically instead — ΔR<0.02, Δpt/pt<0.5 — because it has no association; in π0-mode the two π0 daughter photons are matched the same way, producing `Gen_pi0gamma1_match`/`Gen_pi0gamma2_match`. Muon via `muon.genParticle()`; for a τ→μ event the ancestry check uses `isDirectHardProcessTauDecayProductFinalState()` instead of the direct W→μν chain.
 3. **Trigger**: require `HLT_IsoMu24_v` or `HLT_Mu50_v`. Returns early if not fired.
 4. **Primary vertex**: take `offlineSlimmedPrimaryVertices.front()`.
-5. **Best muon**: highest-pT tight muon with pT>24 GeV.
-6. **Ds candidate loop**: triple nested loop over the charged-hadron pool (`hasTrackDetails`, `trackHighPurity`, pT>1, |pdgId|=211). Per-track: K± pT>2, K+ and π opposite in charge to the muon, K− same as the muon. Pre-fit: (KKπ) pT>5, |M−MDs|<0.3. Kinematic vertex fit via `KinematicParticleVertexFitter`. Post-fit: vertex prob>0.001, |M−MDs|<0.15, pT>7, dira>0.99, (Ds+μ) mass<125, **φ: pT(KK)>3 and |M(KK)−Mφ|<0.03**.
-7. **Ds* (DsstW only)**: photon pool is |pdgId|=22, pT>0.5; (Ds*+μ) mass<125.
-8. **Output**: per-event scalars (gen info, PV, MET, jets, triggers, muon) + per-candidate vectors. `nCandidates` = number passing all cuts. Tree filled once per event.
+5. **Best muon**: highest-pT tight muon with pT>26 GeV (raised from 24 on 2026-07-22 — above the `HLT_IsoMu24` turn-on so the offline selection sits on the trigger efficiency plateau).
+6. **Ds candidate loop**: triple nested loop over the charged-hadron pool (`hasTrackDetails`, `trackHighPurity`, pT>1, |pdgId|=211). Per-track: K± pT>2, K+ and π opposite in charge to the muon, K− same as the muon. Pre-fit: (KKπ) pT>5, |M−MDs|<0.5; **φ pre-fit** M(KK)<Mφ+0.08 (loose, pre-vertex-fit speed cut on raw KK mass). Kinematic vertex fit via `KinematicParticleVertexFitter`. Post-fit: vertex prob>0.001, |M−MDs|<0.3, pT>7, dira>0.99, (Ds+μ) mass<125, **φ: pT(KK)>3 and M(KK)<Mφ+0.05** (upper-cut only — the KK threshold, Mφ−32 MeV, physically bounds the lower side, so no lower cut is applied). Ds/φ windows widened 2026-07-22 (post-fit Ds ±0.15→±0.3, pre-fit KKπ ±0.3→±0.5) to give the Ds-mass sideband more lever arm for an SR/CR split; the pre-fit window is intentionally wider than post-fit so it never truncates the sideband.
+7. **Ds* (DsstW only)**: photon pool is |pdgId|=22, pT>0.5; (Ds*+μ) mass<125. Mass window unchanged (±0.15) — not yet revisited pending a DsstW rerun to look at its resolution.
+8. **Output**: the tree is row-per-candidate (flat ntuple), not one row per event — `tree->Fill()` is called once per Ds×gamma combination (or once per Ds if no gamma passes), so an event with N candidates writes N rows. Event-level fields (gen info, PV, MET, `jet_ht`/`jet_leadpt`/`jet_maxbscore`, triggers, muon, electron/muon os/ss lepton counts) are set once before the candidate loop and repeat identically across that event's rows. `Ds_nearestjet_dR`/`bscore` and `n_b_jets_{loose,medium,tight}{,_pt20}_dR{03,04}` (b-tagged central jets excluding jets within dR03/dR04 of the Ds, added 2026-07-23) are genuinely per-candidate: recomputed inside the loop from each row's own `Ds_mtm`. `nCandidates` = number of rows passing all cuts.
 
 ### Tree Structure Convention
 - `interface/<Name>_Tree.h` declares all branches as public members
@@ -112,27 +112,36 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-07-22)
+## Last Session (2026-07-23)
 
-### H_phipimu gen truth generalized to e/μ/τ and Ds*→γ/π0 (gen-only; reco untouched)
+### Same-sign (SS) control-region tuplizer
 
-新信号样本里 W 已经是 e/μ/τ inclusive（`24:onIfMatch` 三个都开着，フラグメント本来就这样，不是新改的），DsstW 的 Ds* 现在也按真实 BR 分两支：Ds*→Dsγ（94.2%）和 Ds*→Dsπ0(→γγ)（5.8%）。原来的代码只认 W→μ（`num_Gen_mu==1 && num_Gen_e==0`，τ 隐性被当场 return 掉）和 Ds*→Dsγ 单一模式。这次把 gen filter 泛化到能识别全部分支，**但 reco/选择完全没动**——用户明确要求只改 gen 部分。
+新增 `H_phipimu_SS`（`plugins/H_phipimu_SS.cc`），跟 `H_phipimu` 逐字一样，唯一 delta 是 K+K−π 候选循环里 pi 的电荷 cut 从 `!= mu.charge()`（要求反号，即真信号的电荷关联）翻成 `== mu.charge()` 排除、也就是**只要求 pi 与 mu 同号**——因为 Ds 和 W 电荷相反，真信号 pi 必然跟 mu 反号，所以 SS 样本在结构上排除了真信号，是纯 combinatoric/wrong-charge 本底的干净 control region。Kp/Km 的 cut 没动（它们只是"哪颗 K 叫 Kp/Km"的记账，跟 SS/OS 选择正交，不影响 phase space）。诊断用的 `num_os_mu_*`/`num_os_e_*` lepton 计数公式也跟着翻了一下，保持它们"相对 pi 电荷"的语义在 OS/SS 两个文件里一致（不翻的话同名分支在两个文件里会代表相反的量）。
 
-**改了什么**（`H_phipimu.cc` 两个 channel 块 + `H_phipimu_Tree.h`/`.cc`）：
-- `Gen_W_lep_pdgId`（±11/13/15，W 的直接 hard-process 带电轻子）；若是 τ，用 `isDirectHardProcessTauDecayProductFinalState()`（CMSSW 内建 flag，`GenParticle.h:85`）找它的直接衰变产物，得到 `Gen_tau_decay_mode`（0=hadronic/1=lep-e/2=lep-mu）
-- PF/muon truth-match 的祖先检查按 τ 分支：τ→μ 时用上面那个 flag，不再走"muon 的 mother 必须是 W"那条链（原来这条链对 τ→μ 会静默漏判，是这次一起修的 bug，不是新引入的）
-- DsstW：`Gen_Dsst_mode`（0=γ/1=π0）；K+/K−/π 的祖先检查两种模式都认（原来只认 γ 模式，会导致 π0 事件在 KKπ finder 那步就被吞掉）；π0 模式新增 `Gen_pi0gamma1_match`/`Gen_pi0gamma2_match`（PF dR<0.02 匹配两个光子）
-- **Gen 树上不再存任何动力学量**（H/Ds/Ds*/W/K+/K−/π/μ/γ/π0/τ 的四矢量、PV/SV、Gen MET、dR 族、Dsmu/Dsstmu 全删）——这是中途用户明确要求的简化："只要知道这个事例是 mu 还是 e 还是 tau，然后能 truth-match，其他动力学数据可以删掉"。gen-finding 用到的本地 `reco::GenParticle` 对象（`Kp_gp`/`Km_gp`/`pi_gp`/`Ds_gp`/`mu_gp`/`gamma_gp`/`pi0gamma1_gp`/`pi0gamma2_gp` 等）全部保留，只删了写到 tree 上的那些行；truth-match 的产出仍然是原有的那批 Bool 分支（`Kp_match`…`event_match`）+ 新的两个 pi0gamma match。
-- Ds→KKπ 的判定逻辑没变（φ→KK 本来就是 EvtGen 强制的 Br=1）
+在旧信号 MC 上验证过：`Ds_match`/`event_match` ≈0%（SS 确实排除了真信号，唯一一个 match 是电荷误重建的 per-mille 量级噪声，不是 bug）；`mu_match` 跟 OS 基本一样（~99.7-99.9% vs 99.98-99.99%，印证了 tight muon 选择不受 pi 电荷翻转影响，fake 只在强子侧）；`phi_match`~41.5%，说明假候选里接近一半是"真 φ+错电荷 π"。**这次验证是信号 MC 的自污染检查，不等于 OS/SS 本底对称性验证**——后者需要拿背景 MC 分别跑 OS/SS 两个 tuplizer，比较产额比例和 M(KKπ) 等拟合变量的 shape，这一步还没做。
 
-**关键：reco 端的 muon gate（`if (best_mu_idx == -1) return;`）在 Fill() 之前，一行没动**。所以 W→e、W→τ→e、W→τ→hadronic 的事件会在 gen filter 通过、`nEventsGen_`/`nEventsLepton_` 计数之后，在 reco 选择阶段被挡掉，不会写进 tree。只有 prompt W→μ 和 W→τ→μ 真正落盘。
+配套建了 `test/{BKG,SIG,SIG_DsstW}_H_phipimu_SS.py`（跟各自 OS 版本一样，只换 `EDAnalyzer` 类型）、`Tuples/HtoDsW/{condor_submit_SS.py,run_SS.sh}`、`Tuples/HtoDsstW/{condor_submit_SS.py,run_SS.sh}`、`Tuples/WtoLNu2Jets/crabConfig_SS.py`——都是复制现有 OS 版本再改一两行，不是参数化开关（跟这个仓库一直以来"cp 原版再加 delta"的规矩一致）。
 
-**没验证的地方**（新 MiniAOD 还没产生，只能靠 CMSSW 文档保证语义）：
-1. τ 作为 hard-process 粒子时 `num_Gen_Wlep==1` 会不会像 μ 一样干净地计一次——如果 Pythia 给 τ 弄出多个 hard-process copy，τ 支路会在计数 return 那一步被静默清零。样本出来后第一件事：画 `num_Gen_Wlep` 分布确认 τ 事件也稳定是 1。
-2. `nEventsGen_`/`nEventsLepton_` 现在把 e/μ/τ 全部计进去了（以前这两个计数器只算 W→μ，e/τ 都被旧的 return 挡在外面）。如果下游拿它当 μ-channel 分母做归一化会被摊高，类似 [[project_gencount_normalization]] 那次的坑。**这个问题问了用户两次，用户都还没直接回答**——下次话题回到这里时记得追问，别让它再滑过去。
+**踩坑记录**：新建的 plugin 编译成功后本地 cmsRun 报 `PluginNotFound`，原因是 `$CMSSW_BASE/lib/<arch>/.edmplugincache` 在 `scram b` 之后没有自动收录新插件；修法是 `edmPluginRefresh -p $CMSSW_BASE/lib/el9_amd64_gcc12`。
 
-编译过（`-Werror=unused-but-set-variable` 逼着把改动过程中变成 dead code 的 `H_gp`/`Ds_gp`（DsstW 那份）/`Gen_H_idx`/`Gen_pi0_idx` 一起清掉了），没有跑 cmsRun（没有新 MiniAOD）。
+### Tuples 目录改名
 
-**同一 session 后续又删了 GenJet/GenMET**（token、`consumes<>`、include、两处 fetch 全删）：`GenJetToken_` 在原版代码里本来就从没被 `getByToken` 过，是死代码，删它不改变任何行为；`GenMETToken_` 原来在两个 channel 里各有一次 `if (GenMETHandle->empty()) return;`，是个事件级 gate，这次跟着 fills 一起删掉了——**这是唯一一处真的改变了选择逻辑的删除**（虽然标准 MiniAOD 里 GenMET collection 几乎不可能是空的，实际影响预期为零，但如果哪天诡异地空过，行为跟以前不一样了）。
+`Tuples/Signal`→`Tuples/HtoDsW`，`Tuples/Signal_DsstW`→`Tuples/HtoDsstW`，`Tuples/WJets`→`Tuples/WtoLNu2Jets`——按 dataset 名字去掉连字符的规矩（跟 `TbarQtoLNu`/`TTto2L2Nu` 等现有目录的命名风格对齐，不加下划线）。`CLAUDE.md` 里的示例路径同步改了。
 
-> 之前几次 session 的详细记录（geometric matching 研究、lostTracks recovery 研究、MVA v1/v2/v3 训练配比）已经归档进 memory（见 `[[project_geometric_matching]]`、`[[project_lostrack_recovery]]`、`[[project_phipimu_mva]]`），不再重复贴在这里。
+### 新信号样本 (20260717) 上线，处理还没跑完的问题
+
+发现新的 DsW 信号样本在 `root://maite.iihe.ac.be//store/user/kakang/Analysis/ggHtoDsW_phipi/20260717/`——这才是真正的 inclusive W→e/μ/τ + Ds*→γ/π0 fragment（`[[project_h_phipimu_multiflavor_gen]]` 记录的旧样本 `20260624` 从未测试过 τ/π0 代码路径，这批新样本才是能测的）。生产还在跑（condor batch `MC_ggHtoDsW_phipi_AODSIM_2022_20260717`），预计 500 个文件，目前只有部分落盘且中间有零散缺口。
+
+`test/SIG_H_phipimu.py`/`SIG_H_phipimu_SS.py` 的 `INFILE` 改成运行时现查 `xrdfs maite.iihe.ac.be ls <PAT目录>`，只把真实存在的文件塞进 `PoolSource`，不存在的自动跳过——每次重跑都会现查，以后生产陆续补齐也会自动捡到新文件，不用手动改排除列表（20260624 那行保留作注释参考）。
+
+**发现并修了一个资源浪费的 bug**：`Tuples/HtoDsW/condor_submit.py` 的 `njobs = 1000/GroupSize` 是照抄旧样本（~1000 个文件）的规模，但新样本上限只有 500，导致 JOBID 25-49 那一半 job（每批 50 个里的 25 个，OS+SS 两批共 50 个空 job）分到的文件号根本不存在，产出全是 16967 字节的空 ROOT 文件（有 tree header 但 0 entries，不是崩溃，`cmsRun` exit 0）。修法是 `njobs` 也现查 `xrdfs` 拿到的最大文件编号动态算。顺便把 `GroupSize` 从 20 改成 10，缩短单个 job 的跑时。
+
+### H_phipimu / H_phipimu_SS：n_b_jets 改成按候选算、排除 Ds 自己所在的 jet
+
+`n_b_jets_{loose,medium,tight}{,_pt20}` 原来是候选循环之前算一次的事例级标量，跟具体哪个 Ds 候选无关。现在搬到 K+K−π 循环内部、`Ds_mtm` 算出来之后重新算，新增按 ΔR(jet,Ds) 门槛区分的两套（`_dR03`/`_dR04`，各自排除跟这一行 Ds 距离在 0.3/0.4 以内的 jet），一共 12 个新分支替换掉原来的 6 个——避免把"Ds 自己衰变径迹聚出来的那个 jet"错当成额外的 b-jet 计数进去。两个 plugin（OS/SS）改法完全同步。这次改动只编译过，没有跑 cmsRun 验证。
+
+### 顺带发现（未处理）：数据侧的 dataset
+
+如果之后要跑 data，用 `dasgoclient` 查过，2022 Run3 单/双 muon 触发路径统一在 `/Muon/Run2022<era>-<reprocessing>/MINIAOD`；现有信号 MC 是 `Run3Summer22MiniAODv4`（preEE），对应数据应选 `Run2022C`+`Run2022D`（`22Sep2023` 版 ReReco），不要混进 postEE 的 E/F/G。Data GlobalTag 和 2022 Golden JSON 仓库里完全没有，是全新要加的东西。
+
+> 之前几次 session 的详细记录（geometric matching 研究、lostTracks recovery 研究、MVA v1/v2/v3 训练配比、2026-07-22 的 gen 多味化+jet/b-tag批次）已经归档进 memory（见 `[[project_geometric_matching]]`、`[[project_lostrack_recovery]]`、`[[project_phipimu_mva]]`、`[[project_h_phipimu_multiflavor_gen]]`），不再重复贴在这里。
