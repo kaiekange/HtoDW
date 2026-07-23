@@ -1,8 +1,8 @@
 #!/bin/bash
 
-mode="PAT"
-
-cfgfile=${mode}_cfg.py
+step="PAT"
+mode=$1
+cfgfile=${step}_${mode}_cfg.py
 
 cmsDriver.py \
     --eventcontent MINIAODSIM \
@@ -19,6 +19,6 @@ cmsDriver.py \
     --no_exec \
     --mc || exit $? ;
 
-sed -i "6iimport sys" "${mode}_cfg.py"
-sed -i "s|'INPUTFILE'|sys.argv[2]|g" "${mode}_cfg.py"
-sed -i "s|'OUTPUTFILE'|sys.argv[3]|g" "${mode}_cfg.py"
+sed -i "6iimport sys" "${cfgfile}"
+sed -i "s|'INPUTFILE'|sys.argv[2]|g" "${cfgfile}"
+sed -i "s|'OUTPUTFILE'|sys.argv[3]|g" "${cfgfile}"

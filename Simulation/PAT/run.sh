@@ -1,15 +1,28 @@
 #!/bin/bash
 
-INDIR=$1
-OUTDIR=$2
-JOBID=$(( $3 + 1000 ))
+MODE=$1
+INDIR=$2
+OUTDIR=$3
+JOBID=$4
 
-infile="file:${INDIR}/output_${JOBID}.root"
-outfile="file:${OUTDIR}/output_${JOBID}.root"
+export X509_USER_PROXY="/afs/cern.ch/user/k/kakang/tmp/x509up_u158898"
+
+infile="${INDIR}/output_${JOBID}.root"
+outfile="${OUTDIR}/output_${JOBID}.root"
 logfile="${OUTDIR}/log/run_${JOBID}.log"
-rm -f $outfile $logfile
+xrdfs maite.iihe.ac.be rm -f $outfile
+xrdfs maite.iihe.ac.be rm -f $logfile
+
+tmplog="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/Simulation/PAT/tmp/run_${MODE}_${JOBID}.log"
 
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/
 cmsenv
-cmsRun "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/Simulation/PAT/PAT_cfg.py" ${infile} ${outfile} &> ${logfile}
+voms-proxy-info -all -file $X509_USER_PROXY
+cmsRun "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/Simulation/PAT/PAT_${MODE}_cfg.py" "root://maite.iihe.ac.be/${infile}" "root://maite.iihe.ac.be/${outfile}" &> ${tmplog}
+CMSRUN_STATUS=$?
+
+xrdcp -f ${tmplog} root://maite.iihe.ac.be/${logfile}
+rm -f ${tmplog}
+
+exit ${CMSRUN_STATUS}
