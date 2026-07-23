@@ -1,8 +1,14 @@
+import re
 import sys
 import subprocess
 import os
 
-GroupSize = 20
+GroupSize = 10
+
+# 20260717 production caps out at output_500.root (checked live so njobs tracks the sample
+# size instead of the old 1000-file assumption from the 20260624 sample -- that mismatch was
+# submitting 25 empty jobs per batch for nothing).
+PATDIR = "/store/user/kakang/Analysis/ggHtoDsW_phipi/20260717/Simulation/PAT/2022"
 
 def submit_jobs():
 
@@ -11,11 +17,13 @@ def submit_jobs():
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(outdir+"/log", exist_ok=True)
 
-    scheduler_log = f"./HTCondor.log"
+    scheduler_log = "./HTCondor.log"
     if os.path.exists(scheduler_log):
         os.remove(scheduler_log)
 
-    njobs = 1000/GroupSize
+    ls_out = subprocess.check_output(["xrdfs", "maite.iihe.ac.be", "ls", PATDIR]).decode()
+    max_index = max(int(m) for m in re.findall(r"output_(\d+)\.root", ls_out))
+    njobs = (max_index + GroupSize - 1) // GroupSize
 
     submit_description = f"""
 executable = run.sh
