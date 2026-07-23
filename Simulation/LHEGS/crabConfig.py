@@ -2,7 +2,7 @@ from WMCore.Configuration import Configuration
 config = Configuration()
 
 config.section_("General")
-config.General.requestName = "MC_ggHtoDsstW_phipi_2022_20260624"
+config.General.requestName = "MC_ggHtoDsstW_phipi_2022_20260717"
 config.General.transferLogs = True
 
 config.section_("JobType")
@@ -12,11 +12,11 @@ config.JobType.pluginName = "PrivateMC"
 config.section_("Data")
 config.Data.outputPrimaryDataset = "LHEGS"
 config.Data.splitting="EventBased"
-config.Data.unitsPerJob = 500
-config.Data.totalUnits = 500000
+config.Data.unitsPerJob = 3000
+config.Data.totalUnits = 3000000
 config.Data.publication = False
 config.Data.outputDatasetTag = "2022"
-config.Data.outLFNDirBase = "/store/user/kakang/Analysis/ggHtoDsstW_phipi/20260624/Simulation"
+config.Data.outLFNDirBase = "/store/user/kakang/Analysis/ggHtoDsstW_phipi/20260717/Simulation"
 
 config.section_("User")
 config.User.voGroup = "becms"

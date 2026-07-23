@@ -2,7 +2,7 @@
 # using: 
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsstW_phipi_fragment_cff.py --python_filename LHEGS_ggHtoDsstW_phipi_cfg.py --eventcontent RAWSIM --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --fileout output.root --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM --geometry DB:Extended --era Run3 --number 500 --no_exec --mc
+# with command line options: Configuration/GenProduction/python/gridpacktogen_ggHtoDsstW_phipi_fragment_cff.py --python_filename LHEGS_ggHtoDsstW_phipi_cfg.py --eventcontent RAWSIM --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --fileout output.root --conditions 124X_mcRun3_2022_realistic_v12 --beamspot Realistic25ns13p6TeVEarly2022Collision --step LHE,GEN,SIM --geometry DB:Extended --era Run3 --number 3000 --no_exec --mc
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.Eras.Era_Run3_cff import Run3
@@ -26,7 +26,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(500),
+    input = cms.untracked.int32(3000),
     output = cms.optional.untracked.allowed(cms.int32,cms.PSet)
 )
 
@@ -65,7 +65,7 @@ process.options = cms.untracked.PSet(
 
 # Production Info
 process.configurationMetadata = cms.untracked.PSet(
-    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsstW_phipi_fragment_cff.py nevts:500'),
+    annotation = cms.untracked.string('Configuration/GenProduction/python/gridpacktogen_ggHtoDsstW_phipi_fragment_cff.py nevts:3000'),
     name = cms.untracked.string('Applications'),
     version = cms.untracked.string('$Revision: 1.19 $')
 )
@@ -100,16 +100,15 @@ process.GlobalTag = GlobalTag(process.GlobalTag, '124X_mcRun3_2022_realistic_v12
 process.generator = cms.EDFilter("Pythia8HadronizerFilter",
     ExternalDecays = cms.PSet(
         EvtGen130 = cms.untracked.PSet(
-            convertPythiaCodes = cms.untracked.bool(False),
+            convertPythiaCodes = cms.untracked.bool(True),
             decay_table = cms.string('GeneratorInterface/EvtGenInterface/data/DECAY_2014_NOLONGLIFE.DEC'),
             list_forced_decays = cms.vstring(
                 'myD_s*+',
-                'myD_s*-',
-                'myphi'
+                'myD_s*-'
             ),
             operates_on_particles = cms.vint32(433, -433),
             particle_property_file = cms.FileInPath('GeneratorInterface/EvtGenInterface/data/evt_2014.pdl'),
-            user_decay_embedded = cms.vstring('\nAlias myD_s*+ D_s*+\nAlias myD_s*- D_s*-\nAlias myD_s+ D_s+\nAlias myD_s- D_s-\nAlias myphi phi\nAlias myK+ K+\nAlias myK- K-\nAlias mypi+ pi+\nAlias mypi- pi-\nAlias mygamma gamma\nChargeConj myD_s*+ myD_s*-\nChargeConj myD_s+ myD_s-\nChargeConj myphi myphi\nChargeConj myK+ myK-\nChargeConj mypi+ mypi-\nChargeConj mygamma mygamma\n\nDecay myD_s*+\n1.0 myD_s+ mygamma VSP_PWAVE;\nEnddecay\nCDecay myD_s*-\n\nDecay myD_s+\n1.0 myphi mypi+ SVS;\nEnddecay\nCDecay myD_s-\n\nDecay myphi\n1.0 myK+ myK- VSS;\nEnddecay\n\nEnd\n'),
+            user_decay_embedded = cms.vstring('\nAlias myD_s*+ D_s*+\nAlias myD_s*- D_s*-\nAlias myD_s+ D_s+\nAlias myD_s- D_s-\nAlias myphi phi\nAlias myK+ K+\nAlias myK- K-\nAlias mypi+ pi+\nAlias mypi- pi-\nAlias mypi0 pi0\nAlias mygamma gamma\nChargeConj myD_s*+ myD_s*-\nChargeConj myD_s+ myD_s-\nChargeConj myphi myphi\nChargeConj myK+ myK-\nChargeConj mypi+ mypi-\nChargeConj mypi0 mypi0\nChargeConj mygamma mygamma\n\nDecay myD_s*+\n0.942000000 myD_s+ mygamma VSP_PWAVE;\n0.058000000 myD_s+ mypi0 VSS;\nEnddecay\nCDecay myD_s*-\n\nDecay myD_s+\n1.0 myphi mypi+ SVS;\nEnddecay\nCDecay myD_s-\n\nDecay myphi\n1.0 myK+ myK- VSS;\nEnddecay\n\nDecay mypi0\n1.0 mygamma mygamma PHSP;\nEnddecay\n\nEnd\n'),
             verbose = cms.untracked.int32(1)
         ),
         parameterSets = cms.vstring('EvtGen130')
@@ -129,13 +128,10 @@ process.generator = cms.EDFilter("Pythia8HadronizerFilter",
             '25:addChannel = 1  1.00   103   24   -433',
             '25:m0 = 125.0',
             '433:onMode = off',
-            '-433:onMode = off',
             '24:onMode = off',
             '24:onIfMatch = -11 12',
             '24:onIfMatch = -13 14',
-            '-24:onMode = off',
-            '-24:onIfMatch = 11 -12',
-            '-24:onIfMatch = 13 -14'
+            '24:onIfMatch = -15 16'
         ),
         pythia8CP5Settings = cms.vstring(
             'Tune:pp 14',
@@ -202,7 +198,7 @@ process.generator = cms.EDFilter("Pythia8HadronizerFilter",
 process.externalLHEProducer = cms.EDProducer("ExternalLHEProducer",
     args = cms.vstring('/cvmfs/cms.cern.ch/phys_generator/gridpacks/RunIII/13p6TeV/slc7_amd64_gcc10/powheg/V2/gg_H_quark-mass-effects_mwindow1d0_slc7_amd64_gcc10_CMSSW_12_4_8.tgz'),
     generateConcurrently = cms.untracked.bool(False),
-    nEvents = cms.untracked.uint32(500),
+    nEvents = cms.untracked.uint32(3000),
     numberOfParameters = cms.uint32(1),
     outputFile = cms.string('cmsgrid_final.lhe'),
     scriptName = cms.FileInPath('GeneratorInterface/LHEInterface/data/run_generic_tarball_cvmfs.sh')

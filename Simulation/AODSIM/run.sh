@@ -3,7 +3,7 @@
 MODE=$1
 INDIR=$2
 OUTDIR=$3
-JOBID=$(( $4 + 1 ))
+JOBID=$4
 
 export X509_USER_PROXY="/afs/cern.ch/user/k/kakang/tmp/x509up_u158898"
 
