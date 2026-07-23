@@ -126,7 +126,7 @@ LOG_FEATURES = [
     "Ds_IsoR04_sumPUPt",
 ]
 
-SELECTION = ["num_rs_mu", "num_ws_mu"]
+SELECTION = ["num_os_mu_tight", "num_ss_mu_tight"]
 LOAD_BRANCHES = FEATURE_NAMES + SELECTION + ["Lumi_reweight"]
 
 # ========= 3. 加载数据 =========
@@ -134,8 +134,8 @@ def load(name, truth_filter):
     branches = LOAD_BRANCHES + (["Ds_match", "mu_match"] if truth_filter else [])
     with uproot.open(f"{SAMPLES_DIR}/{name}.root")[TREE] as t:
         a = t.arrays(branches, library="np")
-    # exactly one tight muon in the event
-    m = (a["num_rs_mu"] == 1) & (a["num_ws_mu"] == 0)
+    # exactly one tight muon in the event (the best muon is os to the pi)
+    m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
     if truth_filter:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     X = np.column_stack([a[f][m] for f in FEATURE_NAMES])

@@ -73,10 +73,29 @@ public:
 	Int_t num_jets_pt80;
 	Int_t num_jets_pt90;
 	Int_t num_jets_pt100;
+	Float_t jet_ht;         // scalar sum pT of tightJetId jets (0 if none)
+	Float_t jet_ht_pt20;    // same, jets with pT>20 only
+	Float_t jet_leadpt;     // highest-pT tightJetId jet (null if none)
+	Float_t jet_maxbscore;  // max b-score over central (|eta|<2.5) tightJetId jets (null if none)
 
-	// muon count
-	Int_t num_rs_mu;
-	Int_t num_ws_mu;
+	// lepton counts. ss/os = same/opposite charge as the pi (pi == -mu.charge() by
+	// construction). os_* includes the best muon (it is opposite the pi).
+	Int_t num_os_mu_loose;
+	Int_t num_ss_mu_loose;
+	Int_t num_os_mu_medium;
+	Int_t num_ss_mu_medium;
+	Int_t num_os_mu_tight;
+	Int_t num_ss_mu_tight;
+	Int_t num_os_e_cutloose;
+	Int_t num_ss_e_cutloose;
+	Int_t num_os_e_cutmedium;
+	Int_t num_ss_e_cutmedium;
+	Int_t num_os_e_cuttight;
+	Int_t num_ss_e_cuttight;
+	Int_t num_os_e_mvawp80;
+	Int_t num_ss_e_mvawp80;
+	Int_t num_os_e_mvawp90;
+	Int_t num_ss_e_mvawp90;
 
 	// muon kinematics
 	Int_t mu_charge;
@@ -322,6 +341,26 @@ public:
 	Float_t Ds_IsoR04_sumPUPt;
 	Float_t Ds_IsoR04_PFIso;
 	Float_t Ds_IsoR04_RelIso;
+
+	// jet nearest the Ds (null if no tightJetId jet in event)
+	Float_t Ds_nearestjet_dR;
+	Float_t Ds_nearestjet_bscore;
+
+	// central tightJetId jets with b-score > loose/medium/tight WP, excluding jets within
+	// dR03/dR04 of this Ds (avoids counting the jet the Ds itself is clustered into).
+	// Per-candidate: recomputed for each Ds using this row's Ds_tlv.
+	Int_t n_b_jets_loose_dR03;
+	Int_t n_b_jets_loose_dR04;
+	Int_t n_b_jets_medium_dR03;
+	Int_t n_b_jets_medium_dR04;
+	Int_t n_b_jets_tight_dR03;
+	Int_t n_b_jets_tight_dR04;
+	Int_t n_b_jets_loose_pt20_dR03;   // same, jets with pT>20 only
+	Int_t n_b_jets_loose_pt20_dR04;
+	Int_t n_b_jets_medium_pt20_dR03;
+	Int_t n_b_jets_medium_pt20_dR04;
+	Int_t n_b_jets_tight_pt20_dR03;
+	Int_t n_b_jets_tight_pt20_dR04;
 
 	// Ds* isolation (null if has_gamma == false)
 	Float_t Dsst_IsoR03_sumChargedHadronPt;

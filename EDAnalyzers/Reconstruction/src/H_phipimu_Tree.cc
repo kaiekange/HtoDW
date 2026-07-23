@@ -26,8 +26,16 @@ void H_phipimu_Tree::Init()
 	num_jets = 0;
 	num_jets_pt20 = 0; num_jets_pt30 = 0; num_jets_pt40 = 0; num_jets_pt50 = 0;
 	num_jets_pt60 = 0; num_jets_pt70 = 0; num_jets_pt80 = 0; num_jets_pt90 = 0; num_jets_pt100 = 0;
+	jet_ht = null; jet_ht_pt20 = null; jet_leadpt = null; jet_maxbscore = null;
 
-	num_rs_mu = 0; num_ws_mu = 0;
+	num_os_mu_loose = 0; num_ss_mu_loose = 0;
+	num_os_mu_medium = 0; num_ss_mu_medium = 0;
+	num_os_mu_tight = 0; num_ss_mu_tight = 0;
+	num_os_e_cutloose = 0; num_ss_e_cutloose = 0;
+	num_os_e_cutmedium = 0; num_ss_e_cutmedium = 0;
+	num_os_e_cuttight = 0; num_ss_e_cuttight = 0;
+	num_os_e_mvawp80 = 0; num_ss_e_mvawp80 = 0;
+	num_os_e_mvawp90 = 0; num_ss_e_mvawp90 = 0;
 
 	mu_charge = null;
 	mu_eta = null; mu_phi = null; mu_px = null; mu_py = null; mu_pz = null; mu_pt = null; mu_p = null;
@@ -109,6 +117,13 @@ void H_phipimu_Tree::Init()
 	Ds_IsoR04_sumChargedHadronPt = null; Ds_IsoR04_sumNeutralHadronEt = null;
 	Ds_IsoR04_sumPhotonEt = null; Ds_IsoR04_sumPUPt = null;
 	Ds_IsoR04_PFIso = null; Ds_IsoR04_RelIso = null;
+	Ds_nearestjet_dR = null; Ds_nearestjet_bscore = null;
+	n_b_jets_loose_dR03 = 0; n_b_jets_loose_dR04 = 0;
+	n_b_jets_medium_dR03 = 0; n_b_jets_medium_dR04 = 0;
+	n_b_jets_tight_dR03 = 0; n_b_jets_tight_dR04 = 0;
+	n_b_jets_loose_pt20_dR03 = 0; n_b_jets_loose_pt20_dR04 = 0;
+	n_b_jets_medium_pt20_dR03 = 0; n_b_jets_medium_pt20_dR04 = 0;
+	n_b_jets_tight_pt20_dR03 = 0; n_b_jets_tight_pt20_dR04 = 0;
 
 	Dsst_IsoR03_sumChargedHadronPt = null; Dsst_IsoR03_sumNeutralHadronEt = null;
 	Dsst_IsoR03_sumPhotonEt = null; Dsst_IsoR03_sumPUPt = null;
@@ -180,8 +195,16 @@ void H_phipimu_Tree::CreateBranches()
 	tree->Branch("num_jets_pt60", &num_jets_pt60); tree->Branch("num_jets_pt70", &num_jets_pt70);
 	tree->Branch("num_jets_pt80", &num_jets_pt80); tree->Branch("num_jets_pt90", &num_jets_pt90);
 	tree->Branch("num_jets_pt100", &num_jets_pt100);
+	tree->Branch("jet_ht", &jet_ht); tree->Branch("jet_ht_pt20", &jet_ht_pt20); tree->Branch("jet_leadpt", &jet_leadpt); tree->Branch("jet_maxbscore", &jet_maxbscore);
 
-	tree->Branch("num_rs_mu", &num_rs_mu); tree->Branch("num_ws_mu", &num_ws_mu);
+	tree->Branch("num_os_mu_loose", &num_os_mu_loose); tree->Branch("num_ss_mu_loose", &num_ss_mu_loose);
+	tree->Branch("num_os_mu_medium", &num_os_mu_medium); tree->Branch("num_ss_mu_medium", &num_ss_mu_medium);
+	tree->Branch("num_os_mu_tight", &num_os_mu_tight); tree->Branch("num_ss_mu_tight", &num_ss_mu_tight);
+	tree->Branch("num_os_e_cutloose", &num_os_e_cutloose); tree->Branch("num_ss_e_cutloose", &num_ss_e_cutloose);
+	tree->Branch("num_os_e_cutmedium", &num_os_e_cutmedium); tree->Branch("num_ss_e_cutmedium", &num_ss_e_cutmedium);
+	tree->Branch("num_os_e_cuttight", &num_os_e_cuttight); tree->Branch("num_ss_e_cuttight", &num_ss_e_cuttight);
+	tree->Branch("num_os_e_mvawp80", &num_os_e_mvawp80); tree->Branch("num_ss_e_mvawp80", &num_ss_e_mvawp80);
+	tree->Branch("num_os_e_mvawp90", &num_os_e_mvawp90); tree->Branch("num_ss_e_mvawp90", &num_ss_e_mvawp90);
 
 	tree->Branch("mu_charge", &mu_charge);
 	tree->Branch("mu_eta", &mu_eta); tree->Branch("mu_phi", &mu_phi);
@@ -300,6 +323,13 @@ void H_phipimu_Tree::CreateBranches()
 	tree->Branch("Ds_IsoR04_sumPhotonEt", &Ds_IsoR04_sumPhotonEt);
 	tree->Branch("Ds_IsoR04_sumPUPt", &Ds_IsoR04_sumPUPt);
 	tree->Branch("Ds_IsoR04_PFIso", &Ds_IsoR04_PFIso); tree->Branch("Ds_IsoR04_RelIso", &Ds_IsoR04_RelIso);
+	tree->Branch("Ds_nearestjet_dR", &Ds_nearestjet_dR); tree->Branch("Ds_nearestjet_bscore", &Ds_nearestjet_bscore);
+	tree->Branch("n_b_jets_loose_dR03", &n_b_jets_loose_dR03); tree->Branch("n_b_jets_loose_dR04", &n_b_jets_loose_dR04);
+	tree->Branch("n_b_jets_medium_dR03", &n_b_jets_medium_dR03); tree->Branch("n_b_jets_medium_dR04", &n_b_jets_medium_dR04);
+	tree->Branch("n_b_jets_tight_dR03", &n_b_jets_tight_dR03); tree->Branch("n_b_jets_tight_dR04", &n_b_jets_tight_dR04);
+	tree->Branch("n_b_jets_loose_pt20_dR03", &n_b_jets_loose_pt20_dR03); tree->Branch("n_b_jets_loose_pt20_dR04", &n_b_jets_loose_pt20_dR04);
+	tree->Branch("n_b_jets_medium_pt20_dR03", &n_b_jets_medium_pt20_dR03); tree->Branch("n_b_jets_medium_pt20_dR04", &n_b_jets_medium_pt20_dR04);
+	tree->Branch("n_b_jets_tight_pt20_dR03", &n_b_jets_tight_pt20_dR03); tree->Branch("n_b_jets_tight_pt20_dR04", &n_b_jets_tight_pt20_dR04);
 
 	tree->Branch("Dsst_IsoR03_sumChargedHadronPt", &Dsst_IsoR03_sumChargedHadronPt);
 	tree->Branch("Dsst_IsoR03_sumNeutralHadronEt", &Dsst_IsoR03_sumNeutralHadronEt);

@@ -26,6 +26,7 @@
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
+#include "DataFormats/PatCandidates/interface/Electron.h"
 #include "DataFormats/PatCandidates/interface/MET.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -64,11 +65,13 @@ private:
 
 	Bool_t ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const;
 	Bool_t TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const;
+	Float_t bScore(const pat::Jet &jet) const;
 	Measurement1D distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 	Measurement1D distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 
 	edm::EDGetTokenT<pat::PackedCandidateCollection> PFCandToken_;
 	edm::EDGetTokenT<pat::MuonCollection> MuonToken_;
+	edm::EDGetTokenT<pat::ElectronCollection> ElectronToken_;
 	edm::EDGetTokenT<pat::METCollection> MetToken_;
 	edm::EDGetTokenT<pat::JetCollection> JetToken_;
 	edm::EDGetTokenT<edm::ValueMap<Int_t>> tightJetIdToken_;
@@ -80,6 +83,9 @@ private:
 
 	bool doTruth_;
 	std::string channel_;
+	std::vector<std::string> bDiscNames_;
+	double bScoreWPLoose_, bScoreWPMedium_, bScoreWPTight_;
+	std::string eleIdCutLoose_, eleIdCutMedium_, eleIdCutTight_, eleIdMvaWP80_, eleIdMvaWP90_;
 
 	const Float_t Mass_K    = 0.493677;
 	const Float_t Mass_pi   = 0.13957039;
@@ -96,8 +102,10 @@ private:
 
 	unsigned long nEventsProcessed_;
 	unsigned long nEventsTriggered_;
-	unsigned long nEventsLepton_;
-	unsigned long nEventsGen_;
+	unsigned long nEventsLepton_;      // W->mu nu (prompt muon), hard-process filter passed
+	unsigned long nEventsGen_;         // nEventsLepton_ AND Ds->phi pi->KK pi found
+	unsigned long nEventsLeptonTauMu_; // W->tau nu, tau->mu, hard-process filter passed
+	unsigned long nEventsGenTauMu_;    // nEventsLeptonTauMu_ AND Ds->phi pi->KK pi found
 };
 
 H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
@@ -107,6 +115,9 @@ H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
 
 	edm::InputTag MuonTag_("slimmedMuons");
 	MuonToken_ = consumes<pat::MuonCollection>(MuonTag_);
+
+	edm::InputTag ElectronTag_("slimmedElectrons");
+	ElectronToken_ = consumes<pat::ElectronCollection>(ElectronTag_);
 
 	edm::InputTag MetTag_("jecAppliedMetProducer", "CorrectedMet");
 	MetToken_ = consumes<pat::METCollection>(MetTag_);
@@ -133,6 +144,38 @@ H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
 
 	doTruth_ = iConfig.getParameter<bool>("doTruth");
 	channel_ = doTruth_ ? iConfig.getParameter<std::string>("channel") : "";
+
+	// b-tag discriminator name(s); summed per jet to form the b-score. 2022 uses
+	// ParticleNet: the combined B-vs-all discriminator is a single stored value.
+	// Override in the cmsRun config if the MiniAOD embeds a different label. A wrong
+	// name throws at runtime (fail loud), so confirm via jet.getPairDiscri() on the sample.
+	bDiscNames_ = iConfig.existsAs<std::vector<std::string>>("bDiscNames")
+		? iConfig.getParameter<std::vector<std::string>>("bDiscNames")
+		: std::vector<std::string>{"pfParticleNetFromMiniAODAK4PuppiCentralDiscriminatorsJetTags:BvsAll"};
+
+	// Working points for counting n_b_jets_{loose,medium,tight} (jets with b-score above
+	// each threshold). MUST be the ParticleNet 2022 loose/medium/tight WPs from the official
+	// BTV recommendation (jsonpog-integration btagging.json) -- the values below are ordered
+	// placeholders. A wrong value silently miscounts n_b_jets (no throw); jet_maxbscore /
+	// Ds_nearestjet_bscore store the raw score and are unaffected. Override in the config.
+	auto bWP = [&](const char *key, double def) {
+		return iConfig.existsAs<double>(key) ? iConfig.getParameter<double>(key) : def;
+	};
+	bScoreWPLoose_  = bWP("bScoreWPLoose",  0.047);
+	bScoreWPMedium_ = bWP("bScoreWPMedium", 0.245);
+	bScoreWPTight_  = bWP("bScoreWPTight",  0.6734);
+
+	// Electron ID names for the ss/os electron counts (via electron.electronID(name) > 0.5).
+	// Names are era-specific (2022 defaults below); a wrong name throws at runtime (fail
+	// loud, lists the available IDs), so confirm against the sample or override in the config.
+	auto eleId = [&](const char *key, const char *def) {
+		return iConfig.existsAs<std::string>(key) ? iConfig.getParameter<std::string>(key) : std::string(def);
+	};
+	eleIdCutLoose_  = eleId("eleIdCutLoose",  "cutBasedElectronID-RunIIIWinter22-V1-loose");
+	eleIdCutMedium_ = eleId("eleIdCutMedium", "cutBasedElectronID-RunIIIWinter22-V1-medium");
+	eleIdCutTight_  = eleId("eleIdCutTight",  "cutBasedElectronID-RunIIIWinter22-V1-tight");
+	eleIdMvaWP80_   = eleId("eleIdMvaWP80",   "mvaEleID-RunIIIWinter22-iso-V1-wp80");
+	eleIdMvaWP90_   = eleId("eleIdMvaWP90",   "mvaEleID-RunIIIWinter22-iso-V1-wp90");
 }
 
 void H_phipimu::beginJob()
@@ -146,11 +189,15 @@ void H_phipimu::beginJob()
 	InfoTree->Branch("nEventsTriggered_", &nEventsTriggered_);
 	InfoTree->Branch("nEventsLepton_", &nEventsLepton_);
 	InfoTree->Branch("nEventsGen_", &nEventsGen_);
+	InfoTree->Branch("nEventsLeptonTauMu_", &nEventsLeptonTauMu_);
+	InfoTree->Branch("nEventsGenTauMu_", &nEventsGenTauMu_);
 
 	nEventsProcessed_ = 0;
 	nEventsTriggered_ = 0;
 	nEventsLepton_ = 0;
 	nEventsGen_ = 0;
+	nEventsLeptonTauMu_ = 0;
+	nEventsGenTauMu_ = 0;
 }
 
 void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
@@ -204,7 +251,6 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		}
 		if (!((num_Gen_H == 1) && (num_Gen_Ds == 1) && (num_Gen_W == 1) && (num_Gen_Wlep == 1)))
 			return;
-		nEventsLepton_++;
 
 		const reco::GenParticle &Ds_gp   = (*GenPartHandle)[Gen_Ds_idx];
 		const reco::GenParticle &W_gp    = (*GenPartHandle)[Gen_W_idx];
@@ -229,6 +275,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		{
 			mu_gp = &Wlep_gp;
 		}
+
+		// counters: prompt W->mu vs W->tau->mu
+		const Bool_t isWmu    = (abs(Wlep_gp.pdgId()) == 13);
+		const Bool_t isWtaumu = (abs(Wlep_gp.pdgId()) == 15 && ftree->Gen_tau_decay_mode == 2);
+		if (isWmu)    nEventsLepton_++;
+		if (isWtaumu) nEventsLeptonTauMu_++;
 
 		for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
 		{
@@ -256,7 +308,8 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		const reco::GenParticle &Kp_gp = (*GenPartHandle)[Gen_Kp_idx];
 		const reco::GenParticle &Km_gp = (*GenPartHandle)[Gen_Km_idx];
 		const reco::GenParticle &pi_gp = (*GenPartHandle)[Gen_pi_idx];
-		nEventsGen_++;
+		if (isWmu)    nEventsGen_++;
+		if (isWtaumu) nEventsGenTauMu_++;
 
 		// Gen match
 		edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
@@ -339,7 +392,6 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		}
 		if (!((num_Gen_H == 1) && (num_Gen_Dsst == 1) && (num_Gen_W == 1) && (num_Gen_Wlep == 1)))
 			return;
-		nEventsLepton_++;
 
 		const reco::GenParticle &Dsst_gp = (*GenPartHandle)[Gen_Dsst_idx];
 		const reco::GenParticle &W_gp    = (*GenPartHandle)[Gen_W_idx];
@@ -364,6 +416,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		{
 			mu_gp = &Wlep_gp;
 		}
+
+		// counters: prompt W->mu vs W->tau->mu
+		const Bool_t isWmu    = (abs(Wlep_gp.pdgId()) == 13);
+		const Bool_t isWtaumu = (abs(Wlep_gp.pdgId()) == 15 && ftree->Gen_tau_decay_mode == 2);
+		if (isWmu)    nEventsLepton_++;
+		if (isWtaumu) nEventsLeptonTauMu_++;
 
 		for (Int_t i = 0; i < static_cast<Int_t>(GenPartHandle->size()); i++)
 		{
@@ -427,7 +485,8 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		const reco::GenParticle &Kp_gp    = (*GenPartHandle)[Gen_Kp_idx];
 		const reco::GenParticle &Km_gp    = (*GenPartHandle)[Gen_Km_idx];
 		const reco::GenParticle &pi_gp    = (*GenPartHandle)[Gen_pi_idx];
-		nEventsGen_++;
+		if (isWmu)    nEventsGen_++;
+		if (isWtaumu) nEventsGenTauMu_++;
 
 		const reco::GenParticle *gamma_gp = nullptr;
 		const reco::GenParticle *pi0gamma1_gp = nullptr;
@@ -594,6 +653,7 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	edm::Handle<edm::ValueMap<Int_t>> tightJetIdHandle;
 	iEvent.getByToken(tightJetIdToken_, tightJetIdHandle);
 
+	Float_t jet_ht = 0, jet_ht_pt20 = 0, jet_leadpt = -1, jet_maxbscore = -999;
 	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
 	{
 		Int_t tightJetId = (*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)];
@@ -609,7 +669,22 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		if (Jet.pt() > 80)  ftree->num_jets_pt80++;
 		if (Jet.pt() > 90)  ftree->num_jets_pt90++;
 		if (Jet.pt() > 100) ftree->num_jets_pt100++;
+
+		jet_ht += Jet.pt();
+		if (Jet.pt() > 20) jet_ht_pt20 += Jet.pt();
+		if (Jet.pt() > jet_leadpt) jet_leadpt = Jet.pt();
+		// b-score only for central jets: the ParticleNet Central tagger is defined for
+		// |eta|<2.5 (forward jets lack the discriminator and would throw / can't be b-tagged).
+		if (std::abs(Jet.eta()) < 2.5)
+		{
+			Float_t score = bScore(Jet);
+			if (score > jet_maxbscore) jet_maxbscore = score;
+		}
 	}
+	ftree->jet_ht = jet_ht;
+	ftree->jet_ht_pt20 = jet_ht_pt20;
+	if (ftree->num_jets > 0) ftree->jet_leadpt = jet_leadpt;
+	if (jet_maxbscore > -999) ftree->jet_maxbscore = jet_maxbscore;
 
 	//==================================================//
 	// Muon
@@ -620,7 +695,7 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
 		const pat::Muon &muon = (*MuonHandle)[idx_mu];
-		if (muon.pt() < 24) continue;
+		if (muon.pt() < 26) continue;  // above the HLT_IsoMu24 turn-on, on the trigger plateau
 		if (!muon.isTightMuon(primvtx)) continue;
 		if (muon.pt() > best_mu_pt) { best_mu_idx = idx_mu; best_mu_pt = muon.pt(); }
 	}
@@ -635,11 +710,32 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5f * mu.pfIsolationR03().sumPUPt);
 	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5f * mu.pfIsolationR04().sumPUPt);
 
+	// ss/os are relative to the pi charge. The candidate loop forces pi opposite the best
+	// muon (pi_charge == -mu.charge()), so "same as pi" == opposite the best muon.
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
 		const pat::Muon &muon = (*MuonHandle)[idx_mu];
-		if (muon.charge() == mu.charge()  && muon.isTightMuon(primvtx)) ftree->num_rs_mu++;
-		else if (muon.charge() == -mu.charge() && muon.isTightMuon(primvtx)) ftree->num_ws_mu++;
+		Bool_t os = (muon.charge() == mu.charge());   // opposite pi  (== same as best muon)
+		Bool_t ss = (muon.charge() == -mu.charge());  // same as pi   (== opposite best muon)
+		if (muon.isLooseMuon())        { if (os) ftree->num_os_mu_loose++;  else if (ss) ftree->num_ss_mu_loose++;  }
+		if (muon.isMediumMuon())       { if (os) ftree->num_os_mu_medium++; else if (ss) ftree->num_ss_mu_medium++; }
+		if (muon.isTightMuon(primvtx)) { if (os) ftree->num_os_mu_tight++;  else if (ss) ftree->num_ss_mu_tight++;  }
+	}
+
+	// Electron ss/os counts (same charge convention relative to pi == -mu.charge()).
+	// Counting only -- electrons do not enter the event selection.
+	edm::Handle<pat::ElectronCollection> ElectronHandle;
+	iEvent.getByToken(ElectronToken_, ElectronHandle);
+	for (Int_t idx_e = 0; idx_e < static_cast<Int_t>(ElectronHandle->size()); idx_e++)
+	{
+		const pat::Electron &ele = (*ElectronHandle)[idx_e];
+		Bool_t os = (ele.charge() == mu.charge());
+		Bool_t ss = (ele.charge() == -mu.charge());
+		if (ele.electronID(eleIdCutLoose_)  > 0.5f) { if (os) ftree->num_os_e_cutloose++;  else if (ss) ftree->num_ss_e_cutloose++;  }
+		if (ele.electronID(eleIdCutMedium_) > 0.5f) { if (os) ftree->num_os_e_cutmedium++; else if (ss) ftree->num_ss_e_cutmedium++; }
+		if (ele.electronID(eleIdCutTight_)  > 0.5f) { if (os) ftree->num_os_e_cuttight++;  else if (ss) ftree->num_ss_e_cuttight++;  }
+		if (ele.electronID(eleIdMvaWP80_)   > 0.5f) { if (os) ftree->num_os_e_mvawp80++;   else if (ss) ftree->num_ss_e_mvawp80++;   }
+		if (ele.electronID(eleIdMvaWP90_)   > 0.5f) { if (os) ftree->num_os_e_mvawp90++;   else if (ss) ftree->num_ss_e_mvawp90++;   }
 	}
 
 	ftree->mu_charge   = mu.charge();
@@ -755,7 +851,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				TLorentzVector pi_p4;
 				pi_p4.SetXYZM(pi_pf.px(), pi_pf.py(), pi_pf.pz(), Mass_pi);
 				if ((Kp_p4 + Km_p4 + pi_p4).Pt() < 5) continue;
-				if (std::abs((Kp_p4 + Km_p4 + pi_p4).M() - Mass_Ds) > 0.3) continue;
+				// pre-fit KKpi window: loose pre-selection on the raw mass, kept wider than the
+				// post-fit Ds window (below) so it never binds the SR/CR sideband.
+				if (std::abs((Kp_p4 + Km_p4 + pi_p4).M() - Mass_Ds) > 0.5) continue;
+				// pre-fit phi window: loose upper cut on the raw KK mass (wider than the post-fit
+				// +50 MeV) to drop non-phi KK pairs before the expensive vertex fit. Pure speedup.
+				if ((Kp_p4 + Km_p4).M() > Mass_phi + 0.08) continue;
 
 				reco::TransientTrack pi_tt = (*ttBuilder).build(pi_pf.bestTrack());
 				Int_t pi_charge  = pi_pf.charge();
@@ -783,7 +884,9 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				GlobalVector Ds_mtm = Ds->currentState().globalMomentum();
 				const reco::TransientTrack Ds_rett = Ds->refittedTransientTrack();
 
-				if (std::abs(Ds->currentState().mass() - Mass_Ds) > 0.15) continue;
+				// post-fit Ds window: wide enough to hold the SR + Ds-mass sidebands (CR);
+				// the SR/CR boundary is applied offline on Ds_mass.
+				if (std::abs(Ds->currentState().mass() - Mass_Ds) > 0.3) continue;
 				if (Ds_mtm.perp() < 7) continue;
 
 				GlobalVector displacement = Ds_vtx_pos - primvtx_pos;
@@ -817,7 +920,9 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				pi_tlv.SetXYZM(pi_mtm.x(), pi_mtm.y(), pi_mtm.z(), Mass_pi);
 				phi_tlv = Kp_tlv + Km_tlv;
 				if (phi_tlv.Pt() < 3) continue;
-				if (abs( phi_tlv.M() - Mass_phi ) > 0.03) continue;
+				// phi window: upper cut only. The left side is physically bound by the KK
+				// threshold (2*m_K = m_phi - 32 MeV), so no lower cut is needed. Upper +50 MeV.
+				if (phi_tlv.M() > Mass_phi + 0.05) continue;
 
 				//--------------------------------------------------//
 				// IP
@@ -903,6 +1008,59 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				//--------------------------------------------------//
 				ftree->cand_id = cand_counter++;
 
+				// Jet nearest the Ds (targets b->Ds: is the Ds inside a b jet?). Central jets
+				// only (|eta|<2.5), where the ParticleNet b-score is defined; the Ds is central.
+				{
+					Float_t near_dR = 999, near_bscore = null;
+					for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
+					{
+						if ((*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)] == 0) continue;
+						const pat::Jet &Jet = (*JetHandle)[idx_jet];
+						if (std::abs(Jet.eta()) >= 2.5) continue;
+						Float_t dR = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
+						if (dR < near_dR) { near_dR = dR; near_bscore = bScore(Jet); }
+					}
+					if (near_dR < 999) { ftree->Ds_nearestjet_dR = near_dR; ftree->Ds_nearestjet_bscore = near_bscore; }
+				}
+
+				// Central b-tagged jets excluding jets within dR03/dR04 of this Ds (avoids
+				// counting the jet the Ds itself is clustered into as an extra b-jet).
+				// Per-candidate: recomputed for each Ds using this row's Ds_mtm.
+				{
+					Int_t nl03 = 0, nl04 = 0, nm03 = 0, nm04 = 0, nt03 = 0, nt04 = 0;
+					Int_t nl03pt = 0, nl04pt = 0, nm03pt = 0, nm04pt = 0, nt03pt = 0, nt04pt = 0;
+					for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
+					{
+						if ((*tightJetIdHandle)[edm::Ref<pat::JetCollection>(JetHandle, idx_jet)] == 0) continue;
+						const pat::Jet &Jet = (*JetHandle)[idx_jet];
+						if (std::abs(Jet.eta()) >= 2.5) continue;
+						Float_t dR = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
+						Bool_t pastDR03 = dR > 0.3f, pastDR04 = dR > 0.4f;
+						if (!pastDR03 && !pastDR04) continue;
+						Float_t score = bScore(Jet);
+						Bool_t isLoose = score > bScoreWPLoose_, isMedium = score > bScoreWPMedium_, isTight = score > bScoreWPTight_;
+						Bool_t pt20 = Jet.pt() > 20;
+						if (pastDR03)
+						{
+							if (isLoose)  { nl03++; if (pt20) nl03pt++; }
+							if (isMedium) { nm03++; if (pt20) nm03pt++; }
+							if (isTight)  { nt03++; if (pt20) nt03pt++; }
+						}
+						if (pastDR04)
+						{
+							if (isLoose)  { nl04++; if (pt20) nl04pt++; }
+							if (isMedium) { nm04++; if (pt20) nm04pt++; }
+							if (isTight)  { nt04++; if (pt20) nt04pt++; }
+						}
+					}
+					ftree->n_b_jets_loose_dR03 = nl03;   ftree->n_b_jets_loose_dR04 = nl04;
+					ftree->n_b_jets_medium_dR03 = nm03;  ftree->n_b_jets_medium_dR04 = nm04;
+					ftree->n_b_jets_tight_dR03 = nt03;   ftree->n_b_jets_tight_dR04 = nt04;
+					ftree->n_b_jets_loose_pt20_dR03 = nl03pt;   ftree->n_b_jets_loose_pt20_dR04 = nl04pt;
+					ftree->n_b_jets_medium_pt20_dR03 = nm03pt;  ftree->n_b_jets_medium_pt20_dR04 = nm04pt;
+					ftree->n_b_jets_tight_pt20_dR03 = nt03pt;   ftree->n_b_jets_tight_pt20_dR04 = nt04pt;
+				}
+
 				ftree->Kp_charge  = Kp_charge;
 				ftree->Kp_eta     = Kp_mtm.eta();  ftree->Kp_phi  = Kp_mtm.phi();
 				ftree->Kp_px      = Kp_mtm.x();    ftree->Kp_py   = Kp_mtm.y();   ftree->Kp_pz   = Kp_mtm.z();
@@ -985,6 +1143,7 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				ftree->Kp_match = (idx_Kp == Kp_match_idx);
 				ftree->Km_match = (idx_Km == Km_match_idx);
 				ftree->pi_match = (idx_pi == pi_match_idx);
+				ftree->phi_match = (idx_Kp == Kp_match_idx) && (idx_Km == Km_match_idx);
 				ftree->Ds_match = Ds_match;
 
 				//--------------------------------------------------//
@@ -1083,7 +1242,9 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 
 					ftree->gamma_match = (idx_g == gamma_match_idx);
 					ftree->Dsst_match  = ftree->gamma_match && Ds_match;
-					ftree->event_match = Ds_match && ftree->mu_match && ftree->Dsst_match;
+					// event_match is the Ds-side truth match only; the photon match is kept
+					// separately in gamma_match / Dsst_match.
+					ftree->event_match = Ds_match && ftree->mu_match;
 
 					ftree->tree->Fill();
 					ftree->InitGamma();
@@ -1150,6 +1311,13 @@ Bool_t H_phipimu::TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid
 		if (TwoBodyDecay(*(gp.motherRef(i)), motherid, daughter1id, daughter2id)) return true;
 	}
 	return false;
+}
+
+Float_t H_phipimu::bScore(const pat::Jet &jet) const
+{
+	Float_t score = 0;
+	for (const std::string &name : bDiscNames_) score += jet.bDiscriminator(name);
+	return score;
 }
 
 Measurement1D H_phipimu::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
