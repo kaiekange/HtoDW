@@ -1,0 +1,40 @@
+import sys
+import subprocess
+import os
+import math
+
+GroupSize = 20
+
+def submit_jobs():
+
+    outdir="/eos/home-k/kakang/H2DW/Analysis/MC/2022/WtoLNu2Jets_1J_H_phipimu_SS"
+
+    os.makedirs(outdir, exist_ok=True)
+    os.makedirs(outdir+"/log", exist_ok=True)
+
+    scheduler_log = "./HTCondor_1J_SS.log"
+    if os.path.exists(scheduler_log):
+        os.remove(scheduler_log)
+
+    NFiles = sum(1 for _ in open("filelist_1J.txt"))
+    njobs = math.ceil(NFiles/GroupSize)
+
+    submit_description = f"""
+executable = run_1J_SS.sh
+arguments = {outdir} {GroupSize} $(Process)
+log = {scheduler_log}
+JobBatchName = WtoLNu2Jets_1J_H_phipimu_SS
+request_cpus = 1
+request_memory = 8G
+request_disk = 100M
++JobFlavour = "workday"
+notify_user = kai.kang@cern.ch
+notification = error
+max_retries = 1
+should_transfer_files = NO
+queue {njobs}
+"""
+    subprocess.run(["condor_submit"], input=submit_description.encode())
+
+if __name__ == "__main__":
+    sys.exit(submit_jobs())
