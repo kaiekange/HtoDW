@@ -21,14 +21,15 @@ import uproot
 import torch
 import torch.nn as nn
 
-MODEL_DIR   = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_wjets_test"
+MODEL_DIR   = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets"
 SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
 OUT_DIR     = f"{MODEL_DIR}/Prediction"
 TREE        = "Events"
 
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# Must stay identical to DNN.py (and to BDT/BDT.py + BDT/predict.py).
+# Must stay identical to DNN.py. No longer shared with BDT/: as of 2026-08-04 the
+# BDT is still on the older 42-feature set and the two are not comparable.
 FEATURE_NAMES = [
     # lifetime / vertex -- prompt-from-H vs displaced-from-B (the real-Ds background)
     "Ds_ipsig",
@@ -40,13 +41,26 @@ FEATURE_NAMES = [
     "pi_ipsig",
     "mu_ipsig",
     # 2D lifetime/vertex: transverse resolution beats longitudinal.
+    # FDxysig separates DY (fake Ds from prompt tracks -> no flight distance);
+    # ipxysig separates TT (real Ds from a displaced B -> momentum misses the PV).
     "Ds_FDxysig",
     "Ds_ipxysig",
-    # Are the Ds tracks from the primary vertex?
-    "Kp_PVassoc",
-    "Km_PVassoc",
-    "pi_PVassoc",
-    # isolation -- the components, not just RelIso.
+    # Per-track 2D IP significance. Added 2026-08-04: the same "transverse beats
+    # longitudinal" argument that motivated Ds_ipxysig applies to the tracks, and it
+    # had simply never been carried down to them. Measured on this sample they beat
+    # their 3D counterparts (AUC 0.725/0.723/0.780 vs 0.710/0.709/0.774) and are only
+    # weakly correlated with them (r = 0.14/0.19/0.27) -- the 3D versions are diluted
+    # by the much worse z resolution, so the two carry largely complementary
+    # information rather than being two views of the same quantity.
+    # mu_ipxysig deliberately left out: AUC 0.504, i.e. nothing -- the muon comes from
+    # a prompt W and has no displacement to measure (its 3D version, mu_ipsig, is
+    # equally useless at 0.503 but is kept for continuity with the earlier feature set).
+    "Kp_ipxysig",
+    "Km_ipxysig",
+    "pi_ipxysig",
+    # isolation -- the components, not just RelIso. sumChargedHadronPt is the single
+    # strongest variable against every background (AUC 0.91 vs TT): a Ds buried in a
+    # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
@@ -54,14 +68,15 @@ FEATURE_NAMES = [
     "Ds_IsoR04_RelIso",
     "Ds_IsoR03_RelIso",
     "mu_IsoR04_RelIso",
-    # MET / event
+    # MET / event. num_jets_pt20..pt60 are near-duplicates (AUC all ~0.80), so only
+    # one threshold is kept; num_jets (no threshold) adds the soft-jet activity.
     "met_pt",
     "met_sig",
     "met_sumEt",
     "W_tmass",
     "num_jets",
     "num_jets_pt30",
-    # Ds + mu kinematics
+    # Ds + mu kinematics -- hard from a 125 GeV H vs soft inside a jet
     "Ds_pt",
     "Dsmu_pt",
     "Dsmu_eta",
@@ -72,13 +87,19 @@ FEATURE_NAMES = [
     "dR_Km_mu",
     "dR_pi_mu",
     "dR_phi_mu",
+    # Ds+mu mass: H-mass constrained for signal, continuum for background
     "Dsmu_mass",
-    # jet/b-tag environment
+    # --- jet/b-tag environment, added 2026-08-03. Five of the eighteen new
+    # branches earn a slot; the rest are either redundant with these or scored
+    # ~0 importance against W+jets (they were designed to fight TT, which this
+    # test build does not contain -- revisit when TT is in the mix).
     "Ds_nearestjet_bscore",
     "Ds_nearestjet_dR",
     "jet_leadpt",
-    "n_b_jets_loose_dR04",
-    "n_b_jets_medium_dR04",
+    # n_b_jets_{loose,medium}_dR04 were dropped 2026-08-04: kept in the first test build
+    # on the argument that tight subset medium subset loose leaves them free to vary
+    # after the tight veto -- true, but they then ranked dead last (41st and 42nd of 42,
+    # importance 0.0016/0.0020). "Not degenerate with the cut" did not imply "useful".
 ]
 
 LOG_FEATURES = [
@@ -90,6 +111,9 @@ LOG_FEATURES = [
     "Ds_FDsig",
     "Ds_FDxysig",
     "Ds_ipxysig",
+    "Kp_ipxysig",
+    "Km_ipxysig",
+    "pi_ipxysig",
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
@@ -107,6 +131,7 @@ SENTINEL_FIX = {
 # left out -- superseded by the 0J/1J/2J jet-binned samples.
 SAMPLES = [
     "HtoDsW", "HtoDsW_SS",
+    "HtoDsstW", "HtoDsstW_SS",
     "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J",
     "WtoLNu2Jets_0J_SS", "WtoLNu2Jets_1J_SS", "WtoLNu2Jets_2J_SS",
     "Data_2022", "Data_2022_SS",

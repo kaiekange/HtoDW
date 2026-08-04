@@ -1,10 +1,16 @@
 """
-DNN: H->DsW signal vs W+jets, phipimu channel -- TEST BUILD.
+DNN: H->Ds(*)W signal vs W+jets, phipimu channel.
 
-Companion to BDT/BDT.py: same samples, same selection, same 42 features, so the
-two can be compared directly. Single-signal, single-background test run, put
-together before DsstW's tuplizer output and the other background processes (TT,
-DY) are ready in the new Samples/ format.
+Both signal channels (DsW + DsstW) against a single background process. The other
+backgrounds (TT, DY, ...) are still missing from the new Samples/ format, and they
+are known to be the ones this classifier finds hardest -- see the
+project_wjets_background_incomplete / project_mva_sculpting_finding notes: the
+data/MC gap widens with the score cut, so the rejection quoted here is optimistic.
+
+No longer kept in lockstep with BDT/BDT.py: as of 2026-08-04 the two use different
+feature sets (BDT is still on the 42-feature test build) and are not directly
+comparable. Feature set here is 40: the 42 minus n_b_jets_{loose,medium}_dR04 and
+the three *_PVassoc, plus the three per-track *_ipxysig.
 
 Reads the one-row-per-event Samples tuples directly (flat `Events` tree -- these
 files, produced by highest_pt_dedup.py, carry no embedded Lumi_reweight branch,
@@ -33,7 +39,17 @@ from sklearn.metrics import roc_curve, roc_auc_score
 SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
 TREE = "Events"
 
-SIGNAL = "HtoDsW"   # DsstW tuplizer output not ready yet -- single signal for this test
+# Both signal channels, each event at weight 1. The two productions were sized in
+# proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.54M vs
+# 2.86M = 1:1.86), so N_gen is already proportional to sigma x BR and the
+# equivalent-luminosity weight per event is the same for both -- concatenating them
+# reproduces the physical DsW:DsstW mixture, and their selection efficiencies are
+# near identical anyway (9.32% vs 9.49%), so it survives the selection too.
+# If the two channels ever need genuinely unequal weights, put them here.
+SIGNALS = {
+    "HtoDsW":   1.0,
+    "HtoDsstW": 1.0,
+}
 
 # WtoLNu2Jets is split into three jet-multiplicity bins of the SAME physical
 # process, so they are weight-merged using the full statistics of all three
@@ -45,7 +61,7 @@ WJETS_WEIGHTS = {
     "WtoLNu2Jets_2J": 0.2748710631,
 }
 
-out_dir = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_wjets_test"
+out_dir = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets"
 os.makedirs(out_dir, exist_ok=True)
 
 SEED = 42
@@ -69,10 +85,19 @@ FEATURE_NAMES = [
     # ipxysig separates TT (real Ds from a displaced B -> momentum misses the PV).
     "Ds_FDxysig",
     "Ds_ipxysig",
-    # Are the Ds tracks from the primary vertex? (DY's fakes are prompt tracks)
-    "Kp_PVassoc",
-    "Km_PVassoc",
-    "pi_PVassoc",
+    # Per-track 2D IP significance. Added 2026-08-04: the same "transverse beats
+    # longitudinal" argument that motivated Ds_ipxysig applies to the tracks, and it
+    # had simply never been carried down to them. Measured on this sample they beat
+    # their 3D counterparts (AUC 0.725/0.723/0.780 vs 0.710/0.709/0.774) and are only
+    # weakly correlated with them (r = 0.14/0.19/0.27) -- the 3D versions are diluted
+    # by the much worse z resolution, so the two carry largely complementary
+    # information rather than being two views of the same quantity.
+    # mu_ipxysig deliberately left out: AUC 0.504, i.e. nothing -- the muon comes from
+    # a prompt W and has no displacement to measure (its 3D version, mu_ipsig, is
+    # equally useless at 0.503 but is kept for continuity with the earlier feature set).
+    "Kp_ipxysig",
+    "Km_ipxysig",
+    "pi_ipxysig",
     # isolation -- the components, not just RelIso. sumChargedHadronPt is the single
     # strongest variable against every background (AUC 0.91 vs TT): a Ds buried in a
     # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
@@ -111,11 +136,10 @@ FEATURE_NAMES = [
     "Ds_nearestjet_bscore",
     "Ds_nearestjet_dR",
     "jet_leadpt",
-    # Soft b jets that the tight veto below does not catch: tight is a subset of
-    # medium is a subset of loose, so requiring 0 tight b jets leaves these two
-    # free to vary -- they are not degenerate with the cut.
-    "n_b_jets_loose_dR04",
-    "n_b_jets_medium_dR04",
+    # n_b_jets_{loose,medium}_dR04 were dropped 2026-08-04: kept in the first test build
+    # on the argument that tight subset medium subset loose leaves them free to vary
+    # after the tight veto -- true, but they then ranked dead last (41st and 42nd of 42,
+    # importance 0.0016/0.0020). "Not degenerate with the cut" did not imply "useful".
 ]
 
 LOG_FEATURES = [
@@ -127,6 +151,9 @@ LOG_FEATURES = [
     "Ds_FDsig",
     "Ds_FDxysig",
     "Ds_ipxysig",
+    "Kp_ipxysig",
+    "Km_ipxysig",
+    "pi_ipxysig",
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
@@ -169,11 +196,14 @@ def load(name, truth_filter):
     print(f"  {name:18s} {n_in:>8,} -> {m.sum():>8,} rows after selection")
     return X
 
-print("Loading signal (HtoDsW)...")
-X_sig = load(SIGNAL, truth_filter=True)
-# Single signal process -- uniform weight, NOT a physical yield (any positive
-# constant collapses to the same normalized w_train below).
-w_sig = np.ones(len(X_sig))
+print(f"Loading signal ({'+'.join(SIGNALS)})...")
+sig_X, sig_w = [], []
+for name, wgt in SIGNALS.items():
+    x = load(name, truth_filter=True)
+    sig_X.append(x)
+    sig_w.append(np.full(len(x), wgt))
+X_sig = np.vstack(sig_X)
+w_sig = np.concatenate(sig_w)
 
 print(f"Loading WtoLNu2Jets ({'+'.join(WJETS_WEIGHTS)}, lumi-reweighted)...")
 bkg_X, bkg_w = [], []
@@ -184,7 +214,7 @@ for name, wgt in WJETS_WEIGHTS.items():
 X_bkg = np.vstack(bkg_X)
 w_bkg = np.concatenate(bkg_w)
 
-print(f"Signal: {len(X_sig):,} (uniform weight -- single process, see above)")
+print(f"Signal: {len(X_sig):,} (both channels at their physical proportion, see above)")
 print(f"Background: {len(X_bkg):,} (WtoLNu2Jets, full stats, lumi-reweighted merge of 3 jet bins)")
 
 X = np.vstack([X_sig, X_bkg])
@@ -220,10 +250,14 @@ np.save(f"{out_dir}/X_sig.npy", X[y == 1])
 np.save(f"{out_dir}/X_bkg.npy", X[y == 0])
 
 # ========= 6. 训练权重 =========
-# Signal: uniform (single process).
+# Signal: DsW and DsstW at equal per-event weight, which is their physical mixture
+# because the two productions were sized in proportion to cross section (see SIGNALS).
 # Background: weighted BY the physical Lumi_reweight (not subsampled) so the
 # 0J/1J/2J jet-multiplicity mixture matches the true cross-section ratio
 # (2.33 : 0.54 : 0.27) instead of these files' raw event-count ratio.
+# The two classes are then scaled to equal total weight below, so the signal:background
+# ratio in the loss is 1:1 by construction -- only the mixture *within* each class is
+# physical.
 w_train = np.empty_like(w)
 sig_m = y == 1
 w_train[sig_m] = w[sig_m] / w[sig_m].sum()
@@ -384,8 +418,10 @@ np.save(f"{out_dir}/val_losses.npy",   np.array(val_losses))
 np.save(f"{out_dir}/val_aucs.npy",     np.array(val_aucs))
 np.save(f"{out_dir}/scores.npy",       scores)
 np.save(f"{out_dir}/y_test.npy",       y_test)
-# NOT a physical yield for signal (uniform 1.0 placeholder) -- only meaningful for
-# background-internal ratios until a real signal Lumi_reweight is available again.
+# Relative weights only, not absolute yields: within signal it is the true DsW:DsstW
+# mixture (both 1.0 by construction) and within background the true jet-bin mixture,
+# but signal and background are on different, unrelated scales -- do not compute a
+# cross-class significance from this.
 np.save(f"{out_dir}/w_test.npy",       w[test_i])
 
 # ========= 14. 结果图 =========

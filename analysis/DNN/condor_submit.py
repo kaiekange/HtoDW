@@ -2,7 +2,7 @@ import sys
 import subprocess
 import os
 
-OUTDIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_wjets_test"
+OUTDIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets"
 
 os.makedirs(OUTDIR, exist_ok=True)
 
