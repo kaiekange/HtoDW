@@ -83,6 +83,11 @@ private:
 
 	bool doTruth_;
 	std::string channel_;
+	// false (default): opposite-sign selection -- pi is required opposite the best muon,
+	// which is the real H->Ds(*)W signal correlation (Ds and W have opposite charge).
+	// true: same-sign control region -- pi required SAME as the best muon, which by charge
+	// conservation excludes real signal and leaves wrong-charge combinatoric background.
+	bool sameSignPi_;
 	std::vector<std::string> bDiscNames_;
 	double bScoreWPLoose_, bScoreWPMedium_, bScoreWPTight_;
 	std::string eleIdCutLoose_, eleIdCutMedium_, eleIdCutTight_, eleIdMvaWP80_, eleIdMvaWP90_;
@@ -144,6 +149,7 @@ H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
 
 	doTruth_ = iConfig.getParameter<bool>("doTruth");
 	channel_ = doTruth_ ? iConfig.getParameter<std::string>("channel") : "";
+	sameSignPi_ = iConfig.existsAs<bool>("sameSignPi") ? iConfig.getParameter<bool>("sameSignPi") : false;
 
 	// b-tag discriminator name(s); summed per jet to form the b-score. 2022 uses
 	// ParticleNet: the combined B-vs-all discriminator is a single stored value.
@@ -372,10 +378,14 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	{
 		Int_t Gen_Dsst_idx = 0, Gen_W_idx = 0, Gen_Wlep_idx = 0;
 		Int_t Gen_gamma_idx = 0, Gen_Kp_idx = 0, Gen_Km_idx = 0, Gen_pi_idx = 0;
-		Int_t Gen_pi0gamma1_idx = 0, Gen_pi0gamma2_idx = 0;
 		Int_t num_Gen_H = 0, num_Gen_Dsst = 0, num_Gen_W = 0, num_Gen_Wlep = 0;
 		Int_t num_Gen_Ds = 0, num_Gen_gamma = 0, num_Gen_Kp = 0, num_Gen_Km = 0, num_Gen_pi = 0;
-		Int_t num_Gen_pi0 = 0, num_Gen_pi0gamma = 0;
+		// num_Gen_pi0: is the Ds* a pi0-mode decay (ancestry check only). Its two daughter
+		// photons are NOT tracked here -- prunedGenParticles doesn't retain them (confirmed
+		// via AODSIM cross-check: the pi0 itself is kept as a Ds* daughter, but its own
+		// numberOfDaughters() is always 0 there), so Gen_pi0gamma{1,2}_match are simply left
+		// at their default false. No gen-level truth is attempted for these two photons.
+		Int_t num_Gen_pi0 = 0;
 
 		edm::Handle<reco::GenParticleCollection> GenPartHandle;
 		iEvent.getByToken(GenPartToken_, GenPartHandle);
@@ -467,17 +477,11 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				{
 					if ((gp.mother(0)->pdgId() == Dsst_gp.pdgId()) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 22) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
 					{ Gen_gamma_idx = i; num_Gen_gamma++; }
-					else if (TwoBodyDecay(gp, 111, 22, 22) && TwoBodyDecay(gp, Dsst_gp.pdgId(), Dsst_charge * 431, 111) && TwoBodyDecay(gp, 25, Dsst_gp.pdgId(), W_gp.pdgId()))
-					{
-						if      (num_Gen_pi0gamma == 0) { Gen_pi0gamma1_idx = i; }
-						else if (num_Gen_pi0gamma == 1) { Gen_pi0gamma2_idx = i; }
-						num_Gen_pi0gamma++;
-					}
 				}
 			}
 		}
 		Bool_t Dsst_mode_ok = (ftree->Gen_Dsst_mode == 0) ? (num_Gen_gamma == 1)
-		                    : (ftree->Gen_Dsst_mode == 1) ? (num_Gen_pi0 == 1 && num_Gen_pi0gamma == 2)
+		                    : (ftree->Gen_Dsst_mode == 1) ? (num_Gen_pi0 == 1)
 		                    : false;
 		if (!((num_Gen_Ds == 1) && (num_Gen_Kp == 1) && (num_Gen_Km == 1) && (num_Gen_pi == 1) && Dsst_mode_ok))
 			return;
@@ -489,17 +493,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 		if (isWtaumu) nEventsGenTauMu_++;
 
 		const reco::GenParticle *gamma_gp = nullptr;
-		const reco::GenParticle *pi0gamma1_gp = nullptr;
-		const reco::GenParticle *pi0gamma2_gp = nullptr;
 		if (ftree->Gen_Dsst_mode == 0)
 		{
 			gamma_gp = &(*GenPartHandle)[Gen_gamma_idx];
 		}
-		else
-		{
-			pi0gamma1_gp = &(*GenPartHandle)[Gen_pi0gamma1_idx];
-			pi0gamma2_gp = &(*GenPartHandle)[Gen_pi0gamma2_idx];
-		}
+		// pi0-mode: no gen-level truth attempted for the two pi0 daughter photons --
+		// Gen_pi0gamma{1,2}_match stay at their default false (see num_Gen_pi0 comment above).
 
 		// Gen match
 		edm::Handle<edm::Association<reco::GenParticleCollection>> associationHandle;
@@ -544,21 +543,6 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				Float_t dR = reco::deltaR(pf.eta(), pf.phi(), gamma_gp->eta(), gamma_gp->phi());
 				if (std::abs((gamma_gp->pt() - pf.pt()) / gamma_gp->pt()) > 0.5) continue;
 				if (dR < gamma_deltaR) { gamma_match_idx = i; gamma_deltaR = dR; }
-			}
-		}
-		else
-		{
-			Float_t pi0gamma1_deltaR = 0.02, pi0gamma2_deltaR = 0.02;
-			for (Int_t i = 0; i < static_cast<Int_t>(PFCandHandle->size()); i++)
-			{
-				const pat::PackedCandidate &pf = (*PFCandHandle)[i];
-				if (pf.pdgId() != 22) continue;
-				Float_t dR1 = reco::deltaR(pf.eta(), pf.phi(), pi0gamma1_gp->eta(), pi0gamma1_gp->phi());
-				if (std::abs((pi0gamma1_gp->pt() - pf.pt()) / pi0gamma1_gp->pt()) <= 0.5 && dR1 < pi0gamma1_deltaR)
-				{ ftree->Gen_pi0gamma1_match = true; pi0gamma1_deltaR = dR1; }
-				Float_t dR2 = reco::deltaR(pf.eta(), pf.phi(), pi0gamma2_gp->eta(), pi0gamma2_gp->phi());
-				if (std::abs((pi0gamma2_gp->pt() - pf.pt()) / pi0gamma2_gp->pt()) <= 0.5 && dR2 < pi0gamma2_deltaR)
-				{ ftree->Gen_pi0gamma2_match = true; pi0gamma2_deltaR = dR2; }
 			}
 		}
 
@@ -710,27 +694,32 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	Float_t mu_IsoR03_PFIso = mu.pfIsolationR03().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR03().sumNeutralHadronEt + mu.pfIsolationR03().sumPhotonEt - 0.5f * mu.pfIsolationR03().sumPUPt);
 	Float_t mu_IsoR04_PFIso = mu.pfIsolationR04().sumChargedHadronPt + std::max(0.0f, mu.pfIsolationR04().sumNeutralHadronEt + mu.pfIsolationR04().sumPhotonEt - 0.5f * mu.pfIsolationR04().sumPUPt);
 
-	// ss/os are relative to the pi charge. The candidate loop forces pi opposite the best
-	// muon (pi_charge == -mu.charge()), so "same as pi" == opposite the best muon.
+	// The charge the candidate loop below requires of the pi: opposite the best muon in the
+	// default OS selection, same as it in the SS control region. Everything charge-related
+	// keys off this one value, so os/ss stay defined relative to the pi in both modes.
+	const Int_t pi_charge_ref = sameSignPi_ ? mu.charge() : -mu.charge();
+
+	// ss/os are relative to the pi charge, so they mean the same thing in OS and SS mode
+	// (in OS "same as pi" is opposite the best muon; in SS it is the same as the best muon).
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
 		const pat::Muon &muon = (*MuonHandle)[idx_mu];
-		Bool_t os = (muon.charge() == mu.charge());   // opposite pi  (== same as best muon)
-		Bool_t ss = (muon.charge() == -mu.charge());  // same as pi   (== opposite best muon)
+		Bool_t os = (muon.charge() == -pi_charge_ref);  // opposite pi
+		Bool_t ss = (muon.charge() ==  pi_charge_ref);  // same as pi
 		if (muon.isLooseMuon())        { if (os) ftree->num_os_mu_loose++;  else if (ss) ftree->num_ss_mu_loose++;  }
 		if (muon.isMediumMuon())       { if (os) ftree->num_os_mu_medium++; else if (ss) ftree->num_ss_mu_medium++; }
 		if (muon.isTightMuon(primvtx)) { if (os) ftree->num_os_mu_tight++;  else if (ss) ftree->num_ss_mu_tight++;  }
 	}
 
-	// Electron ss/os counts (same charge convention relative to pi == -mu.charge()).
+	// Electron ss/os counts (same charge convention relative to pi as the muons above).
 	// Counting only -- electrons do not enter the event selection.
 	edm::Handle<pat::ElectronCollection> ElectronHandle;
 	iEvent.getByToken(ElectronToken_, ElectronHandle);
 	for (Int_t idx_e = 0; idx_e < static_cast<Int_t>(ElectronHandle->size()); idx_e++)
 	{
 		const pat::Electron &ele = (*ElectronHandle)[idx_e];
-		Bool_t os = (ele.charge() == mu.charge());
-		Bool_t ss = (ele.charge() == -mu.charge());
+		Bool_t os = (ele.charge() == -pi_charge_ref);
+		Bool_t ss = (ele.charge() ==  pi_charge_ref);
 		if (ele.electronID(eleIdCutLoose_)  > 0.5f) { if (os) ftree->num_os_e_cutloose++;  else if (ss) ftree->num_ss_e_cutloose++;  }
 		if (ele.electronID(eleIdCutMedium_) > 0.5f) { if (os) ftree->num_os_e_cutmedium++; else if (ss) ftree->num_ss_e_cutmedium++; }
 		if (ele.electronID(eleIdCutTight_)  > 0.5f) { if (os) ftree->num_os_e_cuttight++;  else if (ss) ftree->num_ss_e_cuttight++;  }
@@ -846,7 +835,12 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 				if ((iKp == ipi) || (iKm == ipi)) continue;
 				const Int_t idx_pi = idx_pf[ipi];
 				const pat::PackedCandidate &pi_pf = (*PFCandHandle)[idx_pi];
-				if (pi_pf.charge() == mu.charge()) continue;
+				// OS (default): pi opposite the best muon, the real signal correlation.
+				// SS: pi same as the best muon, which excludes real signal by charge
+				// conservation and leaves wrong-charge combinatoric background.
+				// (The Kp/Km charge cuts above are deliberately NOT switched -- they only
+				// decide which K gets labelled Kp vs Km, orthogonal to the pi choice.)
+				if (pi_pf.charge() != pi_charge_ref) continue;
 
 				TLorentzVector pi_p4;
 				pi_p4.SetXYZM(pi_pf.px(), pi_pf.py(), pi_pf.pz(), Mass_pi);
@@ -1349,6 +1343,7 @@ void H_phipimu::fillDescriptions(edm::ConfigurationDescriptions &descriptions)
 	edm::ParameterSetDescription desc;
 	desc.add<bool>("doTruth", true);
 	desc.add<std::string>("channel", "DsW");
+	desc.add<bool>("sameSignPi", false);
 	descriptions.addDefault(desc);
 }
 

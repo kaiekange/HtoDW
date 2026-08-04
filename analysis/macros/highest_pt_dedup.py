@@ -1,4 +1,4 @@
-"""Dedup an H_phipimu / H_phipimu_SS flat ntuple to one row per event: keep the
+"""Dedup an H_phipimu (OS or sameSignPi) flat ntuple to one row per event: keep the
 candidate with the highest Ds_pt, breaking ties on gamma_pt (rows are per-(Ds,gamma)
 candidate: Ds_pt is identical across every gamma row of the same Ds, so when the
 winning Ds has several gamma rows they all tie on Ds_pt -- gamma_pt picks the best one).

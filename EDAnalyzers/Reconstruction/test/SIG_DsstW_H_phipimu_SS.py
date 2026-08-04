@@ -1,3 +1,5 @@
+import re
+import subprocess
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
 from Configuration.AlCa.GlobalTag import GlobalTag
@@ -11,7 +13,18 @@ options.parseArguments()
 start = options.JOBID * options.GROUPSIZE + 1
 end = start + options.GROUPSIZE
 
-INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsstW_phipi/20260624/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end) if i != 188]
+# old sample (20260624): W->mu/e only, Ds*->gamma only generation fragment. Superseded by the
+# 20260717 inclusive W->e/mu/tau + Ds*->gamma/pi0 sample below; kept here for reference.
+# INFILE = ["root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsstW_phipi/20260624/Simulation/PAT/2022/output_{}.root".format(i) for i in range(start, end) if i != 188]
+
+# 20260717 production caps out short of 1000 (2 AODSIM jobs still running as of
+# 2026-08-04, 6 AODSIM outputs are broken and will never produce PAT) -- checked live
+# so what's actually on storage and only queue the ones present -- self-healing on
+# reruns as production fills in (though 6 indices never will).
+PATDIR = "/store/user/kakang/Analysis/ggHtoDsstW_phipi/20260717/Simulation/PAT/2022"
+ls_out = subprocess.check_output(["xrdfs", "maite.iihe.ac.be", "ls", PATDIR]).decode()
+existing = set(int(m) for m in re.findall(r"output_(\d+)\.root", ls_out))
+INFILE = ["root://maite.iihe.ac.be/{}/output_{}.root".format(PATDIR, i) for i in range(start, end) if i in existing]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
 process = cms.Process("HphipimuDsstWSS")
@@ -33,7 +46,8 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
-process.HphipimuDsstW = cms.EDAnalyzer("H_phipimu_SS",
+process.HphipimuDsstW = cms.EDAnalyzer("H_phipimu",
+    sameSignPi = cms.bool(True),   # same-sign control region (merged into the OS plugin)
     doTruth = cms.bool(True),
     channel = cms.string("DsstW")
 )

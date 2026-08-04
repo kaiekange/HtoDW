@@ -41,7 +41,8 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
-process.Hphipimu = cms.EDAnalyzer("H_phipimu_SS",
+process.Hphipimu = cms.EDAnalyzer("H_phipimu",
+    sameSignPi = cms.bool(True),   # same-sign control region (merged into the OS plugin)
     doTruth = cms.bool(False),
     channel = cms.string("DsW")
 )

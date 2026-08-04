@@ -33,7 +33,7 @@ c = 0.5 * (bins[1:] + bins[:-1])
 # SS: exactly one tight muon in the event (the best muon itself, no extra of either
 # charge). os/ss are relative to the pi charge, which is flipped vs the OS plugin --
 # so the SS selection is num_ss_mu_tight==1 & num_os_mu_tight==0, the REVERSE of the
-# OS cut -- see H_phipimu_SS.cc and draw_data_vs_wjets.py.
+# OS cut -- see H_phipimu.cc (sameSignPi) and draw_data_vs_wjets.py.
 SEL_BRANCHES = ["num_os_mu_tight", "num_ss_mu_tight"]
 
 

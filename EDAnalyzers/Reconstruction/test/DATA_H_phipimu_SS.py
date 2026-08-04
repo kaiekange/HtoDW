@@ -36,7 +36,8 @@ process.jecAppliedJetProducer.Jets.IsData = cms.bool(True)
 process.jecAppliedJetProducer.Jets.Era    = cms.string("Era2022PreAll")
 process.jecAppliedMetProducer.Jets.IsData = cms.bool(True)
 process.jecAppliedMetProducer.Jets.Era    = cms.string("Era2022PreAll")
-process.Hphipimu = cms.EDAnalyzer("H_phipimu_SS",
+process.Hphipimu = cms.EDAnalyzer("H_phipimu",
+    sameSignPi = cms.bool(True),   # same-sign control region (merged into the OS plugin)
     doTruth = cms.bool(False),
     channel = cms.string("DsW"),
     # No electron ID overrides: this 22Sep2023 data reprocessing's pat::Electron
