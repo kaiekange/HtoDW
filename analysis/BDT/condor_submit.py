@@ -2,14 +2,13 @@ import sys
 import subprocess
 import os
 
-model_name = sys.argv[1] if len(sys.argv) > 1 else "v3"
+OUTDIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/dsw_wjets_test"
 
-os.makedirs(f"/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/{model_name}", exist_ok=True)
+os.makedirs(OUTDIR, exist_ok=True)
 
 def submit_jobs():
     submit_description = f"""
 executable = run.sh
-arguments = {model_name}
 log = ./HTCondor.log
 JobBatchName = phipimu_BDT
 request_cpus = 4
