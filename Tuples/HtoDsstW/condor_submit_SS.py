@@ -1,8 +1,14 @@
+import re
 import sys
 import subprocess
 import os
 
-GroupSize = 20
+GroupSize = 10
+
+# 20260717 production caps out short of 1000 (2 AODSIM jobs still running as of
+# 2026-08-04, 6 AODSIM outputs are broken and will never produce PAT) -- checked live
+# so njobs tracks the sample actually on storage instead of assuming all 1000 exist.
+PATDIR = "/store/user/kakang/Analysis/ggHtoDsstW_phipi/20260717/Simulation/PAT/2022"
 
 def submit_jobs():
 
@@ -15,7 +21,9 @@ def submit_jobs():
     if os.path.exists(scheduler_log):
         os.remove(scheduler_log)
 
-    njobs = 1000/GroupSize
+    ls_out = subprocess.check_output(["xrdfs", "maite.iihe.ac.be", "ls", PATDIR]).decode()
+    max_index = max(int(m) for m in re.findall(r"output_(\d+)\.root", ls_out))
+    njobs = (max_index + GroupSize - 1) // GroupSize
 
     submit_description = f"""
 executable = run_SS.sh
