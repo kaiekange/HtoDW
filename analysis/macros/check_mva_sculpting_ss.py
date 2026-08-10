@@ -1,4 +1,4 @@
-"""OS vs SS version of the MVA sculpting check (BDT only -- the DNN behaves the same).
+"""OS vs SS version of the MVA sculpting check, on the DNN.
 
 The point this plot has to settle: SS was adopted as a combinatorial-background
 template because at inclusive selection it shows no real-Ds peak. That still holds
@@ -6,8 +6,9 @@ without an MVA cut, but the numbers say it stops holding once the score cut is
 tightened -- Data SS develops a Ds peak the W+jets SS MC does not predict, presumably
 because charge-symmetric real charm (tt-like) populates both signs while W+c does not.
 
-Data SS is NOT blinded, which is exactly what makes this measurable: the Ds region is
-visible there even though it is cut out of Data OS.
+Blinding only ever applied to OS: SS excludes real signal by charge conservation, so
+there was never anything there to hide. That asymmetry is what makes this measurable
+at all -- the Ds region is simply there to look at in SS, while in OS it is cut out.
 
 Usage:
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
@@ -15,6 +16,7 @@ Usage:
     python3 check_mva_sculpting_ss.py
 """
 
+import os
 import numpy as np
 import uproot
 import matplotlib.pyplot as plt
@@ -22,8 +24,9 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-PRED = "/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/dsw_wjets_test/Prediction"
+OUTDIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets/figures"
+os.makedirs(OUTDIR, exist_ok=True)
+PRED = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets/Prediction"
 M_DS, M_D, SR_HALFWIDTH = 1.96835, 1.8696, 0.04
 WJETS_WEIGHTS = {
     "WtoLNu2Jets_0J": 2.3293047885,
@@ -60,7 +63,7 @@ panels = [
     ("W+jets MC, SS", *merged("_SS", True)),
 ]
 d = load("Data_2022", False);    panels.append(("Data OS (SR blinded)", d, np.ones(len(d["Ds_mass"]))))
-d = load("Data_2022_SS", True);  panels.append(("Data SS (unblinded)", d, np.ones(len(d["Ds_mass"]))))
+d = load("Data_2022_SS", True);  panels.append(("Data SS", d, np.ones(len(d["Ds_mass"]))))
 
 fig, axes = plt.subplots(2, 2, figsize=(20, 15))
 for ax, (title, dat, wt) in zip(axes.flatten(), panels):
