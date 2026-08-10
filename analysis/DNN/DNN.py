@@ -1,32 +1,48 @@
 """
-DNN: H->Ds(*)W signal vs W+jets, phipimu channel.
+DNN: H->Ds(*)W signal (OS) vs one of two background choices, phipimu channel.
 
-Both signal channels (DsW + DsstW) against a single background process. The other
-backgrounds (TT, DY, ...) are still missing from the new Samples/ format, and they
-are known to be the ones this classifier finds hardest -- see the
-project_wjets_background_incomplete / project_mva_sculpting_finding notes: the
-data/MC gap widens with the score cut, so the rejection quoted here is optimistic.
+    python3 DNN.py ssdata     # background = SS data (Data_2022_SS, even event_id)
+    python3 DNN.py wjets      # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
 
-No longer kept in lockstep with BDT/BDT.py: as of 2026-08-04 the two use different
-feature sets (BDT is still on the 42-feature test build) and are not directly
-comparable. Feature set here is 40: the 42 minus n_b_jets_{loose,medium}_dR04 and
-the three *_PVassoc, plus the three per-track *_ipxysig.
+Everything except the background -- feature set, seed, split fractions, network,
+class balancing, early stopping -- is identical between the two, so the two trained
+models differ in exactly one thing and can be compared head to head. That was NOT
+true before 2026-08-10: the W+jets model was 40 features and the SS model 43, which
+silently invalidated the first comparison. The feature list now lives in common.py
+so it cannot drift again.
+
+**W+jets background** was the original choice. It is known to be missing tt/DY
+entirely (project_wjets_background_incomplete) -- the data/MC gap widened with the
+score cut, meaning the real background the classifier never saw was exactly the
+hardest part.
+
+**SS data background** contains the genuine process mixture (tt, DY, QCD, ...) with
+no need to add each one to Samples/ separately, at the cost of the SS-purity caveat
+in project_mva_sculpting_finding (SS is not purely combinatorial after tight cuts --
+some of it is real Ds with a wrong-charge pi). Signal stays OS-selected, so with
+this background the two training classes differ structurally in charge
+configuration, not just physics. Checked before adopting it (see
+check_os_vs_ss_features.py, OS sideband vs SS post-veto, no signal involved): the
+largest single-feature Cohen's d across all 43 features is 0.10 (Ds_pt), KS <=0.041
+-- the charge-config artifact is small at the univariate level. That does not rule
+out the classifier finding a multivariate combination encoding OS-vs-SS instead of
+signal-vs-background; the real check is scoring OS sideband data with the trained
+model and confirming it does not come out looking signal-like.
+
+Not kept in lockstep with BDT/BDT.py: as of 2026-08-04 the two use different feature
+sets and are not directly comparable. BDT deliberately does not import common.py.
 
 Reads the one-row-per-event Samples tuples directly (flat `Events` tree -- these
 files, produced by highest_pt_dedup.py, carry no embedded Lumi_reweight branch,
 unlike the older 34-background Samples/ files).
-
-Feature set excludes every decay-kinematics variable: those reconstruct
-phi_mass / Ds_mass to R^2 = 0.98 / 0.94, which would sculpt the resonance peaks
-used for the final fit. Dsmu_mass is a feature here, not a fit variable -- it has
-no resonant peak, and keeping it out of the fit is what lets Ds_pt stay in the MVA.
 """
+import sys
+import os
+
 import numpy as np
-import uproot
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-import os
 from matplotlib.backends.backend_pdf import PdfPages
 
 import mplhep as hep
@@ -35,216 +51,83 @@ plt.style.use(hep.style.CMS)
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_curve, roc_auc_score
 
+import common
+from common import FEATURE_NAMES, SIGNALS
+
 # ========= 1. 配置 =========
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
-TREE = "Events"
+# Feature set, preprocessing, network and the background table all live in
+# common.py -- see its docstring for why nothing here may re-declare them.
+if len(sys.argv) != 2:
+    sys.exit(f"usage: python3 {os.path.basename(__file__)} <{'|'.join(common.TRAININGS)}>")
+BKG = sys.argv[1]
+cfg = common.resolve(BKG)          # validates before anything is created on disk
 
-# Both signal channels, each event at weight 1. The two productions were sized in
-# proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.54M vs
-# 2.86M = 1:1.86), so N_gen is already proportional to sigma x BR and the
-# equivalent-luminosity weight per event is the same for both -- concatenating them
-# reproduces the physical DsW:DsstW mixture, and their selection efficiencies are
-# near identical anyway (9.32% vs 9.49%), so it survives the selection too.
-# If the two channels ever need genuinely unequal weights, put them here.
-SIGNALS = {
-    "HtoDsW":   1.0,
-    "HtoDsstW": 1.0,
-}
-
-# WtoLNu2Jets is split into three jet-multiplicity bins of the SAME physical
-# process, so they are weight-merged using the full statistics of all three
-# files. Weights are the equivalent-luminosity reweighting factors (external --
-# these files have no embedded Lumi_reweight branch).
-WJETS_WEIGHTS = {
-    "WtoLNu2Jets_0J": 2.3293047885,
-    "WtoLNu2Jets_1J": 0.5382864853,
-    "WtoLNu2Jets_2J": 0.2748710631,
-}
-
-out_dir = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN/dsw_dsstw_wjets"
+out_dir = cfg["out_dir"]
 os.makedirs(out_dir, exist_ok=True)
+print(f"Background: {BKG} ({cfg['label']}) -> {out_dir}")
 
 SEED = 42
 rng = np.random.default_rng(SEED)
 torch.manual_seed(SEED)
 
-# ========= 2. 特征定义 =========
-# Must stay identical to BDT/BDT.py.
-FEATURE_NAMES = [
-    # lifetime / vertex -- prompt-from-H vs displaced-from-B (the real-Ds background)
-    "Ds_ipsig",
-    "Ds_FDsig",
-    "dira",
-    "Ds_prob",
-    "Kp_ipsig",
-    "Km_ipsig",
-    "pi_ipsig",
-    "mu_ipsig",
-    # 2D lifetime/vertex: transverse resolution beats longitudinal.
-    # FDxysig separates DY (fake Ds from prompt tracks -> no flight distance);
-    # ipxysig separates TT (real Ds from a displaced B -> momentum misses the PV).
-    "Ds_FDxysig",
-    "Ds_ipxysig",
-    # Per-track 2D IP significance. Added 2026-08-04: the same "transverse beats
-    # longitudinal" argument that motivated Ds_ipxysig applies to the tracks, and it
-    # had simply never been carried down to them. Measured on this sample they beat
-    # their 3D counterparts (AUC 0.725/0.723/0.780 vs 0.710/0.709/0.774) and are only
-    # weakly correlated with them (r = 0.14/0.19/0.27) -- the 3D versions are diluted
-    # by the much worse z resolution, so the two carry largely complementary
-    # information rather than being two views of the same quantity.
-    # mu_ipxysig deliberately left out: AUC 0.504, i.e. nothing -- the muon comes from
-    # a prompt W and has no displacement to measure (its 3D version, mu_ipsig, is
-    # equally useless at 0.503 but is kept for continuity with the earlier feature set).
-    "Kp_ipxysig",
-    "Km_ipxysig",
-    "pi_ipxysig",
-    # isolation -- the components, not just RelIso. sumChargedHadronPt is the single
-    # strongest variable against every background (AUC 0.91 vs TT): a Ds buried in a
-    # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
-    "Ds_IsoR04_sumChargedHadronPt",
-    "Ds_IsoR04_sumNeutralHadronEt",
-    "Ds_IsoR04_sumPhotonEt",
-    "Ds_IsoR04_sumPUPt",
-    "Ds_IsoR04_RelIso",
-    "Ds_IsoR03_RelIso",
-    "mu_IsoR04_RelIso",
-    # MET / event. num_jets_pt20..pt60 are near-duplicates (AUC all ~0.80), so only
-    # one threshold is kept; num_jets (no threshold) adds the soft-jet activity.
-    "met_pt",
-    "met_sig",
-    "met_sumEt",
-    "W_tmass",
-    "num_jets",
-    "num_jets_pt30",
-    # Ds + mu kinematics -- hard from a 125 GeV H vs soft inside a jet
-    "Ds_pt",
-    "Dsmu_pt",
-    "Dsmu_eta",
-    "mu_pt",
-    "mu_eta",
-    "dR_Ds_mu",
-    "dR_Kp_mu",
-    "dR_Km_mu",
-    "dR_pi_mu",
-    "dR_phi_mu",
-    # Ds+mu mass: H-mass constrained for signal, continuum for background
-    "Dsmu_mass",
-    # --- jet/b-tag environment, added 2026-08-03. Five of the eighteen new
-    # branches earn a slot; the rest are either redundant with these or scored
-    # ~0 importance against W+jets (they were designed to fight TT, which this
-    # test build does not contain -- revisit when TT is in the mix).
-    "Ds_nearestjet_bscore",
-    "Ds_nearestjet_dR",
-    "jet_leadpt",
-    # n_b_jets_{loose,medium}_dR04 were dropped 2026-08-04: kept in the first test build
-    # on the argument that tight subset medium subset loose leaves them free to vary
-    # after the tight veto -- true, but they then ranked dead last (41st and 42nd of 42,
-    # importance 0.0016/0.0020). "Not degenerate with the cut" did not imply "useful".
-]
+# Every panel's CMS stamp follows the background: real data gets "Preliminary" and
+# data=True, simulation gets "Simulation" and data=False. Hardcoding it is what made
+# the pre-refactor SS run label every plot "Simulation" while training on real data.
+CMS_TEXT = "Preliminary" if cfg["is_data"] else "Simulation"
+BKG_LABEL = cfg["label"]
 
-LOG_FEATURES = [
-    "Kp_ipsig",
-    "Km_ipsig",
-    "pi_ipsig",
-    "Ds_ipsig",
-    "mu_ipsig",
-    "Ds_FDsig",
-    "Ds_FDxysig",
-    "Ds_ipxysig",
-    "Kp_ipxysig",
-    "Km_ipxysig",
-    "pi_ipxysig",
-    "Ds_IsoR04_sumChargedHadronPt",
-    "Ds_IsoR04_sumNeutralHadronEt",
-    "Ds_IsoR04_sumPhotonEt",
-    "Ds_IsoR04_sumPUPt",
-]
 
-# Sentinel handling -- needed here but NOT in the BDT: trees just split around a
-# -777, but StandardScaler would let it wreck the mean/variance of the whole
-# feature. Each sentinel is mapped to the physically sensible edge of its range
-# ("no jet nearby" / "tagger gave nothing"), keeping the input bounded.
-#   Ds_nearestjet_bscore  -777 (no jet) and ~-10 (tagger unavailable, ~14% of rows)
-#   Ds_nearestjet_dR      -777 (no jet)  -> far away
-#   jet_leadpt            -777 (no jet)  -> zero pt
-SENTINEL_FIX = {
-    "Ds_nearestjet_bscore": -0.1,   # just below the [0,1] tagger range
-    "Ds_nearestjet_dR": 5.0,        # beyond any real dR in the sample
-    "jet_leadpt": 0.0,
-}
+def cms_label(ax, fontsize=13):
+    hep.cms.label(CMS_TEXT, ax=ax, rlabel="2022 (13.6 TeV)",
+                  data=cfg["is_data"], fontsize=fontsize)
 
-# Exactly one tight muon in the event (the best muon itself, no extra of either
-# charge), plus a b-jet veto. The veto is a CUT, not a feature: its job is to
-# remove the process the background model does not contain at all (tt, with real
-# b jets). Tight WP keeps 99.3% of signal while removing 25% of data; dR04
-# matches the AK4 jet cone radius. See BDT/BDT.py for the full reasoning.
-B_VETO = "n_b_jets_tight_dR04"
-SELECTION = ["num_os_mu_tight", "num_ss_mu_tight", B_VETO]
-LOAD_BRANCHES = list(dict.fromkeys(FEATURE_NAMES + SELECTION))
-
-# ========= 3. 加载数据 =========
-def load(name, truth_filter):
-    branches = LOAD_BRANCHES + (["Ds_match", "mu_match"] if truth_filter else [])
-    with uproot.open(f"{SAMPLES_DIR}/{name}.root")[TREE] as t:
-        a = t.arrays(branches, library="np")
-    n_in = len(a[B_VETO])
-    m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= a[B_VETO] == 0
-    if truth_filter:
-        m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
-    X = np.column_stack([a[f][m] for f in FEATURE_NAMES])
-    print(f"  {name:18s} {n_in:>8,} -> {m.sum():>8,} rows after selection")
-    return X
 
 print(f"Loading signal ({'+'.join(SIGNALS)})...")
 sig_X, sig_w = [], []
 for name, wgt in SIGNALS.items():
-    x = load(name, truth_filter=True)
+    x, _ = common.load(name, truth_filter=True)
     sig_X.append(x)
     sig_w.append(np.full(len(x), wgt))
 X_sig = np.vstack(sig_X)
 w_sig = np.concatenate(sig_w)
 
-print(f"Loading WtoLNu2Jets ({'+'.join(WJETS_WEIGHTS)}, lumi-reweighted)...")
+# Background: one loop over the configured samples. The SS config is a single
+# sample at weight 1; the W+jets config is the three jet bins at their
+# equivalent-luminosity weights. Same code path, so nothing but the table differs.
+parity_note = "" if cfg["parity"] is None else (
+    f", event_id parity=={cfg['parity']} only -- the other parity is held out "
+    f"for a later non-circular sculpting check")
+print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_note})...")
 bkg_X, bkg_w = [], []
-for name, wgt in WJETS_WEIGHTS.items():
-    x = load(name, truth_filter=False)
+for name, wgt in cfg["samples"].items():
+    x, _ = common.load(name, ss=cfg["ss"], parity=cfg["parity"])
     bkg_X.append(x)
     bkg_w.append(np.full(len(x), wgt))
 X_bkg = np.vstack(bkg_X)
 w_bkg = np.concatenate(bkg_w)
 
 print(f"Signal: {len(X_sig):,} (both channels at their physical proportion, see above)")
-print(f"Background: {len(X_bkg):,} (WtoLNu2Jets, full stats, lumi-reweighted merge of 3 jet bins)")
+print(f"Background: {len(X_bkg):,} ({cfg['label']})")
 
 X = np.vstack([X_sig, X_bkg])
 y = np.concatenate([np.ones(len(X_sig)), np.zeros(len(X_bkg))])
 w = np.concatenate([w_sig, w_bkg])
 
-# ========= 4. sentinel 规整 + 有限值 + dira 过滤 =========
-for feat, fill in SENTINEL_FIX.items():
-    i = FEATURE_NAMES.index(feat)
-    bad = X[:, i] < -1
-    if bad.any():
-        print(f"  sentinel: {feat:24s} {bad.sum():>8,} rows ({100*bad.mean():5.2f}%) -> {fill}")
-        X[bad, i] = fill
-
-dira_idx = FEATURE_NAMES.index("dira")
-mask = np.isfinite(X).all(axis=1) & (X[:, dira_idx] > -1)
+# ========= 4. 预处理：sentinel 规整 + 有限值过滤 + 特征变换 =========
+# One shared implementation (common.preprocess) so predict.py cannot drift from it.
+X, mask = common.preprocess(X)
 X, y, w = X[mask], y[mask], w[mask]
 print(f"After finite filter: {X.shape}")
 
-# Verify the lumi-reweighting actually took effect: weighted mean should match the
-# physical jet-bin mixture, not the raw event-count one (which is dominated by 2J
-# simply having more events).
-jet30_idx = FEATURE_NAMES.index("num_jets_pt30")
-check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
-print(f"[check] weighted <num_jets_pt30> for background = {check:.3f} (raw-concat would be ~1.55)")
-
-# ========= 5. 特征变换 =========
-log_idx = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
-X[:, log_idx]  = np.log1p(X[:, log_idx])
-X[:, dira_idx] = np.log(1.01 - X[:, dira_idx])
+# Verify the lumi-reweighting actually took effect: the weighted mean should match
+# the physical jet-bin mixture, not the raw event-count one (which is dominated by
+# 2J simply having more events). Only meaningful when the samples carry unequal
+# weights -- the SS-data config is a single sample at weight 1.
+if cfg["weighted"]:
+    jet30_idx = FEATURE_NAMES.index("num_jets_pt30")
+    check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
+    print(f"[check] weighted <num_jets_pt30> for background = {check:.3f} "
+          f"(raw-concat would be ~1.55)")
 
 np.save(f"{out_dir}/X_sig.npy", X[y == 1])
 np.save(f"{out_dir}/X_bkg.npy", X[y == 0])
@@ -298,14 +181,14 @@ with PdfPages(f"{out_dir}/variable_comparison.pdf") as pdf:
                 lo, hi = min(s_vals.min(), b_vals.min()), max(s_vals.max(), b_vals.max())
             bins = np.linspace(lo, hi, 50)
             ax.hist(b_vals, bins=bins, weights=w_bkg_plot, density=True, alpha=0.6,
-                    color="steelblue", label="WtoLNu2Jets")
+                    color="steelblue", label=BKG_LABEL)
             ax.hist(s_vals, bins=bins, weights=w_sig_plot, density=True, alpha=0.6,
-                    color="firebrick", label="HtoDsW")
+                    color="firebrick", label="HtoDsW+HtoDsstW")
             ax.set_xlabel(feat)
             ax.set_ylabel("a.u.")
             ax.legend(fontsize=13)
             if i == 0:
-                hep.cms.label("Simulation", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+                cms_label(ax)
         for j in range(len(page_feats), len(axes_flat)):
             axes_flat[j].set_visible(False)
         plt.tight_layout()
@@ -333,20 +216,8 @@ X_val_t,   y_val_t   = to_tensor(X_val,   y_val)
 X_test_t             = to_tensor(X_test)
 
 # ========= 11. 模型 =========
-class phipimuNet(nn.Module):
-    def __init__(self, n_in, dropout=0.3):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(n_in, 128), nn.BatchNorm1d(128), nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(128, 64),  nn.BatchNorm1d(64),  nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(64, 32),   nn.BatchNorm1d(32),  nn.ReLU(), nn.Dropout(dropout),
-            nn.Linear(32, 16),   nn.BatchNorm1d(16),  nn.ReLU(),
-            nn.Linear(16, 1),
-        )
-    def forward(self, x):
-        return self.net(x)
-
-model = phipimuNet(X_train.shape[1])
+# Defined in common.py so predict.py rebuilds the identical architecture.
+model = common.phipimuNet(X_train.shape[1])
 print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
 # ========= 12. 训练 =========
@@ -430,27 +301,27 @@ axes = axes.flatten()
 
 axes[0].plot(train_losses, label="Train Loss"); axes[0].plot(val_losses, label="Val Loss")
 axes[0].set_xlabel("Epoch"); axes[0].set_ylabel("Loss"); axes[0].legend()
-hep.cms.label("Simulation", ax=axes[0], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+cms_label(axes[0])
 
 axes[1].plot(val_aucs, color="steelblue")
 axes[1].set_xlabel("Epoch"); axes[1].set_ylabel("Val AUC")
-hep.cms.label("Simulation", ax=axes[1], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+cms_label(axes[1])
 
 fpr, tpr, _ = roc_curve(y_test, scores, sample_weight=sw_test)
 axes[2].plot(fpr, tpr, label=f"AUC = {auc:.4f}"); axes[2].plot([0, 1], [0, 1], "k--")
 axes[2].set_xlabel("False Positive Rate"); axes[2].set_ylabel("True Positive Rate"); axes[2].legend()
-hep.cms.label("Simulation", ax=axes[2], rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+cms_label(axes[2])
 
 bins = np.linspace(0, 1, 51)
 for ax, logy in ((axes[3], False), (axes[4], True)):
     ax.hist(scores[y_test == 0], bins=bins, weights=sw_test[y_test == 0], alpha=0.6,
-            color="steelblue", label="WtoLNu2Jets", density=True)
+            color="steelblue", label=BKG_LABEL, density=True)
     ax.hist(scores[y_test == 1], bins=bins, weights=sw_test[y_test == 1], alpha=0.6,
-            color="firebrick", label="HtoDsW", density=True)
+            color="firebrick", label="HtoDsW+HtoDsstW", density=True)
     ax.set_xlabel("DNN Score"); ax.set_ylabel("a.u."); ax.legend()
     if logy:
         ax.set_yscale("log")
-    hep.cms.label("Simulation", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+    cms_label(ax)
 
 axes[5].set_visible(False)
 
@@ -479,7 +350,7 @@ ax.set_yticks(range(len(sorted_idx)))
 ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=11)
 ax.set_xlabel("AUC drop when feature permuted")
 ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
-hep.cms.label("Simulation", ax=ax, rlabel="2022 (13.6 TeV)", data=False, fontsize=13)
+cms_label(ax)
 plt.tight_layout()
 plt.savefig(f"{out_dir}/feature_importance.png", dpi=150)
 plt.close(fig)
@@ -487,4 +358,8 @@ print("Saved feature_importance.png")
 
 # ========= 16. 保存模型 =========
 torch.save(model.state_dict(), f"{out_dir}/phipimu_model.pt")
-print("Done.")
+# Stamp the exact feature list (and order) this model was trained on. predict.py
+# refuses to score against a dir whose stamp disagrees with common.py -- without it,
+# a feature added or reordered later would silently produce wrong scores.
+common.save_feature_names(out_dir)
+print(f"Done. ({len(FEATURE_NAMES)} features, background={BKG})")
