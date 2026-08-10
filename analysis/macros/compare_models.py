@@ -64,8 +64,12 @@ PEAK_SB = (0.03, 0.07)      # local sideband strips either side of it
 EFFS = [0.90, 0.70, 0.50]
 COLORS = ["black", "steelblue", "darkorange", "firebrick"]
 
+# run_id/lumi_id are carried alongside event_id because event_id is only unique
+# WITHIN a run: Data_2022 has 1,083,571 rows but only 1,082,925 distinct event_id,
+# i.e. 646 cross-run collisions. Keying identity on event_id alone would quietly
+# mis-assign those when computing the two models' overlap below.
 BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
-      common.B_VETO, "event_id"]
+      common.B_VETO, "run_id", "lumi_id", "event_id"]
 BR_SIG = BR + ["Ds_match", "mu_match"]
 
 if len(sys.argv) != 3:
@@ -96,8 +100,8 @@ def load(model_key, name, *, ss=False, sig=False, sideband=False, parity=None):
 
 def gather(model_key):
     """All four evaluation samples for one model, plus its signal score quantiles."""
-    sig = {k: np.concatenate([load(model_key, n, sig=True)[k] for n in common.SIGNALS])
-           for k in BR_SIG}
+    sig_parts = [load(model_key, n, sig=True) for n in common.SIGNALS]
+    sig = {k: np.concatenate([p[k] for p in sig_parts]) for k in BR_SIG}
     # SS: odd parity only -- the ssdata model trained on the even half.
     ss = load(model_key, "Data_2022_SS", ss=True, parity=1)
     # OS data is SR-blinded already; the explicit sideband cut makes that intent
@@ -235,14 +239,20 @@ def split_yield(mass):
     return (n_tot, np.sqrt(n_tot)), (exc, exc_e), (comb, comb_e)
 
 
-def ratio_overlapping(id_a, id_b):
+def event_keys(d, sel):
+    """(run, lumi, event) identity for the selected rows -- event_id alone collides."""
+    return set(zip(d["run_id"][sel].tolist(),
+                   d["lumi_id"][sel].tolist(),
+                   d["event_id"][sel].tolist()))
+
+
+def ratio_overlapping(sa, sb):
     """Ratio N_b/N_a for two selections of the SAME events, with the correct error.
 
     The two models cut on the same OS sideband data, so their surviving sets overlap
     heavily and sqrt(1/Na + 1/Nb) would badly overstate the uncertainty. Decompose
     into disjoint Poisson pieces -- A only, B only, common C -- and propagate.
     """
-    sa, sb = set(id_a.tolist()), set(id_b.tolist())
     C = len(sa & sb)
     A, B = len(sa) - C, len(sb) - C
     na, nb = A + C, B + C
@@ -262,7 +272,7 @@ for eff in EFFS:
     for k in MODELS:
         d = D[k]["os"]
         sel = d["score_dsmu"] > THR[k][eff]
-        kept[k] = d["event_id"][sel]
+        kept[k] = event_keys(d, sel)
         (nt, nte), (ex, exe), (cb, cbe) = split_yield(d["Ds_mass"][sel])
         print(f"{100*eff:7.0f}% {k:>8s} {THR[k][eff]:8.4f} "
               f"{nt:8,.0f} +-{nte:4.0f} {ex:8,.0f} +-{exe:4.0f} {cb:10,.0f} +-{cbe:4.0f}")
