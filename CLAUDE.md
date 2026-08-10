@@ -112,36 +112,58 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-07-23)
+## Last Session (2026-08-10)
 
-### Same-sign (SS) control-region tuplizer
+### MVA 背景从 W+jets MC 换成 SS data，并把特征集对齐后重训
 
-新增 `H_phipimu_SS`（`plugins/H_phipimu_SS.cc`），跟 `H_phipimu` 逐字一样，唯一 delta 是 K+K−π 候选循环里 pi 的电荷 cut 从 `!= mu.charge()`（要求反号，即真信号的电荷关联）翻成 `== mu.charge()` 排除、也就是**只要求 pi 与 mu 同号**——因为 Ds 和 W 电荷相反，真信号 pi 必然跟 mu 反号，所以 SS 样本在结构上排除了真信号，是纯 combinatoric/wrong-charge 本底的干净 control region。Kp/Km 的 cut 没动（它们只是"哪颗 K 叫 Kp/Km"的记账，跟 SS/OS 选择正交，不影响 phase space）。诊断用的 `num_os_mu_*`/`num_os_e_*` lepton 计数公式也跟着翻了一下，保持它们"相对 pi 电荷"的语义在 OS/SS 两个文件里一致（不翻的话同名分支在两个文件里会代表相反的量）。
+**起因是一个无效的比较。** 上一轮把训练背景换成 SS data 训出新模型，跟旧的 W+jets 模型对比得出"相同信号效率下背景低 36–54%"。这个数字**当时不成立**：旧模型 40 特征、新模型 43 特征（多了 `jet_ht`、`n_b_jets_loose_dR04`、`n_b_jets_medium_dR04`），两者差的不只是背景。
 
-在旧信号 MC 上验证过：`Ds_match`/`event_match` ≈0%（SS 确实排除了真信号，唯一一个 match 是电荷误重建的 per-mille 量级噪声，不是 bug）；`mu_match` 跟 OS 基本一样（~99.7-99.9% vs 99.98-99.99%，印证了 tight muon 选择不受 pi 电荷翻转影响，fake 只在强子侧）；`phi_match`~41.5%，说明假候选里接近一半是"真 φ+错电荷 π"。**这次验证是信号 MC 的自污染检查，不等于 OS/SS 本底对称性验证**——后者需要拿背景 MC 分别跑 OS/SS 两个 tuplizer，比较产额比例和 M(KKπ) 等拟合变量的 shape，这一步还没做。
+根因是 `FEATURE_NAMES` 在 `DNN.py`/`predict.py`/`BDT/*.py`/macros 里各有一份拷贝，只靠注释 "must stay identical" 同步。
 
-配套建了 `test/{BKG,SIG,SIG_DsstW}_H_phipimu_SS.py`（跟各自 OS 版本一样，只换 `EDAnalyzer` 类型）、`Tuples/HtoDsW/{condor_submit_SS.py,run_SS.sh}`、`Tuples/HtoDsstW/{condor_submit_SS.py,run_SS.sh}`、`Tuples/WtoLNu2Jets/crabConfig_SS.py`——都是复制现有 OS 版本再改一两行，不是参数化开关（跟这个仓库一直以来"cp 原版再加 delta"的规矩一致）。
+**修法：`analysis/DNN/common.py` 作为单一事实来源**，装 `FEATURE_NAMES`(43)、`LOG_FEATURES`(16)、`SENTINEL_FIX`、`SELECTION`/`B_VETO`、`load()`、`preprocess()`、`phipimuNet`、`TRAININGS` 表。`DNN.py`/`predict.py` 全部 import，自己不再声明。**`BDT/` 故意不接**（钉在更老的 42 特征集、已声明不可比，接进来会导致下次加特征时静默改变 BDT）。
 
-**踩坑记录**：新建的 plugin 编译成功后本地 cmsRun 报 `PluginNotFound`，原因是 `$CMSSW_BASE/lib/<arch>/.edmplugincache` 在 `scram b` 之后没有自动收录新插件；修法是 `edmPluginRefresh -p $CMSSW_BASE/lib/el9_amd64_gcc12`。
+训练改成参数化，两个配置只差背景：
+```
+python3 condor_submit.py ssdata    # signal(OS) vs Data_2022_SS，偶数 event_id
+python3 condor_submit.py wjets     # signal(OS) vs WtoLNu2Jets 0J+1J+2J
+```
+产物在 `dsw_dsstw_{ssdata,wjets}_f43`（`_f43` 是特征集代际标签）。**wjets 刻意用 `parity=None`**——parity 切分只为保护 SS 的非循环 sculpting 检验，W+jets 没这需求，加了会让重训相对旧版同时改两件事。
 
-### Tuples 目录改名
+**防漂移守卫**（特征顺序跟 `scaler_*.npy` 和 `nn.Linear` 是位置绑定的，改顺序不重训不会抛异常、只会静默出垃圾分数）：训练时写 `out_dir/feature_names.txt`，`predict.py` 打分前调 `check_model_dir()` 校验 stamp/scaler尺寸/输入层宽度。三条分支都实测过：旧40特征目录（无stamp）、顺序调换、长度不符，都给出可读拒绝。
 
-`Tuples/Signal`→`Tuples/HtoDsW`，`Tuples/Signal_DsstW`→`Tuples/HtoDsstW`，`Tuples/WJets`→`Tuples/WtoLNu2Jets`——按 dataset 名字去掉连字符的规矩（跟 `TbarQtoLNu`/`TTto2L2Nu` 等现有目录的命名风格对齐，不加下划线）。`CLAUDE.md` 里的示例路径同步改了。
+**回归验证**：重构后重跑 ssdata，跟重构前**逐项一致**——scaler 逐位相同、`X_sig`/`X_bkg` 数组相同、early stopping 同在 epoch 98、test AUC 同为 0.9977。
 
-### 新信号样本 (20260717) 上线，处理还没跑完的问题
+### 有效的对比结果（OS sideband data，两个模型都没见过）
 
-发现新的 DsW 信号样本在 `root://maite.iihe.ac.be//store/user/kakang/Analysis/ggHtoDsW_phipi/20260717/`——这才是真正的 inclusive W→e/μ/τ + Ds*→γ/π0 fragment（`[[project_h_phipimu_multiflavor_gen]]` 记录的旧样本 `20260624` 从未测试过 τ/π0 代码路径，这批新样本才是能测的）。生产还在跑（condor batch `MC_ggHtoDsW_phipi_AODSIM_2022_20260717`），预计 500 个文件，目前只有部分落盘且中间有零散缺口。
+| ε_sig | wjets 模型 | ssdata 模型 | ratio |
+|---|---|---|---|
+| 90% | 7,789 | 4,990 | 0.641 ± 0.007 |
+| 70% | 1,917 | 1,104 | 0.576 ± 0.015 |
+| 50% | 751 | 388 | 0.517 ± 0.023 |
 
-`test/SIG_H_phipimu.py`/`SIG_H_phipimu_SS.py` 的 `INFILE` 改成运行时现查 `xrdfs maite.iihe.ac.be ls <PAT目录>`，只把真实存在的文件塞进 `PoolSource`，不存在的自动跳过——每次重跑都会现查，以后生产陆续补齐也会自动捡到新文件，不用手动改排除列表（20260624 那行保留作注释参考）。
+**结论在特征对齐后依然成立**：SS 背景让背景低 36–48%（原来声称 36–54%，方向对、幅度略小）。误差用"两模型选出的事例集高度重叠"这一点正确传播（拆成 A-only/B-only/共同 C 三块独立 Poisson），不是 sqrt(1/N1+1/N2)。**事例身份必须用 `(run, lumi, event)`——`event_id` 只在单个 run 内唯一，Data_2022 有 646 个跨 run 碰撞。**
 
-**发现并修了一个资源浪费的 bug**：`Tuples/HtoDsW/condor_submit.py` 的 `njobs = 1000/GroupSize` 是照抄旧样本（~1000 个文件）的规模，但新样本上限只有 500，导致 JOBID 25-49 那一半 job（每批 50 个里的 25 个，OS+SS 两批共 50 个空 job）分到的文件号根本不存在，产出全是 16967 字节的空 ROOT 文件（有 tree header 但 0 entries，不是崩溃，`cmsRun` exit 0）。修法是 `njobs` 也现查 `xrdfs` 拿到的最大文件编号动态算。顺便把 `GroupSize` 从 20 改成 10，缩短单个 job 的跑时。
+**sculpting 也更轻**（SR/sideband 真-Ds 富集，越低越好）：ε_sig=50% 时 SS 样本上 0.455→0.318、W+jets 样本上 0.497→0.405。即 ssdata 模型**同时**在拒绝率和 sculpting 两条轴上更好。
 
-### H_phipimu / H_phipimu_SS：n_b_jets 改成按候选算、排除 Ds 自己所在的 jet
+**重训 wjets 的 AUC 是 0.9951，跟旧的 40 特征版一模一样**——新增那 3 个特征对 W+jets 完全无效，复现了当初删掉它们的理由。注意 AUC 是各自对自己背景类测的，**不是跨模型指标**，判据只能是上面 OS sideband 的拒绝率。
 
-`n_b_jets_{loose,medium,tight}{,_pt20}` 原来是候选循环之前算一次的事例级标量，跟具体哪个 Ds 候选无关。现在搬到 K+K−π 循环内部、`Ds_mtm` 算出来之后重新算，新增按 ΔR(jet,Ds) 门槛区分的两套（`_dR03`/`_dR04`，各自排除跟这一行 Ds 距离在 0.3/0.4 以内的 jet），一共 12 个新分支替换掉原来的 6 个——避免把"Ds 自己衰变径迹聚出来的那个 jet"错当成额外的 b-jet 计数进去。两个 plugin（OS/SS）改法完全同步。这次改动只编译过，没有跑 cmsRun 验证。
+### 顺带修掉的 bug
 
-### 顺带发现（未处理）：数据侧的 dataset
+- v3 的图全盖 "Simulation" 但背景是真实 data → CMS 标注和图例跟 `cfg["is_data"]`/`cfg["label"]` 走
+- 光度权重守卫 `[check] weighted <num_jets_pt30>` 在 SS 改版时被删（唯一能抓 `WJETS_WEIGHTS` 静默失效的检查）→ 恢复，实测 1.080 vs raw-concat 1.55
+- 旧的 SS 对比图没做 parity 切分，"trained on" 那条曲线含训练用的那一半（自证自洁）→ 训练后所有 SS 图强制 `event_id % 2 == 1`
 
-如果之后要跑 data，用 `dasgoclient` 查过，2022 Run3 单/双 muon 触发路径统一在 `/Muon/Run2022<era>-<reprocessing>/MINIAOD`；现有信号 MC 是 `Run3Summer22MiniAODv4`（preEE），对应数据应选 `Run2022C`+`Run2022D`（`22Sep2023` 版 ReReco），不要混进 postEE 的 E/F/G。Data GlobalTag 和 2022 Golden JSON 仓库里完全没有，是全新要加的东西。
+### 脚本与图表清理
 
-> 之前几次 session 的详细记录（geometric matching 研究、lostTracks recovery 研究、MVA v1/v2/v3 训练配比、2026-07-22 的 gen 多味化+jet/b-tag批次）已经归档进 memory（见 `[[project_geometric_matching]]`、`[[project_lostrack_recovery]]`、`[[project_phipimu_mva]]`、`[[project_h_phipimu_multiflavor_gen]]`），不再重复贴在这里。
+删了 14 个脚本：2 个指向已不存在的路径（`DNN/plot.py`→`MVA/Dsmu/`、`DNN/check_score.py`→`MVA/phipimu/v1/`，且各带一份 `FEATURE_NAMES` 拷贝）、3 个读已不再产出的 inclusive `WtoLNu2Jets.root`/去重前信号路径、4 个各画一张 Ds_mass 叠图、5 个各自重复实现同一张 score-cut-vs-质量谱图。
+
+`analysis/macros/` 现在只剩：`compare_models.py`（取代那5个）、`draw_features.py`（43特征 signal/W+jets/OS data/SS data 四线对比）、`check_os_vs_ss_features.py`（OS-vs-SS 电荷位形检验）、`draw_nbjets_veto.py` 和 `screen_new_jet_vars.py`（b-veto 工作点和 43 特征选型的决策记录），加两个生产工具。图 19 张→5 张。
+
+EOS 上删了 `dsw_wjets_test`(2.9G) 和 `dsw_dsstw_wjets/Prediction`(2.8G)；`dsw_dsstw_wjets` 的模型本体保留作 40 特征存档。
+
+### 下一步没做的事
+
+- **真 charm 富集是个待处理的系统性**：两个模型、两个背景样本上都随 cut 变紧长出真 Ds 峰（SR/sideband 从 0.14 涨到 0.32–0.50），sideband 外推会系统性低估峰下本底。要么在本底模型里显式加一个真 charm 成分，要么削弱分类器对真 charm 的偏好。
+- `BDT/` 仍在旧的 42 特征集上，跟 DNN 不可比。
+
+> 之前几次 session 的详细记录见 memory（`[[project_mva_test_build_v1]]`、`[[project_h_phipimu_ss_tuplizer]]`、`[[project_mva_sculpting_finding]]` 等）。2026-07-23 那次的 SS tuplizer / Tuples 改名 / 新信号样本上线记录见 `[[project_h_phipimu_ss_tuplizer]]` 和 git history。
