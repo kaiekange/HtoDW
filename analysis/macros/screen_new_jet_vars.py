@@ -23,6 +23,8 @@ Usage:
     python3 screen_new_jet_vars.py
 """
 
+import sys
+
 import numpy as np
 import uproot
 import matplotlib.pyplot as plt
@@ -30,7 +32,15 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
+sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
+import common
+
+# The b-veto and the lumi weights come from common.py so this screening always runs
+# against the accepted baseline. NEW_VARS below stays local on purpose: its job is to
+# evaluate variables that are NOT yet in the feature set, so it must not be coupled
+# to common.FEATURE_NAMES -- some of the 18 have since been accepted, some rejected,
+# and the point of keeping the full list is to preserve the comparison that decided.
+SAMPLES_DIR = common.SAMPLES_DIR
 OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
 M_DS = 1.96835
 SR_HALFWIDTH = 0.04
@@ -46,20 +56,16 @@ NEW_VARS = [
     "n_b_jets_tight_pt20_dR03", "n_b_jets_tight_pt20_dR04",
 ]
 
-WJETS_WEIGHTS = {
-    "WtoLNu2Jets_0J": 2.3293047885,
-    "WtoLNu2Jets_1J": 0.5382864853,
-    "WtoLNu2Jets_2J": 0.2748710631,
-}
+WJETS_WEIGHTS = common.WJETS_WEIGHTS
 
-SEL = ["num_os_mu_tight", "num_ss_mu_tight", "n_b_jets_tight_dR04"]
+SEL = common.SELECTION
 EXTRA = ["Ds_mass", "phi_mass"]
 
 
 def one_tight_mu(a, ss=False):
     if ss:
-        return (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0) & (a["n_b_jets_tight_dR04"] == 0)
-    return (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a["n_b_jets_tight_dR04"] == 0)
+        return (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0) & (a[common.B_VETO] == 0)
+    return (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a[common.B_VETO] == 0)
 
 
 def load(name, truth_filter=False, ss=False):
