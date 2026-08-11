@@ -115,14 +115,16 @@ def gather(model_key):
 
 
 def provenance(model_key, sample):
-    """How the sample relates to this model -- belongs in every legend."""
-    if sample == "wj":
-        return "trained on" if model_key == "wjets" else "unseen"
-    if sample == "ss":
-        return "held-out half" if model_key == "ssdata" else "unseen"
-    if sample == "os":
-        return "unseen"
-    return "signal"
+    """Legend tag marking a sample the model was trained on -- empty when it wasn't.
+
+    Only the positive case is annotated: an unlabelled curve is one the model never
+    saw, which is the default and does not need saying on every entry.
+    """
+    if sample == "wj" and model_key == "wjets":
+        return " [trained on]"
+    if sample == "ss" and model_key == "ssdata":
+        return " [trained on half]"
+    return ""
 
 
 print("Loading scored samples...")
@@ -144,11 +146,11 @@ for row, k in enumerate(MODELS):
         ax = axes[row][col]
         ax.hist(D[k]["wj"]["score_dsmu"], bins=bins, weights=D[k]["wj_w"], density=True,
                 alpha=0.5, color="seagreen",
-                label=f"W+jets MC [{provenance(k,'wj')}]")
+                label=f"W+jets MC{provenance(k,'wj')}")
         ax.hist(D[k]["ss"]["score_dsmu"], bins=bins, density=True, histtype="step",
-                lw=2.5, color="steelblue", label=f"SS data [{provenance(k,'ss')}]")
+                lw=2.5, color="steelblue", label=f"SS data{provenance(k,'ss')}")
         ax.hist(D[k]["os"]["score_dsmu"], bins=bins, density=True, histtype="step",
-                lw=2.5, ls="--", color="black", label="OS data sideband [unseen]")
+                lw=2.5, ls="--", color="black", label="OS data sideband")
         ax.hist(D[k]["sig"]["score_dsmu"], bins=bins, density=True, alpha=0.4,
                 color="firebrick", label="signal")
         ax.set_xlabel(f"DNN score -- trained vs {common.resolve(k)['label']}")
@@ -177,39 +179,67 @@ SR_BIN = ~SB_BIN
 
 
 def sb_normed(mass, weight, cut):
-    h, _ = np.histogram(mass[cut], bins=mbins,
-                        weights=None if weight is None else weight[cut])
+    """(normalized hist, raw hist, normalized error, raw error). Error is sqrt(N) for
+    unweighted data and sqrt(sum w^2) for the lumi-weighted MC; the sideband integral
+    used for the normalization is treated as fixed, which is the usual shape-plot
+    convention."""
+    m = mass[cut]
+    w = None if weight is None else weight[cut]
+    h, _ = np.histogram(m, bins=mbins, weights=w)
+    if w is None:
+        var = h.astype(float)
+    else:
+        var, _ = np.histogram(m, bins=mbins, weights=w ** 2)
+    raw_err = np.sqrt(var)
     n = h[SB_BIN].sum()
-    return (h / n if n > 0 else h), h
+    if n <= 0:
+        return h, h, np.zeros(len(h)), raw_err
+    return h / n, h, raw_err / n, raw_err
 
 
-cols = [1.0] + EFFS
-fig, axes = plt.subplots(len(MODELS), len(cols), figsize=(9 * len(cols), 8 * len(MODELS)))
+# Layout: one row per MODEL, one column per working point, and all three samples
+# overlaid within each panel. Every panel title names the classifier it was scored
+# with, so no column is ambiguous about which model produced it.
+#
+# Raw (unnormalized) counts -- W+jets is lumi-weighted so its absolute yield is a
+# genuine prediction, and SS/OS are actual observed counts. No per-panel axis is
+# shared: the tight columns have orders of magnitude fewer events than "no cut", and
+# forcing one y-scale across a row would flatten every tight-cut panel to a line at
+# the bottom.
+MASS_EFFS = [1.0, 0.90, 0.70, 0.50]
+
+fig, axes = plt.subplots(len(MODELS), len(MASS_EFFS),
+                         figsize=(8.5 * len(MASS_EFFS), 7.5 * len(MODELS)))
 for row, k in enumerate(MODELS):
-    for col, eff in enumerate(cols):
+    for col, eff in enumerate(MASS_EFFS):
         ax = axes[row][col]
         thr = -1.0 if eff >= 1.0 else THR[k][eff]
-        hw, rw = sb_normed(D[k]["wj"]["Ds_mass"], D[k]["wj_w"], D[k]["wj"]["score_dsmu"] > thr)
-        hs, rs = sb_normed(D[k]["ss"]["Ds_mass"], None, D[k]["ss"]["score_dsmu"] > thr)
-        ho, ro = sb_normed(D[k]["os"]["Ds_mass"], None, D[k]["os"]["score_dsmu"] > thr)
-        hep.histplot(hw, mbins, ax=ax, histtype="fill", alpha=0.5, color="seagreen",
-                     label=f"W+jets [{provenance(k,'wj')}] N={rw.sum():,.0f}")
-        hep.histplot(hs, mbins, ax=ax, histtype="step", lw=2.5, color="steelblue",
-                     label=f"SS [{provenance(k,'ss')}] N={rs.sum():,.0f}")
-        hep.histplot(ho, mbins, ax=ax, histtype="step", lw=2.5, ls="--", color="black",
-                     label=f"OS sideband N={ro.sum():,.0f}")
+        _, rw, _, ew = sb_normed(D[k]["wj"]["Ds_mass"], D[k]["wj_w"], D[k]["wj"]["score_dsmu"] > thr)
+        _, rs, _, es = sb_normed(D[k]["ss"]["Ds_mass"], None, D[k]["ss"]["score_dsmu"] > thr)
+        _, ro, _, eo = sb_normed(D[k]["os"]["Ds_mass"], None, D[k]["os"]["score_dsmu"] > thr)
+        # MC as a filled histogram; real data as points with Poisson error bars.
+        hep.histplot(rw, mbins, ax=ax, histtype="fill", alpha=0.5, color="seagreen",
+                     label=f"W+jets MC{provenance(k,'wj')}  N={rw.sum():,.1f}")
+        hep.histplot(rs, mbins, ax=ax, histtype="errorbar", yerr=es, color="steelblue",
+                     marker="o", markersize=5, elinewidth=1.4,
+                     label=f"SS data{provenance(k,'ss')}  N={rs.sum():,.0f}")
+        hep.histplot(ro, mbins, ax=ax, histtype="errorbar", yerr=eo, color="black",
+                     marker="s", markersize=4.5, elinewidth=1.4,
+                     label=f"OS data sideband  N={ro.sum():,.0f}")
         ax.axvspan(M_DS - SR_HALFWIDTH, M_DS + SR_HALFWIDTH, color="grey", alpha=0.15)
         ax.axvline(M_D, color="green", ls=":", lw=1.5)
         top = ax.get_ylim()[1]
         ax.text(M_D, top * 0.97, r"D$^\pm$", color="green", ha="center", va="top", fontsize=13)
         ax.text(M_DS, top * 0.97, r"D$_s^\pm$", color="dimgrey", ha="center", va="top", fontsize=13)
         ax.set_xlabel(r"$M(K^+K^-\pi^\pm)$ [GeV]")
-        ax.set_ylabel("Normalized to sideband integral")
+        if col == 0:
+            ax.set_ylabel("Events / 20 MeV")
         lbl = "no cut" if eff >= 1.0 else rf"$\varepsilon_{{sig}}$={100*eff:.0f}%"
-        ax.set_title(f"{common.resolve(k)['label']} -- {lbl}", fontsize=15)
-        ax.legend(fontsize=10, loc="upper right")
-        hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
-                      fontsize=10)
+        ax.set_title(f"{common.resolve(k)['label']} model -- {lbl}", fontsize=15)
+        ax.legend(fontsize=11, loc="upper right")
+        if row == 0 and col == 0:
+            hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
+                          fontsize=11)
 plt.tight_layout()
 out = f"{OUTDIR}/compare_models_mass.png"
 plt.savefig(out, dpi=110)
@@ -292,23 +322,33 @@ for eff in [1.0] + EFFS:
             d = D[k][s]
             thr = -1.0 if eff >= 1.0 else THR[k][eff]
             cut = d["score_dsmu"] > thr
-            _, h = sb_normed(d["Ds_mass"], wt, cut)
+            _, h, _, _ = sb_normed(d["Ds_mass"], wt, cut)
             row.append(h[SR_BIN].sum() / h[SB_BIN].sum() if h[SB_BIN].sum() > 0 else np.nan)
     lbl = "no cut" if eff >= 1.0 else f"{100*eff:.0f}%"
     print(f"{lbl:>8s} " + " ".join(f"{v:16.4f}" for v in row))
 
 fig, ax = plt.subplots(figsize=(10, 8))
 xs = [1.0] + EFFS
-for k, ls in zip(MODELS, ["-", "--"]):
-    for s, c, wt in (("ss", "steelblue", None), ("wj", "seagreen", D[k]["wj_w"])):
+# Each of the four curves gets its own colour AND marker. Encoding the model in the
+# linestyle alone made the four legend entries hard to tell apart at legend scale.
+STYLE = {
+    ("wjets", "ss"):  dict(color="steelblue", marker="o", linestyle="-"),
+    ("wjets", "wj"):  dict(color="seagreen",  marker="s", linestyle="-"),
+    ("ssdata", "ss"): dict(color="darkorange", marker="^", linestyle="--"),
+    ("ssdata", "wj"): dict(color="firebrick",  marker="v", linestyle="--"),
+}
+for k in MODELS:
+    for s, wt in (("ss", None), ("wj", D[k]["wj_w"])):
         ys = []
         for eff in xs:
             d = D[k][s]
             thr = -1.0 if eff >= 1.0 else THR[k][eff]
-            _, h = sb_normed(d["Ds_mass"], wt, d["score_dsmu"] > thr)
+            _, h, _, _ = sb_normed(d["Ds_mass"], wt, d["score_dsmu"] > thr)
             ys.append(h[SR_BIN].sum() / h[SB_BIN].sum())
-        ax.plot([100 * x for x in xs], ys, ls, color=c, marker="o", lw=2,
-                label=f"{'SS' if s=='ss' else 'W+jets'} -- {common.resolve(k)['label']} model")
+        style = STYLE.get((k, s), dict(color="grey", marker="o", linestyle="-"))
+        ax.plot([100 * x for x in xs], ys, lw=2, markersize=9, **style,
+                label=f"{'SS' if s == 'ss' else 'W+jets'} sample"
+                      f" -- {common.resolve(k)['label']} model")
 ax.set_xlabel(r"signal efficiency $\varepsilon_{sig}$ [%]")
 ax.set_ylabel("SR / sideband yield ratio")
 ax.invert_xaxis()

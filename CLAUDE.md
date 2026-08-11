@@ -161,9 +161,21 @@ python3 condor_submit.py wjets     # signal(OS) vs WtoLNu2Jets 0J+1J+2J
 
 EOS 上删了 `dsw_wjets_test`(2.9G) 和 `dsw_dsstw_wjets/Prediction`(2.8G)；`dsw_dsstw_wjets` 的模型本体保留作 40 特征存档。
 
+### 追加：W+jets 到底能不能代表 data（`analysis/macros/check_data_vs_wjets.py`）
+
+上面"真 charm 富集"那条系统性追下去，做了个正式的 closure test——不重归一化，直接比较光度加权 W+jets 的绝对预言跟 data 的绝对事例数，分三个区间：OS CR（唯一能测的 OS 区间，SR blind）、SS CR、SS SR（SS 没 blind，唯一能测 SR 的地方）。
+
+- **没切之前，三个区间比值一致**：1.44 / 1.46 / 1.47——缺口是常数（缺整个 process：tt/DY/QCD），能被一个 transfer factor 吸收。
+- **wjets 模型切下去，比值单调爬升、三个区间开始分家**：OS CR 从 1.44 一路到 90%时2.09、70%时2.87、50%时3.83、最紧的20%时4.51±0.69——分类器专挑 MC 建模得了的那部分背景拒绝，留下的越来越不是 MC 能描述的。
+- **ssdata 模型把 OS CR/SS CR 都摁回 1 附近，而且在 99%→~55% 这一大段都稳**（21点细扫：OS CR 0.93–1.05）。**但 SS SR 从来没回到过 1**，同样随 cut 单调恶化：1.19(99%)→1.33(95%)→1.64(70%)→~2.0(55–50%)。**换背景解决了 sideband 闭合，没解决 signal region 闭合**——这才是更要命的那个数字，之前的"背景低36-48%"不能读成"背景问题解决了"。
+- ε_sig<45% 之后 SS SR 统计量掉到 <15 个事例，误差 >30-50%，那之后的点不能读结构。
+- **逐 bin 图上一个反直觉的坑**：远离 Ds/D± 峰的地方比值贴着1，个别高质量端的散点"翘起来"看着像效应，实测把那几个 bin 加总起来算真实统计量反而是 0.80（低于1不是高于1）——单 bin 统计量太小时，眼睛会被涨落骗，加总回去再看。
+
+结论一句话：**换 SS 背景修好了 sideband，没修好 signal region**，这个是下一步要处理的真正问题，不是"already better"。
+
 ### 下一步没做的事
 
-- **真 charm 富集是个待处理的系统性**：两个模型、两个背景样本上都随 cut 变紧长出真 Ds 峰（SR/sideband 从 0.14 涨到 0.32–0.50），sideband 外推会系统性低估峰下本底。要么在本底模型里显式加一个真 charm 成分，要么削弱分类器对真 charm 的偏好。
+- **SR closure 没解决**：见上一节，是当前最大的开放问题。方向大致两条：本底模型里显式加真 charm 成分，或者削弱分类器对真 charm 的偏好（也可能两条都要）。
 - `BDT/` 仍在旧的 42 特征集上，跟 DNN 不可比。
 
 > 之前几次 session 的详细记录见 memory（`[[project_mva_test_build_v1]]`、`[[project_h_phipimu_ss_tuplizer]]`、`[[project_mva_sculpting_finding]]` 等）。2026-07-23 那次的 SS tuplizer / Tuples 改名 / 新信号样本上线记录见 `[[project_h_phipimu_ss_tuplizer]]` 和 git history。

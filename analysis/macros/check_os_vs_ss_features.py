@@ -134,7 +134,7 @@ for i, f in enumerate(panels):
         ax.axvspan(M_DS - SR_HALFWIDTH, M_DS + SR_HALFWIDTH, color="grey", alpha=0.15)
         ax.set_title("Ds_mass (fit variable, not an input)", fontsize=12)
     else:
-        ax.set_title(f"{f}\n" + r"Cohen's $d$=" + f"{dmap[f]:+.3f}", fontsize=12)
+        ax.set_title(f, fontsize=12)
     ax.set_ylabel("a.u.")
     ax.legend(fontsize=9)
     if i == 0:
