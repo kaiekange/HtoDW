@@ -169,9 +169,18 @@ print(f"\nSaved {out}")
 
 # ---------- 2. M(KKpi) at matched signal efficiency ----------
 # SS and W+jets are NOT blinded, so their Ds window is shown: whether a real Ds peak
-# grows there under the cut is the whole question. Every sample is normalized to its
-# own SIDEBAND integral, so the combinatorial continuum lines up and a real-Ds excess
-# shows as a bump above it. OS data is simply empty in that window.
+# grows there under the cut is the whole question. OS data is simply empty in that
+# window.
+#
+# THIS IS NOT A DATA/MC CLOSURE PLOT and must not be read as one. The three curves in
+# a panel are not on a common normalization: W+jets is OS and covers the full mass
+# range, SS data is the odd-parity half only (~50% of it), and OS data is
+# sideband-only because the Ds window is blinded. So the legend's N values are not
+# comparable to each other, and W+jets "towering over" the data points at M_Ds is
+# mostly just the blind window. For an actual closure test -- SS against SS, with the
+# CR and SR ratios quoted separately -- use check_data_vs_wjets.py.
+# (An earlier version of this comment claimed each curve was normalized to its own
+# sideband integral. It never was; the code below plots raw counts.)
 mbins = np.linspace(M_DS - 0.3, M_DS + 0.3, 31)   # 20 MeV; blind window on bin edges
 mcent = 0.5 * (mbins[1:] + mbins[:-1])
 SB_BIN = np.abs(mcent - M_DS) >= SR_HALFWIDTH
