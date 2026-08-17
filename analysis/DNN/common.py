@@ -8,9 +8,16 @@ data background) were compared head-to-head on 2026-08-10 as if the only
 difference were the training background, which invalidated the comparison. Import
 from here instead; do not re-declare any of it downstream.
 
-BDT/ is deliberately NOT wired into this module. It is pinned to an older
-42-feature set and is already declared non-comparable to the DNN; importing from
-here would silently change the BDT the next time a feature is added or reordered.
+BDT/ imports from here as of 2026-08-14. It used to be deliberately left out, on
+the grounds that "importing would silently change the BDT the next time a feature is
+added or reordered" -- a real hazard, but the fix for it is the stamp guard below,
+not staying disconnected. check_feature_stamp() makes a feature edit a loud failure
+at scoring time for the BDT exactly as check_model_dir() already did for the DNN, so
+the objection is neutralized rather than overridden. Before this, BDT was pinned to a
+different 42-feature set (its own copy, plus a second hand-typed copy in
+BDT/predict.py), which is precisely the drift this module exists to prevent, and it
+made "BDT vs DNN" unmeasurable: the two differed in feature set, background and
+signal all at once.
 
 FEATURE ORDER IS LOAD-BEARING. It is positionally bound to scaler_mean.npy,
 scaler_scale.npy, and nn.Linear(n_in, 128). Reordering the list without retraining
@@ -27,7 +34,8 @@ import torch.nn as nn
 import uproot
 
 SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
-MVA_DIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/DNN"
+MVA_ROOT = "/eos/home-k/kakang/H2DW/Analysis/MVA"
+MVA_DIR = f"{MVA_ROOT}/DNN"
 TREE = "Events"
 
 # ========= 特征定义 =========
@@ -165,6 +173,10 @@ DIRA_IDX = FEATURE_NAMES.index("dira")
 LOG_IDX = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
 
 # ========= 训练配置 =========
+# The one seed the canonical models were trained with. Lives here rather than in
+# DNN.py because out_dir_for() needs it to decide when to add a _seed suffix.
+SEED_DEFAULT = 42
+
 # Both signal channels, each event at weight 1. The two productions were sized in
 # proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.54M vs
 # 2.86M = 1:1.86), so N_gen is already proportional to sigma x BR and the
@@ -190,6 +202,13 @@ WJETS_WEIGHTS = {
 # The two background configurations. `_f43` is a feature-set generation tag: a
 # future feature change gets its own suffix rather than clobbering these.
 #
+# out_name vs out_dir: `out_name` is the bare directory name, which out_dir_for()
+#   composes under any tool (DNN/, BDT/) and optional seed suffix. `out_dir` stays
+#   as the literal DNN path it has always been -- seven macros read cfg["out_dir"]
+#   directly (check_data_vs_wjets, check_feature_tail, check_jetbin_closure,
+#   check_os_minus_ss, compare_models, draw_score_os_ss, draw_lepton_bjet_vs_cut),
+#   so it is kept, not renamed. The two must agree; the assertion below enforces it.
+#
 # parity: SS data holds out the odd-event_id half so a later sculpting check on
 #   Data_2022_SS is not circular (train-set self-validation). W+jets gets None on
 #   purpose -- it has no such check to protect, and the original 40-feature v2 used
@@ -209,6 +228,7 @@ TRAININGS = {
         weighted=False,          # real data: no per-process lumi reweighting
         label="Data SS",
         is_data=True,
+        out_name="dsw_dsstw_ssdata_f43",
         out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f43",
     ),
     "wjets": dict(
@@ -218,9 +238,13 @@ TRAININGS = {
         weighted=True,
         label="W+jets MC",
         is_data=False,
+        out_name="dsw_dsstw_wjets_f43",
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f43",
     ),
 }
+
+for _k, _c in TRAININGS.items():
+    assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
 
 
 def resolve(key):
@@ -228,6 +252,24 @@ def resolve(key):
     if key not in TRAININGS:
         sys.exit(f"unknown background '{key}'; expected one of: {', '.join(TRAININGS)}")
     return TRAININGS[key]
+
+
+TOOLS = ("DNN", "BDT")
+
+
+def out_dir_for(key, tool="DNN", seed=None):
+    """Model directory for one (background, tool, seed) combination.
+
+    seed=None or the default 42 gives the canonical path -- i.e. the existing
+    dsw_dsstw_*_f43 dirs, which the seed-spread study must not touch. Any other
+    seed gets a _seed{N} suffix so several runs of the same config coexist.
+    """
+    if tool not in TOOLS:
+        sys.exit(f"unknown tool '{tool}'; expected one of: {', '.join(TOOLS)}")
+    name = resolve(key)["out_name"]
+    if seed is not None and seed != SEED_DEFAULT:
+        name = f"{name}_seed{seed}"
+    return f"{MVA_ROOT}/{tool}/{name}"
 
 
 # ========= 数据加载 =========
@@ -320,21 +362,26 @@ def save_feature_names(out_dir):
         f.write("\n".join(FEATURE_NAMES) + "\n")
 
 
-def check_model_dir(model_dir):
-    """Refuse to score with a model whose feature set does not match this module.
+def check_feature_stamp(model_dir):
+    """Refuse to score with a model whose feature stamp does not match this module.
 
-    Catches the two silent failure modes: a model dir from before the feature list
-    was stamped (the frozen 40-feature v2), and a list that was reordered without
+    Catches the two silent failure modes shared by every algorithm: a model dir from
+    before the feature list was stamped (the frozen 40-feature v2, or the frozen
+    42-feature BDT at dsw_wjets_test), and a list that was reordered without
     retraining -- the latter raises no exception on its own because feature order is
-    only implicitly bound to the scaler and the first Linear layer.
+    only implicitly bound to the scaler, the first Linear layer, and the tree splits.
+
+    Split out of check_model_dir so BDT/predict.py can reuse it without importing
+    torch machinery it has no use for.
     """
     path = f"{model_dir}/{FEATURE_FILE}"
     if not os.path.exists(path):
         sys.exit(
             f"{path} not found.\n"
             f"This model dir predates feature_names.txt -- it is a frozen older build "
-            f"(e.g. the 40-feature v2 at dsw_dsstw_wjets). Do NOT re-score it with the "
-            f"current {len(FEATURE_NAMES)}-feature code: the scores would be silently wrong. "
+            f"(e.g. the 40-feature v2 at dsw_dsstw_wjets, or the 42-feature BDT at "
+            f"dsw_wjets_test). Do NOT re-score it with the current "
+            f"{len(FEATURE_NAMES)}-feature code: the scores would be silently wrong. "
             f"Retrain into a new _f43 dir instead."
         )
 
@@ -351,6 +398,21 @@ def check_model_dir(model_dir):
             f"vs common.py={FEATURE_NAMES[first] if first < len(FEATURE_NAMES) else '<end>'}"
         )
 
+
+def check_n_features(model_dir, n_in, what):
+    """The algorithm-specific half: the trained object's own input width."""
+    if n_in != len(FEATURE_NAMES):
+        sys.exit(f"{what} expects {n_in} features but common.py declares "
+                 f"{len(FEATURE_NAMES)} -- {model_dir} is a different feature set.")
+
+
+def check_model_dir(model_dir):
+    """check_feature_stamp plus the DNN-specific scaler and input-layer checks.
+
+    Returns the loaded state dict, so the file that was checked is the file loaded.
+    """
+    check_feature_stamp(model_dir)
+
     mean = np.load(f"{model_dir}/scaler_mean.npy")
     scale = np.load(f"{model_dir}/scaler_scale.npy")
     if mean.size != len(FEATURE_NAMES) or scale.size != len(FEATURE_NAMES):
@@ -358,8 +420,5 @@ def check_model_dir(model_dir):
                  f"in {model_dir} -- the model was trained on a different feature set.")
 
     state = torch.load(f"{model_dir}/phipimu_model.pt", map_location="cpu")
-    in_features = state["net.0.weight"].shape[1]
-    if in_features != len(FEATURE_NAMES):
-        sys.exit(f"model input layer expects {in_features} features but common.py "
-                 f"declares {len(FEATURE_NAMES)} -- {model_dir} is a different feature set.")
+    check_n_features(model_dir, state["net.0.weight"].shape[1], "model input layer")
     return state

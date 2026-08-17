@@ -1,11 +1,17 @@
 """Score every current Samples/ file with a trained DNN and write a copy with
 score_dsmu added.
 
-    python3 predict.py ssdata     # score with the SS-data-trained model
-    python3 predict.py wjets      # score with the W+jets-trained model
+    python3 predict.py ssdata                 # score with the SS-data-trained model
+    python3 predict.py wjets                  # score with the W+jets-trained model
+    python3 predict.py ssdata 101             # score the seed-101 model
+    python3 predict.py ssdata 101 --samples HtoDsW,HtoDsstW,Data_2022
 
 The model directory is resolved from the same common.TRAININGS table the training
 used, so the model, its scaler and its Prediction/ output can never be crossed.
+
+--samples restricts scoring to a subset. It exists for the seed-spread study: each
+seed's Prediction/ is ~2.8 GB on EOS, and reading the OS-sideband yield only needs
+the two signals (to set the score quantiles) plus Data_2022. Default is everything.
 
 Both OS and SS variants are scored, and data as well as MC: the diagnostics need
 the score distribution in the SS control region and in data sidebands, not just in
@@ -32,18 +38,12 @@ import uproot
 import common
 from common import FEATURE_NAMES, SAMPLES_DIR, TREE
 
-if len(sys.argv) != 2:
-    sys.exit(f"usage: python3 {os.path.basename(__file__)} <{'|'.join(common.TRAININGS)}>")
-BKG = sys.argv[1]
-cfg = common.resolve(BKG)
-
-MODEL_DIR = cfg["out_dir"]
-OUT_DIR = f"{MODEL_DIR}/Prediction"
-os.makedirs(OUT_DIR, exist_ok=True)
+USAGE = (f"usage: python3 {os.path.basename(__file__)} "
+         f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
 
 # Current Samples/ contents. The old inclusive WtoLNu2Jets{,_SS} are deliberately
 # left out -- superseded by the 0J/1J/2J jet-binned samples.
-SAMPLES = [
+ALL_SAMPLES = [
     "HtoDsW", "HtoDsW_SS",
     "HtoDsstW", "HtoDsstW_SS",
     "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J",
@@ -51,7 +51,32 @@ SAMPLES = [
     "Data_2022", "Data_2022_SS",
 ]
 
-print(f"Loading model from {MODEL_DIR} (background={BKG})...")
+argv = sys.argv[1:]
+SAMPLES = ALL_SAMPLES
+if "--samples" in argv:
+    i = argv.index("--samples")
+    if i + 1 >= len(argv):
+        sys.exit(USAGE)
+    SAMPLES = [s for s in argv[i + 1].split(",") if s]
+    unknown = [s for s in SAMPLES if s not in ALL_SAMPLES]
+    if unknown:
+        sys.exit(f"unknown sample(s): {', '.join(unknown)}\n"
+                 f"known: {', '.join(ALL_SAMPLES)}")
+    argv = argv[:i] + argv[i + 2:]
+
+if len(argv) not in (1, 2):
+    sys.exit(USAGE)
+BKG = argv[0]
+cfg = common.resolve(BKG)
+SEED = int(argv[1]) if len(argv) == 2 else common.SEED_DEFAULT
+
+MODEL_DIR = common.out_dir_for(BKG, tool="DNN", seed=SEED)
+OUT_DIR = f"{MODEL_DIR}/Prediction"
+os.makedirs(OUT_DIR, exist_ok=True)
+
+print(f"Loading model from {MODEL_DIR} (background={BKG}, seed={SEED})...")
+if SAMPLES is not ALL_SAMPLES:
+    print(f"  scoring subset only: {', '.join(SAMPLES)}")
 # Refuses to proceed if this dir's feature stamp, scaler size or input layer
 # disagrees with common.py -- the alternative is silently wrong scores.
 state = common.check_model_dir(MODEL_DIR)

@@ -1,8 +1,17 @@
 """
 DNN: H->Ds(*)W signal (OS) vs one of two background choices, phipimu channel.
 
-    python3 DNN.py ssdata     # background = SS data (Data_2022_SS, even event_id)
-    python3 DNN.py wjets      # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
+    python3 DNN.py ssdata           # background = SS data (Data_2022_SS, even event_id)
+    python3 DNN.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
+    python3 DNN.py ssdata 101       # same config, different seed -> ..._f43_seed101
+
+The optional seed exists to measure the run-to-run noise floor. Any claim that a
+model change improved background rejection has to clear that floor, and until it
+was measured (2026-08-14) there was no number for it. The seed drives BOTH the
+numpy rng (which fixes the train/val/test split) and torch's init, so the spread it
+produces is the total run-to-run variation -- deliberately including split variance.
+Do not try to decompose it afterwards. Seed 42 (common.SEED_DEFAULT) writes to the
+canonical dir; anything else gets a _seed{N} suffix so the canonical models stay put.
 
 Everything except the background -- feature set, seed, split fractions, network,
 class balancing, early stopping -- is identical between the two, so the two trained
@@ -57,16 +66,17 @@ from common import FEATURE_NAMES, SIGNALS
 # ========= 1. 配置 =========
 # Feature set, preprocessing, network and the background table all live in
 # common.py -- see its docstring for why nothing here may re-declare them.
-if len(sys.argv) != 2:
-    sys.exit(f"usage: python3 {os.path.basename(__file__)} <{'|'.join(common.TRAININGS)}>")
+if len(sys.argv) not in (2, 3):
+    sys.exit(f"usage: python3 {os.path.basename(__file__)} "
+             f"<{'|'.join(common.TRAININGS)}> [seed]")
 BKG = sys.argv[1]
 cfg = common.resolve(BKG)          # validates before anything is created on disk
+SEED = int(sys.argv[2]) if len(sys.argv) == 3 else common.SEED_DEFAULT
 
-out_dir = cfg["out_dir"]
+out_dir = common.out_dir_for(BKG, tool="DNN", seed=SEED)
 os.makedirs(out_dir, exist_ok=True)
-print(f"Background: {BKG} ({cfg['label']}) -> {out_dir}")
+print(f"Background: {BKG} ({cfg['label']}), seed={SEED} -> {out_dir}")
 
-SEED = 42
 rng = np.random.default_rng(SEED)
 torch.manual_seed(SEED)
 
