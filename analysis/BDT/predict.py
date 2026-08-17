@@ -1,95 +1,87 @@
-"""Score every current Samples/ file with the trained BDT and write a copy with
+"""Score every current Samples/ file with a trained BDT and write a copy with
 score_dsmu added.
 
-Both OS and SS variants are scored, and data as well as MC: the diagnostics need
-the score distribution in the SS control region and in data sidebands, not just in
-the samples the MVA was trained on.
+    python3 predict.py ssdata                 # score with the SS-data-trained BDT
+    python3 predict.py wjets                  # score with the W+jets-trained BDT
+    python3 predict.py ssdata 101             # score the seed-101 BDT
+    python3 predict.py ssdata --samples HtoDsW,HtoDsstW,Data_2022
+
+The model directory is resolved from the same common.TRAININGS table the training
+used, so the model and its Prediction/ output can never be crossed.
+
+Both OS and SS variants are scored, and data as well as MC: the diagnostics need the
+score distribution in the SS control region and in data sidebands, not just in the
+samples the MVA was trained on.
 
 The event selection (1 tight muon + b-jet veto) is deliberately NOT applied here --
 every row gets a score and the selection is applied downstream, so a cut can be
 revisited without re-scoring. Rows with non-finite features get score_dsmu = -777.
+All input branches are copied through, so event_id survives into Prediction/ and
+downstream plots can honour the training parity split.
 
-Usage:  python3 predict.py
+The feature list and the preprocessing chain come from ../DNN/common.py, the same
+module BDT.py trains with. They used to be a second hand-typed copy here, carrying a
+comment claiming they matched DNN/DNN.py -- which was already false.
 """
 
 import os
+import sys
+
 import numpy as np
 import uproot
 import joblib
 
-MODEL_DIR   = "/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/dsw_wjets_test"
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
-OUT_DIR     = f"{MODEL_DIR}/Prediction"
-TREE        = "Events"
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DNN"))
+import common
+from common import FEATURE_NAMES, SAMPLES_DIR, TREE
 
-os.makedirs(OUT_DIR, exist_ok=True)
-
-# Must stay identical to BDT.py (and to DNN/DNN.py + DNN/predict.py).
-FEATURE_NAMES = [
-    # lifetime / vertex -- prompt-from-H vs displaced-from-B (the real-Ds background)
-    "Ds_ipsig",
-    "Ds_FDsig",
-    "dira",
-    "Ds_prob",
-    "Kp_ipsig",
-    "Km_ipsig",
-    "pi_ipsig",
-    "mu_ipsig",
-    # 2D lifetime/vertex: transverse resolution beats longitudinal.
-    "Ds_FDxysig",
-    "Ds_ipxysig",
-    # Are the Ds tracks from the primary vertex?
-    "Kp_PVassoc",
-    "Km_PVassoc",
-    "pi_PVassoc",
-    # isolation -- the components, not just RelIso.
-    "Ds_IsoR04_sumChargedHadronPt",
-    "Ds_IsoR04_sumNeutralHadronEt",
-    "Ds_IsoR04_sumPhotonEt",
-    "Ds_IsoR04_sumPUPt",
-    "Ds_IsoR04_RelIso",
-    "Ds_IsoR03_RelIso",
-    "mu_IsoR04_RelIso",
-    # MET / event
-    "met_pt",
-    "met_sig",
-    "met_sumEt",
-    "W_tmass",
-    "num_jets",
-    "num_jets_pt30",
-    # Ds + mu kinematics
-    "Ds_pt",
-    "Dsmu_pt",
-    "Dsmu_eta",
-    "mu_pt",
-    "mu_eta",
-    "dR_Ds_mu",
-    "dR_Kp_mu",
-    "dR_Km_mu",
-    "dR_pi_mu",
-    "dR_phi_mu",
-    "Dsmu_mass",
-    # jet/b-tag environment
-    "Ds_nearestjet_bscore",
-    "Ds_nearestjet_dR",
-    "jet_leadpt",
-    "n_b_jets_loose_dR04",
-    "n_b_jets_medium_dR04",
-]
+USAGE = (f"usage: python3 {os.path.basename(__file__)} "
+         f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
 
 # Current Samples/ contents. The old inclusive WtoLNu2Jets{,_SS} are deliberately
-# left out -- superseded by the 0J/1J/2J jet-binned samples.
-SAMPLES = [
+# left out -- superseded by the 0J/1J/2J jet-binned samples. Identical to the list in
+# DNN/predict.py: the two must score the same files for the head-to-head to work.
+ALL_SAMPLES = [
     "HtoDsW", "HtoDsW_SS",
+    "HtoDsstW", "HtoDsstW_SS",
     "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J",
     "WtoLNu2Jets_0J_SS", "WtoLNu2Jets_1J_SS", "WtoLNu2Jets_2J_SS",
     "Data_2022", "Data_2022_SS",
 ]
 
-dira_idx = FEATURE_NAMES.index("dira")
+argv = sys.argv[1:]
+SAMPLES = ALL_SAMPLES
+if "--samples" in argv:
+    i = argv.index("--samples")
+    if i + 1 >= len(argv):
+        sys.exit(USAGE)
+    SAMPLES = [s for s in argv[i + 1].split(",") if s]
+    unknown = [s for s in SAMPLES if s not in ALL_SAMPLES]
+    if unknown:
+        sys.exit(f"unknown sample(s): {', '.join(unknown)}\n"
+                 f"known: {', '.join(ALL_SAMPLES)}")
+    argv = argv[:i] + argv[i + 2:]
 
-print(f"Loading model from {MODEL_DIR}...")
+if len(argv) not in (1, 2):
+    sys.exit(USAGE)
+BKG = argv[0]
+cfg = common.resolve(BKG)
+SEED = int(argv[1]) if len(argv) == 2 else common.SEED_DEFAULT
+
+MODEL_DIR = common.out_dir_for(BKG, tool="BDT", seed=SEED)
+OUT_DIR = f"{MODEL_DIR}/Prediction"
+os.makedirs(OUT_DIR, exist_ok=True)
+
+print(f"Loading model from {MODEL_DIR} (background={BKG}, seed={SEED})...")
+if SAMPLES is not ALL_SAMPLES:
+    print(f"  scoring subset only: {', '.join(SAMPLES)}")
+
+# Refuses to proceed if this dir's feature stamp disagrees with common.py -- the
+# alternative is silently wrong scores, since feature order is only implicitly bound
+# to the tree splits.
+common.check_feature_stamp(MODEL_DIR)
 model = joblib.load(f"{MODEL_DIR}/bdt_model.pkl")
+common.check_n_features(MODEL_DIR, model.n_features_in_, "bdt_model.pkl")
 
 for name in SAMPLES:
     path = f"{SAMPLES_DIR}/{name}.root"
@@ -103,7 +95,7 @@ for name in SAMPLES:
     X = np.column_stack([data[b].astype(np.float64) for b in FEATURE_NAMES])
     n = len(X)
 
-    mask = np.isfinite(X).all(axis=1) & (X[:, dira_idx] > -1)
+    X, mask = common.preprocess(X)
     scores = np.full(n, -777.0, dtype=np.float32)
     scores[mask] = model.predict_proba(X[mask])[:, 1].astype(np.float32)
 

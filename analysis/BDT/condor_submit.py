@@ -1,16 +1,57 @@
-import sys
-import subprocess
+"""Submit one phipimu BDT training+scoring job to HTCondor.
+
+    python3 condor_submit.py ssdata
+    python3 condor_submit.py wjets
+    python3 condor_submit.py ssdata 101 --samples HtoDsW,HtoDsstW,Data_2022
+
+One job per (background, seed) combination. Each gets its own scheduler log so
+concurrent submissions do not interleave into the same file.
+
+Must be submitted with the ds_dnn conda env active -- this imports common, which
+imports torch (needed by the DNN half of that module, not by the BDT).
+"""
+
 import os
+import subprocess
+import sys
 
-OUTDIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/BDT/dsw_wjets_test"
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DNN"))
+import common
 
+USAGE = (f"usage: python3 {os.path.basename(__file__)} "
+         f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
+
+argv = sys.argv[1:]
+SAMPLES = ""
+if "--samples" in argv:
+    i = argv.index("--samples")
+    if i + 1 >= len(argv):
+        sys.exit(USAGE)
+    SAMPLES = argv[i + 1]
+    argv = argv[:i] + argv[i + 2:]
+
+if len(argv) not in (1, 2):
+    sys.exit(USAGE)
+BKG = argv[0]
+cfg = common.resolve(BKG)          # validate the token before creating anything
+SEED = int(argv[1]) if len(argv) == 2 else common.SEED_DEFAULT
+
+OUTDIR = common.out_dir_for(BKG, tool="BDT", seed=SEED)
 os.makedirs(OUTDIR, exist_ok=True)
+
+TAG = BKG if SEED == common.SEED_DEFAULT else f"{BKG}_seed{SEED}"
+# The --samples pair is appended only when non-empty rather than passed as an empty
+# positional: HTCondor's new-style argument syntax reads '' inside the quoted
+# arguments string as an escaped literal quote, not as an empty argument.
+ARGS = f"{BKG} {SEED}" + (f" --samples {SAMPLES}" if SAMPLES else "")
+
 
 def submit_jobs():
     submit_description = f"""
 executable = run.sh
-log = ./HTCondor.log
-JobBatchName = phipimu_BDT
+arguments = "{ARGS}"
+log = ./HTCondor_{TAG}.log
+JobBatchName = phipimu_BDT_{TAG}
 request_cpus = 4
 request_memory = 8G
 request_disk = 100M
@@ -21,7 +62,10 @@ max_retries = 1
 should_transfer_files = NO
 queue 1
 """
+    print(f"Submitting {BKG} ({cfg['label']}), seed={SEED}"
+          f"{', samples=' + SAMPLES if SAMPLES else ''} -> {OUTDIR}")
     subprocess.run(["condor_submit"], input=submit_description.encode())
+
 
 if __name__ == "__main__":
     sys.exit(submit_jobs())
