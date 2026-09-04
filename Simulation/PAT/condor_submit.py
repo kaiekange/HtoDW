@@ -48,7 +48,9 @@ def submit_for_mode(mode, ver, year, NJOBS, server):
     os.makedirs("./tmp", exist_ok=True)
 
     subprocess.run(["xrdfs", server, "mkdir", "-p", f"{outdir}/log"])
-    subprocess.run(["./mkconfig.sh", mode])
+    # mkconfig.sh owns the GlobalTag table; it only needs the era. Passing the tag
+    # from here too would give the two files a way to disagree.
+    subprocess.run(["./mkconfig.sh", mode, year], check=True)
 
     # 只对 AODSIM 已经真正落地、且 PAT 还没跑过/没在跑的 JOBID 提交，
     # 避免 AODSIM 还没跑完时对着不存在的输入文件空跑，也避免重复处理已完成/正在跑的 PAT。
@@ -65,11 +67,11 @@ def submit_for_mode(mode, ver, year, NJOBS, server):
         print(f"[{mode}] 没有需要提交的 job。")
         return
 
-    joblist = f"./tmp/joblist_{mode}.txt"
+    joblist = f"./tmp/joblist_{mode}_{year}.txt"
     with open(joblist, "w") as f:
         f.write("\n".join(str(j) for j in todo) + "\n")
 
-    scheduler_log = f"condor_logs/HTCondor_{mode}.log"
+    scheduler_log = f"condor_logs/HTCondor_{mode}_{year}.log"
     if os.path.exists(scheduler_log):
         os.remove(scheduler_log)
 
@@ -92,23 +94,38 @@ queue JOBID from {joblist}
 """
     subprocess.run(["condor_submit"], input=submit_description.encode())
 
+# ver 跟 era 绑定（它进输出路径），所以放在按 era 查的表里，不能当常数写在外面：
+# 写在外面就会出现"preEE 的 GlobalTag 挂在 postEE 的路径下"这种不报错的错配。
+# GlobalTag 不在这里，由 mkconfig.sh 按同一个 year 查表，避免两处各存一份。
+ERA_INFO = {
+    "2022":   dict(ver=20260717),
+    "2022EE": dict(ver=20260825),
+}
+
+# 每个 (mode, year) 的总 job 数，跟同一条产线的 AODSIM 保持一致。
+# 每次运行会处理当前 era 下列出的所有 channel。
+NJOBS_MAP = {
+    ("ggHtoDsW_phipi",   "2022"):   500,
+    ("ggHtoDsstW_phipi", "2022"):   1000,
+    ("ggHtoDsW_phipi",   "2022EE"): 500,
+    ("ggHtoDsstW_phipi", "2022EE"): 1000,
+}
+
 def submit_jobs():
 
-    ver = 20260717
-    year = 2022
-
-    # 每个 channel 的总 job 数，跟 AODSIM(20260717 产线)保持一致。
-    # 每次运行会自动处理下面列出的所有 channel，不需要手动切换。
-    # 现在只跑 DsW，DsstW 先不管——以后要加回来，取消下面这行注释即可。
-    NJOBS_MAP = {
-        "ggHtoDsW_phipi":   500,
-        # "ggHtoDsstW_phipi": 1000,
-    }
+    if len(sys.argv) != 2 or sys.argv[1] not in ERA_INFO:
+        sys.exit(f"usage: {sys.argv[0]} <{'|'.join(ERA_INFO)}>")
+    year = sys.argv[1]
+    ver = ERA_INFO[year]["ver"]
 
     server = "maite.iihe.ac.be"
 
-    for mode, NJOBS in NJOBS_MAP.items():
-        submit_for_mode(mode, ver, year, NJOBS, server)
+    keys = [k for k in NJOBS_MAP if k[1] == year]
+    if not keys:
+        sys.exit(f"NJOBS_MAP 里没有 {year} 的条目")
+
+    for key in keys:
+        submit_for_mode(key[0], ver, year, NJOBS_MAP[key], server)
 
 if __name__ == "__main__":
     sys.exit(submit_jobs())

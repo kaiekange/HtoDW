@@ -4,3 +4,5 @@
 analysis/**/crab_*
 **/__pycache__
 **/kakang.cc
+**/condor_logs
+**/tmp
