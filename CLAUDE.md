@@ -112,7 +112,89 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-08-14)
+## Last Session (2026-08-17 ~ 08-24)
+
+### 全样本重产：tuplizer 加两个分支、树路径统一、data/W+jets 两个 era 全上
+
+**tuplizer 三处改动**（详见 memory `[[project_2022_full_reproduction]]`）：
+`gen_weight` + Info 树的 `sumGenWeights_`/`nEventsNegWeight_`；`jet_vetomap_pass`
+（`JvmAppliedEventFilter` 默认 `Veto=False`，不再丢事例，cut 移到 offline）；
+`applyJmeEra()` 一次设完三个 JME module 的 `Year`，三个 cfi 默认值清空、plugin 空值抛异常。
+**九个 pset 的 process name 和 module label 统一成 `Hphipimu`，树路径一律 `Hphipimu/Events`。**
+
+**data 全部重产**：C/D 到 `Data/2022/`、E/F/G 到 `Data/2022EE/`（1098/1098）。
+**GT 在 postEE 内部分家**——C/D/**E** 是 `130X_dataRun3_v2`，**F/G** 是
+`130X_dataRun3_PromptAnalysis_v1`，GT 与 JEC-era 是两条独立的轴。
+提交机制改成 txt 驱动（`DatasetList/data_2022.txt` 三列 + `submitData.sh <OS|SS>`）。
+
+**W+jets 两个 era**：preEE 六个目录全部完整（`sum(nEventsProcessed_)` 与 DAS 逐位相同）；
+postEE OS 三个 + SS 的 1J/2J 已产，缺 0.15-3.1%，补交进行中。
+
+**信号重产**：`Samples/HtoDsW.root` **156,020 行，与旧值逐个相同**——旧的是
+「tuplizer 里 veto → dedup」，新的是「不 veto 产出 → 事后切 flag → dedup」，
+两条路等价。信号 SS 已决定不再产。
+
+### gen weight：f_sel 测出来了，方向跟先前的初步印象相反
+
+W+jets 是 amcatnloFXFX，**负权重比例 f 逐 bin 差 3.4 倍**（0J 10.16% / 1J 25.81% / 2J 34.59%），
+`|w|` 也每个 bin 不同。`N_eff/N=(1-2f)²` ⇒ **2J 的 1.03 亿事例只相当于 970 万个无权重事例**。
+
+**`f_sel` 全量实测**（OS+b-veto+挖 blind 区后）：0J 从 10.16% 降到 **6.62%（−3.55 pt）**，
+1J/2J 几乎不动。所以旧的「平均权重」方案对三个 bin 的低估是 **8.9%/0.7%/3.2%——不是平坦因子**，
+会扭曲 jet 多重数分布。整体无 cut 的 data/MC 从 **1.44 → 1.375**。
+（先前那个 8/38 → f_sel≈21% 的初步印象只有 1σ，已证实不可信。）
+
+新权重：`Lumi_reweight_i = gen_weight_i × σL/Σw`，分母是 Info 的 `sumGenWeights_`
+**按条目求和**（hadd 是拼接）。preEE 每事例 ±2.9236/±1.1126/±0.8921，postEE ±2.7990/±1.0073/±0.8829。
+
+### mass tilt：权重不是原因，是模型
+
+**隔离对照**（同一模型、同一批打分、同一批事例，只换权重）：低/高双比值新旧在误差内完全一致。
+而对比 0811 的 90% 处 1.272±0.050（5.4σ），现在用同样的旧权重测得 **1.004±0.009**
+—— **是新模型让 tilt 消失的**。70%/50% 仍在但减半（1.228±0.075 / 1.770±0.248）。
+
+**但这条不能引用**：新模型背景 **77% 是 postEE 而信号 100% preEE**（没有 postEE 信号 MC，
+用户明确接受了这个偏差），tilt 消失可能只是「模型改按 era 挑事例」。
+**era 对照（preEE-only vs postEE-only 的 score 分布）一直没做，是当前唯一挡在结论前面的测试。**
+
+### DNN 重训
+
+`ssdata` 背景加了 `Data_2022EE_SS`，训练样本 34.3 万 → **148 万行（4.3 倍）**，
+val AUC 0.9977 → 0.99821。**但这个 AUC 跟旧值不可比**（test 集背景成分变了）。
+`wjets` 模型已按用户要求全部删除（6.5 G）；`WJETS_WEIGHTS` 加了 STALE 警告。
+
+### 两类 job 失败，诊断方法完全不同
+
+| | log | 输出 | 补交 |
+|---|---|---|---|
+| `FileReadError`（坏 basket） | 有 Fatal Exception | 截断但可读 | 反复失败 |
+| `FileOpenError`（站点不可达） | 有 Fatal Exception | 空壳或部分 | **站点恢复后有效** |
+| 墙钟被杀 | **无异常** | **497 字节空壳** | 有效 |
+
+**扫 log 找 Fatal Exception 对第三类是全盲的**，唯一可靠判据是
+`sum(nEventsProcessed_)` 对 DAS。截断文件本身**是安全的**——`sumGenWeights_` 逐文件自洽，
+分子分母同时少，**归一化不偏**，只损失统计量。
+
+### 我犯的错（都被用户直接指出）
+
+1. **`TFile::Open()` 成功 + `GetEntries()` 正确 ≠ 文件完好**——这两步不碰 basket。
+   我拿它做过测试并宣布「两个 redirector 都 OK」，那个测试什么都没证明。
+2. **AAA 报 `No additional data servers found` ≠ 只有一个副本**——实测 DAS 列出 6 个站点，
+   而报错指向的那个站点**根本不在列表里**。
+3. 提交类命令 **grep 过滤输出**，把错误一起滤掉，造成「静默成功」的假象。
+4. 环境没准备好导致提交静默失败，**一个 session 里犯了三次**（CRAB 缺 cmsenv、
+   `source crab.sh` 继承 `$1`、DNN 忘了 `conda activate`）。
+
+共同点：**把工具的局部视角当成系统的客观状态。**
+
+### 下一步
+
+- **era 对照** —— 唯一挡在「tilt 修好了」这个结论前面的测试
+- postEE W+jets dedup 进 `Samples/`（**L=26680 /pb**，别用 preEE 的 7990），
+  并同步 `predict.py` 的 `ALL_SAMPLES`
+- SR closure 仍未解决
+
+## 上一 Session (2026-08-14)
 
 ### seed 噪声底 + 工作点定在 ε_sig=70% + BDT 全对齐接入 common.py
 

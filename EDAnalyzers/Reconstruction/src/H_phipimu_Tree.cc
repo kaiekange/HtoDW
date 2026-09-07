@@ -27,6 +27,8 @@ void H_phipimu_Tree::Init()
 	num_jets_pt20 = 0; num_jets_pt30 = 0; num_jets_pt40 = 0; num_jets_pt50 = 0;
 	num_jets_pt60 = 0; num_jets_pt70 = 0; num_jets_pt80 = 0; num_jets_pt90 = 0; num_jets_pt100 = 0;
 	jet_ht = null; jet_ht_pt20 = null; jet_leadpt = null; jet_maxbscore = null;
+	jet_vetomap_pass = false;
+	gen_weight = 1.0;
 
 	num_os_mu_loose = 0; num_ss_mu_loose = 0;
 	num_os_mu_medium = 0; num_ss_mu_medium = 0;
@@ -196,6 +198,8 @@ void H_phipimu_Tree::CreateBranches()
 	tree->Branch("num_jets_pt80", &num_jets_pt80); tree->Branch("num_jets_pt90", &num_jets_pt90);
 	tree->Branch("num_jets_pt100", &num_jets_pt100);
 	tree->Branch("jet_ht", &jet_ht); tree->Branch("jet_ht_pt20", &jet_ht_pt20); tree->Branch("jet_leadpt", &jet_leadpt); tree->Branch("jet_maxbscore", &jet_maxbscore);
+	tree->Branch("jet_vetomap_pass", &jet_vetomap_pass);
+	tree->Branch("gen_weight", &gen_weight);
 
 	tree->Branch("num_os_mu_loose", &num_os_mu_loose); tree->Branch("num_ss_mu_loose", &num_ss_mu_loose);
 	tree->Branch("num_os_mu_medium", &num_os_mu_medium); tree->Branch("num_ss_mu_medium", &num_ss_mu_medium);

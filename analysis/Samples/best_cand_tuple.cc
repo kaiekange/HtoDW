@@ -10,12 +10,12 @@
 // commit it against the event's best Ds_pt at each candidate boundary, and emit
 // the event's winner at each event boundary.
 //
-// The signal tuples hold their trees under HphipimuDsW / HphipimuDsstW while the
-// backgrounds use Hphipimu, so the output directory is named separately from the
-// input one: every sample in Samples/ ends up with the same internal layout.
+// Every cfg has used the module label Hphipimu since 2026-08-18, so subdir and outsubdir
+// are now the same string for new tuples. Both parameters are kept because tuples produced
+// before that date still hold the signal trees under HphipimuDsW / HphipimuDsstW.
 //
 // Usage:
-//   root -l -b -q 'best_cand_tuple.cc("INPUT.root", "OUTPUT.root", "HphipimuDsW", 6.3308e-06, "Hphipimu")'
+//   root -l -b -q 'best_cand_tuple.cc("INPUT.root", "OUTPUT.root", "Hphipimu", 6.3308e-06, "Hphipimu")'
 
 #include "TFile.h"
 #include "TTree.h"

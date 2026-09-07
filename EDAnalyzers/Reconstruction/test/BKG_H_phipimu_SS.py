@@ -1,5 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 from Configuration.AlCa.GlobalTag import GlobalTag
+from EDAnalyzers.JMEcorr.jmeEra import applyJmeEra
 
 # source = cms.Source("PoolSource", fileNames=cms.untracked.vstring("/store/mc/Run3Summer22MiniAODv4/WtoLNu-2Jets_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/MINIAODSIM/130X_mcRun3_2022_realistic_v5-v2/2520000/03d57826-8e8d-4b11-8683-c75d0310b16f.root"))
 # OUTFILE = "file:output.root"
@@ -7,7 +8,7 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring())
 OUTFILE = "output.root"
 
-process = cms.Process("HphipimuSS")
+process = cms.Process("Hphipimu")
 process.load("PhysicsTools.UtilAlgos.TFileService_cfi")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration.StandardSequences.Services_cff")
@@ -26,6 +27,11 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
+
+# All MC in this analysis is Run3Summer22MiniAODv4, i.e. preEE. This call is what makes
+# that explicit -- the cfi default is empty and every JME plugin throws without it, so a
+# future Summer22EE sample cannot silently inherit preEE JEC and veto map.
+applyJmeEra(process, year="2022Pre", isData=False)
 process.Hphipimu = cms.EDAnalyzer("H_phipimu",
     sameSignPi = cms.bool(True),   # same-sign control region (merged into the OS plugin)
     doTruth = cms.bool(False),

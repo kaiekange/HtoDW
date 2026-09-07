@@ -104,6 +104,16 @@ JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet& iConfig)
     jetsTok_( consumes<pat::JetCollection>(srcJetsTag_) ),
     rhoTok_ ( consumes<double>(rhoTag_) )
 {
+  // Year has no usable default in the cfi: it selects the JEC payload set, and the same
+  // knob exists on JecAppliedMetProducer and JvmAppliedEventFilter. Getting it wrong on
+  // MC is silent (no run-number binning to catch it), so refuse to run unset and let
+  // EDAnalyzers/JMEcorr/python/jmeEra.py set all three at once.
+  if (year_.empty()) {
+    throw edm::Exception(edm::errors::Configuration)
+      << "JecAppliedJetProducer: 'Year' is empty. Call applyJmeEra(process, year, isData, era) "
+         "from EDAnalyzers.JMEcorr.jmeEra in your pset -- it sets Year on all three JME modules.";
+  }
+
   // Era (needed for data path)
   if (jetsPset_.existsAs<std::string>("Era")) {
     era_ = jetsPset_.getParameter<std::string>("Era");

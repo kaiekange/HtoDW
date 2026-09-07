@@ -3,6 +3,7 @@ import subprocess
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
 from Configuration.AlCa.GlobalTag import GlobalTag
+from EDAnalyzers.JMEcorr.jmeEra import applyJmeEra
 
 options = VarParsing('analysis')
 options.register("JOBID", 0, VarParsing.multiplicity.singleton, VarParsing.varType.int, "Job ID")
@@ -27,7 +28,7 @@ existing = set(int(m) for m in re.findall(r"output_(\d+)\.root", ls_out))
 INFILE = ["root://maite.iihe.ac.be/{}/output_{}.root".format(PATDIR, i) for i in range(start, end) if i in existing]
 source = cms.Source("PoolSource", fileNames=cms.untracked.vstring(INFILE))
 
-process = cms.Process("HphipimuDsstWSS")
+process = cms.Process("Hphipimu")
 process.load("PhysicsTools.UtilAlgos.TFileService_cfi")
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.load("Configuration.StandardSequences.Services_cff")
@@ -46,7 +47,12 @@ process.load("EDAnalyzers.JMEcorr.JecAppliedJetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JecAppliedMetProducer_cfi")
 process.load("EDAnalyzers.JMEcorr.JvmAppliedEventFilter_cfi")
 process.load("EDAnalyzers.JMEcorr.tightJetId_cfi")
-process.HphipimuDsstW = cms.EDAnalyzer("H_phipimu",
+
+# All MC in this analysis is Run3Summer22MiniAODv4, i.e. preEE. This call is what makes
+# that explicit -- the cfi default is empty and every JME plugin throws without it, so a
+# future Summer22EE sample cannot silently inherit preEE JEC and veto map.
+applyJmeEra(process, year="2022Pre", isData=False)
+process.Hphipimu = cms.EDAnalyzer("H_phipimu",
     sameSignPi = cms.bool(True),   # same-sign control region (merged into the OS plugin)
     doTruth = cms.bool(True),
     channel = cms.string("DsstW")
@@ -55,5 +61,5 @@ process.TFileService = cms.Service("TFileService", fileName=cms.string(options.O
 
 process.options = cms.untracked.PSet(wantSummary=cms.untracked.bool(True))
 
-process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter * process.tightJetId * process.HphipimuDsstW)
+process.p = cms.Path(process.jecAppliedJetProducer * process.jecAppliedMetProducer * process.jvmAppliedEventFilter * process.tightJetId * process.Hphipimu)
 process.schedule = cms.Schedule(process.p)

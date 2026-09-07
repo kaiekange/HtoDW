@@ -130,6 +130,15 @@ JecAppliedMetProducer::JecAppliedMetProducer(const edm::ParameterSet &iConfig)
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        : std::string{}),
       systKind_(jetsPset_.getParameter<std::string>("SystKind")), jesSystName_(jetsPset_.getParameter<std::string>("JesSystName")), jesSystVar_(jetsPset_.getParameter<std::string>("JesSystVar")), jerVar_(jetsPset_.getParameter<std::string>("JerVar")), jetsTok_(consumes<pat::JetCollection>(srcJetsTag_)), rhoTok_(consumes<double>(rhoTag_)), metPfTok_(consumes<pat::METCollection>(srcMetPfTag_)), metPuppiTok_(consumes<pat::METCollection>(srcMetPuppiTag_))
 {
+    // Year has no usable default in the cfi -- see the same guard in
+    // JecAppliedJetProducer. Use applyJmeEra() rather than setting the three modules by hand.
+    if (year_.empty())
+    {
+        throw edm::Exception(edm::errors::Configuration)
+            << "JecAppliedMetProducer: 'Year' is empty. Call applyJmeEra(process, year, isData, era) "
+               "from EDAnalyzers.JMEcorr.jmeEra in your pset -- it sets Year on all three JME modules.";
+    }
+
     // Era (needed for data path)
     if (jetsPset_.existsAs<std::string>("Era"))
     {

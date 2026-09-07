@@ -77,6 +77,17 @@ public:
 	Float_t jet_ht_pt20;    // same, jets with pT>20 only
 	Float_t jet_leadpt;     // highest-pT tightJetId jet (null if none)
 	Float_t jet_maxbscore;  // max b-score over central (|eta|<2.5) tightJetId jets (null if none)
+	// false = at least one jet landed in the jet veto map region. Before 2026-08-17 such
+	// events were dropped by JvmAppliedEventFilter and never reached this tree, so this
+	// branch is absent from every tuple produced earlier; the cut is now applied offline.
+	Bool_t jet_vetomap_pass;
+
+	// Per-event generator weight (1.0 on data). Double, not Float: the amcatnloFXFX
+	// samples carry |w| ~ 2.6e5, which exceeds Float's ~7 significant digits. Only the
+	// sign actually matters for those (weights are two-valued), but keeping the value
+	// exact costs nothing and stays correct if a future sample has continuous weights.
+	// Normalise with Info tree's sumGenWeights_, never with a raw event count.
+	Double_t gen_weight;
 
 	// lepton counts. ss/os = same/opposite charge as the pi (pi == -mu.charge() by
 	// construction). os_* includes the best muon (it is opposite the pi).

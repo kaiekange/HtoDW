@@ -24,6 +24,8 @@
 #include "DataFormats/Common/interface/Association.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
@@ -75,6 +77,8 @@ private:
 	edm::EDGetTokenT<pat::METCollection> MetToken_;
 	edm::EDGetTokenT<pat::JetCollection> JetToken_;
 	edm::EDGetTokenT<edm::ValueMap<Int_t>> tightJetIdToken_;
+	edm::EDGetTokenT<int> jvmPassToken_;
+	edm::EDGetTokenT<GenEventInfoProduct> GenInfoToken_;
 	edm::EDGetTokenT<reco::VertexCollection> primvtxToken_;
 	edm::EDGetTokenT<edm::TriggerResults> triggerToken_;
 	edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken_;
@@ -109,6 +113,13 @@ private:
 	unsigned long nEventsTriggered_;
 	unsigned long nEventsLepton_;      // W->mu nu (prompt muon), hard-process filter passed
 	unsigned long nEventsGen_;         // nEventsLepton_ AND Ds->phi pi->KK pi found
+	// Sum of generator weights over EVERY event seen, accumulated before any cut. This is
+	// the correct luminosity-normalisation denominator for NLO samples: WtoLNu-2Jets and
+	// the three DYto2L are amcatnloFXFX, whose weights are +-|w| with a 15.6% negative
+	// fraction measured on WtoLNu-2Jets, so a raw event count is not sigma-proportional.
+	// Double, not float: |w| is O(1e5) per event and the sum runs to O(1e9+) per job.
+	double sumGenWeights_;
+	unsigned long nEventsNegWeight_;   // events with weight < 0, for a quick sanity check
 	unsigned long nEventsLeptonTauMu_; // W->tau nu, tau->mu, hard-process filter passed
 	unsigned long nEventsGenTauMu_;    // nEventsLeptonTauMu_ AND Ds->phi pi->KK pi found
 };
@@ -132,6 +143,18 @@ H_phipimu::H_phipimu(const edm::ParameterSet &iConfig)
 
 	edm::InputTag tightJetIdTag_("tightJetId");
 	tightJetIdToken_ = consumes<edm::ValueMap<Int_t>>(tightJetIdTag_);
+
+	// Jet veto map decision. The filter publishes it whether or not it also drops on it,
+	// so this token is valid in both configurations.
+	edm::InputTag jvmPassTag_("jvmAppliedEventFilter", "JvmPass");
+	jvmPassToken_ = consumes<int>(jvmPassTag_);
+
+	// Generator weight. Declared unconditionally (harmless) but only read when the event
+	// is not real data -- data carries no "generator" product. Gated on
+	// iEvent.isRealData() rather than doTruth, which is a gen-filter switch: the
+	// background MC configs run with doTruth=False and still need the weight.
+	edm::InputTag GenInfoTag_("generator");
+	GenInfoToken_ = consumes<GenEventInfoProduct>(GenInfoTag_);
 
 	edm::InputTag primvtxTag_("offlineSlimmedPrimaryVertices");
 	primvtxToken_ = consumes<reco::VertexCollection>(primvtxTag_);
@@ -197,11 +220,15 @@ void H_phipimu::beginJob()
 	InfoTree->Branch("nEventsGen_", &nEventsGen_);
 	InfoTree->Branch("nEventsLeptonTauMu_", &nEventsLeptonTauMu_);
 	InfoTree->Branch("nEventsGenTauMu_", &nEventsGenTauMu_);
+	InfoTree->Branch("sumGenWeights_", &sumGenWeights_);
+	InfoTree->Branch("nEventsNegWeight_", &nEventsNegWeight_);
 
 	nEventsProcessed_ = 0;
 	nEventsTriggered_ = 0;
 	nEventsLepton_ = 0;
 	nEventsGen_ = 0;
+	sumGenWeights_ = 0.0;
+	nEventsNegWeight_ = 0;
 	nEventsLeptonTauMu_ = 0;
 	nEventsGenTauMu_ = 0;
 }
@@ -210,11 +237,27 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
 	nEventsProcessed_++;
 
+	// Generator weight, accumulated here and nowhere else: this is the first statement of
+	// analyze() and every gen-filter/trigger early return is below it, so sumGenWeights_ is
+	// a sum over all generated events rather than over selected ones. Anything else would
+	// not be a luminosity denominator. (Since 2026-08-17 jvmAppliedEventFilter defaults to
+	// Veto=False, so analyze() also sees the events the jet veto map used to drop.)
+	double genWeight = 1.0;
+	if (!iEvent.isRealData())
+	{
+		edm::Handle<GenEventInfoProduct> GenInfoHandle;
+		iEvent.getByToken(GenInfoToken_, GenInfoHandle);
+		genWeight = GenInfoHandle->weight();
+		if (genWeight < 0) nEventsNegWeight_++;
+	}
+	sumGenWeights_ += genWeight;
+
 	edm::ESHandle<TransientTrackBuilder> ttBuilderHandle = iSetup.getHandle(ttBuilderToken_);
 	const TransientTrackBuilder *ttBuilder = ttBuilderHandle.product();
 
 	ftree->Init();
 
+	ftree->gen_weight = genWeight;
 	ftree->event_id = iEvent.id().event();
 	ftree->run_id   = iEvent.id().run();
 	ftree->lumi_id  = iEvent.luminosityBlock();
@@ -669,6 +712,10 @@ void H_phipimu::analyze(const edm::Event &iEvent, const edm::EventSetup &iSetup)
 	ftree->jet_ht_pt20 = jet_ht_pt20;
 	if (ftree->num_jets > 0) ftree->jet_leadpt = jet_leadpt;
 	if (jet_maxbscore > -999) ftree->jet_maxbscore = jet_maxbscore;
+
+	edm::Handle<int> jvmPassHandle;
+	iEvent.getByToken(jvmPassToken_, jvmPassHandle);
+	ftree->jet_vetomap_pass = (*jvmPassHandle != 0);
 
 	//==================================================//
 	// Muon

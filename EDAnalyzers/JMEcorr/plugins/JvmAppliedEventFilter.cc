@@ -1,6 +1,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/one/EDFilter.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/Utilities/interface/Exception.h"
 #include "DataFormats/PatCandidates/interface/Jet.h"
 
 #include <memory>
@@ -18,6 +19,7 @@ private:
   edm::ParameterSet                    configParamsJets_;
   edm::InputTag                        edmTagJetAK4_;
   std::string                          year_;
+  bool                                 veto_;
   edm::EDGetTokenT<pat::JetCollection> edmTokenJetAK4_;
   edm::FileInPath                      jvmConfigPath_;
   JvmApplication::VetoChecker          jvmChecker_;
@@ -29,8 +31,18 @@ JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet& iConfig)
   : configParamsJets_(iConfig.getParameter<edm::ParameterSet>("Jets")),
     edmTagJetAK4_(configParamsJets_.getParameter<edm::InputTag>("SourcesAK4")),
     year_(configParamsJets_.getParameter<std::string>("Year")),
+    veto_(configParamsJets_.getParameter<bool>("Veto")),
     jvmConfigPath_(configParamsJets_.getParameter<edm::FileInPath>("JvmConfig")),
     jvmChecker_() {
+
+    // Year has no usable default in the cfi. This module is the one where a wrong Year is
+    // fully silent -- the veto map is an (eta,phi) map with no run-number dimension, so a
+    // preEE map applied to postEE data produces plausible numbers and no error anywhere.
+    if (year_.empty()) {
+        throw edm::Exception(edm::errors::Configuration)
+            << "JvmAppliedEventFilter: 'Year' is empty. Call applyJmeEra(process, year, isData, era) "
+               "from EDAnalyzers.JMEcorr.jmeEra in your pset -- it sets Year on all three JME modules.";
+    }
 
     // Configure the JVM config singleton with the path from edm::FileInPath
     auto& jvmCfg = JvmConfigReader::JvmConfig::defaultInstance();
@@ -41,13 +53,28 @@ JvmAppliedEventFilter::JvmAppliedEventFilter(const edm::ParameterSet& iConfig)
     if (jvm.use) {
         jvmChecker_.setJvm(jvm.ref, jvm.key);
     } else {
-        std::cout << "[JvmAppliedEventFilter] No JVM entry for year \"" << year_
-                  << "\" in config \"" << jvmConfigPath_.fullPath()
-                  << "\". Filter will not veto any events.\n";
+        // A year that is spelled correctly but absent from JvmConfig.json would otherwise
+        // disable the veto map with only a line of stdout in a job log of many thousands.
+        throw edm::Exception(edm::errors::Configuration)
+            << "JvmAppliedEventFilter: no JVM entry for year \"" << year_
+            << "\" in config \"" << jvmConfigPath_.fullPath()
+            << "\". Refusing to run with the jet veto map silently disabled.";
+    }
+
+    if (!veto_) {
+        std::cout << "[JvmAppliedEventFilter] Veto=False: no event is dropped. The decision "
+                     "is published as the \"JvmPass\" product instead, for the analyzer to "
+                     "store per event.\n";
     }
 
     // Declare consumes using the EDFilter base API
     edmTokenJetAK4_ = consumes<pat::JetCollection>(edmTagJetAK4_);
+
+    // Published whatever Veto is set to, so the decision stays available to downstream
+    // modules even when this filter is also dropping on it. Int rather than bool: a bare
+    // bool event product needs an edm::Wrapper<bool> dictionary, which this package does
+    // not declare.
+    produces<int>("JvmPass");
 }
 
 JvmAppliedEventFilter::~JvmAppliedEventFilter() {}
@@ -78,10 +105,18 @@ bool JvmAppliedEventFilter::filter(edm::Event& iEvent, const edm::EventSetup& iS
     } catch (std::exception const& e) {
         std::cout << "[JvmAppliedEventFilter] exception in filter -> "
                   << e.what() << std::endl;
-        // Be conservative on exception: do not veto the event.
-        return true;
+        // Be conservative on exception: do not veto the event. Falls through rather than
+        // returning early, so the product below is always put -- an event missing it would
+        // make the analyzer throw ProductNotFound.
+        passEvent = true;
     }
-    return passEvent;
+
+    iEvent.put(std::make_unique<int>(passEvent ? 1 : 0), "JvmPass");
+
+    // Veto=False keeps every event and leaves the decision to the analysis, which reads
+    // the product above. Veto=True is the historical behaviour: the event is dropped here
+    // and never reaches the analyzer.
+    return veto_ ? passEvent : true;
 }
 
 #include "FWCore/Framework/interface/MakerMacros.h"

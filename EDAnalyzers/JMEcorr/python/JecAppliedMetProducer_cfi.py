@@ -7,7 +7,12 @@ jecAppliedMetProducer = cms.EDProducer(
     Jets = cms.PSet(
         srcAK4 = cms.InputTag("slimmedJetsPuppi"),           # pat::JetCollection
         rho    = cms.InputTag("fixedGridRhoFastjetAll"),
-        Year   = cms.string("2022Pre"),
+        # No usable default: Year is a knob on THREE modules (both JEC producers and
+        # jvmAppliedEventFilter) and setting only some of them is silently wrong, not an
+        # error. Each plugin throws on an empty Year; set it via
+        #   from EDAnalyzers.JMEcorr.jmeEra import applyJmeEra
+        #   applyJmeEra(process, year="2022Pre", isData=False)
+        Year   = cms.string(""),
         IsData = cms.bool(False),
         Era    = cms.string(""),
 

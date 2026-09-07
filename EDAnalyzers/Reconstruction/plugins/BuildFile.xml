@@ -16,6 +16,8 @@
 <use name="DataFormats/GeometryVector"/>
 <use name="DataFormats/GeometryCommonDetAlgo"/>
 
+<use name="SimDataFormats/GeneratorProducts"/>
+
 <use name="TrackingTools/TransientTrack"/>
 <use name="TrackingTools/Records"/>
 <use name="TrackingTools/IPTools"/>
