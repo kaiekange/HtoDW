@@ -49,18 +49,22 @@ BKG_SAMPLES = [
 
 # (sample, Lumi_reweight, input file, in-file directory)
 SAMPLES = [(name, weight, f"{BKG}/{name}.root", "Hphipimu") for name, weight in BKG_SAMPLES] + [
-    ("HtoDsW",   "6.3308E-06", f"{SIG}/Signal_H_phipimu/Signal_H_phipimu.root",             "HphipimuDsW"),
-    ("HtoDsstW", "1.0781E-05", f"{SIG}/Signal_DsstW_H_phipimu/Signal_DsstW_H_phipimu.root", "HphipimuDsstW"),
+    # _2022 = Run3Summer22 (preEE); both signal productions are preEE only.
+    ("HtoDsW_2022",   "6.3308E-06", f"{SIG}/Signal_H_phipimu/Signal_H_phipimu.root",             "Hphipimu"),
+    ("HtoDsstW_2022", "1.0781E-05", f"{SIG}/Signal_DsstW_H_phipimu/Signal_DsstW_H_phipimu.root", "Hphipimu"),
 ]
 
 def submit_jobs(only):
 
-    outdir="/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
+    outdir="/eos/home-k/kakang/H2DW/Analysis/MVA/Samples"
 
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(outdir+"/log", exist_ok=True)
 
-    scheduler_log = f"./HTCondor.log"
+    # Scheduler logs go in condor_logs/ rather than next to the script: one per
+    # (era, bin, sign) piles up fast in the working directory.
+    os.makedirs("condor_logs", exist_ok=True)
+    scheduler_log = f"condor_logs/HTCondor.log"
     if os.path.exists(scheduler_log):
         os.remove(scheduler_log)
 
