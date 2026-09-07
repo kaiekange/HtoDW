@@ -7,3 +7,5 @@
 **/crab_*
 **/__pycache__
 **/kakang.cc
+**/condor_logs/*.ref
+**/condor_logs/*.pid

@@ -50,9 +50,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "ssdata"
 PRED = f"{common.resolve(MODEL)['out_dir']}/Prediction"
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
@@ -163,7 +160,7 @@ for stem, variables, drop in FIGS:
         print(f"{'mean data/MC/sig':>24s} " + " ".join(f"{c:>26s}" for c in cells))
 
     plt.tight_layout()
-    out = f"{OUTDIR}/mult_{stem}_{MODEL}.png"
+    out = common.fig_path("closure", f"mult_{stem}_{MODEL}.png", key=MODEL)
     plt.savefig(out, dpi=100)
     plt.close(fig)
     print(f"Saved {out}")
