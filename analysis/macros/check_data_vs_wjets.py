@@ -44,8 +44,9 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
+# Figures split two ways: the per-model ones (suffixed _{k}) go under that model's
+# own figures/closure/, while the panels that overlay every model on one axis have
+# no single owner and go to the shared comparisons/ directory instead.
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 EFFS = [0.90, 0.70, 0.50]
 BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
@@ -58,8 +59,9 @@ for k in MODELS:
     common.resolve(k)
 
 
-def load(model_key, name, *, ss=False, sig=False, parity=None):
-    br = BR + (["Ds_match", "mu_match"] if sig else [])
+def load(model_key, name, *, ss=False, sig=False, parity=None, era=None):
+    br = list(dict.fromkeys(BR + ["Lumi_reweight"] + (["era"] if era else [])
+                            + (["Ds_match", "mu_match"] if sig else [])))
     pred = f"{common.resolve(model_key)['out_dir']}/Prediction/{name}.root"
     a = uproot.open(pred)["Events"].arrays(br, library="np")
     if ss:
@@ -71,16 +73,15 @@ def load(model_key, name, *, ss=False, sig=False, parity=None):
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
 def wjets(model_key, ss):
-    v, w = [], []
-    for n, wgt in common.WJETS_WEIGHTS.items():
-        d = load(model_key, f"{n}_SS" if ss else n, ss=ss)
-        v.append(d)
-        w.append(np.full(len(d["Ds_mass"]), wgt))
-    return ({k: np.concatenate([p[k] for p in v]) for k in BR}, np.concatenate(w))
+    # preEE only (era=1), as before; per-event Lumi_reweight from the file.
+    d = load(model_key, "WtoLNu2Jets_SS" if ss else "WtoLNu2Jets", ss=ss, era=1)
+    return d, d["Lumi_reweight"]
 
 
 def cr_yield(d, thr, weight=None):
@@ -96,9 +97,9 @@ THR = {}
 for k in MODELS:
     sig = {b: np.concatenate([load(k, n, sig=True)[b] for n in common.SIGNALS])
            for b in ["score_dsmu"]}
-    os_d = load(k, "Data_2022")
-    ss_d_all = load(k, "Data_2022_SS", ss=True)
-    ss_d = load(k, "Data_2022_SS", ss=True, parity=1)          # held-out half
+    os_d = load(k, "Data", era=1)
+    ss_d_all = load(k, "Data_SS", ss=True, era=1)
+    ss_d = load(k, "Data_SS", ss=True, parity=1, era=1)        # held-out half
     f_odd = len(ss_d["Ds_mass"]) / len(ss_d_all["Ds_mass"])    # ~0.5, measured
     os_m, os_mw = wjets(k, ss=False)
     ss_m, ss_mw = wjets(k, ss=True)
@@ -142,7 +143,7 @@ ax.invert_xaxis()
 ax.legend(fontsize=12)
 hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/data_vs_wjets_vs_score.png"
+out = common.fig_path("comparisons", "data_vs_wjets_vs_score.png")
 plt.savefig(out, dpi=130)
 plt.close(fig)
 print(f"\nSaved {out}")
@@ -262,7 +263,7 @@ for row, k in enumerate(MODELS):
         print(f"{k:8s} {lbl_t:>8s} {f2(r_os):>16s} {f2(r_scr):>16s} {f2(r_ssr):>16s}")
 
 plt.tight_layout()
-out = f"{OUTDIR}/ss_data_vs_wjets_mass.png"
+out = common.fig_path("comparisons", "ss_data_vs_wjets_mass.png")
 plt.savefig(out, dpi=110)
 plt.close(fig)
 print(f"\nSaved {out}")
@@ -319,7 +320,7 @@ for k in MODELS:
                 hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True,
                               text="Preliminary", fontsize=10)
     plt.tight_layout()
-    out = f"{OUTDIR}/data_wjets_binratio_{k}.png"
+    out = common.fig_path("closure", f"data_wjets_binratio_{k}.png", key=k)
     plt.savefig(out, dpi=110)
     plt.close(fig)
     print(f"Saved {out}")
@@ -476,7 +477,7 @@ for k in MODELS:
     hep.cms.label(ax=axs[0], rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
                   fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/mass_windows_os_vs_ss_{k}.png"
+    out = common.fig_path("closure", f"mass_windows_os_vs_ss_{k}.png", key=k)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"\nSaved {out}")
@@ -649,7 +650,7 @@ for k in MODELS:
     hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
                   fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/wjets_yield_scan_{k}.png"
+    out = common.fig_path("closure", f"wjets_yield_scan_{k}.png", key=k)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"Saved {out}")
@@ -694,7 +695,7 @@ for k in MODELS:
     hep.cms.label(ax=axs[0], rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
                   fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/wjets_double_ratio_{k}.png"
+    out = common.fig_path("closure", f"wjets_double_ratio_{k}.png", key=k)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"Saved {out}")
@@ -719,7 +720,7 @@ ax.invert_xaxis()
 ax.legend(fontsize=10, ncol=2)
 hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/wjets_yield_closure.png"
+out = common.fig_path("comparisons", "wjets_yield_closure.png")
 plt.savefig(out, dpi=130)
 print(f"Saved {out}")
 
@@ -755,7 +756,7 @@ for k in MODELS:
     ax.legend(fontsize=12)
     hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/os_cr_dist_eff20_{k}.png"
+    out = common.fig_path("closure", f"os_cr_dist_eff20_{k}.png", key=k)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"\n{common.resolve(k)['label']} model, eff_sig=20%, thr={thr:.4f}: "
@@ -800,7 +801,7 @@ for k in MODELS:
     ax.legend(fontsize=12)
     hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/ss_dist_eff20_{k}.png"
+    out = common.fig_path("closure", f"ss_dist_eff20_{k}.png", key=k)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"{common.resolve(k)['label']} model, eff_sig=20%: "

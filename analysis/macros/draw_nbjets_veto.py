@@ -8,21 +8,41 @@ data is the meaningful reference here and not the W+jets MC. Data is the OS
 SR-blinded sample, so the same sideband requirement is applied to the background
 MC to compare like with like.
 
+RETIRED 2026-09-04 -- THIS CANNOT RUN AGAINST THE CURRENT Samples/.
+
+The b-jet veto (n_b_jets_tight_dR04 == 0) is now applied by make_samples.py BEFORE the
+dedup and baked into every file, so every one of the 12 variants this macro plots is
+truncated to its veto-passing part: the tight/dR04 one is a single bar at zero by
+construction, and the other 11 are the heavily correlated remainder. The figure would
+still be drawn, and it would be wrong in a way that looks plausible -- which is why this
+exits instead.
+
+The working point it was written to choose is settled (tight, dR04); this file is kept
+as the record of that decision. To run it again you need Samples/ built without the
+b_veto cut -- drop "b_veto" from the `cuts` tuple in make_samples.py's SAMPLES table and
+rebuild into a separate directory.
+
 Usage:
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
     python3 draw_nbjets_veto.py
 """
 
+import sys
+
 import numpy as np
 import uproot
+
+sys.exit(__doc__[__doc__.index("RETIRED"):__doc__.index("Usage:")].strip())
 import matplotlib.pyplot as plt
 
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
+sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
+import common
+
+SAMPLES_DIR = common.SAMPLES_DIR
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 
 WPS = ["loose", "medium", "tight"]
@@ -31,9 +51,9 @@ DRS = ["dR03", "dR04"]
 VARS = [f"n_b_jets_{wp}{pt}_{dr}" for wp in WPS for pt in PTS for dr in DRS]
 
 WJETS_WEIGHTS = {
-    "WtoLNu2Jets_0J": 2.3293047885,
-    "WtoLNu2Jets_1J": 0.5382864853,
-    "WtoLNu2Jets_2J": 0.2748710631,
+    "WtoLNu2Jets_0J_2022": 2.3293047885,
+    "WtoLNu2Jets_1J_2022": 0.5382864853,
+    "WtoLNu2Jets_2J_2022": 0.2748710631,
 }
 SEL = ["num_os_mu_tight", "num_ss_mu_tight"]
 
@@ -48,7 +68,7 @@ def load(name, truth_filter=False):
 
 
 print("Loading...")
-sig = load("HtoDsW", truth_filter=True)
+sig = load("HtoDsW_2022", truth_filter=True)
 data = load("Data_2022")
 parts = [load(n) for n in WJETS_WEIGHTS]
 bkg = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
@@ -97,7 +117,7 @@ for dr in DRS:
                           text="Preliminary", fontsize=13)
 
     plt.tight_layout()
-    out = f"{OUTDIR}/n_b_jets_veto_{dr}.png"
+    out = common.fig_path("preselection", f"n_b_jets_veto_{dr}.png")
     plt.savefig(out, dpi=120)
     plt.close(fig)
     print(f"  -> saved {out}")

@@ -4,14 +4,14 @@ score_dsmu added.
     python3 predict.py ssdata                 # score with the SS-data-trained model
     python3 predict.py wjets                  # score with the W+jets-trained model
     python3 predict.py ssdata 101             # score the seed-101 model
-    python3 predict.py ssdata 101 --samples HtoDsW,HtoDsstW,Data_2022
+    python3 predict.py ssdata 101 --samples HtoDsW,HtoDsstW,Data
 
 The model directory is resolved from the same common.TRAININGS table the training
 used, so the model, its scaler and its Prediction/ output can never be crossed.
 
 --samples restricts scoring to a subset. It exists for the seed-spread study: each
 seed's Prediction/ is ~2.8 GB on EOS, and reading the OS-sideband yield only needs
-the two signals (to set the score quantiles) plus Data_2022. Default is everything.
+the two signals (to set the score quantiles) plus Data. Default is everything.
 
 Both OS and SS variants are scored, and data as well as MC: the diagnostics need
 the score distribution in the SS control region and in data sidebands, not just in
@@ -41,15 +41,12 @@ from common import FEATURE_NAMES, SAMPLES_DIR, TREE
 USAGE = (f"usage: python3 {os.path.basename(__file__)} "
          f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
 
-# Current Samples/ contents. The old inclusive WtoLNu2Jets{,_SS} are deliberately
-# left out -- superseded by the 0J/1J/2J jet-binned samples.
-ALL_SAMPLES = [
-    "HtoDsW", "HtoDsW_SS",
-    "HtoDsstW", "HtoDsstW_SS",
-    "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J",
-    "WtoLNu2Jets_0J_SS", "WtoLNu2Jets_1J_SS", "WtoLNu2Jets_2J_SS",
-    "Data_2022", "Data_2022_SS",
-]
+# Everything in Samples/. Defined ONCE in common.py and imported here, so DNN and BDT
+# necessarily score the same files -- these were two hand-maintained literal lists that
+# had already drifted apart (BDT was 13 samples short while its comment claimed they
+# were identical). era and jet bin became BRANCHES on 2026-09-04, so the 25/12 per-era
+# names collapsed to these 9 files; use common.load(era=, jet_bin=) to slice them.
+ALL_SAMPLES = common.ALL_SAMPLES
 
 argv = sys.argv[1:]
 SAMPLES = ALL_SAMPLES

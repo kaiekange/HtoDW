@@ -48,9 +48,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 MODEL = ARGS[0] if ARGS else "ssdata"
 
@@ -78,8 +75,9 @@ BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
       common.B_VETO, "event_id"]
 
 
-def load(name, *, ss=False, parity=None, cr=False):
-    a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(BR, library="np")
+def load(name, *, ss=False, parity=None, cr=False, era=None):
+    br = list(dict.fromkeys(BR + ["Lumi_reweight"] + (["era"] if era else [])))
+    a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
     else:
@@ -91,20 +89,21 @@ def load(name, *, ss=False, parity=None, cr=False):
         m &= np.abs(a["Ds_mass"] - M_D) >= D_HALFWIDTH
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
 print(f"Loading from {PRED} ...")
-d_os = load("Data_2022", cr=True)["score_dsmu"]
-d_ss = load("Data_2022_SS", ss=True, cr=True, parity=1)["score_dsmu"]
+# preEE only (era=1), as before: WJETS_WEIGHTS held only preEE keys and the data
+# literals carried _2022. Drop era=1 to include postEE.
+d_os = load("Data", cr=True, era=1)["score_dsmu"]
+d_ss = load("Data_SS", ss=True, cr=True, parity=1, era=1)["score_dsmu"]
 
 
 def wjets(ss):
-    parts = [load(f"{n}_SS" if ss else n, ss=ss) for n in common.WJETS_WEIGHTS]
-    v = np.concatenate([p["score_dsmu"] for p in parts])
-    w = np.concatenate([np.full(len(p["score_dsmu"]), wt)
-                        for p, wt in zip(parts, common.WJETS_WEIGHTS.values())])
-    return v, w
+    d = load("WtoLNu2Jets_SS" if ss else "WtoLNu2Jets", ss=ss, era=1)
+    return d["score_dsmu"], d["Lumi_reweight"]
 
 
 m_os, m_os_w = wjets(False)
@@ -152,14 +151,12 @@ REGIONS = [
 ]
 
 if not VETO_PEAKS:
-    d_os_m = load("Data_2022")                      # unrestricted mass, for the scan
-    d_ss_m = load("Data_2022_SS", ss=True, parity=1)
-    m_os_all = [load(n) for n in common.WJETS_WEIGHTS]
-    m_ss_all = [load(f"{n}_SS", ss=True) for n in common.WJETS_WEIGHTS]
-    mow = np.concatenate([np.full(len(p["Ds_mass"]), w)
-                          for p, w in zip(m_os_all, common.WJETS_WEIGHTS.values())])
-    msw = np.concatenate([np.full(len(p["Ds_mass"]), w)
-                          for p, w in zip(m_ss_all, common.WJETS_WEIGHTS.values())])
+    d_os_m = load("Data", era=1)                    # unrestricted mass, for the scan
+    d_ss_m = load("Data_SS", ss=True, parity=1, era=1)
+    m_os_all = [load("WtoLNu2Jets", era=1)]
+    m_ss_all = [load("WtoLNu2Jets_SS", ss=True, era=1)]
+    mow = m_os_all[0]["Lumi_reweight"]
+    msw = m_ss_all[0]["Lumi_reweight"]
     SETS = [("data", d_os_m["score_dsmu"], None, d_os_m["Ds_mass"],
              d_ss_m["score_dsmu"], None, d_ss_m["Ds_mass"]),
             ("W+jets", np.concatenate([p["score_dsmu"] for p in m_os_all]), mow,
@@ -234,7 +231,9 @@ for stem, title, (vo, wo), lab_os, (vs, ws), lab_ss in FIGS:
     rax.set_ylim(max(0.0, lo_y - pad), hi_y + pad)
 
     plt.tight_layout()
-    out = f"{OUTDIR}/score_os_ss_{stem}_{MODEL}{'_nopeaks' if VETO_PEAKS else ''}.png"
+    out = common.fig_path(
+        "os_ss", f"score_os_ss_{stem}_{MODEL}{'_nopeaks' if VETO_PEAKS else ''}.png",
+        key=MODEL)
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"Saved {out}")

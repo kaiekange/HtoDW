@@ -49,9 +49,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
 MODEL = "ssdata"
 PRED = f"{common.resolve(MODEL)['out_dir']}/Prediction"
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
@@ -69,8 +66,9 @@ WINDOWS = [("low  <1.830", 1.66835, 1.830),
            ("high >2.008", M_DS + SR_HALFWIDTH, 2.26835)]
 
 
-def load(name, *, ss=False, sig=False, parity=None):
-    br = BR + (["Ds_match", "mu_match"] if sig else [])
+def load(name, *, ss=False, sig=False, parity=None, era=None):
+    br = list(dict.fromkeys(BR + ["Lumi_reweight"] + (["era"] if era else [])
+                            + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -81,6 +79,8 @@ def load(name, *, ss=False, sig=False, parity=None):
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
@@ -88,19 +88,18 @@ print(f"Loading from {PRED} ...")
 sig = np.concatenate([load(n, sig=True)["score_dsmu"] for n in common.SIGNALS])
 THR = {e: (-1.0 if e >= 1.0 else float(np.quantile(sig, 1 - e))) for e in EFFS}
 
-os_d = load("Data_2022")
-ss_d_all = load("Data_2022_SS", ss=True)
-ss_d = load("Data_2022_SS", ss=True, parity=1)
+# preEE only (era=1), as before.
+os_d = load("Data", era=1)
+ss_d_all = load("Data_SS", ss=True, era=1)
+ss_d = load("Data_SS", ss=True, parity=1, era=1)
 F_ODD = len(ss_d["Ds_mass"]) / len(ss_d_all["Ds_mass"])
 SS_SCALE = 1.0 / F_ODD
 
 
 def wjets(ss):
-    parts = [load(f"{n}_SS" if ss else n, ss=ss) for n in common.WJETS_WEIGHTS]
-    d = {k: np.concatenate([p[k] for p in parts]) for k in BR}
-    w = np.concatenate([np.full(len(p["Ds_mass"]), wt)
-                        for p, wt in zip(parts, common.WJETS_WEIGHTS.values())])
-    return d, w
+    # Per-event Lumi_reweight from the file; preEE only, as before.
+    d = load("WtoLNu2Jets_SS" if ss else "WtoLNu2Jets", ss=ss, era=1)
+    return d, d["Lumi_reweight"]
 
 
 os_m, os_mw = wjets(False)
@@ -240,7 +239,7 @@ for col, eff in enumerate(EFFS):
     if col == 0:
         ax.set_ylabel("data / MC")
 plt.tight_layout()
-out = f"{OUTDIR}/os_minus_ss.png"
+out = common.fig_path("os_ss", "os_minus_ss.png", key=MODEL)
 plt.savefig(out, dpi=110)
 plt.close(fig)
 print(f"\nSaved {out}")

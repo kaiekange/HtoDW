@@ -46,15 +46,14 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 
 FEATURES = common.FEATURE_NAMES
 
 
-def load(name, *, ss=False, sig=False, sideband=False):
-    br = list(dict.fromkeys(FEATURES + common.SELECTION + ["Ds_mass"]
+def load(name, *, era=None, ss=False, sig=False, sideband=False):
+    br = list(dict.fromkeys(FEATURES + common.SELECTION + ["Ds_mass", "Lumi_reweight"]
+                            + (["era"] if era is not None else [])
                             + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
@@ -66,20 +65,27 @@ def load(name, *, ss=False, sig=False, sideband=False):
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if sideband:
         m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
 print("Loading...")
+# Signal: both eras, as before -- but now WEIGHTED. This used to concatenate the four
+# per-era signal files at equal weight, silently dropping the postEE factor of ~3.34.
 sig_parts = [load(n, sig=True) for n in common.SIGNALS]
 sig = {k: np.concatenate([p[k] for p in sig_parts]) for k in sig_parts[0]}
+sig_w = sig["Lumi_reweight"]
 
-wj_parts = [load(n, sideband=True) for n in common.WJETS_WEIGHTS]
-wj = {k: np.concatenate([p[k] for p in wj_parts]) for k in wj_parts[0]}
-wj_w = np.concatenate([np.full(len(p["Ds_mass"]), w)
-                       for p, w in zip(wj_parts, common.WJETS_WEIGHTS.values())])
+# W+jets and data stay preEE-only (era=1), which is what this macro always plotted --
+# WJETS_WEIGHTS only ever held preEE keys and the data literal was Data_2022. Dropping
+# `era=1` is now all it takes to include postEE, but that changes every panel, so it is
+# left as a deliberate choice rather than a side effect of the merge.
+wj = load("WtoLNu2Jets", era=1, sideband=True)
+wj_w = wj["Lumi_reweight"]
 
-os_ = load("Data_2022", sideband=True)
-ss_ = load("Data_2022_SS", ss=True, sideband=True)
+os_ = load("Data", era=1, sideband=True)
+ss_ = load("Data_SS", era=1, ss=True, sideband=True)
 
 print(f"signal {len(sig['Ds_mass']):,} | W+jets {len(wj['Ds_mass']):,} "
       f"| OS data {len(os_['Ds_mass']):,} | SS data {len(ss_['Ds_mass']):,}")
@@ -111,7 +117,8 @@ for i, v in enumerate(FEATURES):
             label="OS data")
     ax.hist(x, bins=bins, density=True, histtype="step", lw=2, color="steelblue",
             label="SS data")
-    ax.hist(s, bins=bins, density=True, alpha=0.4, color="firebrick", label="signal")
+    ax.hist(s, bins=bins, weights=sig_w, density=True, alpha=0.4, color="firebrick",
+            label="signal")
 
     frac_sentinel = 100 * np.mean(~ok(b))
     title = v if frac_sentinel < 0.01 else f"{v}\n({frac_sentinel:.1f}% sentinel, off-range)"
@@ -126,6 +133,6 @@ for j in range(len(FEATURES), len(axes_flat)):
     axes_flat[j].set_visible(False)
 
 plt.tight_layout()
-out = f"{OUTDIR}/features_sig_wjets_data.png"
+out = common.fig_path("features", "features_sig_wjets_data.png")
 plt.savefig(out, dpi=100)
 print(f"Saved {out}")

@@ -50,9 +50,7 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-SAMPLES = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
+SAMPLES = common.SAMPLES_DIR
 
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 M_D = 1.8696
@@ -66,8 +64,12 @@ MCENT = 0.5 * (MBINS[1:] + MBINS[:-1])
 BLIND = np.abs(MCENT - M_DS) < SR_HALFWIDTH
 
 
-def load(name, *, ss):
+def load(name, *, ss, era=None, want_w=False):
     br = ["Ds_mass", "num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
+    if era is not None:
+        br.append("era")
+    if want_w:
+        br.append("Lumi_reweight")
     a = uproot.open(f"{SAMPLES}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -75,6 +77,10 @@ def load(name, *, ss):
         m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
     if B_VETO:
         m &= a[common.B_VETO] == 0
+    if era is not None:
+        m &= a["era"] == era
+    if want_w:
+        return a["Ds_mass"][m], a["Lumi_reweight"][m]
     return a["Ds_mass"][m]
 
 
@@ -97,14 +103,15 @@ def spectrum(mass, w=None, blind=False):
 
 print(f"Loading from {SAMPLES} "
       f"(selection: 1 tight muon{' + tight b-veto' if B_VETO else ', NO b-veto'}) ...")
-data = {c: load("Data_2022" if c == "OS" else "Data_2022_SS", ss=(c == "SS"))
+# preEE only (era=1), which is what this macro always plotted: WJETS_WEIGHTS held only
+# preEE keys and the data literal was Data_2022. Drop era=1 to include postEE.
+data = {c: load("Data" if c == "OS" else "Data_SS", ss=(c == "SS"), era=1)
         for c in ("OS", "SS")}
 mc, mcw = {}, {}
 for c in ("OS", "SS"):
-    parts = [(load(f"{n}_SS" if c == "SS" else n, ss=(c == "SS")), w)
-             for n, w in common.WJETS_WEIGHTS.items()]
-    mc[c] = np.concatenate([p for p, _ in parts])
-    mcw[c] = np.concatenate([np.full(len(p), w) for p, w in parts])
+    # Per-event Lumi_reweight from the file, replacing three per-file constants.
+    mc[c], mcw[c] = load("WtoLNu2Jets_SS" if c == "SS" else "WtoLNu2Jets",
+                         ss=(c == "SS"), era=1, want_w=True)
 for c in ("OS", "SS"):
     print(f"  {c}: data {len(data[c]):>9,} | W+jets {mcw[c].sum():>11,.0f} "
           f"({len(mc[c]):,} rows)")
@@ -179,7 +186,7 @@ for stem, ka, kb, rlab in FIGS:
     print(f"  {stem:20s} {rlab:>10s} = {rr:.4f} +- {rre:.4f}   ({n_a:,.0f} / {n_b:,.0f})")
 
     plt.tight_layout()
-    out = f"{OUTDIR}/dsmass_{stem}_pre_mva{SUFFIX}.png"
+    out = common.fig_path("preselection", f"dsmass_{stem}_pre_mva{SUFFIX}.png")
     plt.savefig(out, dpi=130)
     plt.close(fig)
     print(f"    saved {out}")

@@ -41,7 +41,6 @@ import common
 # to common.FEATURE_NAMES -- some of the 18 have since been accepted, some rejected,
 # and the point of keeping the full list is to preserve the comparison that decided.
 SAMPLES_DIR = common.SAMPLES_DIR
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
 M_DS = 1.96835
 SR_HALFWIDTH = 0.04
 
@@ -56,7 +55,6 @@ NEW_VARS = [
     "n_b_jets_tight_pt20_dR03", "n_b_jets_tight_pt20_dR04",
 ]
 
-WJETS_WEIGHTS = common.WJETS_WEIGHTS
 
 SEL = common.SELECTION
 EXTRA = ["Ds_mass", "phi_mass"]
@@ -68,25 +66,26 @@ def one_tight_mu(a, ss=False):
     return (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a[common.B_VETO] == 0)
 
 
-def load(name, truth_filter=False, ss=False):
-    br = NEW_VARS + SEL + EXTRA + (["Ds_match", "mu_match"] if truth_filter else [])
-    a = uproot.open(f"{SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
+def load(name, truth_filter=False, ss=False, era=None):
+    br = (NEW_VARS + SEL + EXTRA + ["Lumi_reweight"] + (["era"] if era else [])
+          + (["Ds_match", "mu_match"] if truth_filter else []))
+    a = uproot.open(f"{SAMPLES_DIR}/{name}.root")["Events"].arrays(
+        list(dict.fromkeys(br)), library="np")
     m = one_tight_mu(a, ss=ss)
     if truth_filter:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
 print("Loading...")
-sig = load("HtoDsW", truth_filter=True)
-data = load("Data_2022_SS", ss=True)
-bkg_parts, bkg_w_parts = [], []
-for name, wgt in WJETS_WEIGHTS.items():
-    d = load(name)
-    bkg_parts.append(d)
-    bkg_w_parts.append(np.full(len(d["Ds_mass"]), wgt))
-bkg = {k: np.concatenate([p[k] for p in bkg_parts]) for k in bkg_parts[0]}
-bkg_w = np.concatenate(bkg_w_parts)
+# preEE only (era=1), as before: the old WJETS_WEIGHTS had only preEE keys and the
+# data/signal literals carried _2022. Per-event Lumi_reweight replaces the constants.
+sig = load("HtoDsW", truth_filter=True, era=1)
+data = load("Data_SS", ss=True, era=1)
+bkg = load("WtoLNu2Jets", era=1)
+bkg_w = bkg["Lumi_reweight"]
 
 print(f"signal {len(sig['Ds_mass']):,} | background {len(bkg['Ds_mass']):,} | data {len(data['Ds_mass']):,}")
 
@@ -156,6 +155,6 @@ for j in range(len(NEW_VARS), len(axes_flat)):
     axes_flat[j].set_visible(False)
 
 plt.tight_layout()
-out = f"{OUTDIR}/new_jet_vars_screening.png"
+out = common.fig_path("features", "new_jet_vars_screening.png")
 plt.savefig(out, dpi=130)
 print(f"Saved {out}")

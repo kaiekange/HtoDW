@@ -55,9 +55,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
 MODEL = "ssdata"
 PRED = f"{common.resolve(MODEL)['out_dir']}/Prediction"
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
@@ -80,13 +77,15 @@ REGIONS = [("b-veto", lambda nb: nb == 0),
            ("b-tagged", lambda nb: nb >= 1)]
 
 
-def load(name, *, ss=False, sig=False, parity=None):
+def load(name, *, ss=False, sig=False, parity=None, era=None, jet_bin=None):
     """Load one scored sample with the muon selection only.
 
     The b-jet cut is deliberately NOT applied here -- both sides of it are wanted,
     so the branch is carried through and masked downstream instead.
     """
-    br = BR + (["Ds_match", "mu_match"] if sig else [])
+    br = list(dict.fromkeys(BR + ["Lumi_reweight", "era"]
+                            + (["jet_bin"] if jet_bin is not None else [])
+                            + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -97,6 +96,10 @@ def load(name, *, ss=False, sig=False, parity=None):
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
+    if jet_bin is not None:
+        m &= a["jet_bin"] == jet_bin
     return {k: v[m] for k, v in a.items()}
 
 
@@ -115,18 +118,26 @@ sig_parts = [load(n, sig=True) for n in common.SIGNALS]
 sig = np.concatenate([p["score_dsmu"][p[common.B_VETO] == 0] for p in sig_parts])
 THR = {e: float(np.quantile(sig, 1 - e)) for e in EFFS}
 
-os_d = load("Data_2022")
-ss_d_all = load("Data_2022_SS", ss=True)
-ss_d = load("Data_2022_SS", ss=True, parity=1)
+os_d = load("Data", era=1)
+ss_d_all = load("Data_SS", ss=True, era=1)
+ss_d = load("Data_SS", ss=True, parity=1, era=1)
 # Measured, not assumed to be exactly 0.5: the MC must be scaled by the same
 # fraction of SS data actually used, or the ratio picks up a spurious factor ~2.
 F_ODD = len(ss_d["Ds_mass"]) / len(ss_d_all["Ds_mass"])
 
 
 def wjets(ss):
-    """Per-jet-bin arrays, kept SEPARATE -- the per-slice generator mix needs them."""
-    return {n: (load(f"{n}_SS" if ss else n, ss=ss), w * (F_ODD if ss else 1.0))
-            for n, w in common.WJETS_WEIGHTS.items()}
+    """Per-jet-bin arrays, kept SEPARATE -- the per-slice generator mix needs them.
+
+    jet_bin is a branch now, so the three bins are three slices of one file rather
+    than three files. The SS scale factor multiplies the per-event Lumi_reweight.
+    """
+    name = "WtoLNu2Jets_SS" if ss else "WtoLNu2Jets"
+    out = {}
+    for j in common.WJETS_JET_BINS:
+        d = load(name, ss=ss, era=1, jet_bin=j)
+        out[f"{j}J"] = (d, d["Lumi_reweight"] * (F_ODD if ss else 1.0))
+    return out
 
 
 os_m, ss_m = wjets(False), wjets(True)
@@ -161,10 +172,16 @@ def table(tag, d, mc, rname, rfn, effs):
             nd = int((sd & sfn(d["num_jets_pt30"])).sum())
             per_bin, nm, nm2 = [], 0.0, 0.0
             for bn, (bd, bw) in mc.items():
-                k = int((smc[bn] & sfn(bd["num_jets_pt30"])).sum())
-                per_bin.append(k * bw)
-                nm += k * bw
-                nm2 += k * bw ** 2
+                # bw is now per-EVENT (Lumi_reweight), so the yield is the sum of the
+                # selected rows' weights. It used to be a per-file constant, where
+                # count * w happened to be the same thing -- that shortcut is what the
+                # stale WJETS_WEIGHTS table encoded, and it cannot carry the
+                # amcatnloFXFX sign, which is why sparse slices can now go negative.
+                sel = smc[bn] & sfn(bd["num_jets_pt30"])
+                y = float(bw[sel].sum())
+                per_bin.append(y)
+                nm += y
+                nm2 += float((bw[sel] ** 2).sum())
             r, e = ratio_err(nd, nm, nm2)
             ne = nm ** 2 / nm2 if nm2 > 0 else 0.0
             mix = "/".join(f"{100*p/nm:.0f}%" for p in per_bin) if nm > 0 else "-"
@@ -269,7 +286,7 @@ axes[0].set_ylabel("data / lumi-weighted W+jets")
 axes[0].set_yscale("log")
 hep.cms.label(ax=axes[0], rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/jetbin_closure.png"
+out = common.fig_path("closure", "jetbin_closure.png", key=MODEL)
 plt.savefig(out, dpi=130)
 plt.close(fig)
 print(f"\nSaved {out}")

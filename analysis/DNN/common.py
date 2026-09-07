@@ -33,8 +33,15 @@ import torch
 import torch.nn as nn
 import uproot
 
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/MC/2022/Samples"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from eras import (B_VETO_BRANCH, ERAS, LEPTON_BRANCHES,  # noqa: F401  (re-exported)
+                  SIGNAL_ERA_WEIGHT, TAG_TO_ERA)
+
 MVA_ROOT = "/eos/home-k/kakang/H2DW/Analysis/MVA"
+# Moved out of MC/2022/ on 2026-08-24: this directory holds real data as well as MC,
+# so living under MC/ was a misnomer, and it is an MVA input rather than a tuplizer
+# output. analysis/Samples/{run.sh,condor_submit.py} write here -- keep all three in step.
+SAMPLES_DIR = f"{MVA_ROOT}/Samples"
 MVA_DIR = f"{MVA_ROOT}/DNN"
 TREE = "Events"
 
@@ -165,8 +172,11 @@ SENTINEL_FIX = {
 # against SS survives the tight veto, so the veto and those features are not
 # redundant. Tight WP keeps 99.3% of signal while removing 25% of data; dR04
 # matches the AK4 jet cone radius. See BDT/BDT.py for the full reasoning.
-B_VETO = "n_b_jets_tight_dR04"
-SELECTION = ["num_os_mu_tight", "num_ss_mu_tight", B_VETO]
+# Defined in analysis/eras.py, which imports nothing heavy, so the pure-uproot
+# producers (highest_pt_dedup.py, make_samples.py) can share these names instead of
+# hand-copying them -- this module pulls in torch, which they must not.
+B_VETO = B_VETO_BRANCH
+SELECTION = [*LEPTON_BRANCHES, B_VETO]
 LOAD_BRANCHES = list(dict.fromkeys(FEATURE_NAMES + SELECTION))
 
 DIRA_IDX = FEATURE_NAMES.index("dira")
@@ -178,26 +188,81 @@ LOG_IDX = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
 SEED_DEFAULT = 42
 
 # Both signal channels, each event at weight 1. The two productions were sized in
-# proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.54M vs
-# 2.86M = 1:1.86), so N_gen is already proportional to sigma x BR and the
+# proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.60M vs
+# 2.98M = 1:1.86 after the 2026-08-17 reproduction), so N_gen is already
+# proportional to sigma x BR and the
 # equivalent-luminosity weight per event is the same for both -- concatenating them
 # reproduces the physical DsW:DsstW mixture, and their selection efficiencies are
 # near identical anyway (9.32% vs 9.49%), so it survives the selection too.
 # If the two channels ever need genuinely unequal weights, put them here.
-SIGNALS = {
-    "HtoDsW":   1.0,
-    "HtoDsstW": 1.0,
-}
+# The _2022 suffix is the era tag, added 2026-08-24 to match the Data_2022 /
+# Data_2022EE convention.
+#
+# postEE signal MC arrived 2026-09-03 and is ADDED here, not substituted. The two eras
+# were generated with the same event count (DsW 1.6M, DsstW 3M each), so N_gen carries
+# no era information and the weight is purely the luminosity ratio:
+#
+#     w_postEE / w_preEE = 26.68 / 7.99 = 3.3392
+#
+# preEE stays at 1.0 as the anchor -- signal is not on an absolute scale anyway (the
+# backgrounds carry sigma*L/sum(w) while signal is per-event 1.0), so the anchor choice
+# is physically arbitrary and this one leaves every preEE-based result undisturbed.
+# The channel-relative factor stays 1.0: N_gen/BR is 1.000e11 for both DsW (1.6M /
+# 1.6e-5) and DsstW (3M / 3.0e-5), so N_gen is proportional to sigma x BR by construction
+# and the two channels are already correctly mixed at equal weight.
+#
+# This closes the era bias documented on TRAININGS below: weighted, the signal is now
+# 23.0% preEE / 77.0% postEE, matching the background's 77% postEE.
+#
+# NOTE the weight lives ONLY here -- the four Samples/ files are indistinguishable on
+# disk (no Lumi_reweight branch, by the --no-lumi-weight convention), so any macro that
+# reads them without going through SIGNALS sees both eras at equal weight, with no error.
+# 2026-09-04: era is a BRANCH now, not a filename suffix, and the era weight is a
+# Lumi_reweight COLUMN in the file rather than a value in this dict. So SIGNALS is a
+# plain list of the two channels -- one file each, both eras inside.
+#
+# This is what closes the hazard the previous comment ended on: the weight used to
+# live only here, so a macro reading the files directly saw both eras at equal weight
+# with no error. It cannot now -- the weight travels with the rows.
+#
+# Read the weight with common.load(..., extra_branches=("Lumi_reweight",)). For signal
+# it is RELATIVE (era 1 = 1.0, era 2 = L2/L1), not an absolute yield; see eras.py.
+SIGNALS = ["HtoDsW", "HtoDsstW"]
 
-# WtoLNu2Jets is split into three jet-multiplicity bins of the SAME physical
-# process, weight-merged using the full statistics of all three files. Weights are
-# the equivalent-luminosity reweighting factors (external -- these files have no
-# embedded Lumi_reweight branch).
-WJETS_WEIGHTS = {
-    "WtoLNu2Jets_0J": 2.3293047885,
-    "WtoLNu2Jets_1J": 0.5382864853,
-    "WtoLNu2Jets_2J": 0.2748710631,
-}
+# Everything in Samples/, i.e. everything predict.py scores. ONE list, imported by both
+# DNN/predict.py and BDT/predict.py -- they used to keep separate literal copies that
+# BDT's comment claimed were "identical to the list in DNN/predict.py" while being 13
+# samples short, which is why the BDT could not reproduce the DNN's signal definition.
+# make_samples.py asserts its table matches this, so the producer and the consumer
+# cannot drift either.
+#
+# The four axes that are still FILENAMES rather than branches, and must stay that way:
+# OS vs SS (different candidate reconstructions, 12.9% event overlap), incl vs the jet
+# bins (alternative descriptions of one process, never components), GenTag (the same
+# events as the bins, different branch set), and the process itself.
+ALL_SAMPLES = [
+    "HtoDsW", "HtoDsstW",
+    "Data", "Data_SS",
+    "WtoLNu2Jets", "WtoLNu2Jets_SS",
+    "WtoLNu2Jets_incl", "WtoLNu2Jets_incl_SS",
+    "WtoLNu2Jets_GenTag",
+]
+
+# WtoLNu2Jets is split into three jet-multiplicity bins of the SAME physical process.
+# The bins are a `jet_bin` BRANCH since the 2026-09-04 merge, so this is the list of bin
+# ids -- not a weight table.
+#
+# The weight table that used to live here (WJETS_WEIGHTS: three sigma*L/N constants, one
+# per preEE bin, applied uniformly) was deleted with the per-bin files on 2026-09-04. It
+# was wrong twice over: (a) the samples carry a per-event gen_weight (amcatnloFXFX, two
+# valued +-|w|) and the negative fraction varies 3.4x across bins, so no single constant
+# per bin can reproduce the post-selection yield -- old and new agree only on the TOTAL,
+# diverging by (1-2f)/(1-2f_sel) once anything is cut; and (b) it only ever had preEE
+# keys, so every macro that iterated it was silently preEE-only even after the postEE
+# jet bins landed in Samples/ on 2026-08-25.
+#
+# The weight now travels with the rows: read Lumi_reweight from the file.
+WJETS_JET_BINS = (0, 1, 2)
 
 # The two background configurations. `_f43` is a feature-set generation tag: a
 # future feature change gets its own suffix rather than clobbering these.
@@ -222,7 +287,21 @@ WJETS_WEIGHTS = {
 #   field exists to prevent.
 TRAININGS = {
     "ssdata": dict(
-        samples={"Data_2022_SS": 1.0},
+        # Both eras of SS data, at weight 1.0 each: data carries no luminosity weight, and
+        # more SS statistics is exactly what the 70%-working-point study identified as the
+        # bottleneck (2026-08-14: ~94 hard events of training equivalent at eps_sig=70%).
+        #
+        # KNOWN BIAS, accepted 2026-08-21 because no postEE signal MC exists: the background
+        # becomes ~76% postEE (3.73M of 4.85M rows) while the signal is 100% preEE
+        # (Run3Summer22). Any era-sensitive feature -- pileup-driven num_jets / jet_ht /
+        # isolation, or detector conditions -- is therefore a free discriminant, and both AUC
+        # and the background-rejection numbers will read high for a reason that is not
+        # physics. Structurally the same trap as the OS/SS artefact caught on 2026-08-11.
+        # To test for it: score preEE-only and postEE-only SS data separately and compare the
+        # distributions; a visible split means the model learned the era.
+        # One file, both eras inside (era branch). Data carries no luminosity weight,
+        # so the two eras really are at weight 1.0 each -- nothing is lost by merging.
+        samples={"Data_SS": 1.0},
         ss=True,
         parity=0,
         weighted=False,          # real data: no per-process lumi reweighting
@@ -232,7 +311,12 @@ TRAININGS = {
         out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f43",
     ),
     "wjets": dict(
-        samples=WJETS_WEIGHTS,
+        # One file, both eras and all three jet bins inside. `weighted=True` means the
+        # weight is read per event from the file's Lumi_reweight rather than taken from
+        # this dict -- which is what replaces the deleted WJETS_WEIGHTS constants, and
+        # is the fix the 2026-08-21 note asked for before these models are retrained.
+        # The value here is unused when weighted=True; it stays 1.0 for shape.
+        samples={"WtoLNu2Jets": 1.0},
         ss=False,
         parity=None,
         weighted=True,
@@ -272,10 +356,56 @@ def out_dir_for(key, tool="DNN", seed=None):
     return f"{MVA_ROOT}/{tool}/{name}"
 
 
+# Figures live on EOS next to the model that produced them, never in the source
+# tree (they used to all land in one flat Tuples/HtoDsW/figures dir on AFS).
+# Categories are the subdirectory names; keep this list short and add to it only
+# when a genuinely new study appears, not per script.
+FIG_CATEGORIES = (
+    "training",       # DNN.py / BDT.py own diagnostics
+    "closure",        # data vs MC closure and yield scans
+    "os_ss",          # OS-vs-SS charge-configuration studies
+    "misid",          # K->pi reflection / misid veto
+    "era",            # preEE vs postEE splits
+    "gentag",         # GenTag truth-composition plots
+    "features",       # input-feature distributions and screening
+    "preselection",   # pre-MVA selection studies
+    "comparisons",    # anything overlaying several models
+)
+
+# Model-free figures (pre-MVA, feature screening, multi-model overlays) have no
+# single model to belong to, so they go here rather than into an arbitrary one.
+SHARED_FIG_DIR = f"{MVA_ROOT}/figures"
+
+
+def fig_path(category, name, *, key=None, tool="DNN", seed=None):
+    """Absolute path for one figure, creating its directory.
+
+    key=None      -> SHARED_FIG_DIR/<category>/, for figures that do not belong
+                     to a single model (pre-MVA studies, multi-model overlays).
+    key set       -> out_dir_for(key, tool, seed)/figures/<category>/, so a new
+                     training run's figures follow it into its own directory
+                     instead of piling up under whichever model was hardcoded.
+
+    Pass tool/seed through from whatever the caller actually scored with; they
+    default to the canonical DNN/seed-42 model the same way out_dir_for does.
+    """
+    if category not in FIG_CATEGORIES:
+        sys.exit(f"unknown figure category '{category}'; "
+                 f"expected one of: {', '.join(FIG_CATEGORIES)}")
+    base = SHARED_FIG_DIR if key is None else f"{out_dir_for(key, tool, seed)}/figures"
+    d = f"{base}/{category}"
+    os.makedirs(d, exist_ok=True)
+    return f"{d}/{name}"
+
+
 # ========= 数据加载 =========
-def load(name, *, truth_filter=False, ss=False, parity=None, extra_branches=()):
+def load(name, *, era=None, jet_bin=None, truth_filter=False, ss=False, parity=None,
+         extra_branches=()):
     """Load one Samples/ file, apply the analysis selection, return the feature matrix.
 
+    era:     keep only this era id (see eras.ERAS). None = every era in the file.
+    jet_bin: keep only this jet bin. None = every bin. Errors if the file has no
+             jet_bin branch, rather than silently returning everything.
     ss:      select the same-sign muon configuration instead of opposite-sign.
     parity:  keep only rows with event_id % 2 == parity (None = keep all).
     Returns (X, extras) where extras is a dict of any extra_branches requested,
@@ -286,10 +416,18 @@ def load(name, *, truth_filter=False, ss=False, parity=None, extra_branches=()):
         branches += ["Ds_match", "mu_match"]
     if parity is not None:
         branches += ["event_id"]
+    if era is not None:
+        branches += ["era"]
+    if jet_bin is not None:
+        branches += ["jet_bin"]
     branches += list(extra_branches)
     branches = list(dict.fromkeys(branches))
 
     with uproot.open(f"{SAMPLES_DIR}/{name}.root")[TREE] as t:
+        if jet_bin is not None and "jet_bin" not in t.keys():
+            sys.exit(f"load({name!r}, jet_bin={jet_bin}): that file has no jet_bin branch. "
+                     f"Only the jet-binned W+jets samples do -- incl and GenTag-merged "
+                     f"files are separate productions, not a fourth bin.")
         a = t.arrays(branches, library="np")
 
     n_in = len(a[B_VETO])
@@ -302,6 +440,10 @@ def load(name, *, truth_filter=False, ss=False, parity=None, extra_branches=()):
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
+    if jet_bin is not None:
+        m &= a["jet_bin"] == jet_bin
 
     X = np.column_stack([a[f][m] for f in FEATURE_NAMES])
     print(f"  {name:18s} {n_in:>9,} -> {m.sum():>9,} rows after selection")

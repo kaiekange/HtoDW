@@ -43,8 +43,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 
 SAMPLE = sys.argv[1] if len(sys.argv) > 1 else "data"
@@ -54,8 +52,9 @@ if SAMPLE not in ("data", "wjets"):
 FEATURES = common.FEATURE_NAMES
 
 
-def load(name, ss):
-    br = list(dict.fromkeys(FEATURES + common.SELECTION + ["Ds_mass"]))
+def load(name, ss, era=None):
+    br = list(dict.fromkeys(FEATURES + common.SELECTION
+                            + ["Ds_mass", "Lumi_reweight"] + (["era"] if era else [])))
     a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -65,6 +64,8 @@ def load(name, ss):
     # OS data is SR-blinded, so the same sideband requirement goes on both sides to
     # compare like with like.
     m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
+    if era is not None:
+        m &= a["era"] == era
     out = {k: v[m] for k, v in a.items()}
     for feat, fill in common.SENTINEL_FIX.items():
         out[feat][out[feat] < -1] = fill
@@ -73,16 +74,13 @@ def load(name, ss):
 
 def load_group(ss):
     """One sample for data, the lumi-weighted jet-bin sum for W+jets."""
+    # preEE only (era=1), as this macro always was. Per-event Lumi_reweight now comes
+    # from the file instead of three per-file constants.
     if SAMPLE == "data":
-        d = load("Data_2022_SS" if ss else "Data_2022", ss)
+        d = load("Data_SS" if ss else "Data", ss, era=1)
         return d, np.ones(len(d["Ds_mass"]))
-    parts, wts = [], []
-    for n, w in common.WJETS_WEIGHTS.items():
-        d = load(f"{n}_SS" if ss else n, ss)
-        parts.append(d)
-        wts.append(np.full(len(d["Ds_mass"]), w))
-    return ({k: np.concatenate([p[k] for p in parts]) for k in parts[0]},
-            np.concatenate(wts))
+    d = load("WtoLNu2Jets_SS" if ss else "WtoLNu2Jets", ss, era=1)
+    return d, d["Lumi_reweight"]
 
 
 print(f"Loading OS and SS ({SAMPLE}, both sideband-only)...")
@@ -145,6 +143,7 @@ for j in range(len(panels), len(axes_flat)):
     axes_flat[j].set_visible(False)
 
 plt.tight_layout()
-out = f"{OUTDIR}/os_vs_ss_features{'' if SAMPLE == 'data' else '_' + SAMPLE}.png"
+out = common.fig_path(
+    "features", f"os_vs_ss_features{'' if SAMPLE == 'data' else '_' + SAMPLE}.png")
 plt.savefig(out, dpi=100)
 print(f"\nSaved {out}")

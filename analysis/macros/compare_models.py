@@ -37,7 +37,7 @@ comparison if ignored:
   slightly optimistic, not the relative verdict.
 
 * **SS data must use the held-out half.** The ssdata model trained on even event_id;
-  scoring it on all of Data_2022_SS is train-set self-validation. Only odd event_id
+  scoring it on all of Data_SS is train-set self-validation. Only odd event_id
   rows are used here.
 
 * **W+jets is not a neutral yardstick.** The wjets model saw all of it, so rejection
@@ -64,9 +64,9 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
+# Every figure here overlays N model specs, so none of them belongs to one model:
+# they go to the shared comparisons/ directory. Writing into the first spec's
+# directory would make the destination depend on argument order.
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 M_D = 1.8696
 PEAK_HW = 0.02              # D+- counting window
@@ -75,7 +75,7 @@ EFFS = [0.90, 0.70, 0.50]
 COLORS = ["black", "steelblue", "darkorange", "firebrick"]
 
 # run_id/lumi_id are carried alongside event_id because event_id is only unique
-# WITHIN a run: Data_2022 has 1,083,571 rows but only 1,082,925 distinct event_id,
+# WITHIN a run: the preEE data slice has ~1.08M rows but fewer distinct event_id,
 # i.e. 646 cross-run collisions. Keying identity on event_id alone would quietly
 # mis-assign those when computing the two models' overlap below.
 BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
@@ -110,18 +110,19 @@ LABEL = {s: f"{SPEC[s][0]} / {common.resolve(SPEC[s][1])['label']}"
          for s in MODELS}
 
 
-def load(model_key, name, *, ss=False, sig=False, sideband=False, parity=None):
+def load(model_key, name, *, ss=False, sig=False, sideband=False, parity=None, era=None):
     """Load a scored sample from one model's Prediction/ dir, with the analysis cuts.
 
     Returns None if the file is absent. That is not an error here: the seed-spread
-    runs deliberately score only signal + Data_2022 (each full Prediction/ is ~2.8 GB
+    runs deliberately score only signal + Data (each full Prediction/ is ~2.8 GB
     on EOS), so the SS and W+jets sections below simply have nothing to draw.
     """
     tool, bkg, seed = SPEC[model_key]
     pred = f"{common.out_dir_for(bkg, tool=tool, seed=seed)}/Prediction/{name}.root"
     if not os.path.exists(pred):
         return None
-    a = uproot.open(pred)["Events"].arrays(BR_SIG if sig else BR, library="np")
+    br = list(dict.fromkeys((BR_SIG if sig else BR) + ["Lumi_reweight", "era"]))
+    a = uproot.open(pred)["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
     else:
@@ -133,6 +134,8 @@ def load(model_key, name, *, ss=False, sig=False, sideband=False, parity=None):
         m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
     if parity is not None:
         m &= (a["event_id"] % 2) == parity
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
@@ -150,17 +153,13 @@ def gather(model_key):
                  f"or with the signals included.")
     sig = {k: np.concatenate([p[k] for p in sig_parts]) for k in BR_SIG}
     # SS: odd parity only -- the ssdata model trained on the even half.
-    ss = load(model_key, "Data_2022_SS", ss=True, parity=1)
+    ss = load(model_key, "Data_SS", ss=True, parity=1, era=1)
     # OS data is SR-blinded already; the explicit sideband cut makes that intent
     # visible and keeps the yield definitions identical across samples.
-    os_ = load(model_key, "Data_2022", sideband=True)
-    parts = [load(model_key, n) for n in common.WJETS_WEIGHTS]
-    if any(p is None for p in parts):
-        wj, wj_w = None, None
-    else:
-        wj = {k: np.concatenate([p[k] for p in parts]) for k in BR}
-        wj_w = np.concatenate([np.full(len(p["Ds_mass"]), w)
-                               for p, w in zip(parts, common.WJETS_WEIGHTS.values())])
+    os_ = load(model_key, "Data", sideband=True, era=1)
+    # preEE only (era=1), as before; per-event Lumi_reweight from the file.
+    wj = load(model_key, "WtoLNu2Jets", era=1)
+    wj_w = None if wj is None else wj["Lumi_reweight"]
     return dict(sig=sig, ss=ss, os=os_, wj=wj, wj_w=wj_w)
 
 
@@ -221,7 +220,7 @@ for row, k in enumerate(MODELS):
         hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
                       fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/compare_models_score.png"
+out = common.fig_path("comparisons", "compare_models_score.png")
 plt.savefig(out, dpi=120)
 plt.close(fig)
 print(f"\nSaved {out}")
@@ -314,7 +313,7 @@ for row, k in enumerate(MODELS):
             hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
                           fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/compare_models_mass.png"
+out = common.fig_path("comparisons", "compare_models_mass.png")
 plt.savefig(out, dpi=110)
 plt.close(fig)
 print(f"Saved {out}")
@@ -368,7 +367,7 @@ def ratio_overlapping(sa, sb):
 
 
 if all(D[k]["os"] is None for k in MODELS):
-    sys.exit("\nNo model has Data_2022 scored -- the OS sideband table is the primary "
+    sys.exit("\nNo model has Data scored -- the OS sideband table is the primary "
              "metric and cannot be produced. Nothing further to do.")
 
 print("\n=== OS sideband data (neither model saw it) -- yields at matched eff_sig ===")
@@ -382,7 +381,7 @@ for eff in EFFS:
     for k in MODELS:
         d = D[k]["os"]
         if d is None:
-            print(f"{100*eff:7.0f}% {k:>{W}s} {'--':>8s}  (Data_2022 not scored)")
+            print(f"{100*eff:7.0f}% {k:>{W}s} {'--':>8s}  (Data not scored)")
             continue
         sel = d["score_dsmu"] > THR[k][eff]
         kept[k] = event_keys(d, sel)
@@ -447,6 +446,6 @@ else:
     ax.legend(fontsize=12)
     hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
     plt.tight_layout()
-    out = f"{OUTDIR}/compare_models_srsb.png"
+    out = common.fig_path("comparisons", "compare_models_srsb.png")
     plt.savefig(out, dpi=130)
     print(f"\nSaved {out}")

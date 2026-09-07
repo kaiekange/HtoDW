@@ -38,16 +38,12 @@ from common import FEATURE_NAMES, SAMPLES_DIR, TREE
 USAGE = (f"usage: python3 {os.path.basename(__file__)} "
          f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
 
-# Current Samples/ contents. The old inclusive WtoLNu2Jets{,_SS} are deliberately
-# left out -- superseded by the 0J/1J/2J jet-binned samples. Identical to the list in
-# DNN/predict.py: the two must score the same files for the head-to-head to work.
-ALL_SAMPLES = [
-    "HtoDsW", "HtoDsW_SS",
-    "HtoDsstW", "HtoDsstW_SS",
-    "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J",
-    "WtoLNu2Jets_0J_SS", "WtoLNu2Jets_1J_SS", "WtoLNu2Jets_2J_SS",
-    "Data_2022", "Data_2022_SS",
-]
+# Everything in Samples/. Defined ONCE in common.py and imported here, so DNN and BDT
+# necessarily score the same files -- these were two hand-maintained literal lists that
+# had already drifted apart (BDT was 13 samples short while its comment claimed they
+# were identical). era and jet bin became BRANCHES on 2026-09-04, so the 25/12 per-era
+# names collapsed to these 9 files; use common.load(era=, jet_bin=) to slice them.
+ALL_SAMPLES = common.ALL_SAMPLES
 
 argv = sys.argv[1:]
 SAMPLES = ALL_SAMPLES

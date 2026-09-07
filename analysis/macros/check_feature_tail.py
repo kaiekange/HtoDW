@@ -43,9 +43,6 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-OUTDIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/HtoDsW/figures"
-os.makedirs(OUTDIR, exist_ok=True)
-
 MODEL = "ssdata"
 MODEL_DIR = common.resolve(MODEL)["out_dir"]
 PRED = f"{MODEL_DIR}/Prediction"
@@ -59,9 +56,10 @@ EPS_MC_GRID = np.array([1e-1, 3e-2, 1e-2, 3e-3, 1e-3, 5e-4])
 SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO, "Ds_mass", "score_dsmu"]
 
 
-def load(name, *, sig=False):
+def load(name, *, sig=False, era=None):
     """Scored sample + all features, OS analysis selection, control region only."""
-    br = list(dict.fromkeys(SEL + common.FEATURE_NAMES
+    br = list(dict.fromkeys(SEL + common.FEATURE_NAMES + ["Lumi_reweight"]
+                            + (["era"] if era else [])
                             + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
     m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
@@ -69,18 +67,18 @@ def load(name, *, sig=False):
          & (np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH))
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
+    if era is not None:
+        m &= a["era"] == era
     return {k: v[m] for k, v in a.items()}
 
 
 print(f"Loading from {PRED} ...")
 sig = {k: np.concatenate([load(n, sig=True)[k] for n in common.SIGNALS])
        for k in ["score_dsmu"] + common.FEATURE_NAMES}
-dat = load("Data_2022")
-mc_parts = {n: load(n) for n in common.WJETS_WEIGHTS}
-mc = {k: np.concatenate([p[k] for p in mc_parts.values()])
-      for k in ["score_dsmu"] + common.FEATURE_NAMES}
-mc_w = np.concatenate([np.full(len(p["Ds_mass"]), w)
-                       for p, w in zip(mc_parts.values(), common.WJETS_WEIGHTS.values())])
+# preEE only (era=1), as before. Per-event Lumi_reweight replaces the three constants.
+dat = load("Data", era=1)
+mc = load("WtoLNu2Jets", era=1)
+mc_w = mc["Lumi_reweight"]
 N_D, W_MC = len(dat["Ds_mass"]), mc_w.sum()
 print(f"  signal {len(sig['score_dsmu']):,} | OS data {N_D:,} | "
       f"W+jets {len(mc_w):,} rows, {W_MC:,.0f} weighted")
@@ -192,7 +190,7 @@ ax.set_title("Does one feature explain the data/MC drift?", fontsize=16)
 ax.legend(fontsize=11, ncol=2)
 hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
 plt.tight_layout()
-out = f"{OUTDIR}/feature_tail_datamc.png"
+out = common.fig_path("closure", "feature_tail_datamc.png", key=MODEL)
 plt.savefig(out, dpi=130)
 plt.close(fig)
 print(f"\nSaved {out}")

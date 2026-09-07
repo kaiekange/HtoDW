@@ -93,11 +93,14 @@ def cms_label(ax, fontsize=13):
 
 
 print(f"Loading signal ({'+'.join(SIGNALS)})...")
+# The per-era weight is a COLUMN in the file now, not a value in a name->weight dict:
+# one file per channel holds every era, so there is nothing left to key a dict on. This
+# is also what makes the weight impossible to lose -- it travels with the rows.
 sig_X, sig_w = [], []
-for name, wgt in SIGNALS.items():
-    x, _ = common.load(name, truth_filter=True)
+for name in SIGNALS:
+    x, ex = common.load(name, truth_filter=True, extra_branches=("Lumi_reweight",))
     sig_X.append(x)
-    sig_w.append(np.full(len(x), wgt))
+    sig_w.append(ex["Lumi_reweight"])
 X_sig = np.vstack(sig_X)
 w_sig = np.concatenate(sig_w)
 
@@ -108,11 +111,21 @@ parity_note = "" if cfg["parity"] is None else (
     f", event_id parity=={cfg['parity']} only -- the other parity is held out "
     f"for a later non-circular sculpting check")
 print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_note})...")
+# weighted=True reads the per-event Lumi_reweight from the file (W+jets: sigma*L/sum(w)
+# carrying gen_weight's sign); weighted=False uses the flat per-sample value from the
+# table (data, which carries no luminosity weight). The W+jets branch used to multiply
+# by three stale per-file constants instead -- wrong, because the amcatnloFXFX negative
+# fraction varies 3.4x across the jet bins, so no per-file constant survives a selection.
 bkg_X, bkg_w = [], []
 for name, wgt in cfg["samples"].items():
-    x, _ = common.load(name, ss=cfg["ss"], parity=cfg["parity"])
+    if cfg["weighted"]:
+        x, ex = common.load(name, ss=cfg["ss"], parity=cfg["parity"],
+                            extra_branches=("Lumi_reweight",))
+        bkg_w.append(ex["Lumi_reweight"])
+    else:
+        x, _ = common.load(name, ss=cfg["ss"], parity=cfg["parity"])
+        bkg_w.append(np.full(len(x), wgt))
     bkg_X.append(x)
-    bkg_w.append(np.full(len(x), wgt))
 X_bkg = np.vstack(bkg_X)
 w_bkg = np.concatenate(bkg_w)
 
@@ -177,7 +190,8 @@ PER_PAGE = N_COLS * N_ROWS
 X_sig_plot, w_sig_plot = X[y == 1], w[y == 1]
 X_bkg_plot, w_bkg_plot = X[y == 0], w[y == 0]
 
-with PdfPages(f"{out_dir}/variable_comparison.pdf") as pdf:
+with PdfPages(common.fig_path("training", "variable_comparison.pdf",
+                              key=BKG, tool="DNN", seed=SEED)) as pdf:
     for page_start in range(0, len(FEATURE_NAMES), PER_PAGE):
         page_feats = FEATURE_NAMES[page_start:page_start + PER_PAGE]
         fig, axes = plt.subplots(N_ROWS, N_COLS, figsize=(25, 20))
@@ -336,7 +350,8 @@ for ax, logy in ((axes[3], False), (axes[4], True)):
 axes[5].set_visible(False)
 
 plt.tight_layout()
-plt.savefig(f"{out_dir}/results.png", dpi=150)
+plt.savefig(common.fig_path("training", "results.png", key=BKG, tool="DNN", seed=SEED),
+            dpi=150)
 plt.close(fig)
 print("Saved results.png")
 
@@ -362,7 +377,8 @@ ax.set_xlabel("AUC drop when feature permuted")
 ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
 cms_label(ax)
 plt.tight_layout()
-plt.savefig(f"{out_dir}/feature_importance.png", dpi=150)
+plt.savefig(common.fig_path("training", "feature_importance.png",
+                            key=BKG, tool="DNN", seed=SEED), dpi=150)
 plt.close(fig)
 print("Saved feature_importance.png")
 
