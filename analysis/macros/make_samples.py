@@ -84,6 +84,14 @@ def _wj_incl(era, ss):
             f"/WtoLNu2Jets_{tag}_H_phipimu{sfx}/WtoLNu2Jets_{tag}{sfx}.root")
 
 
+def _wj_gentag(era, jetbin):
+    """H_phipimu_GenTag output: same events and same cuts as _wj(), plus the truth tag
+    of what the three KKpi tracks really are. OS only -- SS was never produced."""
+    tag = ERAS[era]["tag"]
+    return (f"{BASE}/MC/{tag}/WtoLNu2Jets_{jetbin}J_H_phipimu_GenTag"
+            f"/WtoLNu2Jets_{jetbin}J_GenTag_{tag}.root")
+
+
 def _wj_bin_pieces(ss):
     return [dict(era=e, jet_bin=j, xsec=XSEC_JETBIN[j], path=_wj(e, j, ss))
             for e in (1, 2) for j in (0, 1, 2)]
@@ -129,14 +137,15 @@ SAMPLES = {
     "WtoLNu2Jets_incl_SS": dict(
         weight_mode="xsec", cuts=("veto_pass", "ss", "b_veto"),
         pieces=[dict(era=e, xsec=XSEC_INCL, path=_wj_incl(e, ss=True)) for e in (1, 2)]),
-    # preEE only: the postEE GenTag jet bins are produced on disk but not yet hadd'ed
-    # (0J and 1J have output_*.root but no merged file as of 2026-09-04).
+    # Both eras since 2026-09-07. The postEE bins carry truncated output for the JOBIDs
+    # whose input MiniAOD has a bad basket (0J 25, 1J 3, 2J 2). Those are safe to include:
+    # a truncated job's nEventsProcessed_ and sumGenWeights_ shrink together, so the
+    # xsec weight stays unbiased and only statistics is lost. They are NOT refillable --
+    # the plain production failed on the same JOBIDs two weeks earlier.
     "WtoLNu2Jets_GenTag": dict(
         weight_mode="xsec", cuts=("veto_pass", "os", "b_veto"),
-        pieces=[dict(era=1, jet_bin=j, xsec=XSEC_JETBIN[j],
-                     path=f"{BASE}/MC/2022/WtoLNu2Jets_{j}J_H_phipimu_GenTag"
-                          f"/WtoLNu2Jets_{j}J_GenTag_2022.root")
-                for j in (0, 1, 2)]),
+        pieces=[dict(era=e, jet_bin=j, xsec=XSEC_JETBIN[j], path=_wj_gentag(e, j))
+                for e in (1, 2) for j in (0, 1, 2)]),
 }
 
 
