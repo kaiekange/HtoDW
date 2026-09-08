@@ -25,6 +25,7 @@
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+#include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
@@ -48,6 +49,7 @@
 
 #include "TMath.h"
 #include "TLorentzVector.h"
+#include "TH1.h"
 #include "TTree.h"
 
 #include "EDAnalyzers/Reconstruction/interface/H_phipimu_GenTag_Tree.h"
@@ -99,6 +101,7 @@ private:
 	edm::EDGetTokenT<edm::ValueMap<Int_t>> tightJetIdToken_;
 	edm::EDGetTokenT<int> jvmPassToken_;
 	edm::EDGetTokenT<GenEventInfoProduct> GenInfoToken_;
+	edm::EDGetTokenT<std::vector<PileupSummaryInfo>> PileupToken_;
 	edm::EDGetTokenT<reco::VertexCollection> primvtxToken_;
 	edm::EDGetTokenT<edm::TriggerResults> triggerToken_;
 	edm::EDGetTokenT<reco::GenParticleCollection> GenPartToken_;
@@ -126,6 +129,11 @@ private:
 
 	H_phipimu_GenTag_Tree *ftree;
 	TTree *InfoTree;
+
+	// Inclusive nTrueInt profile: the DENOMINATOR of the pileup reweighting. It is a
+	// histogram rather than an Info-tree branch on purpose -- hadd sums histograms
+	// bin-by-bin, whereas it concatenates trees, so the per-job pieces combine for free.
+	TH1D *hNTrueInt_;
 
 	unsigned long nEventsProcessed_;
 	unsigned long nEventsTriggered_;
@@ -169,6 +177,11 @@ H_phipimu_GenTag::H_phipimu_GenTag(const edm::ParameterSet &iConfig)
 	// background MC configs run with doTruth=False and still need the weight.
 	edm::InputTag GenInfoTag_("generator");
 	GenInfoToken_ = consumes<GenEventInfoProduct>(GenInfoTag_);
+
+	// Pileup. Same gating as the generator weight: declared unconditionally, read only for
+	// simulation. "slimmedAddPileupInfo" is the MiniAOD label ("addPileupInfo" is AOD).
+	edm::InputTag PileupTag_("slimmedAddPileupInfo");
+	PileupToken_ = consumes<std::vector<PileupSummaryInfo>>(PileupTag_);
 
 	edm::InputTag primvtxTag_("offlineSlimmedPrimaryVertices");
 	primvtxToken_ = consumes<reco::VertexCollection>(primvtxTag_);
@@ -231,6 +244,14 @@ void H_phipimu_GenTag::beginJob()
 	InfoTree->Branch("sumGenWeights_", &sumGenWeights_);
 	InfoTree->Branch("nEventsNegWeight_", &nEventsNegWeight_);
 
+	// One bin per unit of nTrueInt over 0-100, matching the binning pileupCalc.py is run
+	// with (--numPileupBins 100 --maxPileupBin 100), so the data/MC ratio is bin-for-bin
+	// with no rebinning step to get wrong. Sumw2 because the fill is gen-weighted and the
+	// amcatnloFXFX weights are signed.
+	hNTrueInt_ = fs->make<TH1D>("nTrueInt_all", ";nTrueInt;sum of gen weights",
+	                            100, 0.0, 100.0);
+	hNTrueInt_->Sumw2();
+
 	nEventsProcessed_ = 0;
 	nEventsTriggered_ = 0;
 	sumGenWeights_ = 0.0;
@@ -256,11 +277,40 @@ void H_phipimu_GenTag::analyze(const edm::Event &iEvent, const edm::EventSetup &
 	}
 	sumGenWeights_ += genWeight;
 
+	// Pileup, read here for the same reason the generator weight is: hNTrueInt_ is the
+	// DENOMINATOR of the pileup reweighting, so it has to run over every generated event.
+	// Filling it after any of the returns below would make it a post-selection profile,
+	// which is the one thing it must not be -- the numerator (the data profile from
+	// pileupCalc.py) is a luminosity profile that no selection has touched, so the two
+	// sides would no longer describe the same thing. Gen-weighted to match sumGenWeights_.
+	//
+	// getTrueNumInteractions() is the Poisson MEAN for the bunch crossing and is genuinely
+	// a float; storing it in an integer truncates and biases the profile low by ~0.5.
+	// getPU_NumInteractions() is the sampled count and really is an integer -- kept only
+	// as a cross-check, the reweighting uses nTrueInt.
+	Float_t nTrueInt = null;
+	Int_t nPUInt = null;
+	if (!iEvent.isRealData())
+	{
+		edm::Handle<std::vector<PileupSummaryInfo>> PileupHandle;
+		iEvent.getByToken(PileupToken_, PileupHandle);
+		for (const PileupSummaryInfo &pu : *PileupHandle)
+		{
+			if (pu.getBunchCrossing() != 0) continue;   // in-time crossing only
+			nTrueInt = pu.getTrueNumInteractions();
+			nPUInt   = pu.getPU_NumInteractions();
+			break;
+		}
+		if (nTrueInt >= 0) hNTrueInt_->Fill(nTrueInt, genWeight);
+	}
+
 	edm::ESHandle<TransientTrackBuilder> ttBuilderHandle = iSetup.getHandle(ttBuilderToken_);
 	const TransientTrackBuilder *ttBuilder = ttBuilderHandle.product();
 
 	ftree->Init();
 
+	ftree->nTrueInt = nTrueInt;
+	ftree->nPUInt = nPUInt;
 	ftree->gen_weight = genWeight;
 	ftree->event_id = iEvent.id().event();
 	ftree->run_id   = iEvent.id().run();

@@ -79,6 +79,16 @@ public:
 	// Normalise with Info tree's sumGenWeights_, never with a raw event count.
 	Double_t gen_weight;
 
+	// Pileup (null on data). nTrueInt is the Poisson MEAN number of interactions for this
+	// bunch crossing -- Float_t, not Int_t: it is genuinely non-integer and truncating it
+	// biases the profile low by ~0.5 and turns it into a staircase that will not divide
+	// cleanly against the pileupCalc.py data profile. This is the branch the pileup weight
+	// is a function of; the inclusive denominator lives in the nTrueInt_all histogram,
+	// which is filled over ALL generated events, not just the ones that reach this tree.
+	// nPUInt is the sampled count, kept as a cross-check only.
+	Float_t nTrueInt;
+	Int_t nPUInt;
+
 	// lepton counts. ss/os = same/opposite charge as the pi (pi == -mu.charge() by
 	// construction). os_* includes the best muon (it is opposite the pi).
 	Int_t num_os_mu_loose;
