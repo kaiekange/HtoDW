@@ -291,14 +291,26 @@ TRAININGS = {
         # more SS statistics is exactly what the 70%-working-point study identified as the
         # bottleneck (2026-08-14: ~94 hard events of training equivalent at eps_sig=70%).
         #
-        # KNOWN BIAS, accepted 2026-08-21 because no postEE signal MC exists: the background
-        # becomes ~76% postEE (3.73M of 4.85M rows) while the signal is 100% preEE
-        # (Run3Summer22). Any era-sensitive feature -- pileup-driven num_jets / jet_ht /
-        # isolation, or detector conditions -- is therefore a free discriminant, and both AUC
-        # and the background-rejection numbers will read high for a reason that is not
-        # physics. Structurally the same trap as the OS/SS artefact caught on 2026-08-11.
-        # To test for it: score preEE-only and postEE-only SS data separately and compare the
-        # distributions; a visible split means the model learned the era.
+        # The era-imbalance bias noted here on 2026-08-21 is GONE, and this comment used to
+        # claim otherwise long after it stopped being true -- it said the signal was 100%
+        # preEE, which was correct only until the postEE signal MC was produced (2026-08-25
+        # .. 09-04) and merged into Samples/. Measured 2026-09-08, the era composition of the
+        # two training classes is identical to the decimal:
+        #     signal (weighted by Lumi_reweight, which is what training uses)  23.2% / 76.8%
+        #     background Data_SS at parity=0                                   23.2% / 76.8%
+        # so era carries no class information and there is nothing for the network to gain
+        # by learning it. DNN.py reads the signal's Lumi_reweight unconditionally; the
+        # `weighted` flag below governs only the background branch.
+        #
+        # THE BIAS THAT IS REAL is a different one, and it does not need any era imbalance:
+        # signal is MC and background is real data, so every data/MC mismodelling is a free
+        # discriminant. Pileup is the measured case -- <Ds_IsoR04_sumPUPt> is 9.65 GeV in
+        # signal MC versus 11.99 (preEE) / 14.03 (postEE) GeV in data, and no pileup
+        # reweighting exists anywhere in this analysis. Because the MC is era-flat while the
+        # data is not, the gap is 4% in preEE and 22% in postEE, which is why the DNN cut
+        # removes ~25-38% more postEE data than preEE data. See the memory note
+        # project_era_pileup_mismodelling and analysis/macros/check_era_split.py.
+        #
         # One file, both eras inside (era branch). Data carries no luminosity weight,
         # so the two eras really are at weight 1.0 each -- nothing is lost by merging.
         samples={"Data_SS": 1.0},
