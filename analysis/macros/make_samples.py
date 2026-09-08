@@ -46,7 +46,7 @@ import numpy as np
 import uproot
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from eras import ERAS, SIGNAL_ERA_WEIGHT
+from eras import ERAS, PU_PROFILE, PU_PROFILE_HIST, SIGNAL_ERA_WEIGHT
 
 from highest_pt_dedup import (apply_row_cuts, data_weight, dedup_best_indices,
                               sum_gen_weights_of, xsec_weight)
@@ -68,6 +68,130 @@ DEFAULT_TREE = "Hphipimu/Events"
 #     Lumi_reweight_i = gen_weight_i * (sigma * L / sum(gen_weight))
 XSEC_JETBIN = {0: 51846.0, 1: 8860.0, 2: 3284.0}
 XSEC_INCL = 63990.0
+
+# Cap on the pileup weight. The uncapped ratio reaches ~137 in the nTrueInt < 8 bins,
+# where the MC holds O(1) raw event (gen-weighted content ~1e-6 of the sample) and the
+# ratio is statistics, not a correction. Measured on HtoDsW preEE: 25 selected rows
+# (0.016%) exceed 3 and together carry 0.2% of the total weight, so capping moves no
+# yield worth speaking of while removing the one thing that ratio could do -- put a
+# single event at weight 90 into a mass bin and make it look like a structure.
+#
+# This was NOT obvious from a small test: on 20k events the maximum was 2.25, because
+# the low-pileup bins were simply empty. The cap exists because the full sample showed
+# otherwise.
+PU_W_MAX = 10.0
+
+
+def pu_weight_lookup(mc_path, mc_module, era):
+    """Per-bin pileup weight w(nTrueInt) = data_profile / MC_profile, both unit-normalised.
+
+    Returns (edges, w, info). w[i] applies to nTrueInt in [edges[i], edges[i+1]).
+
+    The MC profile is the tuplizer's nTrueInt_all, accumulated over EVERY generated
+    event, above every early return. It is deliberately not built from the rows in this
+    file: those have been through the trigger, the gen filter and the candidate
+    reconstruction, all of which depend on pileup. The data profile is a luminosity
+    profile that no selection has touched, so a post-selection denominator would divide
+    two things that describe different populations -- and would do so wrong by the FULL
+    size of the selection's pileup sculpting, not second order.
+
+    Consequence to keep in mind downstream: <w> is 1 over all generated events, NOT over
+    the selected ones. The residual shift after cuts is the physical pileup dependence of
+    the efficiency and must never be normalised away.
+    """
+    with uproot.open(mc_path) as f:
+        h = f.get(f"{mc_module}/nTrueInt_all")
+        if h is None:
+            sys.exit(f"{mc_path}: no {mc_module}/nTrueInt_all histogram. This tuple "
+                     f"predates the pileup branches -- re-run the tuplizer for it, or "
+                     f"the sample cannot be pileup-reweighted.")
+        mc, mc_edges = h.values(), h.axis().edges()
+    if era not in PU_PROFILE:
+        sys.exit(f"no data pileup profile configured for era {era} (see eras.PU_PROFILE)")
+    with uproot.open(PU_PROFILE[era]) as f:
+        hd = f[PU_PROFILE_HIST]
+        dat, dat_edges = hd.values(), hd.axis().edges()
+
+    # (1) edges must coincide bin for bin on the overlap. The 2022 data profiles have 99
+    # bins and the MC 100, so aligning by index without checking would silently work here
+    # and silently break the first time someone hands over a differently binned profile.
+    n = min(len(mc), len(dat))
+    if not np.array_equal(mc_edges[:n + 1], dat_edges[:n + 1]):
+        sys.exit(f"pileup binning mismatch for era {era}:\n"
+                 f"  MC   edges[:5]={mc_edges[:5]} n={len(mc)}\n"
+                 f"  data edges[:5]={dat_edges[:5]} n={len(dat)}")
+
+    # (2) nothing in the MC may sit above the data profile's range, or those events have
+    # no weight defined at all.
+    mc_outside = float(mc[n:].sum())
+    if abs(mc_outside) > 0:
+        sys.exit(f"{mc_path}: {mc_outside:g} (gen-weighted) MC events have nTrueInt "
+                 f">= {dat_edges[n]:g}, beyond the data profile. No weight is defined "
+                 f"there; extend the data profile.")
+
+    mc_n, dat_n = mc[:n], dat[:n]
+    # (3) a bin can sum to <= 0 with amcatnloFXFX signed weights while still holding
+    # events, so "empty" is not the same as "no events here". Give those bins a neutral
+    # weight and report how many rows land in them rather than producing +-inf.
+    good = mc_n > 0
+    w = np.ones(n, dtype=np.float64)
+    w[good] = (dat_n[good] / dat_n.sum()) / (mc_n[good] / mc_n.sum())
+
+    w_raw_max = float(w[good].max())
+    n_capped = int(np.sum(w[good] > PU_W_MAX))
+    np.clip(w, None, PU_W_MAX, out=w)
+
+    mc_frac = mc_n / mc_n.sum()
+    mean_w = float(np.sum(mc_frac[good] * w[good]))
+    info = dict(profile=os.path.basename(PU_PROFILE[era]), mean_w=mean_w,
+                w_min=float(w[good].min()), w_max=float(w[good].max()),
+                w_raw_max=w_raw_max, n_capped_bins=n_capped,
+                n_bad_bins=int((~good).sum()),
+                mc_mean=float(np.sum(mc_frac * 0.5 * (mc_edges[:n] + mc_edges[1:n + 1]))),
+                dat_mean=float(np.sum(dat_n / dat_n.sum()
+                                      * 0.5 * (dat_edges[:n] + dat_edges[1:n + 1]))))
+    # (4) <w> over the MC is 1 minus whatever share of the data profile sits in bins the
+    # MC never populated. A large deviation means the two profiles disagree badly enough
+    # that the reweighting is extrapolating, not correcting.
+    if abs(mean_w - 1.0) > 0.05:
+        sys.exit(f"pileup <w> = {mean_w:.4f} for era {era}, more than 5% from 1. The MC "
+                 f"and data profiles do not overlap well enough to reweight; check that "
+                 f"{os.path.basename(PU_PROFILE[era])} matches this MC campaign.")
+    return mc_edges[:n + 1], w, info
+
+
+def apply_pu_weight(data, mc_path, mc_module, era):
+    """Multiply Lumi_reweight in place by w(nTrueInt). Returns the diagnostics dict."""
+    edges, w, info = pu_weight_lookup(mc_path, mc_module, era)
+    nt = data["nTrueInt"]
+    if (nt < 0).any():
+        sys.exit(f"{mc_path}: {(nt < 0).sum():,} rows have nTrueInt < 0. That is the "
+                 f"null sentinel, i.e. the tuplizer found no in-time PileupSummaryInfo. "
+                 f"Refusing to weight a sample with unknown pileup.")
+    idx = np.digitize(nt, edges) - 1
+    if (idx < 0).any() or (idx >= len(w)).any():
+        sys.exit(f"{mc_path}: nTrueInt outside the profile range "
+                 f"[{edges[0]}, {edges[-1]}) on {((idx < 0) | (idx >= len(w))).sum():,} rows")
+    wrow = w[idx]
+    data["Lumi_reweight"] = data["Lumi_reweight"] * wrow
+
+    # Report the weight AS APPLIED TO ROWS, not the per-bin range: the per-bin maximum
+    # can sit in a bin no selected event ever reaches, which understates or overstates
+    # the real risk depending on which way you squint. What matters is how much of the
+    # final weight rides on how few rows.
+    hi = wrow > 3.0
+    info["row_w_max"] = float(wrow.max())
+    info["n_rows_w_gt3"] = int(hi.sum())
+    info["frac_weight_w_gt3"] = float(wrow[hi].sum() / wrow.sum()) if wrow.sum() else 0.0
+    print(f"     PU reweight [{info['profile']}]: <w>={info['mean_w']:.4f}  "
+          f"<nTrueInt> MC {info['mc_mean']:.3f} -> data {info['dat_mean']:.3f}")
+    print(f"       per-bin w in [{info['w_min']:.3f}, {info['w_max']:.3f}]"
+          f" (uncapped max {info['w_raw_max']:.1f}, {info['n_capped_bins']} bin(s) capped"
+          f" at {PU_W_MAX:g}); {info['n_bad_bins']} bin(s) with MC<=0 held at w=1")
+    print(f"       as applied: max {info['row_w_max']:.2f}, "
+          f"{info['n_rows_w_gt3']:,} rows with w>3 carrying "
+          f"{100*info['frac_weight_w_gt3']:.3f}% of the weight")
+    return info
 
 
 def _wj(era, jetbin, ss):
@@ -98,21 +222,20 @@ def _wj_bin_pieces(ss):
 
 
 # Every output file, and the input pieces it is built from. `tree` defaults to
-# Hphipimu/Events; the two preEE signals predate the 2026-08-18 module-label
-# unification and still live under HphipimuDsW / HphipimuDsstW.
+# Hphipimu/Events for everything. The two preEE signals used to sit under
+# HphipimuDsW / HphipimuDsstW, predating the 2026-08-18 module-label unification; the
+# 2026-09-08 reproduction that added the pileup branches brought them into line.
 SAMPLES = {
     "HtoDsW": dict(
         weight_mode="signal_era", cuts=("veto_pass", "os", "b_veto"),
         pieces=[
-            dict(era=1, tree="HphipimuDsW/Events",
-                 path=f"{BASE}/MC/2022/Signal_H_phipimu/HtoDsW_2022.root"),
+            dict(era=1, path=f"{BASE}/MC/2022/Signal_H_phipimu/HtoDsW_2022.root"),
             dict(era=2, path=f"{BASE}/MC/2022EE/Signal_H_phipimu/HtoDsW_2022EE.root"),
         ]),
     "HtoDsstW": dict(
         weight_mode="signal_era", cuts=("veto_pass", "os", "b_veto"),
         pieces=[
-            dict(era=1, tree="HphipimuDsstW/Events",
-                 path=f"{BASE}/MC/2022/Signal_DsstW_H_phipimu/HtoDsstW_2022.root"),
+            dict(era=1, path=f"{BASE}/MC/2022/Signal_DsstW_H_phipimu/HtoDsstW_2022.root"),
             dict(era=2, path=f"{BASE}/MC/2022EE/Signal_DsstW_H_phipimu/HtoDsstW_2022EE.root"),
         ]),
     # OS data is blinded in the Ds signal region; SS is not, because a same-sign pi
@@ -193,7 +316,8 @@ def build(name, spec, dry_run=False):
 
     tmp_path = out_path + ".tmp"
     meta = {k: [] for k in ("era", "jet_bin", "sum_gen_weights", "n_rows_in",
-                            "n_rows_out", "xsec", "lumi_pb")}
+                            "n_rows_out", "xsec", "lumi_pb",
+                            "pu_profile", "pu_mean_w")}
     ref_types = None
     total_out = 0
 
@@ -229,6 +353,18 @@ def build(name, spec, dry_run=False):
                 sys.exit(f"unknown weight_mode {spec['weight_mode']!r}")
             data["Lumi_reweight"] = w
 
+            # Pileup reweighting, folded into Lumi_reweight rather than shipped as a
+            # separate branch: this repo has already been bitten once by a weight that
+            # lived outside the file, where every macro that read the file directly got
+            # silently unweighted results. The weight travels with the rows.
+            #
+            # Applied before dedup because it is a per-row function of nTrueInt and
+            # therefore commutes with both the cuts and the dedup. It is deliberately NOT
+            # renormalised afterwards -- see pu_weight_lookup().
+            pu_info = None
+            if spec["weight_mode"] != "data":
+                pu_info = apply_pu_weight(data, path, tree.rsplit("/", 1)[0], era)
+
             best = dedup_best_indices(data)
             print(f"     dedup: {n_cut:,} -> {best.size:,}")
             out = {k: v[best] for k, v in data.items()}
@@ -259,6 +395,10 @@ def build(name, spec, dry_run=False):
             meta["n_rows_out"].append(best.size)
             meta["xsec"].append(piece.get("xsec", float("nan")))
             meta["lumi_pb"].append(lumi)
+            # Pileup provenance, so a Samples/ file says on its face which data profile
+            # its weights came from and whether it was reweighted at all.
+            meta["pu_profile"].append(pu_info["profile"] if pu_info else "")
+            meta["pu_mean_w"].append(pu_info["mean_w"] if pu_info else float("nan"))
             total_out += best.size
             del out
 
@@ -268,7 +408,8 @@ def build(name, spec, dry_run=False):
         f_out.mktree("Meta", {"era": np.int32, "jet_bin": np.int32,
                               "sum_gen_weights": np.float64, "n_rows_in": np.int64,
                               "n_rows_out": np.int64, "xsec": np.float64,
-                              "lumi_pb": np.float64})
+                              "lumi_pb": np.float64, "pu_profile": str,
+                              "pu_mean_w": np.float64})
         f_out["Meta"].extend({k: np.asarray(v) for k, v in meta.items()})
 
     os.replace(tmp_path, out_path)

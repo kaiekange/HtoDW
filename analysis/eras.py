@@ -32,6 +32,24 @@ ERAS = {
 
 TAG_TO_ERA = {v["tag"]: k for k, v in ERAS.items()}
 
+# Measured data pileup profile per era, from pileupCalc.py over that era's certified
+# lumi sections. Histogram name inside each file is "pileup".
+#
+# This is the NUMERATOR of the pileup reweighting; the denominator is the nTrueInt_all
+# histogram the tuplizer accumulates over every generated event. Both therefore describe
+# THE BEAM, not any selection -- see make_samples.py's pu_weight_lookup().
+#
+# The 2022 profiles are 99 bins over [0, 99] while the tuplizer's are 100 over [0, 100].
+# The edges coincide on the overlap and the MC is empty above 99, but that is asserted
+# rather than assumed, because a silent one-bin offset would misweight every event.
+PU_PROFILE_DIR = "/eos/home-k/kakang/H2DW/Analysis/MVA/Samples/pileup"
+PU_PROFILE_HIST = "pileup"
+PU_PROFILE = {
+    1: f"{PU_PROFILE_DIR}/PU_2022.root",
+    2: f"{PU_PROFILE_DIR}/PU_2022EE.root",
+    # 3: PU_2023.root, 4: PU_2023BPix.root, 5: PU_2024.root -- present on disk already.
+}
+
 # The relative per-era weight for the signal samples. The two signal productions were
 # generated with the SAME event count in every era (DsW 1.6M, DsstW 3M each), so N_gen
 # carries no era information and the weight is purely the luminosity ratio, anchored on
