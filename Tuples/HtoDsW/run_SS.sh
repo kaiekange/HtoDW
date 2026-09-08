@@ -1,6 +1,11 @@
 #!/bin/bash
 
 export X509_USER_PROXY="/afs/cern.ch/user/k/kakang/tmp/x509up_u158898"
+# The worker's own /etc/grid-security/certificates carries 883 CAs, the CVMFS bundle 1050.
+# Without this, xrootd can fail to verify the SERVER's certificate and reports it as
+# "Auth failed: No protocols left to try", which reads like a proxy problem and is not one.
+# Same line already in WtoLNu2Jets/run.sh and the PAT and AODSIM run.sh.
+export X509_CERT_DIR=/cvmfs/grid.cern.ch/etc/grid-security/certificates
 
 OUTDIR=$1
 GROUPSIZE=$2
