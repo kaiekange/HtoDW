@@ -285,6 +285,31 @@ WJETS_JET_BINS = (0, 1, 2)
 #   simulation gets "Simulation"/data=False. The pre-refactor v3 run stamped every
 #   panel "Simulation" while training against real SS data; that is the bug this
 #   field exists to prevent.
+# Feature groups used by the pileup control models below. Named here rather than
+# inline in TRAININGS so the era-shift macro and the training config cannot disagree
+# about what "the isolation features" means.
+#
+# ISO_ACTIVITY: everything that measures how busy the event is around the candidate.
+# This is where pileup enters, and it holds the three largest data-vs-MC era residuals
+# (Ds_IsoR04_sumPUPt 0.276, sumNeutralHadronEt 0.180, n_b_jets_loose_dR04 0.141;
+# see macros/draw_era_feature_shift.py).
+#
+# VTX_IP: displacement observables. They also carry a measurable era residual
+# (Ds_prob 0.082, the *_ipsig 0.056-0.078) because pileup degrades the primary vertex,
+# but they are the analysis's core discriminants, so they are neutralised only in the
+# second, more aggressive control.
+#
+# MET is deliberately in NEITHER: its residual is 0.009-0.029, and it carries real
+# W -> mu nu information, so removing it would weaken the classifier for no pileup reason.
+ISO_ACTIVITY = ("Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
+                "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt", "Ds_IsoR04_RelIso",
+                "Ds_IsoR03_RelIso", "mu_IsoR04_RelIso", "num_jets", "num_jets_pt30",
+                "jet_ht", "jet_leadpt", "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
+                "Ds_nearestjet_dR", "Ds_nearestjet_bscore")
+VTX_IP = ("Ds_prob", "Ds_ipsig", "Ds_ipxysig", "Kp_ipsig", "Km_ipsig", "pi_ipsig",
+          "mu_ipsig", "Kp_ipxysig", "Km_ipxysig", "pi_ipxysig")
+
+
 TRAININGS = {
     "ssdata": dict(
         # Both eras of SS data, at weight 1.0 each: data carries no luminosity weight, and
@@ -338,6 +363,24 @@ TRAININGS = {
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f43",
     ),
 }
+
+# Pileup control models. Same samples and same 43 inputs as "ssdata"; the listed
+# features are blanked to a constant so the network cannot use them. They exist to
+# answer one question: if the classifier cannot see the mismodelled pileup information,
+# does the postEE/preEE data asymmetry go away?
+#
+# Two of them, because a null result from the first alone would be ambiguous -- the
+# vertex/IP features carry a smaller but real era residual and could route the same
+# information through. Reading agreed in advance:
+#   noiso alone fixes it        -> the mechanism is the isolation/jet group
+#   only noiso_novtx fixes it   -> it travels mainly through the vertex/IP observables
+#   neither fixes it            -> pileup is not the main cause and the diagnosis is wrong
+for _name, _drop in (("ssdata_noiso", ISO_ACTIVITY),
+                     ("ssdata_noiso_novtx", ISO_ACTIVITY + VTX_IP)):
+    TRAININGS[_name] = dict(TRAININGS["ssdata"], neutralize=_drop,
+                            label=f"Data SS [{_name.replace('ssdata_', '')}]",
+                            out_name=f"dsw_dsstw_{_name}_f43",
+                            out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f43")
 
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
@@ -491,6 +534,40 @@ def preprocess(X):
 
 
 # ========= 模型 =========
+def neutralize(X, feats):
+    """Blank the named feature columns in place, and return the names actually blanked.
+
+    The columns are set to a constant (their own mean), which carries exactly zero
+    information, rather than being DELETED. That is the whole point: the feature count,
+    the scaler size, the input-layer width and the feature_names.txt stamp all stay at
+    43, so every drift guard and every downstream consumer keeps working untouched.
+    Deleting columns instead would mean making FEATURE_NAMES per-training, which has
+    20+ call sites across DNN.py, predict.py, BDT and six macros -- far too much blast
+    radius for a control experiment.
+
+    The constant is a literal 0.0, NOT the column mean. That distinction is the whole
+    correctness argument: predict.py must feed the network exactly what training fed it,
+    and a column mean is a property of whichever array is in hand -- the training set
+    for DNN.py, but each scored sample separately for predict.py. Using the mean would
+    hand the network a different constant at scoring time, and a different one per
+    sample, injecting a spurious sample-dependent offset through the first-layer weight
+    that training never removed (a constant input is absorbed into the bias, so that
+    weight keeps its initialisation). Zero is the same number everywhere.
+
+    A constant is used rather than a random permutation for the same reason: predict.py
+    has to reproduce it exactly, and a permutation is not reproducible.
+
+    StandardScaler maps an all-zero column to mean_ = 0, scale_ = 1 (it substitutes 1
+    for a zero variance rather than dividing by zero), so the scaled input is exactly
+    0.0 in both training and scoring.
+    """
+    if not feats:
+        return ()
+    idx = [FEATURE_NAMES.index(f) for f in feats]      # loud on a typo
+    X[:, idx] = 0.0
+    return tuple(feats)
+
+
 class phipimuNet(nn.Module):
     def __init__(self, n_in, dropout=0.3):
         super().__init__()

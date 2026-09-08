@@ -98,6 +98,10 @@ for name in SAMPLES:
     n = len(X)
 
     X, mask = common.preprocess(X)
+    # MUST match what DNN.py did at training time. If the model was trained with these
+    # inputs blanked and scoring fed it the real values instead, the network would be
+    # evaluated off the manifold it was fitted on and the scores would be quietly wrong.
+    common.neutralize(X, cfg.get("neutralize", ()))
     scores = np.full(n, -777.0, dtype=np.float32)
 
     Xp = (X[mask] - scaler_mean) / scaler_scale

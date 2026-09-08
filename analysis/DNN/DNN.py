@@ -142,6 +142,14 @@ X, mask = common.preprocess(X)
 X, y, w = X[mask], y[mask], w[mask]
 print(f"After finite filter: {X.shape}")
 
+# Pileup control models blank a subset of the inputs to a constant (see
+# common.neutralize). The feature COUNT is unchanged, so the scaler, the input layer
+# and the feature_names.txt stamp stay valid and predict.py needs no special case
+# beyond applying the identical blanking -- which it does, from the same config.
+_blanked = common.neutralize(X, cfg.get("neutralize", ()))
+if _blanked:
+    print(f"Neutralised {len(_blanked)} feature(s) to a constant: {', '.join(_blanked)}")
+
 # Verify the lumi-reweighting actually took effect: the weighted mean should match
 # the physical jet-bin mixture, not the raw event-count one (which is dominated by
 # 2J simply having more events). Only meaningful when the samples carry unequal
