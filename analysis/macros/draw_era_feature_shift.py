@@ -191,3 +191,87 @@ out = common.fig_path("features", "era_feature_shift.png")
 plt.savefig(out, dpi=110, bbox_inches="tight")
 plt.close(fig)
 print(f"\nSaved {out}")
+
+# ---------------------------------------------------------------------------
+# Second figure: the distributions themselves, for the features with the largest
+# data-vs-MC era residual. Four curves per panel, each normalised to unit area --
+# the question is shape, and the two eras differ in luminosity by 3.3x anyway:
+#
+#     data preEE / data postEE   (solid)   -> these separate
+#     MC   preEE / MC   postEE   (dashed)  -> these lie on top of each other
+#
+# Raw values, not the preprocessed/log ones used for the ranking, so the axes are the
+# physical quantity. Re-read here for only the plotted branches rather than carrying a
+# second full 43-column copy of both samples in memory.
+# ---------------------------------------------------------------------------
+plot_feats = [r[0] for r in sorted(rows, key=lambda r: -abs(r[3]))[:8]]
+
+
+def grab_raw(name, feats):
+    br = list(dict.fromkeys(list(feats) + ["Ds_mass", "era", "num_os_mu_tight",
+                                           "num_ss_mu_tight", common.B_VETO,
+                                           "Lumi_reweight"]))
+    a = uproot.open(f"{SAMPLES}/{name}.root")["Events"].arrays(br, library="np")
+    m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
+         & (a[common.B_VETO] == 0)
+         & (np.abs(a["Ds_mass"] - M_DS) >= SR_HALF))
+    return ({f: a[f][m] for f in feats}, a["era"][m], a["Lumi_reweight"][m])
+
+
+print("\nre-reading raw values for the distribution figure ...")
+Rd, Rde, _ = grab_raw("Data", plot_feats)
+Rm, Rme, Rmw = grab_raw("WtoLNu2Jets", plot_feats)
+
+NCOL, NROW = 4, 2
+fig, axes = plt.subplots(NROW, NCOL, figsize=(6.0 * NCOL, 5.0 * NROW), squeeze=False)
+# Colour = era, line = data vs MC. The MC pair is drawn last, in a lighter shade and
+# with a long dash, because the whole point is that the two MC curves coincide -- and
+# where they also coincide with data preEE (they nearly do, by construction) three
+# curves would otherwise hide under one line and the panel would look like it holds two.
+STYLE = [("data preEE",   1, "data", "#0B4F8A", "-",              3.2, 1.00, 2),
+         ("data postEE",  2, "data", "#A01F1F", "-",              3.2, 1.00, 2),
+         ("MC preEE",     1, "mc",   "#5FA8DC", (0, (7, 2.5)),    2.2, 0.95, 3),
+         ("MC postEE",    2, "mc",   "#E8836F", (0, (2.5, 2.5)),  2.2, 0.95, 3)]
+
+for j, f in enumerate(plot_feats):
+    ax = axes[j // NCOL][j % NCOL]
+    x = Rd[f]
+    fin = np.isfinite(x) & (x > -100)
+    uniq = np.unique(x[fin])
+    if len(uniq) <= 12 and np.allclose(uniq, np.round(uniq)):
+        bins = np.arange(uniq.min() - 0.5, uniq.max() + 1.5, 1.0)
+    else:
+        lo, hi = np.percentile(x[fin], [0.5, 99.0])
+        bins = np.linspace(lo, hi, 41)
+
+    drawn = []
+    for lab, era, kind, col, ls, lw, al, zo in STYLE:
+        if kind == "data":
+            h, _ = np.histogram(Rd[f][Rde == era], bins=bins)
+        else:
+            km = Rme == era
+            h, _ = np.histogram(Rm[f][km], bins=bins, weights=Rmw[km])
+        h = h / (h.sum() if h.sum() else 1)
+        drawn.append(h)
+        hep.histplot(h, bins, ax=ax, histtype="step", lw=lw, ls=ls, color=col,
+                     alpha=al, zorder=zo, label=lab)
+
+    # Log y only where one spike would otherwise flatten everything else (the isolation
+    # sums and the IP significances all pile up at zero).
+    pos = np.concatenate([h[h > 0] for h in drawn])
+    if pos.size and pos.max() / np.median(pos) > 20:
+        ax.set_yscale("log")
+        ax.set_ylim(max(pos.min() * 0.5, 1e-5), pos.max() * 4)
+    ax.set_xlabel(f, fontsize=15)
+    ax.set_ylabel("normalised", fontsize=13)
+    ax.tick_params(labelsize=12)
+    ax.grid(alpha=0.2)
+
+handles, labels = axes[0][0].get_legend_handles_labels()
+fig.legend(handles, labels, ncol=4, fontsize=17, loc="upper center",
+           bbox_to_anchor=(0.5, 1.045), frameon=False)
+plt.tight_layout()
+out2 = common.fig_path("features", "era_feature_distributions.png")
+plt.savefig(out2, dpi=110, bbox_inches="tight")
+plt.close(fig)
+print(f"Saved {out2}")
