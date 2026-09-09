@@ -36,7 +36,7 @@ import torch
 import uproot
 
 import common
-from common import FEATURE_NAMES, SAMPLES_DIR, TREE
+from common import SAMPLES_DIR, TREE
 
 USAGE = (f"usage: python3 {os.path.basename(__file__)} "
          f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
@@ -65,20 +65,31 @@ if len(argv) not in (1, 2):
     sys.exit(USAGE)
 BKG = argv[0]
 cfg = common.resolve(BKG)
+feats = cfg["features"]
 SEED = int(argv[1]) if len(argv) == 2 else common.SEED_DEFAULT
 
 MODEL_DIR = common.out_dir_for(BKG, tool="DNN", seed=SEED)
 OUT_DIR = f"{MODEL_DIR}/Prediction"
 os.makedirs(OUT_DIR, exist_ok=True)
 
+# A stage-2 config scores from its stage-1 model's Prediction/ dir (a superset of
+# Samples/, carrying score_dsmu) so the output file holds BOTH scores and every
+# downstream consumer reads one file. The stage-1 threshold is NOT applied here --
+# every row gets a score, the cut goes downstream, matching the philosophy above.
+s1 = cfg.get("stage1_cut")
+IN_DIR = (f"{common.out_dir_for(s1['key'], s1.get('tool', 'DNN'), s1.get('seed'))}/Prediction"
+          if s1 else SAMPLES_DIR)
+SCORE_BRANCH = cfg["score_branch"]
+
 print(f"Loading model from {MODEL_DIR} (background={BKG}, seed={SEED})...")
 if SAMPLES is not ALL_SAMPLES:
     print(f"  scoring subset only: {', '.join(SAMPLES)}")
+print(f"  inputs from {IN_DIR}, writing {SCORE_BRANCH}")
 # Refuses to proceed if this dir's feature stamp, scaler size or input layer
 # disagrees with common.py -- the alternative is silently wrong scores.
-state = common.check_model_dir(MODEL_DIR)
+state = common.check_model_dir(MODEL_DIR, feats)
 
-model = common.phipimuNet(len(FEATURE_NAMES))
+model = common.phipimuNet(len(feats.names))
 model.load_state_dict(state)
 model.eval()
 
@@ -86,22 +97,25 @@ scaler_mean = np.load(f"{MODEL_DIR}/scaler_mean.npy")
 scaler_scale = np.load(f"{MODEL_DIR}/scaler_scale.npy")
 
 for name in SAMPLES:
-    path = f"{SAMPLES_DIR}/{name}.root"
+    path = f"{IN_DIR}/{name}.root"
     if not os.path.exists(path):
+        if s1:
+            sys.exit(f"  {name}: {path} missing -- stage-1 must score {name} first "
+                     f"(predict.py {s1['key']} --samples ...,{name})")
         print(f"  {name:24s} MISSING -- skipped")
         continue
 
     with uproot.open(path)[TREE] as t:
         data = t.arrays(library="np")
 
-    X = np.column_stack([data[b].astype(np.float64) for b in FEATURE_NAMES])
+    X = np.column_stack([data[b].astype(np.float64) for b in feats.names])
     n = len(X)
 
-    X, mask = common.preprocess(X)
+    X, mask = common.preprocess(X, feats)
     # MUST match what DNN.py did at training time. If the model was trained with these
     # inputs blanked and scoring fed it the real values instead, the network would be
     # evaluated off the manifold it was fitted on and the scores would be quietly wrong.
-    common.neutralize(X, cfg.get("neutralize", ()))
+    common.neutralize(X, cfg.get("neutralize", ()), feats)
     scores = np.full(n, -777.0, dtype=np.float32)
 
     Xp = (X[mask] - scaler_mean) / scaler_scale
@@ -109,7 +123,7 @@ for name in SAMPLES:
         s = torch.sigmoid(model(torch.tensor(Xp, dtype=torch.float32))).numpy().flatten()
     scores[mask] = s.astype(np.float32)
 
-    data["score_dsmu"] = scores
+    data[SCORE_BRANCH] = scores
     out_file = f"{OUT_DIR}/{name}.root"
     with uproot.recreate(out_file) as f:
         f.mktree(TREE, {k: v.dtype for k, v in data.items()})

@@ -33,7 +33,7 @@ import joblib
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DNN"))
 import common
-from common import FEATURE_NAMES, SAMPLES_DIR, TREE
+from common import SAMPLES_DIR, TREE
 
 USAGE = (f"usage: python3 {os.path.basename(__file__)} "
          f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
@@ -62,40 +62,51 @@ if len(argv) not in (1, 2):
     sys.exit(USAGE)
 BKG = argv[0]
 cfg = common.resolve(BKG)
+feats = cfg["features"]
 SEED = int(argv[1]) if len(argv) == 2 else common.SEED_DEFAULT
 
 MODEL_DIR = common.out_dir_for(BKG, tool="BDT", seed=SEED)
 OUT_DIR = f"{MODEL_DIR}/Prediction"
 os.makedirs(OUT_DIR, exist_ok=True)
 
+# A stage-2 config scores from its stage-1 model's Prediction/ dir (a superset of
+# Samples/, carrying score_dsmu) so the output holds BOTH scores. No threshold here.
+s1 = cfg.get("stage1_cut")
+IN_DIR = (f"{common.out_dir_for(s1['key'], s1.get('tool', 'DNN'), s1.get('seed'))}/Prediction"
+          if s1 else SAMPLES_DIR)
+SCORE_BRANCH = cfg["score_branch"]
+
 print(f"Loading model from {MODEL_DIR} (background={BKG}, seed={SEED})...")
 if SAMPLES is not ALL_SAMPLES:
     print(f"  scoring subset only: {', '.join(SAMPLES)}")
+print(f"  inputs from {IN_DIR}, writing {SCORE_BRANCH}")
 
 # Refuses to proceed if this dir's feature stamp disagrees with common.py -- the
 # alternative is silently wrong scores, since feature order is only implicitly bound
 # to the tree splits.
-common.check_feature_stamp(MODEL_DIR)
+common.check_feature_stamp(MODEL_DIR, feats)
 model = joblib.load(f"{MODEL_DIR}/bdt_model.pkl")
-common.check_n_features(MODEL_DIR, model.n_features_in_, "bdt_model.pkl")
+common.check_n_features(MODEL_DIR, model.n_features_in_, "bdt_model.pkl", feats)
 
 for name in SAMPLES:
-    path = f"{SAMPLES_DIR}/{name}.root"
+    path = f"{IN_DIR}/{name}.root"
     if not os.path.exists(path):
+        if s1:
+            sys.exit(f"  {name}: {path} missing -- stage-1 must score {name} first")
         print(f"  {name:24s} MISSING -- skipped")
         continue
 
     with uproot.open(path)[TREE] as t:
         data = t.arrays(library="np")
 
-    X = np.column_stack([data[b].astype(np.float64) for b in FEATURE_NAMES])
+    X = np.column_stack([data[b].astype(np.float64) for b in feats.names])
     n = len(X)
 
-    X, mask = common.preprocess(X)
+    X, mask = common.preprocess(X, feats)
     scores = np.full(n, -777.0, dtype=np.float32)
     scores[mask] = model.predict_proba(X[mask])[:, 1].astype(np.float32)
 
-    data["score_dsmu"] = scores
+    data[SCORE_BRANCH] = scores
     out_file = f"{OUT_DIR}/{name}.root"
     with uproot.recreate(out_file) as f:
         f.mktree(TREE, {k: v.dtype for k, v in data.items()})

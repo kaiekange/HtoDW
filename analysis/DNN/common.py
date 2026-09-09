@@ -177,10 +177,90 @@ SENTINEL_FIX = {
 # hand-copying them -- this module pulls in torch, which they must not.
 B_VETO = B_VETO_BRANCH
 SELECTION = [*LEPTON_BRANCHES, B_VETO]
-LOAD_BRANCHES = list(dict.fromkeys(FEATURE_NAMES + SELECTION))
 
-DIRA_IDX = FEATURE_NAMES.index("dira")
-LOG_IDX = [FEATURE_NAMES.index(f) for f in LOG_FEATURES]
+
+class FeatureSpec:
+    """A feature set plus everything positionally bound to it.
+
+    Until a second classifier appeared, FEATURE_NAMES was a module global with
+    LOG_FEATURES / SENTINEL_FIX / DIRA_IDX / LOG_IDX / LOAD_BRANCHES all derived
+    from it -- implicitly "the one feature set". The stage-2 resonant classifier
+    (feature_set "prodtopo_v1") makes the feature set a per-training property, so
+    this bundles the six and every function that used a global now takes `feats=`.
+
+    `names` IS LOAD-BEARING: positionally bound to scaler_mean/scale.npy, the first
+    nn.Linear(n_in, 128) and the feature_names.txt stamp. Reordering it without
+    retraining produces garbage scores and raises nothing on its own --
+    check_model_dir() / check_feature_stamp() below turn that into a readable
+    failure. `names` is NOT copied, so FEATURE_SETS["f43"].names is FEATURE_NAMES
+    itself and the back-compat shim below cannot drift from it.
+
+    `dira` is a feature name or None. None (stage-2 has no `dira`) drops both the
+    `X[:, dira_idx] > -1` finite-mask term and the log(1.01 - dira) transform in
+    preprocess() -- so the non-finite fraction a stage differs legitimately.
+    """
+
+    def __init__(self, names, *, log=(), sentinel=None, dira=None):
+        self.names = names
+        self.log = list(log)
+        self.sentinel = dict(sentinel or {})
+        self.dira = dira
+        self.log_idx = [names.index(f) for f in self.log]
+        self.dira_idx = names.index(dira) if dira is not None else None
+        self.load_branches = list(dict.fromkeys(list(names) + SELECTION))
+        for f in list(self.sentinel) + self.log + ([dira] if dira is not None else []):
+            if f not in names:
+                raise ValueError(f"FeatureSpec: {f!r} is not in names")
+
+
+# Stage-2 (resonant W+jets) production-topology feature set. Branch-backed only.
+# Excludes ALL decay kinematics (would sculpt the fit peaks, same reason as f43)
+# AND all lifetime/IP: W+jets true-Ds is ~89% prompt like signal, while the missing
+# tt background is displaced b->Ds, so an IP-heavy stage-2 would rank displaced
+# background HIGHER -- wrong direction. Revisit only with a tt MC sample. Also drops
+# Ds_IsoR04_sumPUPt / sumNeutralHadronEt / sumPhotonEt and n_b_jets_* (pileup
+# sensitive, and the W+jets PU reweight is still provisional). See the stage-2 plan.
+PRODTOPO_V1 = [
+    "Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_RelIso", "Ds_IsoR03_RelIso",
+    "mu_IsoR04_RelIso",
+    "Dsmu_mass", "Dsmu_pt", "dR_Ds_mu",
+    "met_sumEt", "jet_ht", "num_jets_pt30", "Ds_nearestjet_dR",
+]
+
+FEATURE_SETS = {
+    "f43": FeatureSpec(FEATURE_NAMES, log=LOG_FEATURES, sentinel=SENTINEL_FIX,
+                       dira="dira"),
+    "prodtopo_v1": FeatureSpec(
+        PRODTOPO_V1,
+        # log1p only the two heavy-tailed inputs; the RelIso / mass / dR / met /
+        # jet-count features are already O(1) or bounded.
+        log=["Ds_IsoR04_sumChargedHadronPt", "jet_ht"],
+        # only the "no jet" sentinel survives -- Ds_nearestjet_bscore and jet_leadpt
+        # are not in this set.
+        sentinel={"Ds_nearestjet_dR": 5.0},
+        dira=None),
+}
+
+# Back-compat shims: the stage-1 macros import these names directly and must keep
+# working untouched. They are the f43 spec's attributes, by identity for `names`.
+STAGE1 = FEATURE_SETS["f43"]
+LOAD_BRANCHES = STAGE1.load_branches
+DIRA_IDX = STAGE1.dira_idx
+LOG_IDX = STAGE1.log_idx
+
+# XGBoost hyperparameters per feature set. f43 keeps the values tuned for the
+# 43-feature stage-1 problem on a much larger sample (unchanged since 2026-08-14).
+# prodtopo_v1 (stage-2) trains on N_eff ~ O(10^3) background with 11 features, so it
+# is shallower and more regularised: depth 3, larger min_child_weight. n_estimators
+# raised 800 -> 1500 on 2026-09-09: the first seed-42 run hit the 800 cap without
+# early-stopping (val AUC still rising ~1e-4/round at round 799), i.e. underfit.
+BDT_PARAMS = {
+    "f43": dict(n_estimators=2000, max_depth=5, learning_rate=0.05,
+                subsample=0.8, colsample_bytree=0.8, min_child_weight=10),
+    "prodtopo_v1": dict(n_estimators=1500, max_depth=3, learning_rate=0.03,
+                        subsample=0.7, colsample_bytree=0.9, min_child_weight=40,
+                        reg_lambda=5.0),
+}
 
 # ========= 训练配置 =========
 # The one seed the canonical models were trained with. Lives here rather than in
@@ -362,6 +442,46 @@ TRAININGS = {
         out_name="dsw_dsstw_wjets_f43",
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f43",
     ),
+    "wjetsres": dict(
+        # Stage 2 of the two-stage MVA: signal MC vs W+jets RESONANT background (real
+        # D/Ds), which the stage-1 f43 classifier cannot remove -- in the f43 feature
+        # set a true W+jets Ds->phipi and a true signal Ds->phipi are the same object.
+        # Background = WtoLNu2Jets_GenTag rows with cand_gen_mode in {1,2,3,4,5}
+        # (1-2 true Ds, 3-4 true D, 5 D->Kpipi misID reflection), MC-vs-MC.
+        #
+        # stage1_cut: training rows must first pass stage-1 at eff_sig -- the 80% of
+        # modes 1-5 that stage-1 removes is a DIFFERENT population in the production-
+        # topology features stage-2 uses, so training on the unfiltered sample trains
+        # on the wrong problem. eff_sig = 0.90 chosen 2026-09-09 (fom_scan_stage1.py):
+        # the stage-1 FOM is monotone (no interior optimum), so WP1 is set by the
+        # stage-2 training statistics -- eff_sig 0.90 leaves N_eff(modes 1-5) = 3617,
+        # comfortable for an ~11-feature BDT. common.load() reads the training rows
+        # from stage-1's Prediction/ dir and applies score_dsmu > threshold; predict.py
+        # does the same input redirect but applies NO threshold (cut goes downstream).
+        #
+        # feature_set prodtopo_v1: branch-backed production-topology features only.
+        # Excludes ALL lifetime/IP -- W+jets true-Ds is ~89% prompt like signal, the
+        # missing tt background is displaced b->Ds, so an IP-heavy stage-2 would rank
+        # displaced background HIGHER. Revisit only with a tt MC sample.
+        #
+        # score_branch score_dsmu_res so the stage-1 score_dsmu and this coexist in one
+        # Prediction file. Algorithm is BDT (analysis/BDT/) -- N_eff ~ O(10^3), tabular.
+        samples={"WtoLNu2Jets_GenTag": 1.0},   # unused when weighted=True
+        ss=False,
+        parity=None,
+        weighted=True,
+        gen_mode_filter=(1, 2, 3, 4, 5),
+        stage1_cut=dict(key="ssdata", tool="DNN", seed=42, eff_sig=0.90),
+        feature_set="prodtopo_v1",
+        score_branch="score_dsmu_res",
+        label="W+jets resonant (GenTag 1-5, post stage-1 90%)",
+        is_data=False,                          # MC-vs-MC -> "Simulation"
+        # DNN-convention path (the out_dir == MVA_DIR/out_name assertion below pins it).
+        # A BDT-only entry still needs the field; every stage-2 macro must resolve the
+        # real dir with common.out_dir_for("wjetsres", tool="BDT"), never cfg["out_dir"].
+        out_name="dsw_dsstw_wjetsres_f11_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f11_wp90",
+    ),
 }
 
 # Pileup control models. Same samples and same 43 inputs as "ssdata"; the listed
@@ -375,8 +495,41 @@ TRAININGS = {
 #   noiso alone fixes it        -> the mechanism is the isolation/jet group
 #   only noiso_novtx fixes it   -> it travels mainly through the vertex/IP observables
 #   neither fixes it            -> pileup is not the main cause and the diagnosis is wrong
+#
+# 2026-09-09: noiso alone already fixed it (post/pre back to ~1.0). These three narrow
+# it down within the isolation block itself -- how few of the six Ds isolation inputs
+# have to be removed before the asymmetry returns:
+#   noiso6  the six Ds isolation variables (the four sums plus both RelIso)
+#   noiso4  only the four raw sums
+#   noiso3  only three sums, keeping sumChargedHadronPt (the strongest discriminant)
+_ISO6 = ("Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
+         "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt", "Ds_IsoR04_RelIso",
+         "Ds_IsoR03_RelIso")
+_ISO4 = _ISO6[:4]
+_ISO3 = ("Ds_IsoR04_sumNeutralHadronEt", "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt")
+
+# 2026-09-09 pt.2: the mirror experiment -- blanking only the Ds isolation got to 0.87,
+# not 1.0, so the jet half of ISO_ACTIVITY carries the rest. These keep all seven
+# isolation inputs and blank the jet-related eight in subsets:
+#   nojet     all eight (jet multiplicity/HT, both b-jet counts, both nearest-jet)
+#   nojet4    only jet multiplicity + HT + leading pt
+#   nobjet    only the two b-jet counts
+#   nonearjet only the two Ds-nearest-jet variables
+_JET8 = ("num_jets", "num_jets_pt30", "jet_ht", "jet_leadpt",
+         "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
+         "Ds_nearestjet_dR", "Ds_nearestjet_bscore")
+_JET4 = _JET8[:4]
+_BJET = ("n_b_jets_loose_dR04", "n_b_jets_medium_dR04")
+_NEARJET = ("Ds_nearestjet_dR", "Ds_nearestjet_bscore")
 for _name, _drop in (("ssdata_noiso", ISO_ACTIVITY),
-                     ("ssdata_noiso_novtx", ISO_ACTIVITY + VTX_IP)):
+                     ("ssdata_noiso_novtx", ISO_ACTIVITY + VTX_IP),
+                     ("ssdata_noiso6", _ISO6),
+                     ("ssdata_noiso4", _ISO4),
+                     ("ssdata_noiso3", _ISO3),
+                     ("ssdata_nojet", _JET8),
+                     ("ssdata_nojet4", _JET4),
+                     ("ssdata_nobjet", _BJET),
+                     ("ssdata_nonearjet", _NEARJET)):
     TRAININGS[_name] = dict(TRAININGS["ssdata"], neutralize=_drop,
                             label=f"Data SS [{_name.replace('ssdata_', '')}]",
                             out_name=f"dsw_dsstw_{_name}_f43",
@@ -384,6 +537,17 @@ for _name, _drop in (("ssdata_noiso", ISO_ACTIVITY),
 
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
+
+# Every config resolves to a FeatureSpec and an output score-branch name. Existing
+# entries omit both and get the stage-1 defaults; a stage-2 entry sets feature_set
+# and score_branch explicitly. Done here (after the pileup-control loop above builds
+# its nine dict() copies) so all entries are covered uniformly. Not `.get()` at the
+# call site: a future entry that forgets score_branch should fail loudly rather than
+# silently write into stage-1's "score_dsmu".
+for _c in TRAININGS.values():
+    _c.setdefault("feature_set", "f43")
+    _c["features"] = FEATURE_SETS[_c["feature_set"]]
+    _c.setdefault("score_branch", "score_dsmu")
 
 
 def resolve(key):
@@ -454,19 +618,27 @@ def fig_path(category, name, *, key=None, tool="DNN", seed=None):
 
 
 # ========= 数据加载 =========
-def load(name, *, era=None, jet_bin=None, truth_filter=False, ss=False, parity=None,
-         extra_branches=()):
+def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=False,
+         parity=None, gen_mode_filter=None, stage1=None, extra_branches=()):
     """Load one Samples/ file, apply the analysis selection, return the feature matrix.
 
+    feats:   which FeatureSpec to build the matrix for (default = stage-1 f43).
     era:     keep only this era id (see eras.ERAS). None = every era in the file.
     jet_bin: keep only this jet bin. None = every bin. Errors if the file has no
              jet_bin branch, rather than silently returning everything.
     ss:      select the same-sign muon configuration instead of opposite-sign.
     parity:  keep only rows with event_id % 2 == parity (None = keep all).
+    gen_mode_filter: keep only rows whose cand_gen_mode is in this iterable (the
+             GenTag truth tag). Errors if the file has no cand_gen_mode branch.
+    stage1:  a stage1_cut dict {key, tool, seed, thr, ...}. When set, the file is
+             read from that stage-1 model's Prediction/ dir (a superset of Samples/,
+             carrying score_dsmu) instead of Samples/, and rows are additionally
+             required to have score_dsmu > stage1["thr"]. TRAINING-TIME ONLY --
+             predict.py does its own input redirect and applies no threshold.
     Returns (X, extras) where extras is a dict of any extra_branches requested,
     already masked in step with X.
     """
-    branches = list(LOAD_BRANCHES)
+    branches = list(feats.load_branches)
     if truth_filter:
         branches += ["Ds_match", "mu_match"]
     if parity is not None:
@@ -475,14 +647,28 @@ def load(name, *, era=None, jet_bin=None, truth_filter=False, ss=False, parity=N
         branches += ["era"]
     if jet_bin is not None:
         branches += ["jet_bin"]
+    if gen_mode_filter is not None:
+        branches += ["cand_gen_mode"]
+    if stage1 is not None:
+        branches += ["score_dsmu"]
     branches += list(extra_branches)
     branches = list(dict.fromkeys(branches))
 
-    with uproot.open(f"{SAMPLES_DIR}/{name}.root")[TREE] as t:
-        if jet_bin is not None and "jet_bin" not in t.keys():
+    if stage1 is None:
+        src = f"{SAMPLES_DIR}/{name}.root"
+    else:
+        src = (f"{out_dir_for(stage1['key'], stage1.get('tool', 'DNN'), stage1.get('seed'))}"
+               f"/Prediction/{name}.root")
+
+    with uproot.open(src)[TREE] as t:
+        keys = t.keys()
+        if jet_bin is not None and "jet_bin" not in keys:
             sys.exit(f"load({name!r}, jet_bin={jet_bin}): that file has no jet_bin branch. "
                      f"Only the jet-binned W+jets samples do -- incl and GenTag-merged "
                      f"files are separate productions, not a fourth bin.")
+        if gen_mode_filter is not None and "cand_gen_mode" not in keys:
+            sys.exit(f"load({name!r}, gen_mode_filter=...): {src} has no cand_gen_mode "
+                     f"branch -- only the GenTag production carries the truth tag.")
         a = t.arrays(branches, library="np")
 
     n_in = len(a[B_VETO])
@@ -499,51 +685,99 @@ def load(name, *, era=None, jet_bin=None, truth_filter=False, ss=False, parity=N
         m &= a["era"] == era
     if jet_bin is not None:
         m &= a["jet_bin"] == jet_bin
+    if gen_mode_filter is not None:
+        m &= np.isin(a["cand_gen_mode"], list(gen_mode_filter))
+    if stage1 is not None:
+        m &= a["score_dsmu"] > stage1["thr"]
 
-    X = np.column_stack([a[f][m] for f in FEATURE_NAMES])
+    X = np.column_stack([a[f][m] for f in feats.names])
     print(f"  {name:18s} {n_in:>9,} -> {m.sum():>9,} rows after selection")
     return X, {b: a[b][m] for b in extra_branches}
 
 
+def stage1_threshold(stage1_cut):
+    """The score_dsmu cut value for a stage-1 signal efficiency.
+
+    stage1_cut: {key, tool, seed, eff_sig}. Reads the two signals from that stage-1
+    model's Prediction/ dir, applies OS + b-veto + truth match + score_dsmu > -1,
+    and returns (thr, n_sig_rows) where thr is the UNWEIGHTED (1 - eff_sig) quantile
+    of the pooled signal score -- unweighted to match draw_gentag_mass_modes.py and
+    every working-point macro. The weighted quantile is printed alongside as a check.
+
+    This defines the stage-2 TRAINING POPULATION; DNN.py / BDT.py stamp the returned
+    value into stage1_filter.txt, and it moves if stage-1 is ever re-scored.
+    """
+    pred = (f"{out_dir_for(stage1_cut['key'], stage1_cut.get('tool', 'DNN'), stage1_cut.get('seed'))}"
+            f"/Prediction")
+    want = ["score_dsmu", "num_os_mu_tight", "num_ss_mu_tight", B_VETO,
+            "Ds_match", "mu_match", "Lumi_reweight"]
+    sc, w = [], []
+    for name in SIGNALS:
+        with uproot.open(f"{pred}/{name}.root")[TREE] as t:
+            a = t.arrays(want, library="np")
+        m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a[B_VETO] == 0)
+             & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool) & (a["score_dsmu"] > -1))
+        sc.append(a["score_dsmu"][m])
+        w.append(a["Lumi_reweight"][m])
+    sc = np.concatenate(sc)
+    w = np.concatenate(w)
+    q = 1.0 - stage1_cut["eff_sig"]
+    thr = float(np.quantile(sc, q))
+    order = np.argsort(sc)
+    cw = np.cumsum(w[order])
+    thr_w = float(sc[order][np.searchsorted(cw, q * cw[-1])])
+    print(f"  stage1_threshold({stage1_cut['key']}, eff_sig={stage1_cut['eff_sig']}): "
+          f"thr={thr:.6f} (weighted {thr_w:.6f}), from {len(sc):,} truth-matched signal rows")
+    return thr, len(sc)
+
+
 # ========= 预处理 =========
-def preprocess(X):
+def preprocess(X, feats=STAGE1):
     """The one implementation of the chain: sentinel fix -> finite mask -> log.
 
     Returns (X, mask). X is modified in place for the sentinel step and the log
     transform is applied only to rows inside the mask (so log(1.01 - (-777)) is
     never evaluated). Callers differ in what they do with ~mask: DNN.py drops those
-    rows, predict.py keeps them and writes score_dsmu = -777.
+    rows, predict.py keeps them and writes the score = -777.
 
     Order matters. Sentinels must be regularized BEFORE the scaler ever sees them,
     and before the log, or the transform and the fitted mean/variance are garbage.
+
+    feats with dira=None (stage-2) skips the dira finite-mask term and the
+    log(1.01 - dira) transform -- the feature is simply not in the set.
     """
-    for feat, fill in SENTINEL_FIX.items():
-        i = FEATURE_NAMES.index(feat)
+    for feat, fill in feats.sentinel.items():
+        i = feats.names.index(feat)
         bad = X[:, i] < -1
         if bad.any():
             print(f"  sentinel: {feat:24s} {bad.sum():>9,} rows ({100*bad.mean():5.2f}%) -> {fill}")
             X[bad, i] = fill
 
-    mask = np.isfinite(X).all(axis=1) & (X[:, DIRA_IDX] > -1)
+    mask = np.isfinite(X).all(axis=1)
+    if feats.dira_idx is not None:
+        mask &= (X[:, feats.dira_idx] > -1)
 
     Xm = X[mask]
-    Xm[:, LOG_IDX] = np.log1p(Xm[:, LOG_IDX])
-    Xm[:, DIRA_IDX] = np.log(1.01 - Xm[:, DIRA_IDX])
+    if feats.log_idx:
+        Xm[:, feats.log_idx] = np.log1p(Xm[:, feats.log_idx])
+    if feats.dira_idx is not None:
+        Xm[:, feats.dira_idx] = np.log(1.01 - Xm[:, feats.dira_idx])
     X[mask] = Xm
     return X, mask
 
 
 # ========= 模型 =========
-def neutralize(X, feats):
+def neutralize(X, cols, feats=STAGE1):
     """Blank the named feature columns in place, and return the names actually blanked.
 
     The columns are set to a constant (their own mean), which carries exactly zero
     information, rather than being DELETED. That is the whole point: the feature count,
     the scaler size, the input-layer width and the feature_names.txt stamp all stay at
     43, so every drift guard and every downstream consumer keeps working untouched.
-    Deleting columns instead would mean making FEATURE_NAMES per-training, which has
-    20+ call sites across DNN.py, predict.py, BDT and six macros -- far too much blast
-    radius for a control experiment.
+    Deleting columns instead would mean a per-training feature list threaded through
+    every call site -- which is now exactly what FeatureSpec does, but neutralize
+    stays column-blanking so the nine ssdata_* pileup-control models on EOS (trained
+    against this behaviour) are not silently invalidated.
 
     The constant is a literal 0.0, NOT the column mean. That distinction is the whole
     correctness argument: predict.py must feed the network exactly what training fed it,
@@ -561,11 +795,11 @@ def neutralize(X, feats):
     for a zero variance rather than dividing by zero), so the scaled input is exactly
     0.0 in both training and scoring.
     """
-    if not feats:
+    if not cols:
         return ()
-    idx = [FEATURE_NAMES.index(f) for f in feats]      # loud on a typo
+    idx = [feats.names.index(f) for f in cols]      # loud on a typo
     X[:, idx] = 0.0
-    return tuple(feats)
+    return tuple(cols)
 
 
 class phipimuNet(nn.Module):
@@ -584,17 +818,20 @@ class phipimuNet(nn.Module):
 
 
 # ========= 防漂移守卫 =========
+# Every guard takes feats=STAGE1 as a DEFAULT. A forgotten feats= on a stage-2 call
+# is safe here BY CONSTRUCTION: every mismatch direction (stage-2 stamp vs f43, or
+# f43 model vs stage-2 spec) is a length or content difference, never a silent pass.
 FEATURE_FILE = "feature_names.txt"
 
 
-def save_feature_names(out_dir):
+def save_feature_names(out_dir, feats=STAGE1):
     """Stamp the model dir with the exact feature list (and order) it was trained on."""
     with open(f"{out_dir}/{FEATURE_FILE}", "w") as f:
-        f.write("\n".join(FEATURE_NAMES) + "\n")
+        f.write("\n".join(feats.names) + "\n")
 
 
-def check_feature_stamp(model_dir):
-    """Refuse to score with a model whose feature stamp does not match this module.
+def check_feature_stamp(model_dir, feats=STAGE1):
+    """Refuse to score with a model whose feature stamp does not match feats.names.
 
     Catches the two silent failure modes shared by every algorithm: a model dir from
     before the feature list was stamped (the frozen 40-feature v2, or the frozen
@@ -605,6 +842,7 @@ def check_feature_stamp(model_dir):
     Split out of check_model_dir so BDT/predict.py can reuse it without importing
     torch machinery it has no use for.
     """
+    names = feats.names
     path = f"{model_dir}/{FEATURE_FILE}"
     if not os.path.exists(path):
         sys.exit(
@@ -612,44 +850,45 @@ def check_feature_stamp(model_dir):
             f"This model dir predates feature_names.txt -- it is a frozen older build "
             f"(e.g. the 40-feature v2 at dsw_dsstw_wjets, or the 42-feature BDT at "
             f"dsw_wjets_test). Do NOT re-score it with the current "
-            f"{len(FEATURE_NAMES)}-feature code: the scores would be silently wrong. "
-            f"Retrain into a new _f43 dir instead."
+            f"{len(names)}-feature code: the scores would be silently wrong. "
+            f"Retrain into a new dir instead."
         )
 
     with open(path) as f:
         stored = [ln.strip() for ln in f if ln.strip()]
-    if stored != FEATURE_NAMES:
-        n = min(len(stored), len(FEATURE_NAMES))
-        first = next((i for i in range(n) if stored[i] != FEATURE_NAMES[i]), n)
+    if stored != names:
+        n = min(len(stored), len(names))
+        first = next((i for i in range(n) if stored[i] != names[i]), n)
         sys.exit(
             f"feature mismatch vs {path}\n"
-            f"  stored: {len(stored)} features, common.py: {len(FEATURE_NAMES)}\n"
+            f"  stored: {len(stored)} features, common.py: {len(names)}\n"
             f"  first difference at index {first}: "
             f"stored={stored[first] if first < len(stored) else '<end>'} "
-            f"vs common.py={FEATURE_NAMES[first] if first < len(FEATURE_NAMES) else '<end>'}"
+            f"vs common.py={names[first] if first < len(names) else '<end>'}"
         )
 
 
-def check_n_features(model_dir, n_in, what):
+def check_n_features(model_dir, n_in, what, feats=STAGE1):
     """The algorithm-specific half: the trained object's own input width."""
-    if n_in != len(FEATURE_NAMES):
+    if n_in != len(feats.names):
         sys.exit(f"{what} expects {n_in} features but common.py declares "
-                 f"{len(FEATURE_NAMES)} -- {model_dir} is a different feature set.")
+                 f"{len(feats.names)} -- {model_dir} is a different feature set.")
 
 
-def check_model_dir(model_dir):
+def check_model_dir(model_dir, feats=STAGE1):
     """check_feature_stamp plus the DNN-specific scaler and input-layer checks.
 
     Returns the loaded state dict, so the file that was checked is the file loaded.
     """
-    check_feature_stamp(model_dir)
+    check_feature_stamp(model_dir, feats)
+    n = len(feats.names)
 
     mean = np.load(f"{model_dir}/scaler_mean.npy")
     scale = np.load(f"{model_dir}/scaler_scale.npy")
-    if mean.size != len(FEATURE_NAMES) or scale.size != len(FEATURE_NAMES):
-        sys.exit(f"scaler size {mean.size}/{scale.size} != {len(FEATURE_NAMES)} features "
+    if mean.size != n or scale.size != n:
+        sys.exit(f"scaler size {mean.size}/{scale.size} != {n} features "
                  f"in {model_dir} -- the model was trained on a different feature set.")
 
     state = torch.load(f"{model_dir}/phipimu_model.pt", map_location="cpu")
-    check_n_features(model_dir, state["net.0.weight"].shape[1], "model input layer")
+    check_n_features(model_dir, state["net.0.weight"].shape[1], "model input layer", feats)
     return state

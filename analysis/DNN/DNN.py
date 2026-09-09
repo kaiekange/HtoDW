@@ -61,7 +61,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_curve, roc_auc_score
 
 import common
-from common import FEATURE_NAMES, SIGNALS
+from common import SIGNALS
 
 # ========= 1. 配置 =========
 # Feature set, preprocessing, network and the background table all live in
@@ -71,14 +71,28 @@ if len(sys.argv) not in (2, 3):
              f"<{'|'.join(common.TRAININGS)}> [seed]")
 BKG = sys.argv[1]
 cfg = common.resolve(BKG)          # validates before anything is created on disk
+feats = cfg["features"]
 SEED = int(sys.argv[2]) if len(sys.argv) == 3 else common.SEED_DEFAULT
 
 out_dir = common.out_dir_for(BKG, tool="DNN", seed=SEED)
 os.makedirs(out_dir, exist_ok=True)
 print(f"Background: {BKG} ({cfg['label']}), seed={SEED} -> {out_dir}")
+print(f"Feature set: {cfg['feature_set']} ({len(feats.names)} features)")
 
 rng = np.random.default_rng(SEED)
 torch.manual_seed(SEED)
+
+# A stage-2 config pre-filters its training rows on a stage-1 score cut. Resolve the
+# threshold once here and stamp it -- it is the definition of the training
+# population, not just provenance, and it moves if stage-1 is ever re-scored.
+STAGE1_CUT = None
+if cfg.get("stage1_cut"):
+    _thr, _nsig = common.stage1_threshold(cfg["stage1_cut"])
+    STAGE1_CUT = dict(cfg["stage1_cut"], thr=_thr)
+    with open(f"{out_dir}/stage1_filter.txt", "w") as _f:
+        for _k, _v in {**STAGE1_CUT, "n_sig_rows": _nsig}.items():
+            _f.write(f"{_k} {_v}\n")
+    print(f"Stage-1 pre-filter: {cfg['stage1_cut']['key']} score_dsmu > {_thr:.6f}")
 
 # Every panel's CMS stamp follows the background: real data gets "Preliminary" and
 # data=True, simulation gets "Simulation" and data=False. Hardcoding it is what made
@@ -98,7 +112,8 @@ print(f"Loading signal ({'+'.join(SIGNALS)})...")
 # is also what makes the weight impossible to lose -- it travels with the rows.
 sig_X, sig_w = [], []
 for name in SIGNALS:
-    x, ex = common.load(name, truth_filter=True, extra_branches=("Lumi_reweight",))
+    x, ex = common.load(name, feats=feats, truth_filter=True, stage1=STAGE1_CUT,
+                        extra_branches=("Lumi_reweight",))
     sig_X.append(x)
     sig_w.append(ex["Lumi_reweight"])
 X_sig = np.vstack(sig_X)
@@ -118,12 +133,13 @@ print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_no
 # fraction varies 3.4x across the jet bins, so no per-file constant survives a selection.
 bkg_X, bkg_w = [], []
 for name, wgt in cfg["samples"].items():
+    load_kw = dict(feats=feats, ss=cfg["ss"], parity=cfg["parity"],
+                   gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT)
     if cfg["weighted"]:
-        x, ex = common.load(name, ss=cfg["ss"], parity=cfg["parity"],
-                            extra_branches=("Lumi_reweight",))
+        x, ex = common.load(name, extra_branches=("Lumi_reweight",), **load_kw)
         bkg_w.append(ex["Lumi_reweight"])
     else:
-        x, _ = common.load(name, ss=cfg["ss"], parity=cfg["parity"])
+        x, _ = common.load(name, **load_kw)
         bkg_w.append(np.full(len(x), wgt))
     bkg_X.append(x)
 X_bkg = np.vstack(bkg_X)
@@ -138,7 +154,7 @@ w = np.concatenate([w_sig, w_bkg])
 
 # ========= 4. 预处理：sentinel 规整 + 有限值过滤 + 特征变换 =========
 # One shared implementation (common.preprocess) so predict.py cannot drift from it.
-X, mask = common.preprocess(X)
+X, mask = common.preprocess(X, feats)
 X, y, w = X[mask], y[mask], w[mask]
 print(f"After finite filter: {X.shape}")
 
@@ -146,7 +162,7 @@ print(f"After finite filter: {X.shape}")
 # common.neutralize). The feature COUNT is unchanged, so the scaler, the input layer
 # and the feature_names.txt stamp stay valid and predict.py needs no special case
 # beyond applying the identical blanking -- which it does, from the same config.
-_blanked = common.neutralize(X, cfg.get("neutralize", ()))
+_blanked = common.neutralize(X, cfg.get("neutralize", ()), feats)
 if _blanked:
     print(f"Neutralised {len(_blanked)} feature(s) to a constant: {', '.join(_blanked)}")
 
@@ -155,7 +171,7 @@ if _blanked:
 # 2J simply having more events). Only meaningful when the samples carry unequal
 # weights -- the SS-data config is a single sample at weight 1.
 if cfg["weighted"]:
-    jet30_idx = FEATURE_NAMES.index("num_jets_pt30")
+    jet30_idx = feats.names.index("num_jets_pt30")
     check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
     print(f"[check] weighted <num_jets_pt30> for background = {check:.3f} "
           f"(raw-concat would be ~1.55)")
@@ -200,13 +216,13 @@ X_bkg_plot, w_bkg_plot = X[y == 0], w[y == 0]
 
 with PdfPages(common.fig_path("training", "variable_comparison.pdf",
                               key=BKG, tool="DNN", seed=SEED)) as pdf:
-    for page_start in range(0, len(FEATURE_NAMES), PER_PAGE):
-        page_feats = FEATURE_NAMES[page_start:page_start + PER_PAGE]
+    for page_start in range(0, len(feats.names), PER_PAGE):
+        page_feats = feats.names[page_start:page_start + PER_PAGE]
         fig, axes = plt.subplots(N_ROWS, N_COLS, figsize=(25, 20))
         axes_flat = axes.flatten()
         for i, feat in enumerate(page_feats):
             ax = axes_flat[i]
-            fi = FEATURE_NAMES.index(feat)
+            fi = feats.names.index(feat)
             s_vals, b_vals = X_sig_plot[:, fi], X_bkg_plot[:, fi]
             lo, hi = np.percentile(np.concatenate([s_vals, b_vals]), [1, 99])
             if lo == hi:
@@ -365,9 +381,9 @@ print("Saved results.png")
 
 # ========= 15. 特征重要性 =========
 print("Computing feature importance...")
-importances = np.zeros(len(FEATURE_NAMES))
+importances = np.zeros(len(feats.names))
 model.eval()
-for i in range(len(FEATURE_NAMES)):
+for i in range(len(feats.names)):
     X_perm = X_test.copy()
     X_perm[:, i] = rng.permutation(X_perm[:, i])
     with torch.no_grad():
@@ -377,10 +393,10 @@ for i in range(len(FEATURE_NAMES)):
 np.save(f"{out_dir}/feature_importances.npy", importances)
 sorted_idx = np.argsort(importances)
 colors = ["firebrick" if importances[i] > 0 else "steelblue" for i in sorted_idx]
-fig, ax = plt.subplots(figsize=(8, len(FEATURE_NAMES) * 0.3))
+fig, ax = plt.subplots(figsize=(8, len(feats.names) * 0.3))
 ax.barh(range(len(sorted_idx)), importances[sorted_idx], color=colors)
 ax.set_yticks(range(len(sorted_idx)))
-ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=11)
+ax.set_yticklabels([feats.names[i] for i in sorted_idx], fontsize=11)
 ax.set_xlabel("AUC drop when feature permuted")
 ax.axvline(0, color="black", linewidth=0.8, linestyle="--")
 cms_label(ax)
@@ -395,5 +411,5 @@ torch.save(model.state_dict(), f"{out_dir}/phipimu_model.pt")
 # Stamp the exact feature list (and order) this model was trained on. predict.py
 # refuses to score against a dir whose stamp disagrees with common.py -- without it,
 # a feature added or reordered later would silently produce wrong scores.
-common.save_feature_names(out_dir)
-print(f"Done. ({len(FEATURE_NAMES)} features, background={BKG})")
+common.save_feature_names(out_dir, feats)
+print(f"Done. ({len(feats.names)} features, background={BKG})")

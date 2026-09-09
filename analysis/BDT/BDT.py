@@ -53,7 +53,7 @@ import joblib
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "DNN"))
 import common
-from common import FEATURE_NAMES, SIGNALS
+from common import SIGNALS
 
 # ========= 1. 配置 =========
 # Feature set, preprocessing, selection and the background table all live in
@@ -63,13 +63,26 @@ if len(sys.argv) not in (2, 3):
              f"<{'|'.join(common.TRAININGS)}> [seed]")
 BKG = sys.argv[1]
 cfg = common.resolve(BKG)          # validates before anything is created on disk
+feats = cfg["features"]
 SEED = int(sys.argv[2]) if len(sys.argv) == 3 else common.SEED_DEFAULT
 
 out_dir = common.out_dir_for(BKG, tool="BDT", seed=SEED)
 os.makedirs(out_dir, exist_ok=True)
 print(f"Background: {BKG} ({cfg['label']}), seed={SEED} -> {out_dir}")
+print(f"Feature set: {cfg['feature_set']} ({len(feats.names)} features)")
 
 rng = np.random.default_rng(SEED)
+
+# A stage-2 config pre-filters its training rows on a stage-1 score cut. Resolve the
+# threshold once and stamp it -- it is the definition of the training population.
+STAGE1_CUT = None
+if cfg.get("stage1_cut"):
+    _thr, _nsig = common.stage1_threshold(cfg["stage1_cut"])
+    STAGE1_CUT = dict(cfg["stage1_cut"], thr=_thr)
+    with open(f"{out_dir}/stage1_filter.txt", "w") as _f:
+        for _k, _v in {**STAGE1_CUT, "n_sig_rows": _nsig}.items():
+            _f.write(f"{_k} {_v}\n")
+    print(f"Stage-1 pre-filter: {cfg['stage1_cut']['key']} score_dsmu > {_thr:.6f}")
 
 # Every panel's CMS stamp follows the background: real data gets "Preliminary" and
 # data=True, simulation gets "Simulation" and data=False. This file used to hardcode
@@ -90,7 +103,8 @@ print(f"Loading signal ({'+'.join(SIGNALS)})...")
 # is also what makes the weight impossible to lose -- it travels with the rows.
 sig_X, sig_w = [], []
 for name in SIGNALS:
-    x, ex = common.load(name, truth_filter=True, extra_branches=("Lumi_reweight",))
+    x, ex = common.load(name, feats=feats, truth_filter=True, stage1=STAGE1_CUT,
+                        extra_branches=("Lumi_reweight",))
     sig_X.append(x)
     sig_w.append(ex["Lumi_reweight"])
 X_sig = np.vstack(sig_X)
@@ -107,12 +121,13 @@ print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_no
 # fraction varies 3.4x across the jet bins, so no per-file constant survives a selection.
 bkg_X, bkg_w = [], []
 for name, wgt in cfg["samples"].items():
+    load_kw = dict(feats=feats, ss=cfg["ss"], parity=cfg["parity"],
+                   gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT)
     if cfg["weighted"]:
-        x, ex = common.load(name, ss=cfg["ss"], parity=cfg["parity"],
-                            extra_branches=("Lumi_reweight",))
+        x, ex = common.load(name, extra_branches=("Lumi_reweight",), **load_kw)
         bkg_w.append(ex["Lumi_reweight"])
     else:
-        x, _ = common.load(name, ss=cfg["ss"], parity=cfg["parity"])
+        x, _ = common.load(name, **load_kw)
         bkg_w.append(np.full(len(x), wgt))
     bkg_X.append(x)
 X_bkg = np.vstack(bkg_X)
@@ -127,7 +142,7 @@ w = np.concatenate([w_sig, w_bkg])
 
 # ========= 3. 预处理：sentinel 规整 + 有限值过滤 + 特征变换 =========
 # The same common.preprocess DNN.py trains with and predict.py scores with.
-X, mask = common.preprocess(X)
+X, mask = common.preprocess(X, feats)
 X, y, w = X[mask], y[mask], w[mask]
 print(f"After finite filter: {X.shape}")
 
@@ -135,7 +150,7 @@ print(f"After finite filter: {X.shape}")
 # physical jet-bin mixture, not the raw event-count one. Only meaningful when the
 # samples carry unequal weights -- the SS-data config is a single sample at weight 1.
 if cfg["weighted"]:
-    jet30_idx = FEATURE_NAMES.index("num_jets_pt30")
+    jet30_idx = feats.names.index("num_jets_pt30")
     check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
     print(f"[check] weighted <num_jets_pt30> for background = {check:.3f} "
           f"(raw-concat would be ~1.55)")
@@ -144,13 +159,24 @@ np.save(f"{out_dir}/X_sig.npy", X[y == 1])
 np.save(f"{out_dir}/X_bkg.npy", X[y == 0])
 
 # ========= 4. 训练权重 =========
-# Identical to DNN.py: the mixture WITHIN each class is physical (DsW:DsstW by
-# production size, jet bins by cross section), then the two classes are scaled to
-# equal total weight, so signal:background in the loss is 1:1 by construction.
-w_train = np.empty_like(w)
+# The mixture WITHIN each class is physical (DsW:DsstW by production size, jet bins
+# by cross section), then the two classes are scaled to equal total weight, so
+# signal:background in the loss is 1:1 by construction.
+#
+# |w|, not w: an amcatnloFXFX background (WtoLNu2Jets_GenTag here) carries negative
+# gen weights -- 27% of the post-stage-1 modes-1-5 rows. XGBoost's hist DMatrix
+# rejects negative sample_weight outright ("Weights must be positive values"), and a
+# per-event P(class|x) fit has no use for the NLO subtraction term anyway. Training
+# on |w| keeps every row (N_eff 3.6k -> 13k) at the cost of a slightly conservative
+# background shape. The SIGNED weight is what gets saved for downstream yields/FOM
+# (w_test.npy below) -- only the fit sees |w|. Signal weights are positive (relative
+# luminosity), so abs is a no-op there. DNN.py keeps signed w: torch BCE does not
+# validate, so its wjets model silently trained on ~15% negatives.
+aw = np.abs(w)
+w_train = np.empty_like(aw)
 sig_m = y == 1
-w_train[sig_m] = w[sig_m] / w[sig_m].sum()
-w_train[~sig_m] = w[~sig_m] / w[~sig_m].sum()
+w_train[sig_m] = aw[sig_m] / aw[sig_m].sum()
+w_train[~sig_m] = aw[~sig_m] / aw[~sig_m].sum()
 for cls in (0, 1):
     m = y == cls
     w_train[m] *= len(y) / 2 / w_train[m].sum()
@@ -175,13 +201,13 @@ X_bkg_plot, w_bkg_plot = X[y == 0], w[y == 0]
 
 with PdfPages(common.fig_path("training", "variable_comparison.pdf",
                               key=BKG, tool="BDT", seed=SEED)) as pdf:
-    for page_start in range(0, len(FEATURE_NAMES), PER_PAGE):
-        page_feats = FEATURE_NAMES[page_start:page_start + PER_PAGE]
+    for page_start in range(0, len(feats.names), PER_PAGE):
+        page_feats = feats.names[page_start:page_start + PER_PAGE]
         fig, axes = plt.subplots(N_ROWS, N_COLS, figsize=(25, 20))
         axes_flat = axes.flatten()
         for i, feat in enumerate(page_feats):
             ax = axes_flat[i]
-            fi = FEATURE_NAMES.index(feat)
+            fi = feats.names.index(feat)
             s_vals, b_vals = X_sig_plot[:, fi], X_bkg_plot[:, fi]
             lo, hi = np.percentile(np.concatenate([s_vals, b_vals]), [1, 99])
             if lo == hi:
@@ -205,13 +231,10 @@ print("Saved variable_comparison.pdf")
 
 # ========= 7. 训练 =========
 print("\nStart training...")
+hp = common.BDT_PARAMS[cfg["feature_set"]]
+print(f"XGBoost hyperparameters ({cfg['feature_set']}): {hp}")
 model = xgb.XGBClassifier(
-    n_estimators=2000,
-    max_depth=5,
-    learning_rate=0.05,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_weight=10,
+    **hp,
     eval_metric="auc",
     early_stopping_rounds=30,
     random_state=SEED,
@@ -295,10 +318,10 @@ print("Saved results.png")
 importances = model.feature_importances_
 np.save(f"{out_dir}/feature_importances.npy", importances)
 sorted_idx = np.argsort(importances)
-fig, ax = plt.subplots(figsize=(8, len(FEATURE_NAMES) * 0.3))
+fig, ax = plt.subplots(figsize=(8, len(feats.names) * 0.3))
 ax.barh(range(len(sorted_idx)), importances[sorted_idx], color="steelblue")
 ax.set_yticks(range(len(sorted_idx)))
-ax.set_yticklabels([FEATURE_NAMES[i] for i in sorted_idx], fontsize=11)
+ax.set_yticklabels([feats.names[i] for i in sorted_idx], fontsize=11)
 ax.set_xlabel("XGBoost feature importance (gain)")
 cms_label(ax)
 plt.tight_layout()
@@ -313,5 +336,5 @@ joblib.dump(model, f"{out_dir}/bdt_model.pkl")
 # refuses to score against a dir whose stamp disagrees with common.py -- without it,
 # a feature added or reordered later would silently produce wrong scores. This guard
 # is what makes wiring BDT into common.py safe.
-common.save_feature_names(out_dir)
-print(f"Done. ({len(FEATURE_NAMES)} features, background={BKG}, seed={SEED})")
+common.save_feature_names(out_dir, feats)
+print(f"Done. ({len(feats.names)} features, background={BKG}, seed={SEED})")
