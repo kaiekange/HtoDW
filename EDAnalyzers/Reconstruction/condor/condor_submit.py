@@ -17,7 +17,7 @@ import os
 import re
 import subprocess
 
-GROUPSIZE = 5   # ~5 PAT files (16k events) per job; 2-thread nano ~= few min/file
+GROUPSIZE = 10  # PAT files per job; 2-thread nano ~1 min/file + ~2 min startup
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ERA = {
