@@ -2,6 +2,9 @@
 *.log
 *.txt
 analysis/**/crab_*
+EDAnalyzers/**/crab_*
+EDAnalyzers/**/crabConfig.py
+EDAnalyzers/**/crab/generated
 **/__pycache__
 **/kakang.cc
 **/condor_logs

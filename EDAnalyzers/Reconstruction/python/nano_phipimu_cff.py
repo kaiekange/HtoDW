@@ -676,18 +676,21 @@ phipimuCandGenTagTable = simpleSingletonCandidateFlatTableProducer.clone(
 )
 
 
-def customise(process, tuplizer="nominal"):
+def customise(process, tuplizer="nominal", is_data=False):
     """Wire the custom candidate path into an already-loaded standard-NANO process.
 
     tuplizer = "nominal" -> phipimuCand (HDsPhiPiMuProducer) + phipimuCandTable
     tuplizer = "gentag"  -> phipimuCandGenTag (HDsPhiPiMuGenTagProducer) + phipimuCandGenTagTable
+    is_data  = True      -> skip sumw_step entirely: data has no gen weight / genWeightsTable
+               (built on process.nanoSequence, not nanoSequenceMC, which never loads it).
 
     - phipimu_step: <producer> -> bestPhiPiMuCand (filter, highest Ds_pt) -> <table>.
       NanoAODOutputModule writes only events that pass this path.
-    - sumw_step: genWeightsTable alone, SCHEDULED and unfiltered, so its produce() runs for
-      every event and Runs-tree genEventSumw/genEventCount is the luminosity denominator over
-      ALL generated events (stock nanoSequenceMC runs it as an unscheduled Task module, which
-      would only fire for events whose output is kept -> undercounts the denominator).
+    - sumw_step (MC only): genWeightsTable alone, SCHEDULED and unfiltered, so its produce()
+      runs for every event and Runs-tree genEventSumw/genEventCount is the luminosity
+      denominator over ALL generated events (stock nanoSequenceMC runs it as an unscheduled
+      Task module, which would only fire for events whose output is kept -> undercounts the
+      denominator).
     - the standard per-event nano tables stay unscheduled: they run only for the events the
       output keeps, saving the table CPU on the ~90% of events the filter drops.
     """
@@ -697,11 +700,14 @@ def customise(process, tuplizer="nominal"):
         prod_name, table = "phipimuCand", process.phipimuCandTable
     else:
         raise ValueError("tuplizer must be 'nominal' or 'gentag', got %r" % tuplizer)
+    if is_data and tuplizer == "gentag":
+        raise ValueError("GenTag producer reads prunedGenParticles -- meaningless on data")
     prod = getattr(process, prod_name)
 
     process.bestPhiPiMuCand.src = cms.InputTag(prod_name)
     process.phipimu_step = cms.Path(prod + process.bestPhiPiMuCand + table)
-    process.sumw_step = cms.Path(process.genWeightsTable)
+    if not is_data:
+        process.sumw_step = cms.Path(process.genWeightsTable)
 
     for outName in ("NANOAODSIMoutput", "NANOAODoutput"):
         if hasattr(process, outName):
@@ -716,6 +722,7 @@ def customise(process, tuplizer="nominal"):
                 idx = i + 1
                 break
         process.schedule.insert(idx, process.phipimu_step)
-        process.schedule.insert(idx, process.sumw_step)
+        if not is_data:
+            process.schedule.insert(idx, process.sumw_step)
 
     return process
