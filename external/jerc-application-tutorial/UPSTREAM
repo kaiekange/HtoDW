@@ -1,0 +1,10 @@
+Source : https://gitlab.cern.ch/cms-analysis/jme/jerc-application-tutorial
+Commit : 60281d1527be8b1b4b7d392bffc7d23a5e4d5c03
+Copied : 2026-09-15  (unmodified files; directory depth kept because the modules
+         open ../../JecConfigAK4.json, ../../JvmConfig.json, ../../jer_smear.json.gz
+         relative to ApplyOnNanoAOD/ForPythonUser)
+Files  : ApplyOnNanoAOD/ForPythonUser/{JecApplication,JecConfigReader,JvmApplication,
+         JvmConfigReader,CollectJetMet,ColumnarHelper,PrintHelper}.py
+         JecConfigAK4.json JvmConfig.json jer_smear.json.gz README.md
+Not copied: applyJecAndJvm*.py, ApplicationHelper, BuildJecSystPass, InputNanoReader,
+         OutputHistWriter (full tutorial driver; need ROOT/tqdm), AK8 config, C++ sources.

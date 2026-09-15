@@ -1,0 +1,4 @@
+condor_logs/
+__pycache__/
+*.pyc
+*.root
