@@ -112,7 +112,76 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-08-17 ~ 08-24)
+## Last Session (2026-09-16)
+
+> 08-25 ~ 09-15 这几次 session 没有写进本文件，记录在 memory：postEE 信号生产
+> `[[project_signal_postee_production]]`、Samples 合并 `[[project_samples_merge_era_branch]]`、
+> pileup/era 定案 `[[project_era_pileup_mismodelling]]`、GenTag `[[project_h_phipimu_gentag]]`、
+> 两级 MVA 与 V3 gate `[[project_stage2_resonant_classifier]]`、NanoAOD 迁移与 corrections
+> `[[project_nanoaod_migration]]` / `[[project_corrections_pilot_implementation]]`。
+
+### 两级 MVA：2D working point 扫描 + stage-1 种子耦合（详见 `[[project_stage2_resonant_classifier]]`）
+
+**架构不变**：考虑过 3-class classifier，最后决定保留两个二分类（stage-1 ssdata DNN、stage-2 wjetsres BDT）。
+原因是 non-resonant 本底靠 sideband 拟合、resonant 本底的峰在 blind SR 里只能靠 MC，两条轴要能分开调；
+另外 3-class 会在 SS data 和 W+jets MC 两个背景类之间学出一条没有物理意义的 data/MC 边界。
+stage-2 继续在 WP1=90% 的预选上训练。之后只会往更紧切，所以都在它的训练分布之内。
+
+**`analysis/macros/fom_scan_stage2d.py`**：WP1 0.90→0.30、WP2 0.95→0.50，step 0.05，WP2 是**条件效率**
+（在已过 WP1 的信号上取分位数，所以 ε_tot=ε₁·ε₂）。
+每种 FOM 定义出一张图（`ε/√B`、`ε/(1.5+√B)` × B 取 OS sideband 或 GenTag MC），每格写 FOM 和 ε_tot。
+- **B = OS data sideband：FOM 对 WP2 单调下降**，看起来 stage-2 没用。这是结构性的：WP2 砍的是 SR 里的真 Ds/D 峰，
+  sideband 看不到。WP1=90% 那一行，WP2 从 0.95 收到 0.50，B_res 降 8.6 倍，sideband 只降 2.8 倍。
+- **B = GenTag MC：有平台**，范围 WP1 0.40-0.55 × WP2 0.65-0.80，ε/√B≈0.022，平台内格子差 1-2%。
+- 两张图该信哪张，取决于最终本底是拟合 data sideband 还是用 MC 形状。这个前提问题**还没定**。
+
+**暂定 WP：WP1=50% + WP2=75% → ε_tot=37%**。`analysis/macros/draw_wp_mass.py [WP1] [WP2]` 画 Ds_mass 和 phi_mass。
+phi_mass 那个 panel 也要挖掉 Ds SR 里的事例，因为 blind 是按事例来的。
+
+**两条设计说法做了实测**：WP1=90% 确实砍掉 modes 1-5 的 79.75%（weighted）。
+过 cut 和没过 cut 的事例在 stage-2 特征上的分布差异，**只集中在 3 个 isolation 特征**（AUC 0.75-0.78），其余 8 个 ≤0.56。
+
+**stage-1 种子耦合（本次主结论）**：
+- Set A：stage-1 固定 seed42，stage-2 换三个 seed。
+- Set B：stage-1 DNN 换三个 seed（新配置 `wjetsres_s1seed{101,102,103}`），各用自己的 ε90 阈值（0.9452 / **0.9630** / 0.9467），stage-2 固定 seed42。
+
+在 WP1=50%/WP2=75%、OS data sideband 上数（ε_tot 六个模型都在 0.372-0.374，已按定义对齐）：
+
+| | ε_bkg | 相对散布 |
+|---|---|---|
+| A, OS data | 0.0264% ± 0.0001% | 0.43% |
+| B, OS data | 0.0279% ± 0.0017% | 5.97% |
+| A, W+jets weighted | 0.0329% ± 0.0007% | 2.13% |
+| B, W+jets weighted | 0.0329% ± 0.0022% | 6.69% |
+
+**换 stage-1 种子带来的 ~6% 散布，是 stage-2 自身种子噪声的 5-14 倍**，data 和 MC 结论一致。
+机制是 WP1 阈值只是某一个种子的分位数，阈值边界附近的事例集合会随种子换血（ε90 时 Jaccard 0.75）。
+**还没定**：stage-1 要不要做多种子平均。
+
+**九个 pileup 对照模型已删**：`ssdata_noiso*` / `nojet*` / `nobjet` / `nonearjet`，common.py 配置和 EOS 上约 46 GB 一起删了，数字只剩 memory。
+
+**遗留疑问 `Ds_nearestjet_dR`**：没排除 Ds 自己所在的 jet（jet loop 无 pt 下限，Ds 的 track 本身会聚成 jet）。
+它本来设计成跟 bscore 配对，但 stage-2 只用了 dR。它进 MVA 只是过了 `screen_new_jet_vars.py` 的经验筛选，
+没论证过它在测什么，很可能跟 isolation 重复。**没实测**。
+
+### 我犯的错（都被用户指出）
+
+1. **重任务在交互节点本地跑**（3 个 BDT + 1 个 DNN）。应该用 DNN/BDT 的 `condor_submit.py <key> [seed]`。
+   本地单跑 `BDT.py` 不会打分，后来只能补 `predict.py`；还覆盖了 0909 留下的 `wjetsres_f11_wp90_seed101`。
+2. **没查旧产物就断言"stage-2 噪声底从没量过"**。0909 在 4 个 seed 上量过 AUC RMS 0.003。
+3. **比较种子散布的方法反复改口**。一开始用 `BDT.py` log 里的 rejection 表比，那是按 SEED 切出来的 20% test split，
+   每个 seed 的测试集都不一样；接着套 1/√N 当下限又得出相反结论。**正确做法是固定 WP、在同一份没参与训练的 OS data 上数，
+   用 Set A 自己的散布当噪声参照。**
+4. stage-1 还没跑完就先交了 stage-2 的种子研究，顺序反了（stage-2 依赖 stage-1 的 Prediction）。
+
+### 下一步
+
+- 决定最终本底方案（sideband 拟合还是 MC 形状），这一步决定用哪张 FOM 图选 WP
+- 决定 stage-1 要不要多种子平均；平均的话 WP1 阈值和 stage-2 训练集都要重定
+- 查 `Ds_nearestjet_dR`：dR<0.05 的比例、跟 isolation 的相关性、去掉它重训的影响
+- 以上都是修正前（pre-correction）样本上的结论，换到 NanoMVA 样本后要重验
+
+## 上一 Session (2026-08-17 ~ 08-24)
 
 ### 全样本重产：tuplizer 加两个分支、树路径统一、data/W+jets 两个 era 全上
 
