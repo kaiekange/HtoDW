@@ -365,29 +365,6 @@ WJETS_JET_BINS = (0, 1, 2)
 #   simulation gets "Simulation"/data=False. The pre-refactor v3 run stamped every
 #   panel "Simulation" while training against real SS data; that is the bug this
 #   field exists to prevent.
-# Feature groups used by the pileup control models below. Named here rather than
-# inline in TRAININGS so the era-shift macro and the training config cannot disagree
-# about what "the isolation features" means.
-#
-# ISO_ACTIVITY: everything that measures how busy the event is around the candidate.
-# This is where pileup enters, and it holds the three largest data-vs-MC era residuals
-# (Ds_IsoR04_sumPUPt 0.276, sumNeutralHadronEt 0.180, n_b_jets_loose_dR04 0.141;
-# see macros/draw_era_feature_shift.py).
-#
-# VTX_IP: displacement observables. They also carry a measurable era residual
-# (Ds_prob 0.082, the *_ipsig 0.056-0.078) because pileup degrades the primary vertex,
-# but they are the analysis's core discriminants, so they are neutralised only in the
-# second, more aggressive control.
-#
-# MET is deliberately in NEITHER: its residual is 0.009-0.029, and it carries real
-# W -> mu nu information, so removing it would weaken the classifier for no pileup reason.
-ISO_ACTIVITY = ("Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
-                "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt", "Ds_IsoR04_RelIso",
-                "Ds_IsoR03_RelIso", "mu_IsoR04_RelIso", "num_jets", "num_jets_pt30",
-                "jet_ht", "jet_leadpt", "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
-                "Ds_nearestjet_dR", "Ds_nearestjet_bscore")
-VTX_IP = ("Ds_prob", "Ds_ipsig", "Ds_ipxysig", "Kp_ipsig", "Km_ipsig", "pi_ipsig",
-          "mu_ipsig", "Kp_ipxysig", "Km_ipxysig", "pi_ipxysig")
 
 
 TRAININGS = {
@@ -484,66 +461,35 @@ TRAININGS = {
     ),
 }
 
-# Pileup control models. Same samples and same 43 inputs as "ssdata"; the listed
-# features are blanked to a constant so the network cannot use them. They exist to
-# answer one question: if the classifier cannot see the mismodelled pileup information,
-# does the postEE/preEE data asymmetry go away?
-#
-# Two of them, because a null result from the first alone would be ambiguous -- the
-# vertex/IP features carry a smaller but real era residual and could route the same
-# information through. Reading agreed in advance:
-#   noiso alone fixes it        -> the mechanism is the isolation/jet group
-#   only noiso_novtx fixes it   -> it travels mainly through the vertex/IP observables
-#   neither fixes it            -> pileup is not the main cause and the diagnosis is wrong
-#
-# 2026-09-09: noiso alone already fixed it (post/pre back to ~1.0). These three narrow
-# it down within the isolation block itself -- how few of the six Ds isolation inputs
-# have to be removed before the asymmetry returns:
-#   noiso6  the six Ds isolation variables (the four sums plus both RelIso)
-#   noiso4  only the four raw sums
-#   noiso3  only three sums, keeping sumChargedHadronPt (the strongest discriminant)
-_ISO6 = ("Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
-         "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt", "Ds_IsoR04_RelIso",
-         "Ds_IsoR03_RelIso")
-_ISO4 = _ISO6[:4]
-_ISO3 = ("Ds_IsoR04_sumNeutralHadronEt", "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt")
-
-# 2026-09-09 pt.2: the mirror experiment -- blanking only the Ds isolation got to 0.87,
-# not 1.0, so the jet half of ISO_ACTIVITY carries the rest. These keep all seven
-# isolation inputs and blank the jet-related eight in subsets:
-#   nojet     all eight (jet multiplicity/HT, both b-jet counts, both nearest-jet)
-#   nojet4    only jet multiplicity + HT + leading pt
-#   nobjet    only the two b-jet counts
-#   nonearjet only the two Ds-nearest-jet variables
-_JET8 = ("num_jets", "num_jets_pt30", "jet_ht", "jet_leadpt",
-         "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
-         "Ds_nearestjet_dR", "Ds_nearestjet_bscore")
-_JET4 = _JET8[:4]
-_BJET = ("n_b_jets_loose_dR04", "n_b_jets_medium_dR04")
-_NEARJET = ("Ds_nearestjet_dR", "Ds_nearestjet_bscore")
-for _name, _drop in (("ssdata_noiso", ISO_ACTIVITY),
-                     ("ssdata_noiso_novtx", ISO_ACTIVITY + VTX_IP),
-                     ("ssdata_noiso6", _ISO6),
-                     ("ssdata_noiso4", _ISO4),
-                     ("ssdata_noiso3", _ISO3),
-                     ("ssdata_nojet", _JET8),
-                     ("ssdata_nojet4", _JET4),
-                     ("ssdata_nobjet", _BJET),
-                     ("ssdata_nonearjet", _NEARJET)):
-    TRAININGS[_name] = dict(TRAININGS["ssdata"], neutralize=_drop,
-                            label=f"Data SS [{_name.replace('ssdata_', '')}]",
-                            out_name=f"dsw_dsstw_{_name}_f43",
-                            out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f43")
+# Stage-2 seed-coupling check (2026-09-16): "wjetsres" above always conditions on
+# stage-1 SEED 42's WP1=90% threshold, regardless of what seed stage-2 itself trains
+# with -- so a stage-2 seed-spread study run behind it only measures stage-2's own
+# training noise, not the fact that a different stage-1 seed passes a ~25%-different
+# set of events at the same nominal WP1=90% (Jaccard 0.75, vs 1.09% on the aggregate
+# yield -- membership, not yield, is what defines stage-2's training population).
+# These three entries are identical to "wjetsres" except stage1_cut points at a
+# different stage-1 seed's own Prediction/ dir and threshold; train stage-2 behind
+# each (itself at seed=42, so only the stage-1 side varies) and compare the resulting
+# rejection spread to the fixed-stage-1 spread already measured from wjetsres seeds
+# 101/102/103. Requires dsw_dsstw_ssdata_f43_seed{101,102,103} to exist first.
+for _s1seed in (101, 102, 103):
+    _name = f"wjetsres_s1seed{_s1seed}"
+    TRAININGS[_name] = dict(
+        TRAININGS["wjetsres"],
+        stage1_cut=dict(key="ssdata", tool="DNN", seed=_s1seed, eff_sig=0.90),
+        label=f"W+jets resonant (GenTag 1-5, post stage-1 seed{_s1seed} 90%)",
+        out_name=f"dsw_dsstw_{_name}_f11_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f11_wp90",
+    )
 
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
 
 # Every config resolves to a FeatureSpec and an output score-branch name. Existing
 # entries omit both and get the stage-1 defaults; a stage-2 entry sets feature_set
-# and score_branch explicitly. Done here (after the pileup-control loop above builds
-# its nine dict() copies) so all entries are covered uniformly. Not `.get()` at the
-# call site: a future entry that forgets score_branch should fail loudly rather than
-# silently write into stage-1's "score_dsmu".
+# and score_branch explicitly. Not `.get()` at the call site: a future entry that
+# forgets score_branch should fail loudly rather than silently write into stage-1's
+# "score_dsmu".
 for _c in TRAININGS.values():
     _c.setdefault("feature_set", "f43")
     _c["features"] = FEATURE_SETS[_c["feature_set"]]
@@ -775,9 +721,9 @@ def neutralize(X, cols, feats=STAGE1):
     the scaler size, the input-layer width and the feature_names.txt stamp all stay at
     43, so every drift guard and every downstream consumer keeps working untouched.
     Deleting columns instead would mean a per-training feature list threaded through
-    every call site -- which is now exactly what FeatureSpec does, but neutralize
-    stays column-blanking so the nine ssdata_* pileup-control models on EOS (trained
-    against this behaviour) are not silently invalidated.
+    every call site -- which is now exactly what FeatureSpec does. The nine ssdata_*
+    pileup-control models that used this were removed (config and EOS) on 2026-09-16;
+    no current TRAININGS entry sets `neutralize`.
 
     The constant is a literal 0.0, NOT the column mean. That distinction is the whole
     correctness argument: predict.py must feed the network exactly what training fed it,
