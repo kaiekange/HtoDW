@@ -437,6 +437,37 @@ TRAININGS = {
         out_name="dsw_dsstw_wjetsres_f10_wp90",
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f10_wp90",
     ),
+    "wjetsres_nostage1": dict(
+        # Comparison arm for Step 4 of the NanoMVA migration plan: same background
+        # population (WtoLNu2Jets_merged, cand_gen_mode in {1,2,3,4,5}) and the same
+        # prodtopo_v1 feature set as "wjetsres" above, but stage1_cut=None -- trains
+        # on ALL of modes 1-5, not just the 20% that survives stage-1 at eff_sig=0.90.
+        # Tests whether pre-filtering on stage-1 helps stage-2 learn the production-
+        # topology problem, or whether it just throws away training statistics stage-2
+        # could have used.
+        #
+        # stage1_cut=None means common.load()/predict.py read WtoLNu2Jets_merged
+        # straight from SAMPLES_DIR, with NO dependency on any stage-1 model existing
+        # or having been scored -- this config can train and be scored independently
+        # of "ssdata"/stage-1, in parallel. The cost: its own Prediction/ files carry
+        # score_dsmu_res but NOT score_dsmu (stage-1's score never enters this path),
+        # so the joint stage-1 x stage-2 rejection has to be recovered later by
+        # joining this config's Prediction/WtoLNu2Jets_merged.root against stage-1's
+        # own Prediction/WtoLNu2Jets_merged.root on (run, luminosityBlock, event) --
+        # not by reading through stage-1's directory the way "wjetsres" does.
+        samples={"WtoLNu2Jets_merged": 1.0},   # unused when weighted=True
+        ss=False,
+        parity=None,
+        weighted=True,
+        gen_mode_filter=(1, 2, 3, 4, 5),
+        stage1_cut=None,
+        feature_set="prodtopo_v1",
+        score_branch="score_dsmu_res",
+        label="W+jets resonant (GenTag 1-5, no stage-1 pre-filter)",
+        is_data=False,
+        out_name="dsw_dsstw_wjetsres_nostage1_f10",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_nostage1_f10",
+    ),
 }
 
 # Stage-2 seed-coupling check (2026-09-16): "wjetsres" above always conditions on

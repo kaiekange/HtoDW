@@ -157,15 +157,29 @@ KeyError 的真 bug**：`FEATURE_SETS` key 改名后 `_c.setdefault("feature_set
 (旧样本本身)按用户要求保留未删。**当前没有任何训练好的 stage-1/stage-2
 模型**，下一步 Step 3/4 重训是硬性前提。
 
+### Step 3 + Step 4(b) 已提交 condor
+
+Step 3(`condor_submit.py ssdata`, DNN, cluster 12662682 →
+`MVA/DNN/dsw_dsstw_ssdata_f41`)已提交。
+
+Step 4 两种训练总体对比里，变体 (b)(全部 GenTag mode 1-5、不做 stage-1 预筛)
+已提交(`condor_submit.py wjetsres_nostage1`, BDT, cluster 12662683 →
+`MVA/BDT/dsw_dsstw_wjetsres_nostage1_f10`)。**实现方式比原计划简单**：用户
+问"不依赖 WP1 的训练是不是也可以现在就跑"，想清楚后发现不需要之前设计的
+"`stage1_cut` 指向 stage-1 但 `eff_sig`≈1.0 冒充不预筛"这个绕法——直接
+`stage1_cut=None` 就行，`load()`/`predict.py` 会完全绕开 stage-1、直接读
+`SAMPLES_DIR`，训练和打分都不用等 stage-1。代价是这个变体自己的 Prediction
+文件没有 `score_dsmu`，以后算联合拒绝率要拿 `(run,luminosityBlock,event)`
+事后关联 stage-1 自己的 Prediction 文件，不是现在就耦合。
+
+变体 (a)(依赖 stage-1 `score_dsmu>thr` 预筛，`TRAININGS["wjetsres"]`)必须等
+Step 3 跑完、stage-1 把 WtoLNu2Jets_merged 打分完才能提交。
+
 ### 下一步
 
-- Step 3：`condor_submit.py ssdata` 重训 stage-1，重新扫工作点。
-- Step 4：`condor_submit.py wjetsres` 重训 stage-2，**用户要求对比两种训练
-  总体**：(a) 先过 stage-1 eff_sig=0.90 再训 vs (b) 全部 GenTag mode 1-5
-  不预筛。(b) 的实现打算复用 `stage1_cut` 机制但把 `eff_sig` 设成接近 1.0
-  (让训练时的 score_dsmu>thr 过滤退化成 no-op)，而不是改 `load()`/`predict.py`
-  的 API，这样 predict 阶段 `score_dsmu` 仍能直通、联合拒绝率算得出来——这个
-  决定还没有实际写进 `TRAININGS`。
+- 等两个 condor job 跑完。
+- Step 3 跑完后提交变体 (a)：`condor_submit.py wjetsres`(BDT)。
+- 两个变体都跑完后对比 N_eff/AUC/OS sideband 拒绝率。
 - Step 5：closure 检查 + 更新这个文件。
 
 ## 上一 Session (2026-09-16 晚 ~ 09-17)
