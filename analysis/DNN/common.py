@@ -34,14 +34,16 @@ import torch.nn as nn
 import uproot
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from eras import (B_VETO_BRANCH, ERAS, LEPTON_BRANCHES,  # noqa: F401  (re-exported)
-                  SIGNAL_ERA_WEIGHT, TAG_TO_ERA)
+from eras import B_VETO_BRANCH, ERAS, LEPTON_BRANCHES, TAG_TO_ERA  # noqa: F401  (re-exported)
 
+# MVA_ROOT still holds model output (DNN/, BDT/) and figures -- only the sample source
+# moved. NanoMVA/Samples/ is the custom-NanoAOD + POG-corrections production
+# (make_samples_nano.py), which replaced the private-tuplizer MVA/Samples/ production
+# as of the 2026-09-17 migration (project_nano_merged_samples memory). The old
+# MVA/Samples/*.root files are left on disk (not deleted) for reference, but nothing
+# in this module reads them any more.
 MVA_ROOT = "/eos/home-k/kakang/H2DW/Analysis/MVA"
-# Moved out of MC/2022/ on 2026-08-24: this directory holds real data as well as MC,
-# so living under MC/ was a misnomer, and it is an MVA input rather than a tuplizer
-# output. analysis/Samples/{run.sh,condor_submit.py} write here -- keep all three in step.
-SAMPLES_DIR = f"{MVA_ROOT}/Samples"
+SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
 MVA_DIR = f"{MVA_ROOT}/DNN"
 TREE = "Events"
 
@@ -50,6 +52,19 @@ TREE = "Events"
 # phi_mass / Ds_mass to R^2 = 0.98 / 0.94, which would sculpt the resonance peaks
 # used for the final fit. Dsmu_mass is a feature here, not a fit variable -- it has
 # no resonant peak, and keeping it out of the fit is what lets Ds_pt stay in the MVA.
+#
+# NanoMVA migration (2026-09-17): every feature that has a POG-corrected counterpart
+# in NanoMVA/Samples/ now uses it (met_pt_corr, W_tmass_corr, num_jets_pt30_corr,
+# Dsmu_pt_corr, Dsmu_eta_corr, Dsmu_mass_corr, mu_pt_corr, jet_leadpt_corr), per the
+# 0916 "default to corrected quantities" convention (feedback_corrected_by_default
+# memory). jet_ht and num_jets (the two no-pt-threshold sums) are DROPPED outright,
+# not given a same-threshold corrected replacement -- there isn't one: the custom
+# NanoAOD Jet table only stores jets with pt > 15 GeV (jme_corrections.py docstring),
+# so 9.6% of the old jet_ht (the sub-15-GeV tail) is permanently unrecoverable from
+# any stored branch, corrected or not, and num_jets is the same problem at threshold
+# zero. Swapping in a different-threshold corrected variable (jet_ht_pt20_corr,
+# num_jets_pt30_corr is already a separate feature below) would silently change what
+# is being tested, so it was rejected rather than substituted. 43 features -> 41.
 FEATURE_NAMES = [
     # lifetime / vertex -- prompt-from-H vs displaced-from-B (the real-Ds background)
     "Ds_ipsig",
@@ -81,6 +96,8 @@ FEATURE_NAMES = [
     # isolation -- the components, not just RelIso. sumChargedHadronPt is the single
     # strongest variable against every background (AUC 0.91 vs TT): a Ds buried in a
     # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
+    # No corrected counterpart exists for any of these (isolation sums are not JES/JER
+    # quantities), so they are unchanged from the pre-migration feature set.
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
@@ -89,18 +106,21 @@ FEATURE_NAMES = [
     "Ds_IsoR03_RelIso",
     "mu_IsoR04_RelIso",
     # MET / event. num_jets_pt20..pt60 are near-duplicates (AUC all ~0.80), so only
-    # one threshold is kept; num_jets (no threshold) adds the soft-jet activity.
-    "met_pt",
+    # one threshold is kept -- and that threshold's corrected counterpart is what is
+    # used (num_jets_pt30_corr). num_jets (no threshold) is dropped, see the module
+    # comment above.
+    "met_pt_corr",
     "met_sig",
     "met_sumEt",
-    "W_tmass",
-    "num_jets",
-    "num_jets_pt30",
-    # Ds + mu kinematics -- hard from a 125 GeV H vs soft inside a jet
+    "W_tmass_corr",
+    "num_jets_pt30_corr",
+    # Ds + mu kinematics -- hard from a 125 GeV H vs soft inside a jet. Ds_pt/mu_eta
+    # have no corrected counterpart (the muon correction only rescales pt, not
+    # direction; Ds_pt is a decay-vertex-fit quantity JME does not touch).
     "Ds_pt",
-    "Dsmu_pt",
-    "Dsmu_eta",
-    "mu_pt",
+    "Dsmu_pt_corr",
+    "Dsmu_eta_corr",
+    "mu_pt_corr",
     "mu_eta",
     "dR_Ds_mu",
     "dR_Kp_mu",
@@ -108,19 +128,16 @@ FEATURE_NAMES = [
     "dR_pi_mu",
     "dR_phi_mu",
     # Ds+mu mass: H-mass constrained for signal, continuum for background
-    "Dsmu_mass",
+    "Dsmu_mass_corr",
     # --- jet/b-tag environment, added 2026-08-03, re-screened 2026-08-10 for the
     # SS-background switch (screen_new_jet_vars.py, b-veto applied, SS as the
     # reference instead of W+jets MC -- see new_jet_vars_screening.png).
     "Ds_nearestjet_bscore",
     "Ds_nearestjet_dR",
-    "jet_leadpt",
-    # jet_ht: against W+jets MC this scored ~0 importance and was dropped 2026-08-04
-    # -- W+jets has no tt-like hadronic activity to separate from. Against SS data
-    # it keeps a real (if reduced post-veto) shape difference from signal, so it's
-    # back in. jet_ht_pt20 is the same variable at a second threshold, dropped as a
-    # near-duplicate (same precedent as num_jets_pt20..pt60 above).
-    "jet_ht",
+    "jet_leadpt_corr",
+    # jet_ht dropped outright (see module comment above) rather than moved to
+    # jet_ht_pt20_corr, a different threshold -- unlike num_jets_pt30 above, jet_ht had
+    # no same-threshold corrected sibling already occupying a second feature slot.
     # n_b_jets_{loose,medium}_dR04: dropped 2026-08-04 after ranking dead last
     # (41st/42nd of 42, importance 0.0016/0.0020) against W+jets MC -- which has no
     # extra soft b-jet activity to distinguish. Re-added: against SS (the actual
@@ -128,6 +145,8 @@ FEATURE_NAMES = [
     # that never showed up against W+jets. jet_maxbscore was also re-checked and
     # dropped again -- its pre-veto separation turned out to come almost entirely
     # from events the tight b-veto already removes, so little is left post-veto.
+    # No corrected counterpart in NanoMVA/Samples/ (jet-quality counts, not JES/JER
+    # quantities), so unchanged.
     "n_b_jets_loose_dR04",
     "n_b_jets_medium_dR04",
 ]
@@ -148,7 +167,6 @@ LOG_FEATURES = [
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
     "Ds_IsoR04_sumPUPt",
-    "jet_ht",
 ]
 
 # Sentinel handling -- needed here but NOT in the BDT: trees just split around a
@@ -157,11 +175,13 @@ LOG_FEATURES = [
 # ("no jet nearby" / "tagger gave nothing"), keeping the input bounded.
 #   Ds_nearestjet_bscore  -777 (no jet) and ~-10 (tagger unavailable, ~14% of rows)
 #   Ds_nearestjet_dR      -777 (no jet)  -> far away
-#   jet_leadpt            -777 (no jet)  -> zero pt
+#   jet_leadpt_corr       -777 (no jet)  -> zero pt (same sentinel semantics as the
+#                          pre-migration jet_leadpt; apply_corrections.py writes NULL
+#                          = -777.0 for an event with no tight jet, same convention)
 SENTINEL_FIX = {
     "Ds_nearestjet_bscore": -0.1,   # just below the [0,1] tagger range
     "Ds_nearestjet_dR": 5.0,        # beyond any real dR in the sample
-    "jet_leadpt": 0.0,
+    "jet_leadpt_corr": 0.0,
 }
 
 # Exactly one tight muon in the event (the best muon itself, no extra of either
@@ -173,8 +193,9 @@ SENTINEL_FIX = {
 # redundant. Tight WP keeps 99.3% of signal while removing 25% of data; dR04
 # matches the AK4 jet cone radius. See BDT/BDT.py for the full reasoning.
 # Defined in analysis/eras.py, which imports nothing heavy, so the pure-uproot
-# producers (highest_pt_dedup.py, make_samples.py) can share these names instead of
-# hand-copying them -- this module pulls in torch, which they must not.
+# producers (make_samples_nano.py) can share these names instead of hand-copying
+# them -- this module pulls in torch, which they must not. B_VETO_BRANCH is
+# n_bjet_corr as of the NanoMVA migration -- see eras.py for why.
 B_VETO = B_VETO_BRANCH
 SELECTION = [*LEPTON_BRANCHES, B_VETO]
 
@@ -192,7 +213,7 @@ class FeatureSpec:
     nn.Linear(n_in, 128) and the feature_names.txt stamp. Reordering it without
     retraining produces garbage scores and raises nothing on its own --
     check_model_dir() / check_feature_stamp() below turn that into a readable
-    failure. `names` is NOT copied, so FEATURE_SETS["f43"].names is FEATURE_NAMES
+    failure. `names` is NOT copied, so FEATURE_SETS["f41"].names is FEATURE_NAMES
     itself and the back-compat shim below cannot drift from it.
 
     `dira` is a feature name or None. None (stage-2 has no `dira`) drops both the
@@ -214,48 +235,54 @@ class FeatureSpec:
 
 
 # Stage-2 (resonant W+jets) production-topology feature set. Branch-backed only.
-# Excludes ALL decay kinematics (would sculpt the fit peaks, same reason as f43)
+# Excludes ALL decay kinematics (would sculpt the fit peaks, same reason as f41)
 # AND all lifetime/IP: W+jets true-Ds is ~89% prompt like signal, while the missing
 # tt background is displaced b->Ds, so an IP-heavy stage-2 would rank displaced
 # background HIGHER -- wrong direction. Revisit only with a tt MC sample. Also drops
 # Ds_IsoR04_sumPUPt / sumNeutralHadronEt / sumPhotonEt and n_b_jets_* (pileup
 # sensitive, and the W+jets PU reweight is still provisional). See the stage-2 plan.
+#
+# NanoMVA migration: Dsmu_mass/Dsmu_pt/num_jets_pt30 switched to their _corr
+# counterparts, same as f41 (default-to-corrected convention). jet_ht dropped
+# outright, same reason as f41 -- no same-threshold corrected replacement exists,
+# and it is 11 features -> 10.
 PRODTOPO_V1 = [
     "Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_RelIso", "Ds_IsoR03_RelIso",
     "mu_IsoR04_RelIso",
-    "Dsmu_mass", "Dsmu_pt", "dR_Ds_mu",
-    "met_sumEt", "jet_ht", "num_jets_pt30", "Ds_nearestjet_dR",
+    "Dsmu_mass_corr", "Dsmu_pt_corr", "dR_Ds_mu",
+    "met_sumEt", "num_jets_pt30_corr", "Ds_nearestjet_dR",
 ]
 
 FEATURE_SETS = {
-    "f43": FeatureSpec(FEATURE_NAMES, log=LOG_FEATURES, sentinel=SENTINEL_FIX,
+    "f41": FeatureSpec(FEATURE_NAMES, log=LOG_FEATURES, sentinel=SENTINEL_FIX,
                        dira="dira"),
     "prodtopo_v1": FeatureSpec(
         PRODTOPO_V1,
-        # log1p only the two heavy-tailed inputs; the RelIso / mass / dR / met /
+        # log1p only the one heavy-tailed input; the RelIso / mass / dR / met /
         # jet-count features are already O(1) or bounded.
-        log=["Ds_IsoR04_sumChargedHadronPt", "jet_ht"],
-        # only the "no jet" sentinel survives -- Ds_nearestjet_bscore and jet_leadpt
-        # are not in this set.
+        log=["Ds_IsoR04_sumChargedHadronPt"],
+        # Ds_nearestjet_dR IS in this set (Ds_nearestjet_bscore and jet_leadpt_corr
+        # are not) and needs the same "-777 (no jet) -> far away" sentinel as f41.
         sentinel={"Ds_nearestjet_dR": 5.0},
         dira=None),
 }
 
 # Back-compat shims: the stage-1 macros import these names directly and must keep
-# working untouched. They are the f43 spec's attributes, by identity for `names`.
-STAGE1 = FEATURE_SETS["f43"]
+# working untouched. They are the f41 spec's attributes, by identity for `names`.
+STAGE1 = FEATURE_SETS["f41"]
 LOAD_BRANCHES = STAGE1.load_branches
 DIRA_IDX = STAGE1.dira_idx
 LOG_IDX = STAGE1.log_idx
 
-# XGBoost hyperparameters per feature set. f43 keeps the values tuned for the
-# 43-feature stage-1 problem on a much larger sample (unchanged since 2026-08-14).
-# prodtopo_v1 (stage-2) trains on N_eff ~ O(10^3) background with 11 features, so it
+# XGBoost hyperparameters per feature set. f41 keeps the values tuned for the
+# (pre-migration 43-, now 41-) feature stage-1 problem on a much larger sample
+# (unchanged since 2026-08-14 -- two fewer features does not warrant a re-tune).
+# prodtopo_v1 (stage-2) trains on N_eff ~ O(10^3) background with 10 features, so it
 # is shallower and more regularised: depth 3, larger min_child_weight. n_estimators
 # raised 800 -> 1500 on 2026-09-09: the first seed-42 run hit the 800 cap without
 # early-stopping (val AUC still rising ~1e-4/round at round 799), i.e. underfit.
 BDT_PARAMS = {
-    "f43": dict(n_estimators=2000, max_depth=5, learning_rate=0.05,
+    "f41": dict(n_estimators=2000, max_depth=5, learning_rate=0.05,
                 subsample=0.8, colsample_bytree=0.8, min_child_weight=10),
     "prodtopo_v1": dict(n_estimators=1500, max_depth=3, learning_rate=0.03,
                         subsample=0.7, colsample_bytree=0.9, min_child_weight=40,
@@ -267,84 +294,38 @@ BDT_PARAMS = {
 # DNN.py because out_dir_for() needs it to decide when to add a _seed suffix.
 SEED_DEFAULT = 42
 
-# Both signal channels, each event at weight 1. The two productions were sized in
-# proportion to their cross sections (500 vs ~992 PAT files, N_processed 1.60M vs
-# 2.98M = 1:1.86 after the 2026-08-17 reproduction), so N_gen is already
-# proportional to sigma x BR and the
-# equivalent-luminosity weight per event is the same for both -- concatenating them
-# reproduces the physical DsW:DsstW mixture, and their selection efficiencies are
-# near identical anyway (9.32% vs 9.49%), so it survives the selection too.
-# If the two channels ever need genuinely unequal weights, put them here.
-# The _2022 suffix is the era tag, added 2026-08-24 to match the Data_2022 /
-# Data_2022EE convention.
+# Signal is ONE file (NanoMVA/Samples/Signal_merged.root) since the 2026-09-17 NanoMVA
+# migration, not two per-channel files -- DsW/DsstW are now a `channel` BRANCH
+# (0/1) inside it, same as era. SIGNALS stays a list (not a bare string) because every
+# consumer (stage1_threshold(), DNN.py, BDT.py) already loops `for name in SIGNALS`
+# to concatenate signal pieces; a one-element list keeps that loop unchanged.
 #
-# postEE signal MC arrived 2026-09-03 and is ADDED here, not substituted. The two eras
-# were generated with the same event count (DsW 1.6M, DsstW 3M each), so N_gen carries
-# no era information and the weight is purely the luminosity ratio:
-#
-#     w_postEE / w_preEE = 26.68 / 7.99 = 3.3392
-#
-# preEE stays at 1.0 as the anchor -- signal is not on an absolute scale anyway (the
-# backgrounds carry sigma*L/sum(w) while signal is per-event 1.0), so the anchor choice
-# is physically arbitrary and this one leaves every preEE-based result undisturbed.
-# The channel-relative factor stays 1.0: N_gen/BR is 1.000e11 for both DsW (1.6M /
-# 1.6e-5) and DsstW (3M / 3.0e-5), so N_gen is proportional to sigma x BR by construction
-# and the two channels are already correctly mixed at equal weight.
-#
-# This closes the era bias documented on TRAININGS below: weighted, the signal is now
-# 23.0% preEE / 77.0% postEE, matching the background's 77% postEE.
-#
-# NOTE the weight lives ONLY here -- the four Samples/ files are indistinguishable on
-# disk (no Lumi_reweight branch, by the --no-lumi-weight convention), so any macro that
-# reads them without going through SIGNALS sees both eras at equal weight, with no error.
-# 2026-09-04: era is a BRANCH now, not a filename suffix, and the era weight is a
-# Lumi_reweight COLUMN in the file rather than a value in this dict. So SIGNALS is a
-# plain list of the two channels -- one file each, both eras inside.
-#
-# This is what closes the hazard the previous comment ended on: the weight used to
-# live only here, so a macro reading the files directly saw both eras at equal weight
-# with no error. It cannot now -- the weight travels with the rows.
-#
-# Read the weight with common.load(..., extra_branches=("Lumi_reweight",)). For signal
-# it is RELATIVE (era 1 = 1.0, era 2 = L2/L1), not an absolute yield; see eras.py.
-SIGNALS = ["HtoDsW", "HtoDsstW"]
+# The weight is now ABSOLUTE (sigma*L/sum(w) per (channel, era) piece, computed by
+# make_samples_nano.py), not the old RELATIVE anchored-at-era-1 SIGNAL_ERA_WEIGHT --
+# see eras.py. It already encodes the correct DsW:DsstW and preEE:postEE mixture, so
+# there is no separate per-channel or per-era factor to apply here any more; read it
+# with common.load(..., extra_branches=("weight",)).
+SIGNALS = ["Signal_merged"]
 
-# Everything in Samples/, i.e. everything predict.py scores. ONE list, imported by both
-# DNN/predict.py and BDT/predict.py -- they used to keep separate literal copies that
-# BDT's comment claimed were "identical to the list in DNN/predict.py" while being 13
-# samples short, which is why the BDT could not reproduce the DNN's signal definition.
-# make_samples.py asserts its table matches this, so the producer and the consumer
-# cannot drift either.
+# Everything in NanoMVA/Samples/, i.e. everything predict.py scores. ONE list,
+# imported by both DNN/predict.py and BDT/predict.py so they cannot drift apart (see
+# the historical note in project_samples_merge_era_branch memory -- BDT used to carry
+# a 13-sample-short hand copy).
 #
-# The four axes that are still FILENAMES rather than branches, and must stay that way:
-# OS vs SS (different candidate reconstructions, 12.9% event overlap), incl vs the jet
-# bins (alternative descriptions of one process, never components), GenTag (the same
-# events as the bins, different branch set), and the process itself.
-ALL_SAMPLES = [
-    "HtoDsW", "HtoDsstW",
-    "Data", "Data_SS",
-    "WtoLNu2Jets", "WtoLNu2Jets_SS",
-    "WtoLNu2Jets_incl", "WtoLNu2Jets_incl_SS",
-    "WtoLNu2Jets_GenTag",
-]
+# OS vs SS stay separate FILES (different candidate reconstructions, ~13% event
+# overlap in the pre-migration samples) -- everything else that used to be a
+# filename axis (channel, era, jet_bin, GenTag's cand_gen_mode) is now a BRANCH
+# inside one of these four files.
+ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "Data_OS_merged", "Data_SS_merged"]
 
-# WtoLNu2Jets is split into three jet-multiplicity bins of the SAME physical process.
-# The bins are a `jet_bin` BRANCH since the 2026-09-04 merge, so this is the list of bin
-# ids -- not a weight table.
-#
-# The weight table that used to live here (WJETS_WEIGHTS: three sigma*L/N constants, one
-# per preEE bin, applied uniformly) was deleted with the per-bin files on 2026-09-04. It
-# was wrong twice over: (a) the samples carry a per-event gen_weight (amcatnloFXFX, two
-# valued +-|w|) and the negative fraction varies 3.4x across bins, so no single constant
-# per bin can reproduce the post-selection yield -- old and new agree only on the TOTAL,
-# diverging by (1-2f)/(1-2f_sel) once anything is cut; and (b) it only ever had preEE
-# keys, so every macro that iterated it was silently preEE-only even after the postEE
-# jet bins landed in Samples/ on 2026-08-25.
-#
-# The weight now travels with the rows: read Lumi_reweight from the file.
+# WtoLNu2Jets_merged holds all three jet-multiplicity bins of the SAME physical
+# process as a `jet_bin` branch, and its per-event `weight` column already carries
+# the amcatnloFXFX sign and the correct sigma*L/sum(w) normalization -- no per-bin
+# weight table exists or is needed (see the pre-migration WJETS_WEIGHTS post-mortem
+# in project_genweight_missing memory for why a per-bin constant cannot work at all).
 WJETS_JET_BINS = (0, 1, 2)
 
-# The two background configurations. `_f43` is a feature-set generation tag: a
+# The two background configurations. `_f41` is a feature-set generation tag: a
 # future feature change gets its own suffix rather than clobbering these.
 #
 # out_name vs out_dir: `out_name` is the bare directory name, which out_dir_for()
@@ -354,7 +335,7 @@ WJETS_JET_BINS = (0, 1, 2)
 #   check_os_minus_ss, compare_models, draw_score_os_ss, draw_lepton_bjet_vs_cut),
 #   so it is kept, not renamed. The two must agree; the assertion below enforces it.
 #
-# parity: SS data holds out the odd-event_id half so a later sculpting check on
+# parity: SS data holds out the odd-event half so a later sculpting check on
 #   Data_2022_SS is not circular (train-set self-validation). W+jets gets None on
 #   purpose -- it has no such check to protect, and the original 40-feature v2 used
 #   no parity split either. Adding one would change two things at once relative to
@@ -369,81 +350,78 @@ WJETS_JET_BINS = (0, 1, 2)
 
 TRAININGS = {
     "ssdata": dict(
-        # Both eras of SS data, at weight 1.0 each: data carries no luminosity weight, and
-        # more SS statistics is exactly what the 70%-working-point study identified as the
-        # bottleneck (2026-08-14: ~94 hard events of training equivalent at eps_sig=70%).
+        # NanoMVA migration (2026-09-17): file renamed Data_SS -> Data_SS_merged, still
+        # one file with both eras inside (era branch). Data carries no luminosity
+        # weight (weight is 1.0 for every row by the production convention), so the
+        # `weighted=False` / flat-1.0 behavior below is unaffected by the migration.
         #
-        # The era-imbalance bias noted here on 2026-08-21 is GONE, and this comment used to
-        # claim otherwise long after it stopped being true -- it said the signal was 100%
-        # preEE, which was correct only until the postEE signal MC was produced (2026-08-25
-        # .. 09-04) and merged into Samples/. Measured 2026-09-08, the era composition of the
-        # two training classes is identical to the decimal:
-        #     signal (weighted by Lumi_reweight, which is what training uses)  23.2% / 76.8%
-        #     background Data_SS at parity=0                                   23.2% / 76.8%
-        # so era carries no class information and there is nothing for the network to gain
-        # by learning it. DNN.py reads the signal's Lumi_reweight unconditionally; the
-        # `weighted` flag below governs only the background branch.
+        # Everything below this line describes the pre-migration ssdata/Data_SS.root
+        # measurements (era balance, the pileup-mismodelling bias). Re-measure after
+        # the first post-migration retrain -- the corrections pipeline now includes a
+        # proper w_pu_nom weight, which did not exist when this was written, and the
+        # underlying jet/MET quantities changed (see project_nanoaod_migration and
+        # project_corrections_pilot_implementation memory).
         #
-        # THE BIAS THAT IS REAL is a different one, and it does not need any era imbalance:
-        # signal is MC and background is real data, so every data/MC mismodelling is a free
-        # discriminant. Pileup is the measured case -- <Ds_IsoR04_sumPUPt> is 9.65 GeV in
-        # signal MC versus 11.99 (preEE) / 14.03 (postEE) GeV in data, and no pileup
-        # reweighting exists anywhere in this analysis. Because the MC is era-flat while the
-        # data is not, the gap is 4% in preEE and 22% in postEE, which is why the DNN cut
-        # removes ~25-38% more postEE data than preEE data. See the memory note
-        # project_era_pileup_mismodelling and analysis/macros/check_era_split.py.
-        #
-        # One file, both eras inside (era branch). Data carries no luminosity weight,
-        # so the two eras really are at weight 1.0 each -- nothing is lost by merging.
-        samples={"Data_SS": 1.0},
+        # More SS statistics is exactly what the 70%-working-point study identified as
+        # the bottleneck (2026-08-14: ~94 hard events of training equivalent at
+        # eps_sig=70%). Measured 2026-09-08 (pre-migration), the era composition of the
+        # two training classes was identical to the decimal (23.2%/76.8% both), so era
+        # carried no class information. THE BIAS THAT WAS REAL: signal is MC and
+        # background is real data, so every data/MC mismodelling is a free
+        # discriminant -- pileup was the measured case (<Ds_IsoR04_sumPUPt> 9.65 GeV MC
+        # vs 11.99/14.03 GeV preEE/postEE data, no pileup reweighting existed anywhere).
+        # See project_era_pileup_mismodelling and analysis/macros/check_era_split.py.
+        samples={"Data_SS_merged": 1.0},
         ss=True,
         parity=0,
         weighted=False,          # real data: no per-process lumi reweighting
         label="Data SS",
         is_data=True,
-        out_name="dsw_dsstw_ssdata_f43",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f43",
+        out_name="dsw_dsstw_ssdata_f41",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f41",
     ),
     "wjets": dict(
-        # One file, both eras and all three jet bins inside. `weighted=True` means the
-        # weight is read per event from the file's Lumi_reweight rather than taken from
-        # this dict -- which is what replaces the deleted WJETS_WEIGHTS constants, and
-        # is the fix the 2026-08-21 note asked for before these models are retrained.
-        # The value here is unused when weighted=True; it stays 1.0 for shape.
-        samples={"WtoLNu2Jets": 1.0},
+        # One file, both eras and all three jet bins inside (WtoLNu2Jets_merged, was
+        # WtoLNu2Jets pre-migration). `weighted=True` reads the per-event `weight`
+        # column (was `Lumi_reweight`) -- sigma*L/sum(w), carrying the amcatnloFXFX
+        # sign. The value here is unused when weighted=True; it stays 1.0 for shape.
+        samples={"WtoLNu2Jets_merged": 1.0},
         ss=False,
         parity=None,
         weighted=True,
         label="W+jets MC",
         is_data=False,
-        out_name="dsw_dsstw_wjets_f43",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f43",
+        out_name="dsw_dsstw_wjets_f41",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f41",
     ),
     "wjetsres": dict(
         # Stage 2 of the two-stage MVA: signal MC vs W+jets RESONANT background (real
-        # D/Ds), which the stage-1 f43 classifier cannot remove -- in the f43 feature
+        # D/Ds), which the stage-1 f41 classifier cannot remove -- in the f41 feature
         # set a true W+jets Ds->phipi and a true signal Ds->phipi are the same object.
-        # Background = WtoLNu2Jets_GenTag rows with cand_gen_mode in {1,2,3,4,5}
-        # (1-2 true Ds, 3-4 true D, 5 D->Kpipi misID reflection), MC-vs-MC.
+        # Background = WtoLNu2Jets_merged rows with cand_gen_mode in {1,2,3,4,5}
+        # (1-2 true Ds, 3-4 true D, 5 D->Kpipi misID reflection), MC-vs-MC. The
+        # cand_gen_mode branch lives directly in WtoLNu2Jets_merged as of the NanoMVA
+        # migration -- no separate GenTag file/production any more.
         #
         # stage1_cut: training rows must first pass stage-1 at eff_sig -- the 80% of
         # modes 1-5 that stage-1 removes is a DIFFERENT population in the production-
         # topology features stage-2 uses, so training on the unfiltered sample trains
-        # on the wrong problem. eff_sig = 0.90 chosen 2026-09-09 (fom_scan_stage1.py):
-        # the stage-1 FOM is monotone (no interior optimum), so WP1 is set by the
-        # stage-2 training statistics -- eff_sig 0.90 leaves N_eff(modes 1-5) = 3617,
-        # comfortable for an ~11-feature BDT. common.load() reads the training rows
+        # on the wrong problem. eff_sig = 0.90 (pre-migration value, 2026-09-09
+        # fom_scan_stage1.py) -- MUST be re-derived once stage-1 is retrained on the
+        # NanoMVA sample (Step 3 of the migration plan), the training population and
+        # statistics are not the same any more. common.load() reads the training rows
         # from stage-1's Prediction/ dir and applies score_dsmu > threshold; predict.py
         # does the same input redirect but applies NO threshold (cut goes downstream).
         #
-        # feature_set prodtopo_v1: branch-backed production-topology features only.
-        # Excludes ALL lifetime/IP -- W+jets true-Ds is ~89% prompt like signal, the
-        # missing tt background is displaced b->Ds, so an IP-heavy stage-2 would rank
-        # displaced background HIGHER. Revisit only with a tt MC sample.
+        # feature_set prodtopo_v1: branch-backed production-topology features only
+        # (10 as of the migration, jet_ht dropped -- see FEATURE_SETS above). Excludes
+        # ALL lifetime/IP -- W+jets true-Ds is ~89% prompt like signal, the missing tt
+        # background is displaced b->Ds, so an IP-heavy stage-2 would rank displaced
+        # background HIGHER. Revisit only with a tt MC sample.
         #
         # score_branch score_dsmu_res so the stage-1 score_dsmu and this coexist in one
         # Prediction file. Algorithm is BDT (analysis/BDT/) -- N_eff ~ O(10^3), tabular.
-        samples={"WtoLNu2Jets_GenTag": 1.0},   # unused when weighted=True
+        samples={"WtoLNu2Jets_merged": 1.0},   # unused when weighted=True
         ss=False,
         parity=None,
         weighted=True,
@@ -456,8 +434,8 @@ TRAININGS = {
         # DNN-convention path (the out_dir == MVA_DIR/out_name assertion below pins it).
         # A BDT-only entry still needs the field; every stage-2 macro must resolve the
         # real dir with common.out_dir_for("wjetsres", tool="BDT"), never cfg["out_dir"].
-        out_name="dsw_dsstw_wjetsres_f11_wp90",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f11_wp90",
+        out_name="dsw_dsstw_wjetsres_f10_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f10_wp90",
     ),
 }
 
@@ -471,15 +449,18 @@ TRAININGS = {
 # different stage-1 seed's own Prediction/ dir and threshold; train stage-2 behind
 # each (itself at seed=42, so only the stage-1 side varies) and compare the resulting
 # rejection spread to the fixed-stage-1 spread already measured from wjetsres seeds
-# 101/102/103. Requires dsw_dsstw_ssdata_f43_seed{101,102,103} to exist first.
+# 101/102/103. Requires dsw_dsstw_ssdata_f41_seed{101,102,103} to exist first -- the
+# pre-migration f43 seed models this study originally measured were deleted with the
+# rest of the pre-NanoMVA model directories (2026-09-17), so this needs re-running,
+# not just re-pointing.
 for _s1seed in (101, 102, 103):
     _name = f"wjetsres_s1seed{_s1seed}"
     TRAININGS[_name] = dict(
         TRAININGS["wjetsres"],
         stage1_cut=dict(key="ssdata", tool="DNN", seed=_s1seed, eff_sig=0.90),
         label=f"W+jets resonant (GenTag 1-5, post stage-1 seed{_s1seed} 90%)",
-        out_name=f"dsw_dsstw_{_name}_f11_wp90",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f11_wp90",
+        out_name=f"dsw_dsstw_{_name}_f10_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f10_wp90",
     )
 
 for _k, _c in TRAININGS.items():
@@ -491,7 +472,7 @@ for _k, _c in TRAININGS.items():
 # forgets score_branch should fail loudly rather than silently write into stage-1's
 # "score_dsmu".
 for _c in TRAININGS.values():
-    _c.setdefault("feature_set", "f43")
+    _c.setdefault("feature_set", "f41")
     _c["features"] = FEATURE_SETS[_c["feature_set"]]
     _c.setdefault("score_branch", "score_dsmu")
 
@@ -510,7 +491,7 @@ def out_dir_for(key, tool="DNN", seed=None):
     """Model directory for one (background, tool, seed) combination.
 
     seed=None or the default 42 gives the canonical path -- i.e. the existing
-    dsw_dsstw_*_f43 dirs, which the seed-spread study must not touch. Any other
+    dsw_dsstw_*_f41 dirs, which the seed-spread study must not touch. Any other
     seed gets a _seed{N} suffix so several runs of the same config coexist.
     """
     if tool not in TOOLS:
@@ -568,12 +549,12 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
          parity=None, gen_mode_filter=None, stage1=None, extra_branches=()):
     """Load one Samples/ file, apply the analysis selection, return the feature matrix.
 
-    feats:   which FeatureSpec to build the matrix for (default = stage-1 f43).
+    feats:   which FeatureSpec to build the matrix for (default = stage-1 f41).
     era:     keep only this era id (see eras.ERAS). None = every era in the file.
     jet_bin: keep only this jet bin. None = every bin. Errors if the file has no
              jet_bin branch, rather than silently returning everything.
     ss:      select the same-sign muon configuration instead of opposite-sign.
-    parity:  keep only rows with event_id % 2 == parity (None = keep all).
+    parity:  keep only rows with event % 2 == parity (None = keep all).
     gen_mode_filter: keep only rows whose cand_gen_mode is in this iterable (the
              GenTag truth tag). Errors if the file has no cand_gen_mode branch.
     stage1:  a stage1_cut dict {key, tool, seed, thr, ...}. When set, the file is
@@ -588,7 +569,7 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
     if truth_filter:
         branches += ["Ds_match", "mu_match"]
     if parity is not None:
-        branches += ["event_id"]
+        branches += ["event"]
     if era is not None:
         branches += ["era"]
     if jet_bin is not None:
@@ -626,7 +607,7 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
     if truth_filter:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:
-        m &= (a["event_id"] % 2) == parity
+        m &= (a["event"] % 2) == parity
     if era is not None:
         m &= a["era"] == era
     if jet_bin is not None:
@@ -656,7 +637,7 @@ def stage1_threshold(stage1_cut):
     pred = (f"{out_dir_for(stage1_cut['key'], stage1_cut.get('tool', 'DNN'), stage1_cut.get('seed'))}"
             f"/Prediction")
     want = ["score_dsmu", "num_os_mu_tight", "num_ss_mu_tight", B_VETO,
-            "Ds_match", "mu_match", "Lumi_reweight"]
+            "Ds_match", "mu_match", "weight"]
     sc, w = [], []
     for name in SIGNALS:
         with uproot.open(f"{pred}/{name}.root")[TREE] as t:
@@ -664,7 +645,7 @@ def stage1_threshold(stage1_cut):
         m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a[B_VETO] == 0)
              & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool) & (a["score_dsmu"] > -1))
         sc.append(a["score_dsmu"][m])
-        w.append(a["Lumi_reweight"][m])
+        w.append(a["weight"][m])
     sc = np.concatenate(sc)
     w = np.concatenate(w)
     q = 1.0 - stage1_cut["eff_sig"]
@@ -765,8 +746,8 @@ class phipimuNet(nn.Module):
 
 # ========= 防漂移守卫 =========
 # Every guard takes feats=STAGE1 as a DEFAULT. A forgotten feats= on a stage-2 call
-# is safe here BY CONSTRUCTION: every mismatch direction (stage-2 stamp vs f43, or
-# f43 model vs stage-2 spec) is a length or content difference, never a silent pass.
+# is safe here BY CONSTRUCTION: every mismatch direction (stage-2 stamp vs f41, or
+# f41 model vs stage-2 spec) is a length or content difference, never a silent pass.
 FEATURE_FILE = "feature_names.txt"
 
 

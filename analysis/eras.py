@@ -50,22 +50,27 @@ PU_PROFILE = {
     # 3: PU_2023.root, 4: PU_2023BPix.root, 5: PU_2024.root -- present on disk already.
 }
 
-# The relative per-era weight for the signal samples. The two signal productions were
-# generated with the SAME event count in every era (DsW 1.6M, DsstW 3M each), so N_gen
-# carries no era information and the weight is purely the luminosity ratio, anchored on
-# era 1. Derived rather than written out, so it cannot drift from the lumi values above:
-# it used to be the literal 3.3392 in common.py's SIGNALS, which is this number rounded.
-#
-# RELATIVE, NOT ABSOLUTE. Signal is not on an absolute yield scale in this analysis --
-# the backgrounds carry sigma*L/sum(w) while signal is anchored at 1.0 -- so summing
-# these weights does NOT give an expected event count. See make_samples.py's Meta tree,
-# which records weight_mode per file so this distinction is machine-readable.
-SIGNAL_ERA_WEIGHT = {e: ERAS[e]["lumi_pb"] / ERAS[1]["lumi_pb"] for e in ERAS}
+# SIGNAL_ERA_WEIGHT (the relative, anchored-at-era-1 signal weight used by the old
+# MVA/Samples/ pipeline) is GONE as of the NanoMVA migration. The NanoMVA signal
+# (NanoMVA/Samples/Signal_merged.root) carries an ABSOLUTE per-row `weight` column
+# (sigma*L/sum(w), computed per (channel, era) piece by make_samples_nano.py and
+# already including the era-luminosity ratio) -- there is nothing left to multiply by
+# a separate era table, and doing so would double-count the era weighting. See
+# project_nano_merged_samples memory.
 
 # Branch names the row selection is written in terms of. common.py derives its
-# B_VETO / SELECTION from these; highest_pt_dedup.py and make_samples.py use them
-# directly. One definition, two consumers.
-B_VETO_BRANCH = "n_b_jets_tight_dR04"
+# B_VETO / SELECTION from these.
+#
+# B_VETO_BRANCH switched 2026-09-17 from the tuplizer's own raw n_b_jets_tight_dR04
+# (uncorrected jet pt, and for the old MVA/Samples/ production also computed with a
+# per-era b-tag-WP config bug -- DATA_H_phipimu.py never set bScoreWPLoose/Medium/
+# Tight, so old Data.root/Data_SS.root silently used the preEE WP for postEE too) to
+# n_bjet_corr, the corrected-pt/corrected-WP b-veto count apply_corrections.py already
+# computed and used to skim NanoMVA/Samples/ in the first place. Using it here is a
+# no-op re-affirmation of a cut already baked into the file, not a new cut -- see
+# apply_corrections.py's own n_bjet docstring (tight ID, |eta|<2.5, dR(Ds)>0.4, PNet B
+# > era tight WP, corrected pt >= 20).
+B_VETO_BRANCH = "n_bjet_corr"
 LEPTON_BRANCHES = ("num_os_mu_tight", "num_ss_mu_tight")
 
 # The Ds mass window that --blind removes from OS data.

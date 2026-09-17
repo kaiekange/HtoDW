@@ -1,9 +1,9 @@
 """
 DNN: H->Ds(*)W signal (OS) vs one of two background choices, phipimu channel.
 
-    python3 DNN.py ssdata           # background = SS data (Data_2022_SS, even event_id)
+    python3 DNN.py ssdata           # background = SS data (Data_SS_merged, even event)
     python3 DNN.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
-    python3 DNN.py ssdata 101       # same config, different seed -> ..._f43_seed101
+    python3 DNN.py ssdata 101       # same config, different seed -> ..._f41_seed101
 
 The optional seed exists to measure the run-to-run noise floor. Any claim that a
 model change improved background rejection has to clear that floor, and until it
@@ -41,9 +41,9 @@ model and confirming it does not come out looking signal-like.
 Not kept in lockstep with BDT/BDT.py: as of 2026-08-04 the two use different feature
 sets and are not directly comparable. BDT deliberately does not import common.py.
 
-Reads the one-row-per-event Samples tuples directly (flat `Events` tree -- these
-files, produced by highest_pt_dedup.py, carry no embedded Lumi_reweight branch,
-unlike the older 34-background Samples/ files).
+Reads NanoMVA/Samples/ (custom NanoAOD + POG corrections, since the 2026-09-17
+migration -- see common.py). Signal is one file (Signal_merged, both channels and
+eras inside), and every row carries a per-event absolute `weight` column already.
 """
 import sys
 import os
@@ -107,15 +107,17 @@ def cms_label(ax, fontsize=13):
 
 
 print(f"Loading signal ({'+'.join(SIGNALS)})...")
-# The per-era weight is a COLUMN in the file now, not a value in a name->weight dict:
-# one file per channel holds every era, so there is nothing left to key a dict on. This
-# is also what makes the weight impossible to lose -- it travels with the rows.
+# weight is an ABSOLUTE per-row column (sigma*L/sum(w) per (channel, era) piece) as
+# of the NanoMVA migration, not the old relative SIGNAL_ERA_WEIGHT -- it already
+# encodes the correct DsW:DsstW and preEE:postEE mixture. SIGNALS is a one-element
+# list (Signal_merged, both channels/eras inside), the loop is kept so this reads
+# identically to the background loop below.
 sig_X, sig_w = [], []
 for name in SIGNALS:
     x, ex = common.load(name, feats=feats, truth_filter=True, stage1=STAGE1_CUT,
-                        extra_branches=("Lumi_reweight",))
+                        extra_branches=("weight",))
     sig_X.append(x)
-    sig_w.append(ex["Lumi_reweight"])
+    sig_w.append(ex["weight"])
 X_sig = np.vstack(sig_X)
 w_sig = np.concatenate(sig_w)
 
@@ -123,10 +125,10 @@ w_sig = np.concatenate(sig_w)
 # sample at weight 1; the W+jets config is the three jet bins at their
 # equivalent-luminosity weights. Same code path, so nothing but the table differs.
 parity_note = "" if cfg["parity"] is None else (
-    f", event_id parity=={cfg['parity']} only -- the other parity is held out "
+    f", event parity=={cfg['parity']} only -- the other parity is held out "
     f"for a later non-circular sculpting check")
 print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_note})...")
-# weighted=True reads the per-event Lumi_reweight from the file (W+jets: sigma*L/sum(w)
+# weighted=True reads the per-event weight from the file (W+jets: sigma*L/sum(w)
 # carrying gen_weight's sign); weighted=False uses the flat per-sample value from the
 # table (data, which carries no luminosity weight). The W+jets branch used to multiply
 # by three stale per-file constants instead -- wrong, because the amcatnloFXFX negative
@@ -136,8 +138,8 @@ for name, wgt in cfg["samples"].items():
     load_kw = dict(feats=feats, ss=cfg["ss"], parity=cfg["parity"],
                    gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT)
     if cfg["weighted"]:
-        x, ex = common.load(name, extra_branches=("Lumi_reweight",), **load_kw)
-        bkg_w.append(ex["Lumi_reweight"])
+        x, ex = common.load(name, extra_branches=("weight",), **load_kw)
+        bkg_w.append(ex["weight"])
     else:
         x, _ = common.load(name, **load_kw)
         bkg_w.append(np.full(len(x), wgt))
@@ -171,10 +173,10 @@ if _blanked:
 # 2J simply having more events). Only meaningful when the samples carry unequal
 # weights -- the SS-data config is a single sample at weight 1.
 if cfg["weighted"]:
-    jet30_idx = feats.names.index("num_jets_pt30")
+    jet30_idx = feats.names.index("num_jets_pt30_corr")
     check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
-    print(f"[check] weighted <num_jets_pt30> for background = {check:.3f} "
-          f"(raw-concat would be ~1.55)")
+    print(f"[check] weighted <num_jets_pt30_corr> for background = {check:.3f} "
+          f"(compare against the raw-concat mean printed above)")
 
 np.save(f"{out_dir}/X_sig.npy", X[y == 1])
 np.save(f"{out_dir}/X_bkg.npy", X[y == 0])
@@ -231,7 +233,7 @@ with PdfPages(common.fig_path("training", "variable_comparison.pdf",
             ax.hist(b_vals, bins=bins, weights=w_bkg_plot, density=True, alpha=0.6,
                     color="steelblue", label=BKG_LABEL)
             ax.hist(s_vals, bins=bins, weights=w_sig_plot, density=True, alpha=0.6,
-                    color="firebrick", label="HtoDsW+HtoDsstW")
+                    color="firebrick", label="Signal (DsW+DsstW)")
             ax.set_xlabel(feat)
             ax.set_ylabel("a.u.")
             ax.legend(fontsize=13)
@@ -365,7 +367,7 @@ for ax, logy in ((axes[3], False), (axes[4], True)):
     ax.hist(scores[y_test == 0], bins=bins, weights=sw_test[y_test == 0], alpha=0.6,
             color="steelblue", label=BKG_LABEL, density=True)
     ax.hist(scores[y_test == 1], bins=bins, weights=sw_test[y_test == 1], alpha=0.6,
-            color="firebrick", label="HtoDsW+HtoDsstW", density=True)
+            color="firebrick", label="Signal (DsW+DsstW)", density=True)
     ax.set_xlabel("DNN Score"); ax.set_ylabel("a.u."); ax.legend()
     if logy:
         ax.set_yscale("log")

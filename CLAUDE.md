@@ -112,7 +112,63 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-16 晚 ~ 09-17)
+## Last Session (2026-09-17)
+
+### NanoMVA pipeline 迁移 Step 1+2 完成；旧 EOS 模型目录已删(~127G)，当前无可用训练模型
+
+**背景**：signal/data/W+jets 的 NanoMVA/Samples/ 四个文件昨天(0916-17)已产出完成
+(`project_nano_merged_samples` memory)。今天的任务是把两级 MVA(`analysis/DNN/
+common.py` 单一事实来源)从旧私有 tuplizer `MVA/Samples/` 接到这批新样本上。
+计划文件：`~/.claude/plans/custom-nanoaod-data-wjets-eos-home-k-ka-giggly-
+thompson.md`(Step 1-5)。
+
+**Step 1(新旧样本 parity 核对)结论：PASS，过程中一次自我纠错**。写了
+`analysis/macros/check_nano_migration_parity.py`(row-level join，signal 用
+`(channel,era,run,event)` 做 key，1e-6 通过线而不是旧的 1e-9，因为新旧是两条
+独立代码路径不是同代码两次跑)。IP/vertex/isolation/运动学特征在 1e-6 量级吻合；
+`jet_ht`/`num_jets`(无阈值)确认**信息性丢失**——custom NanoAOD 的 Jet 表只存
+pt>15 GeV 的 jet，`jme_corrections.py` 的 docstring 早就测过并写清楚了(这条
+教训：先查项目里有没有现成文档，别重新推导一遍才发现答案已经在那)；
+met_pt/W_tmass/jet_leadpt/num_jets_pt30 换 `_corr` 后跟旧值差 7-11%，确认是
+从私有 JEC 重算换成官方 `jerc-application-tutorial` 链路的方法论差异，不是 bug。
+
+**一次误报又撤回，值得记录方法论教训**：最初怀疑
+`HDsPhiPiMuProducer.cc` 的 jet 循环漏了 `tightId` 过滤，实际是我 grep 时关键词
+写成了旧文件的 `tightJetId`(没匹配到新文件实际用的 `tightId`)，把"没匹配到"
+当成了"代码里没有"，还据此问用户要不要重跑整个 CRAB 生产。用户要求"一行一行
+仔仔细细地看"，完整 Read 三个循环后确认 cut 全部都在。真实发现是另一件事：
+旧版 `DATA_H_phipimu.py` 从未设置 `bScoreWPLoose/Medium/Tight`，**preEE 和
+postEE 数据都**静默套用了 preEE 的 b-tag WP(比 memory 原先记的"只有 postEE
+错"范围更广)；新产出的 `set_btag_wp()` 已经按 era 正确设置。见
+[[feedback_enumerate_all_paths_before_concluding]]。
+
+**Step 2(common.py/eras.py/DNN.py/BDT.py 改造)完成并用真实数据验证**：
+`FEATURE_NAMES` 43→41(删 jet_ht/num_jets，8 个换 `_corr`)；`B_VETO_BRANCH`
+换成 `n_bjet_corr`；`SIGNAL_ERA_WEIGHT` 整个删除(新 signal weight 已是绝对
+σL/Σw)；`SIGNALS` 从两文件变一文件(`channel` 分支区分 DsW/DsstW)；
+`event_id`→`event`、`Lumi_reweight`→`weight`。**过程中抓到一个会在 import 时
+KeyError 的真 bug**：`FEATURE_SETS` key 改名后 `_c.setdefault("feature_set",
+"f43")` 忘了跟着改——光读代码没发现，靠 `python3 -c "import common"` 实测才
+抓到。`predict.py`(DNN/BDT 两个)完全不需要改，走的是通用读取。详见
+[[project_nanomva_pipeline_migration]]。
+
+**旧 EOS 模型目录已删除**(用户明确授权)：`MVA/DNN/`、`MVA/BDT/` 下所有
+`_f43`/`_f11` 系列及更早诊断产物，共 ~127G，两个目录清空。`MVA/Samples/*.root`
+(旧样本本身)按用户要求保留未删。**当前没有任何训练好的 stage-1/stage-2
+模型**，下一步 Step 3/4 重训是硬性前提。
+
+### 下一步
+
+- Step 3：`condor_submit.py ssdata` 重训 stage-1，重新扫工作点。
+- Step 4：`condor_submit.py wjetsres` 重训 stage-2，**用户要求对比两种训练
+  总体**：(a) 先过 stage-1 eff_sig=0.90 再训 vs (b) 全部 GenTag mode 1-5
+  不预筛。(b) 的实现打算复用 `stage1_cut` 机制但把 `eff_sig` 设成接近 1.0
+  (让训练时的 score_dsmu>thr 过滤退化成 no-op)，而不是改 `load()`/`predict.py`
+  的 API，这样 predict 阶段 `score_dsmu` 仍能直通、联合拒绝率算得出来——这个
+  决定还没有实际写进 `TRAININGS`。
+- Step 5：closure 检查 + 更新这个文件。
+
+## 上一 Session (2026-09-16 晚 ~ 09-17)
 
 ### POG corrections 全线跑通：signal+W+jets 两个 era 全部 correction 完成，data D/E/G 完成
 
