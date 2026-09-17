@@ -4,7 +4,7 @@ per-job file list and applies the Golden-JSON lumi mask itself (config.Data.lumi
 this config never lists input files or a lumi mask on its own.
 
 Local smoke test:
-    cmsRun NANO_DATA_H_phipimu.py GLOBALTAG=130X_dataRun3_v2 OUTFILE=file:nano_data.root \
+    cmsRun NANO_DATA_H_phipimu.py GLOBALTAG=130X_dataRun3_v2 YEAR=2022Pre OUTFILE=file:nano_data.root \
         inputFiles=root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/22Sep2023-v1/...
 
 Knobs (VarParsing 'analysis'):
@@ -14,6 +14,7 @@ Knobs (VarParsing 'analysis'):
   OUTFILE    output file (file:...)
   SS         0 | 1   -- same-sign-pi control region (int, not bool: bool reads SS=0 as truthy)
   NTHREADS   cmsRun threads
+  YEAR       2022Pre | 2022Post, required -- Year column of data_2022.txt; picks the ParticleNet WPs
 
 doTruth is forced False and only the nominal (non-GenTag) tuplizer runs: GenTag reads
 prunedGenParticles, which doesn't exist on data. No JOBID/GROUPSIZE/FILELIST here -- CRAB
@@ -30,10 +31,15 @@ options.register('GLOBALTAG', '', VarParsing.multiplicity.singleton, VarParsing.
 options.register('OUTFILE', 'file:nano.root', VarParsing.multiplicity.singleton, VarParsing.varType.string, 'output file')
 options.register('SS', 0, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'same-sign-pi control region (0/1)')
 options.register('NTHREADS', 1, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'cmsRun threads')
+options.register('YEAR', '', VarParsing.multiplicity.singleton, VarParsing.varType.string,
+                 '2022Pre | 2022Post (required) -- the Year column of data_2022.txt; selects the ParticleNet WPs')
 options.parseArguments()
 
 if not options.GLOBALTAG:
     sys.exit("GLOBALTAG is required (see Tuples/Data/DatasetList/data_2022.txt)")
+_YEAR_TO_ERA = {"2022Pre": "2022", "2022Post": "2022EE"}
+if options.YEAR not in _YEAR_TO_ERA:
+    sys.exit("YEAR=%r must be one of %s (Year column of data_2022.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
 
 process = cms.Process('NANO', Run3)
 
@@ -90,6 +96,8 @@ from EDAnalyzers.Reconstruction.nano_phipimu_cff import customise
 process.phipimuCand.sameSignPi = cms.bool(bool(options.SS))
 process.phipimuCand.doTruth = cms.bool(False)
 process = customise(process, tuplizer="nominal", is_data=True)
+from EDAnalyzers.Reconstruction.nano_phipimu_cff import set_btag_wp
+process = set_btag_wp(process, _YEAR_TO_ERA[options.YEAR])  # era ParticleNet WPs, required
 
 from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEarlyDelete
 process = customiseEarlyDelete(process)

@@ -175,16 +175,16 @@ HDsPhiPiMuProducer::HDsPhiPiMuProducer(const edm::ParameterSet &iConfig)
 		: std::vector<std::string>{"pfParticleNetFromMiniAODAK4PuppiCentralDiscriminatorsJetTags:BvsAll"};
 
 	// Working points for counting n_b_jets_{loose,medium,tight} (jets with b-score above
-	// each threshold). MUST be the ParticleNet 2022 loose/medium/tight WPs from the official
-	// BTV recommendation (jsonpog-integration btagging.json) -- the values below are ordered
-	// placeholders. A wrong value silently miscounts n_b_jets (no throw); jet_maxbscore /
-	// Ds_nearestjet_bscore store the raw score and are unaffected. Override in the config.
-	auto bWP = [&](const char *key, double def) {
-		return iConfig.existsAs<double>(key) ? iConfig.getParameter<double>(key) : def;
-	};
-	bScoreWPLoose_  = bWP("bScoreWPLoose",  0.047);
-	bScoreWPMedium_ = bWP("bScoreWPMedium", 0.245);
-	bScoreWPTight_  = bWP("bScoreWPTight",  0.6734);
+	// each threshold): the ParticleNet L/M/T WPs of the era, from BTV btagging.json
+	// (particleNet_wp_values). REQUIRED, no default -- they are era-dependent (2022:
+	// 0.0470/0.2450/0.6734, 2022EE: 0.0499/0.2605/0.6915) and the config sets them per YEAR.
+	// Until 2026-09-15 this read existsAs<double>(...) with the 2022 values as defaults, but
+	// fillDescriptions never declared the parameters, so the config could not override them
+	// at all ("Illegal parameter") and every 2022EE output silently counted n_b_jets with the
+	// 2022 WPs. Declared required in fillDescriptions now, so a missing WP fails loud.
+	bScoreWPLoose_  = iConfig.getParameter<double>("bScoreWPLoose");
+	bScoreWPMedium_ = iConfig.getParameter<double>("bScoreWPMedium");
+	bScoreWPTight_  = iConfig.getParameter<double>("bScoreWPTight");
 
 	// Electron ID names for the ss/os electron counts (via electron.electronID(name) > 0.5).
 	// Names are era-specific (2022 defaults below); a wrong name throws at runtime (fail
@@ -681,7 +681,18 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 	for (Int_t idx_mu = 0; idx_mu < static_cast<Int_t>(MuonHandle->size()); idx_mu++)
 	{
 		const pat::Muon &muon = (*MuonHandle)[idx_mu];
-		if (muon.pt() < 26) continue;  // above the HLT_IsoMu24 turn-on, on the trigger plateau
+		// Pre-cut on the UNCORRECTED pt, deliberately below the analysis cut. Was 26 until
+		// 2026-09-14, then 20, now 24. The analysis requires CORRECTED pt > 26 offline (26 = MUO trigger-SF pt
+		// floor, flow=error) -- every consumer of this nano MUST apply that cut, or events whose
+		// best muon is below the trigger plateau leak in.
+		// Why a margin is needed at all: the official MuonScaRe nominal correction leaves
+		// pt < 26 untouched (pt_scale / pt_resol low_pt_threshold = 26), so nominal cannot move
+		// a muon up across 26; but pt_scale_var (the scale systematic) has no threshold and
+		// shifts any pt by up to 0.028 GeV at pt~26, so a 26 pre-cut would under-populate the
+		// scale-up variation. 24 GeV (set 2026-09-15) leaves a 2 GeV margin and matches the
+		// HLT_IsoMu24 threshold. If MUO ever lowers low_pt_threshold below 26, nominal corrections
+		// would move sub-26 muons up too (up to ~+8.6% seen above 26) and this margin must be revisited.
+		if (muon.pt() < 24) continue;
 		if (!muon.isTightMuon(primvtx)) continue;
 		if (muon.pt() > best_mu_pt) { best_mu_idx = idx_mu; best_mu_pt = muon.pt(); }
 	}
@@ -1655,6 +1666,9 @@ void HDsPhiPiMuProducer::fillDescriptions(edm::ConfigurationDescriptions &descri
 	desc.add<bool>("doTruth", true);
 	desc.add<std::string>("channel", "DsW");
 	desc.add<bool>("sameSignPi", false);
+	desc.add<double>("bScoreWPLoose");   // required, era-dependent (no default on purpose)
+	desc.add<double>("bScoreWPMedium");
+	desc.add<double>("bScoreWPTight");
 	descriptions.addDefault(desc);
 }
 

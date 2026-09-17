@@ -17,6 +17,8 @@
 <use name="DataFormats/GeometryCommonDetAlgo"/>
 
 <use name="SimDataFormats/GeneratorProducts"/>
+<use name="SimDataFormats/PileupSummaryInfo"/>
+<use name="DataFormats/NanoAOD"/>
 
 <use name="TrackingTools/TransientTrack"/>
 <use name="TrackingTools/Records"/>

@@ -22,14 +22,22 @@ config.JobType.pluginName = 'Analysis'
 # workflow -- it's a pure DAS/GT table, not release-specific). SS selects the OS/SS
 # tuplizer variant. The pset has no default for GLOBALTAG and raises at parse time if
 # it's missing.
-config.JobType.pyCfgParams = ['GLOBALTAG=__GLOBALTAG_VALUE__', 'SS=__SS_VALUE__']
+# YEAR (2022Pre/2022Post, the Year column) selects the era ParticleNet WPs; required by the pset.
+config.JobType.pyCfgParams = ['GLOBALTAG=__GLOBALTAG_VALUE__', 'SS=__SS_VALUE__', 'YEAR=__YEAR_VALUE__']
 config.JobType.allowUndistributedCMSSW = True
 config.JobType.maxJobRuntimeMin = 2750  # min
+# 2026-09-15: the C/D tasks ran with the CRAB default 2000 MB and jobs were killed at
+# 2250-2500 MB (exit 50660), about half of Run2022C at T2_FR_GRIF. Completed D jobs peaked
+# at 2215 MB.
+# 3000 is the CRAB maximum for a single-core job (3500 is rejected at submission).
+config.JobType.maxMemoryMB = 3000
 
 config.section_('Data')
 config.Data.splitting = 'LumiBased'
 config.Data.totalUnits = -1
-config.Data.unitsPerJob = 150
+# 150 lumis/job (inherited from the old tuplizer) gave 3 h average and 6.4 h longest jobs on
+# Run2022D; E/F/G have more events per lumi. 50 keeps single jobs short.
+config.Data.unitsPerJob = 50
 config.Data.lumiMask = '/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/crab/JSON/Cert_Collisions2022_355100_362760_Golden.json'
 
 config.Data.publication = False

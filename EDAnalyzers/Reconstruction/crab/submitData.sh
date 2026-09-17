@@ -128,6 +128,7 @@ for i in "${!datasets[@]}"; do
         -e "s|__PSETNAME__|${PSETNAME}|g" \
         -e "s|__GLOBALTAG_VALUE__|${GLOBALTAG}|g" \
         -e "s|__SS_VALUE__|${SS_VALUE}|g" \
+        -e "s|__YEAR_VALUE__|${YEAR}|g" \
         -e "s|__INPUTDATASET__|${dataset}|g" \
         -e "s|__ERADIR__|${ERADIR}|g" \
         -e "s|__OUTPUTDATASETTAG__|${OUTPUTDATASETTAG}|g" \

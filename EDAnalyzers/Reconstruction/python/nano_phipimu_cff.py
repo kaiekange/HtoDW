@@ -676,6 +676,41 @@ phipimuCandGenTagTable = simpleSingletonCandidateFlatTableProducer.clone(
 )
 
 
+# Pre-selection pileup reweighting denominator: genWeight-weighted nTrueInt over ALL
+# processed MC events, written to the Runs tree (see plugins/NTrueIntCounterTableProducer.cc).
+# The label must end in "Table" to be kept by NANOAODSIMEventContent.
+nTrueIntTable = cms.EDProducer("NTrueIntCounterTableProducer",
+    genEvent   = cms.InputTag("generator"),
+    pileupInfo = cms.InputTag("slimmedAddPileupInfo"),
+)
+
+
+# ParticleNet (pfParticleNetFromMiniAODAK4PuppiCentralDiscriminatorsJetTags:BvsAll) L/M/T
+# working points per era, used by both producers to count n_b_jets_{loose,medium,tight}.
+# Source: BTV btagging.json particleNet_wp_values (2025-08-20), campaigns
+#   2022   -> Run3-22CDSep23-Summer22-NanoAODv12
+#   2022EE -> Run3-22EFGSep23-Summer22EE-NanoAODv12
+# The producers declare these parameters REQUIRED with no default, so a config that never
+# calls set_btag_wp() fails at construction instead of silently using another era's WPs.
+PNET_WP = {
+    "2022":   (0.0470, 0.2450, 0.6734),
+    "2022EE": (0.0499, 0.2605, 0.6915),
+}
+
+
+def set_btag_wp(process, year):
+    """Set the era's ParticleNet L/M/T WPs on every candidate producer in the process."""
+    if year not in PNET_WP:
+        raise ValueError("no ParticleNet WPs for year %r (have %s)" % (year, sorted(PNET_WP)))
+    loose, medium, tight = PNET_WP[year]
+    for name in ("phipimuCand", "phipimuCandGenTag"):
+        if hasattr(process, name):
+            mod = getattr(process, name)
+            mod.bScoreWPLoose = cms.double(loose)
+            mod.bScoreWPMedium = cms.double(medium)
+            mod.bScoreWPTight = cms.double(tight)
+    return process
+
 def customise(process, tuplizer="nominal", is_data=False):
     """Wire the custom candidate path into an already-loaded standard-NANO process.
 
@@ -691,6 +726,8 @@ def customise(process, tuplizer="nominal", is_data=False):
       denominator over ALL generated events (stock nanoSequenceMC runs it as an unscheduled
       Task module, which would only fire for events whose output is kept -> undercounts the
       denominator).
+      nTrueIntTable rides in the same path for the same reason: the Runs-tree nTrueIntSumw
+      is the pileup reweighting denominator and must see every event, not just the kept ones.
     - the standard per-event nano tables stay unscheduled: they run only for the events the
       output keeps, saving the table CPU on the ~90% of events the filter drops.
     """
@@ -707,7 +744,7 @@ def customise(process, tuplizer="nominal", is_data=False):
     process.bestPhiPiMuCand.src = cms.InputTag(prod_name)
     process.phipimu_step = cms.Path(prod + process.bestPhiPiMuCand + table)
     if not is_data:
-        process.sumw_step = cms.Path(process.genWeightsTable)
+        process.sumw_step = cms.Path(process.genWeightsTable + process.nTrueIntTable)
 
     for outName in ("NANOAODSIMoutput", "NANOAODoutput"):
         if hasattr(process, outName):

@@ -73,6 +73,10 @@ def main():
     ap.add_argument("--ss", action="store_true", help="same-sign-pi control region")
     ap.add_argument("--gentag", action="store_true", help="HDsPhiPiMuGenTagProducer")
     ap.add_argument("--njobs", type=int, default=0, help="override job count (smoke test)")
+    ap.add_argument("--first", type=int, default=None, help="first JOBID of a batch (inclusive)")
+    ap.add_argument("--last", type=int, default=None, help="last JOBID of a batch (inclusive)")
+    ap.add_argument("--jobids", default=None, help="comma-separated JOBIDs to (re)submit, e.g. 216,161")
+    ap.add_argument("--flavour", default="workday", help='+JobFlavour (workday=8h, tomorrow=1d)')
     args = ap.parse_args()
 
     filelist, nfiles = build_filelist(args.sample, args.year)
@@ -87,23 +91,38 @@ def main():
     tup = "gentag" if args.gentag else "nominal"
     batch = out_subdir(args.sample, args.ss, args.gentag) + f"_{args.year}"
     sched_log = f"{HERE}/condor_logs/HTCondor_{batch}.log"
-    if os.path.exists(sched_log):
+    batched = args.first is not None or args.jobids is not None
+    # a batched submission appends to the scheduler log; only the first batch starts it fresh
+    if os.path.exists(sched_log) and (not batched or args.first == 0):
         os.remove(sched_log)
+    if args.jobids:
+        ids = [int(x) for x in args.jobids.split(",") if x.strip() != ""]
+        for i in ids:
+            if not 0 <= i < njobs:
+                raise SystemExit(f"JOBID {i} outside 0..{njobs - 1}")
+        jobid, queue = "$(JOBID)", "queue JOBID in (" + " ".join(str(i) for i in ids) + ")"
+    elif batched:
+        last = min(args.last, njobs - 1)
+        if args.first > last:
+            raise SystemExit(f"--first {args.first} beyond last job {njobs - 1}")
+        jobid, queue = "$(JOBID)", "queue JOBID in (" + " ".join(str(i) for i in range(args.first, last + 1)) + ")"
+    else:
+        jobid, queue = "$(Process)", f"queue {njobs}"
 
     submit = f"""
 executable = {HERE}/run.sh
-arguments = {outdir} {GROUPSIZE} $(Process) {args.sample} {args.year} {ss} {tup} {filelist}
+arguments = {outdir} {GROUPSIZE} {jobid} {args.sample} {args.year} {ss} {tup} {filelist}
 log = {sched_log}
 JobBatchName = {batch}
 request_cpus = 2
 request_memory = 4G
 request_disk = 2G
-+JobFlavour = "workday"
++JobFlavour = "{args.flavour}"
 notify_user = kai.kang@cern.ch
 notification = error
 max_retries = 1
 should_transfer_files = NO
-queue {njobs}
+{queue}
 """
     print(submit)
     subprocess.run(["condor_submit"], input=submit.encode(), check=True)

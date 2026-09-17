@@ -124,6 +124,8 @@ else:
         process.phipimuCand.channel = cms.string("DsstW")
     process.phipimuCand.doTruth = cms.bool(options.SAMPLE in ("DsW", "DsstW"))
 process = customise(process, tuplizer=options.TUPLIZER)
+from EDAnalyzers.Reconstruction.nano_phipimu_cff import set_btag_wp
+process = set_btag_wp(process, options.YEAR)  # era ParticleNet WPs, required
 
 from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEarlyDelete
 process = customiseEarlyDelete(process)
