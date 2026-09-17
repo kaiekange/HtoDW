@@ -112,7 +112,81 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-16)
+## Last Session (2026-09-16 晚 ~ 09-17)
+
+### POG corrections 全线跑通：signal+W+jets 两个 era 全部 correction 完成，data D/E/G 完成
+
+**MC 侧收尾**：signal（DsW/DsstW×2022/2022EE）和 W+jets GenTag（0J/1J/2J×两 era）的
+`apply_corrections.py` friend tree、b-tag 效率图、normalization.json **全部跑完**，0 bad。
+b-tag 效率图确认按 (sample, era) 分别算，不跨 W+jets jet bin 池化（同一 (|eta|,pt) 格子里
+效率在三个 bin 间差 34%→58%，池化不成立）。
+
+**data 侧**：D、E、G 三个 era 的 OS+SS 全部 correction+skim 完成，C、F 还在 CRAB 跑（无失败）。
+postEE data 修正是这次第一次跑通：JME year=2022Post、b-veto WP 0.6915、residual key
+`Era2022PostAll`，本地单文件冒烟测试后再批量提交。
+
+### 新脚本 `analysis/macros/make_samples_nano.py`：NanoAOD 版的 make_samples.py
+
+用户要求「把所有 signal 合并、所有 wjets 合并，各自带权重和来源标签，加需要的 cut」。
+`worker`/`merge` 两模式：一个 job 处理一块（≤50 nano 文件），读 nano+friend、按
+`run/luminosityBlock/event` 核对 join、按 `pass_mu_nom & pass_muveto & !jvm_veto_nom &
+n_bjet_nom==0` 选、`weight = genWeight×norm×w_pu_nom×w_mu_nom×w_btag_nom`、打 era/channel/
+jet_bin 标签、整块只写一次；`merge` 核对块列表逐一对应磁盘文件、branch schema 一致后 hadd。
+
+产物：`NanoMVA/Samples/Signal_merged.root`（869,385 行）、`WtoLNu2Jets_merged.root`
+（4,026,132 行），各带 `_meta.json`。**signal 权重现在是绝对截面尺度**（norm 由
+`normalization.py` 给：σL/(Σw×acceptance)，acceptance=生成器级 W→μ 分支比×实测的
+Ds(*)→φπ 强制衰变分支比），跟旧 `Samples/` 的 `weight_mode="signal_era"`（相对权重，锚定
+1.0，见 `eras.py` 的 `SIGNAL_ERA_WEIGHT` 文档字符串）是**根本不同的约定**——旧代码直接读
+新文件的 weight 会得到错误的绝对产额。
+
+**架构教训（用户直接否决重来一次）**：第一版是单进程 `uproot.extend()` 循环处理 4282 个
+W+jets 文件，跑了 73 分钟才到 51%，用户说"这么做肯定不行"。改成 condor 分块（50 文件/job）+
+`hadd`：wjets 89 个 job 6 分钟跑完、hadd 1.5 分钟。单进程逐文件 extend 还有个隐藏代价——
+每个 nano 文件对应一个 basket，4282 个文件下来是 ~140 万个小 basket，写和读都慢；分块后
+一个 chunk 一个 basket，89 个 job 只有约 3 万个 basket。
+
+**data 支持 + `--correct` 合并流程**：`worker` 加了 data 分支（CRAB 目录结构解析、OS 按
+`|Ds_mass-1.96835|<0.04` blind、SS 不 blind、weight 全填 1、排除 PPS/Proton 分支）；
+后来又加 `--correct`，一个 job 里先跑 `apply_corrections.py` 子进程写 friend 再 skim，
+省一轮提交——friend 照样落盘（MC 系统误差要用未选中的行，且 skim 改动比 correction 频繁）。
+用 era E 一个 chunk 做过 condor 实跑回归：一开始报 6 列"不一致"，查出来是两次独立浮点运算
+最后一位 bit 的机器精度差（~4e-16，`W_tmass` 因为算 cos 放大到 4.5e-12），改用 1e-9 容差
+比较后全部列一致，不是 bug。era G 已经用这个合并流程一步做完。
+
+### 输出列的两个约定
+
+**默认用修正后的量，图/报告的标签不写 `_corr`**（用户定）：合并文件里原始 nano 列
+（如 `mu_pt`、`Dsmu_mass`）和 friend 修正后的列（`_corr` 后缀，如 `mu_pt_corr`、
+`Dsmu_mass_corr`）并存，前者只在必须还原未修正量时用（比如从 `Dsmu` 里减出 Ds 本身）。
+
+**m(Dsμν) 信号 vs W+jets GenTag mode 1-5 对比**（`compare_dsmunu_signal_gentag.py`）：
+ν 的 px/py 取修正后的 Puppi MET，pz 由 W 质量约束求解（复数取实部、两实解取小 |pz|）。
+在信号中间 68% 区间（[117,155] GeV）内，W+jets 真 charm 本底（mode 1-5）落入比例 **0.375**，
+比现有特征 `Dsmu_mass_corr` 同口径的 **0.482** 低约 22%——但这只是单变量对比，没有测过
+跟其他特征的相关性，进不进 DNN 未定。图 `MVA/figures/features/dsmunu_mass_signal_vs_gentag*.png`，
+画法照 `draw_wp_mass.py`（GenTag mode 绝对产额 stack + MC stat hatch，信号画线乘统一倍数）。
+
+### 三个仓库的历史欠账一次性提交（用户要求"更新github"）
+
+`CMSSW_13_0_13`：postEE b-tag WP 静默用错 preEE 值的 bug（`fillDescriptions` 从未声明
+`bScoreWPLoose/Medium/Tight`，config 传不进去）、muon 预切 24、`NTrueIntCounterTableProducer`
+（PU reweight 分母）、`condor_submit.py` 的 `--first/--last/--jobids/--flavour`、CRAB 模板
+YEAR 参数化+`maxMemoryMB=3000`+`unitsPerJob` 150→50。`Corrections` 仓库：完整 data-mode
+`apply_corrections.py`、`normalization.py`、`gencount/`。`CMSSW_15_0_5`：上面这些新脚本。
+commit 前发现 `Corrections/gencount/kakang.cc` 是过期的 Kerberos 凭证缓存（不是源文件，
+memory 里记过这个坑），已删除不提交。
+
+### 下一步
+
+- data C、F 跑完后做 `Data_OS_merged`/`Data_SS_merged` 的最终 merge
+- m(Dsμν) 要不要进 DNN 特征集：先测跟现有 43 特征（尤其 `Dsmu_mass`、`W_tmass`、`met_pt`）的相关性
+- 两级 MVA（stage-1 seed 平均、`Ds_nearestjet_dR` 排查）用的还是修正前的旧 tuplizer 样本，
+  换到 `NanoMVA/Samples/` 合并文件后要重验
+- signal 权重改绝对尺度后，`common.py`/`predict.py`/`eras.py` 的 `SIGNAL_ERA_WEIGHT` 相关
+  代码路径要跟着切换，目前 `make_samples_nano.py` 是唯一在用新权重的地方
+
+## 上一 Session (2026-09-16)
 
 > 08-25 ~ 09-15 这几次 session 没有写进本文件，记录在 memory：postEE 信号生产
 > `[[project_signal_postee_production]]`、Samples 合并 `[[project_samples_merge_era_branch]]`、
