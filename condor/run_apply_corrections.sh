@@ -7,8 +7,14 @@ set -euo pipefail
 
 INFILE=${1:?usage: run_apply_corrections.sh <nano output_N.root>}
 REPO=/afs/cern.ch/work/k/kakang/H2DW/Corrections
-ERA=$(basename "$(dirname "$(dirname "${INFILE}")")")
-SAMPLE=$(basename "$(dirname "${INFILE}")")
+if [[ "${INFILE}" == */NanoMVA/Data/* ]]; then
+    # CRAB layout .../Data/<era>/Muon/<task>/<timestamp>/<NNNN>/nano_N.root
+    SAMPLE=$(basename "$(dirname "$(dirname "$(dirname "${INFILE}")")")")
+    ERA=data_$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$(dirname "${INFILE}")")")")")")
+else
+    ERA=$(basename "$(dirname "$(dirname "${INFILE}")")")
+    SAMPLE=$(basename "$(dirname "${INFILE}")")
+fi
 STEM=$(basename "${INFILE}" .root)
 LOGDIR="${REPO}/condor/condor_logs/apply_corrections"
 mkdir -p "${LOGDIR}"

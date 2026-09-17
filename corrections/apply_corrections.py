@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """POG corrections for ONE custom-nano output file, written as a friend tree.
 
-Usage: apply_corrections.py <.../NanoMVA/MC/<era>/<sample dir>/output_N.root> [output]
+Usage: apply_corrections.py <.../NanoMVA/MC/<era>/<sample dir>/output_N.root>
+       apply_corrections.py <.../NanoMVA/Data/<era>/Muon/<task>/<timestamp>/0000/nano_N.root> [output]
 Output:                     .../NanoMVA/MC/<era>/Corrections/<sample dir>/output_N.root
                             (or [output], e.g. for a side-by-side comparison run)
                             tree "Events", one row per nano Events row, same order.
@@ -71,13 +72,17 @@ PU_KEY = {
     "2022": "Collisions2022_355100_357900_eraBCD_GoldenJson",
     "2022EE": "Collisions2022_359022_362760_eraEFG_GoldenJson",
 }
-# sample directory -> efficiency-map group (build_btag_efficiency_map.GROUPS minus era)
+# sample directory -> efficiency-map group (build_btag_efficiency_map.GROUPS minus era).
+# Every sample uses its OWN map. The three W+jets jet bins are separate samples: measured
+# on 2022 they have clearly different efficiencies in the same (|eta|, pt) cell (b jets
+# 34% / 40% / 57% overall for 0J / 1J / 2J), so a pooled map would impose the 2J-dominated
+# efficiency on 0J and 1J. The bins are combined only afterwards, each with its own norm.
 EFF_GROUP = {
     "Signal_DsW_H_phipimu": "DsW",
     "Signal_DsstW_H_phipimu": "DsstW",
-    "WtoLNu2Jets_0J_H_phipimu_GenTag": "WtoLNu2Jets",
-    "WtoLNu2Jets_1J_H_phipimu_GenTag": "WtoLNu2Jets",
-    "WtoLNu2Jets_2J_H_phipimu_GenTag": "WtoLNu2Jets",
+    "WtoLNu2Jets_0J_H_phipimu_GenTag": "WtoLNu2Jets_0J",
+    "WtoLNu2Jets_1J_H_phipimu_GenTag": "WtoLNu2Jets_1J",
+    "WtoLNu2Jets_2J_H_phipimu_GenTag": "WtoLNu2Jets_2J",
 }
 
 MU_PRECUT = 24.0       # HDsPhiPiMuProducer: best muon = highest-pt tight muon, pt >= 24
@@ -88,9 +93,20 @@ BTAG_JET_PT_MIN = 20.0
 MASS_MU = 0.1056583755
 NULL = -777.0
 
+# DATA. Recognised by the path. Differences from MC, all of them because the quantity does
+# not exist for data rather than by choice: JEC gains L2L3Residual (era key below), there is
+# no JER smearing and no JES variation (JecApplication applies neither on data), the muon
+# gets the scale correction from the data branch of MuonScaRe and no resolution smearing,
+# and no weight is defined (no PU, no scale factors, no b-tag weight). The selection flags
+# are computed exactly as for MC, because the same cuts are applied to data.
+DATA_ERA_KEY = {"2022": "Era2022PreAll", "2022EE": "Era2022PostAll"}
+
 MU_VARS = ("nom", "muScaleUp", "muScaleDown", "muResUp", "muResDown")
 JME_VARS = {"nom": "nominal", "jesUp": "jes_up", "jesDown": "jes_down",
             "jerUp": "jer_up", "jerDown": "jer_down"}
+
+MC_ONLY_BRANCHES = {"Pileup_nTrueInt", "Jet_hadronFlavour", "Jet_genJetIdx",
+                    "GenJet_pt", "GenJet_eta", "GenJet_phi"}
 
 BRANCHES = sorted(set([
     "run", "luminosityBlock", "event", "Pileup_nTrueInt",
@@ -106,11 +122,24 @@ BRANCHES = sorted(set([
 
 
 def parse_path(path):
+    """(era, sample, output path, is_data) from the input path.
+
+    MC  : .../NanoMVA/MC/<era>/<sample dir>/output_N.root
+    data: .../NanoMVA/Data/<era>/Muon/<task>/<timestamp>/0000/nano_N.root  (CRAB layout)
+          -> .../NanoMVA/Data/<era>/Corrections/<task>/nano_N.root
+    """
     parts = os.path.abspath(path).split(os.sep)
+    if "Data" in parts:
+        i = len(parts) - 1 - parts[::-1].index("Data")
+        era = parts[i + 1]
+        if era not in CAMPAIGN or len(parts) < i + 6:
+            sys.exit(f"cannot derive era/task from {path} (era={era!r})")
+        task, fname = parts[i + 3], parts[-1]
+        return era, task, os.sep.join(parts[:i + 2] + ["Corrections", task, fname]), True
     era, sample, fname = parts[-3], parts[-2], parts[-1]
     if parts[-4] != "MC" or era not in CAMPAIGN or sample not in EFF_GROUP:
         sys.exit(f"cannot derive era/sample from {path} (era={era!r}, sample={sample!r})")
-    return era, sample, os.sep.join(parts[:-2] + ["Corrections", sample, fname])
+    return era, sample, os.sep.join(parts[:-2] + ["Corrections", sample, fname]), False
 
 
 def np_(a, b, dtype=float):
@@ -129,7 +158,7 @@ def locate_selected_muon(a):
     return ak.to_numpy(ak.flatten(idx))
 
 
-def muon_momenta(a, idx, cset):
+def muon_momenta(a, idx, cset, is_data=False):
     """Corrected pt of the selected muon for every MU_VARS entry (official MuonScaRe port,
     same calling convention as the corrections pilot)."""
     n = len(a)
@@ -141,7 +170,10 @@ def muon_momenta(a, idx, cset):
     nL = ak.to_numpy(ak.flatten(a["Muon_nTrackerLayers"][idx[:, None]])).astype(float)
     evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
     for i in range(n):
-        p_scale = muo.muo_pt_scale(cset, False, pt_raw[i], eta[i], phi[i], ch[i])
+        p_scale = muo.muo_pt_scale(cset, is_data, pt_raw[i], eta[i], phi[i], ch[i])
+        if is_data:
+            out["nom"][i] = p_scale          # no resolution smearing on data
+            continue
         p = muo.muo_pt_resol(cset, p_scale, eta[i], phi[i], nL[i], evt[i], lumi[i])
         out["nom"][i] = p
         try:
@@ -157,7 +189,7 @@ def muon_momenta(a, idx, cset):
     return out
 
 
-def prompt_muon_veto(a, idx, cset):
+def prompt_muon_veto(a, idx, cset, is_data=False):
     """True = passes (no other prompt-like muon). Nominal muon correction."""
     n = len(a)
     passed = np.ones(n, dtype=bool)
@@ -169,10 +201,11 @@ def prompt_muon_veto(a, idx, cset):
         for j in np.where(ak.to_numpy(cand[i]))[0]:
             eta_j = float(np.clip(a["Muon_eta"][i][j], -2.399, 2.399))
             phi_j = float(a["Muon_phi"][i][j])
-            pt_j = muo.muo_pt_scale(cset, False, float(a["Muon_pt"][i][j]), eta_j, phi_j,
+            pt_j = muo.muo_pt_scale(cset, is_data, float(a["Muon_pt"][i][j]), eta_j, phi_j,
                                     int(a["Muon_charge"][i][j]))
-            pt_j = muo.muo_pt_resol(cset, pt_j, eta_j, phi_j, float(a["Muon_nTrackerLayers"][i][j]),
-                                    evt[i], lumi[i])
+            if not is_data:
+                pt_j = muo.muo_pt_resol(cset, pt_j, eta_j, phi_j,
+                                        float(a["Muon_nTrackerLayers"][i][j]), evt[i], lumi[i])
             if pt_j >= VETO_MU_PT_MIN:
                 passed[i] = False
                 break
@@ -213,21 +246,24 @@ def w_tmass(mu_pt, mu_phi, met_pt, met_phi):
 
 def main():
     if len(sys.argv) not in (2, 3):
-        sys.exit(f"usage: {sys.argv[0]} <nano output_N.root> [output]")
+        sys.exit(f"usage: {sys.argv[0]} <nano file> [output]")
     in_path = sys.argv[1]
-    era, sample, out_path = parse_path(in_path)
+    era, sample, out_path, is_data = parse_path(in_path)
     if len(sys.argv) == 3:
         out_path = os.path.abspath(sys.argv[2])
     campaign = CAMPAIGN[era]
     wp_tight = bem.ERAS[era]["wp_tight"]
     jme_year = bem.ERAS[era]["jme_year"]
-    eff_json = f"{bem.OUT_DIR}/{EFF_GROUP[sample]}_{era}.json"
-    print(f"input {in_path}\n era={era} sample={sample} JME year={jme_year} WP_T={wp_tight}"
-          f"\n eff map {eff_json}\n output {out_path}")
-    if not os.path.exists(eff_json):
+    mu_vars = ("nom",) if is_data else MU_VARS
+    jme_vars = {"nom": "nominal"} if is_data else JME_VARS
+    eff_json = None if is_data else f"{bem.OUT_DIR}/{EFF_GROUP[sample]}_{era}.json"
+    print(f"input {in_path}\n {'data' if is_data else 'MC'} era={era} sample={sample}"
+          f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json}\n output {out_path}")
+    if eff_json and not os.path.exists(eff_json):
         sys.exit(f"missing efficiency map {eff_json}")
 
-    a = uproot.open(in_path)["Events"].arrays(BRANCHES)
+    branches = [b for b in BRANCHES if not (is_data and b in MC_ONLY_BRANCHES)]
+    a = uproot.open(in_path)["Events"].arrays(branches)
     n = len(a)
     print(f" rows: {n}")
     if n == 0:
@@ -241,19 +277,20 @@ def main():
     if bad.any():
         sys.exit(f"W_tmass closure FAILED on {int(bad.sum())}/{n} rows")
 
-    # ---- LUM (JSON flow=clamp, nTrueInt passed as is) ----
-    pu = correctionlib.CorrectionSet.from_file(
-        f"{POG_DIR}/LUM/{campaign}/2024-01-31/puWeights.json.gz")[PU_KEY[era]]
-    nti = np_(a, "Pileup_nTrueInt")
-    for suffix, v in (("nom", "nominal"), ("up", "up"), ("down", "down")):
-        cols[f"w_pu_{suffix}"] = pu.evaluate(nti, v)
+    # ---- LUM (JSON flow=clamp, nTrueInt passed as is). MC only. ----
+    if not is_data:
+        pu = correctionlib.CorrectionSet.from_file(
+            f"{POG_DIR}/LUM/{campaign}/2024-01-31/puWeights.json.gz")[PU_KEY[era]]
+        nti = np_(a, "Pileup_nTrueInt")
+        for suffix, v in (("nom", "nominal"), ("up", "up"), ("down", "down")):
+            cols[f"w_pu_{suffix}"] = pu.evaluate(nti, v)
 
     # ---- MUO ----
     cset_ss = correctionlib.CorrectionSet.from_file(
         f"{POG_DIR}/MUO/{campaign}/2026-06-18/muon_scalesmearing.json.gz")
     cset_z = correctionlib.CorrectionSet.from_file(f"{POG_DIR}/MUO/{campaign}/2026-06-18/muon_Z.json.gz")
     idx = locate_selected_muon(a)
-    mu_pt = muon_momenta(a, idx, cset_ss)
+    mu_pt = muon_momenta(a, idx, cset_ss, is_data)
     mu_eta = np_(a, "mu_eta")  # SIGNED: the trigger SF is asymmetric in eta
     iso_tight = ak.to_numpy(ak.flatten(a["Muon_pfIsoId"][idx[:, None]])) >= 4
     pt_raw = np_(a, "mu_pt")
@@ -264,22 +301,25 @@ def main():
         w[sel] = cset_z[key].evaluate(mu_eta[sel], pt[sel], var)
         return w
 
-    for v in MU_VARS:
+    for v in mu_vars:
         sel = (np.abs(mu_eta) < MU_ETA_MAX) & (mu_pt[v] > MU_PT_MIN) & iso_tight
         cols[f"mu_pt_{v}"] = mu_pt[v]
         cols[f"pass_mu_{v}"] = sel
-        cols[f"w_mu_{v}"] = (mu_sf(muo.MUO_ID_KEY, mu_pt[v], "nominal", sel)
-                             * mu_sf(muo.MUO_ISO_KEY, mu_pt[v], "nominal", sel)
-                             * mu_sf(muo.MUO_TRIG_KEY, mu_pt[v], "nominal", sel))
+        if not is_data:
+            cols[f"w_mu_{v}"] = (mu_sf(muo.MUO_ID_KEY, mu_pt[v], "nominal", sel)
+                                 * mu_sf(muo.MUO_ISO_KEY, mu_pt[v], "nominal", sel)
+                                 * mu_sf(muo.MUO_TRIG_KEY, mu_pt[v], "nominal", sel))
         k = mu_pt[v] / pt_raw
         for prefix in ("Dsmu", "Dsstmu"):
             (cols[f"{prefix}_pt_{v}"], cols[f"{prefix}_eta_{v}"], cols[f"{prefix}_phi_{v}"],
              cols[f"{prefix}_mass_{v}"], cols[f"{prefix}_Ht_{v}"]) = rescale_muon_in_sum(a, prefix, k)
     sel_nom = cols["pass_mu_nom"]
-    for label, key in (("muid", muo.MUO_ID_KEY), ("muiso", muo.MUO_ISO_KEY), ("mutrig", muo.MUO_TRIG_KEY)):
-        for suffix, v in (("nom", "nominal"), ("up", "systup"), ("down", "systdown")):
-            cols[f"w_{label}_{suffix}"] = mu_sf(key, mu_pt["nom"], v, sel_nom)
-    cols["pass_muveto"] = prompt_muon_veto(a, idx, cset_ss)
+    if not is_data:
+        for label, key in (("muid", muo.MUO_ID_KEY), ("muiso", muo.MUO_ISO_KEY),
+                           ("mutrig", muo.MUO_TRIG_KEY)):
+            for suffix, v in (("nom", "nominal"), ("up", "systup"), ("down", "systdown")):
+                cols[f"w_{label}_{suffix}"] = mu_sf(key, mu_pt["nom"], v, sel_nom)
+    cols["pass_muveto"] = prompt_muon_veto(a, idx, cset_ss, is_data)
 
     # closure of the rescaling at k = 1, against every stored quantity it reproduces
     for prefix in ("Dsmu", "Dsstmu"):
@@ -295,13 +335,15 @@ def main():
                 sys.exit(f"{prefix} k=1 closure FAILED on {q}: max |d| {d.max():.3g}")
 
     # ---- JME + BTV ----
-    refs = jme.JmeRefs(year=jme_year, is_data=False)
+    refs = jme.JmeRefs(year=jme_year, is_data=is_data,
+                       era=DATA_ERA_KEY[era] if is_data else None)
     btv = correctionlib.CorrectionSet.from_file(f"{POG_DIR}/BTV/{campaign}/2025-08-20/btagging.json.gz")
     wp_json = btv["particleNet_wp_values"].evaluate("T")
     if abs(wp_json - wp_tight) > 1e-6:
         sys.exit(f"tight WP mismatch: JSON {wp_json} vs {wp_tight}")
-    c_comb, c_light = btv["particleNet_comb"], btv["particleNet_light"]
-    eff_map = correctionlib.CorrectionSet.from_file(eff_json)["particleNet_efficiency"]
+    if not is_data:
+        c_comb, c_light = btv["particleNet_comb"], btv["particleNet_light"]
+        eff_map = correctionlib.CorrectionSet.from_file(eff_json)["particleNet_efficiency"]
 
     tight = (a["Jet_jetId"] & 2) == 2
     dphi = abs(a["Jet_phi"] - a["Ds_phi"])
@@ -331,7 +373,7 @@ def main():
         return out
 
     met_nom = None
-    for v, jv in JME_VARS.items():
+    for v, jv in jme_vars.items():
         pt_j = jme.corrected_jet_pt(a, refs, jv)
         cols[f"jvm_veto_{v}"] = ak.to_numpy(jme.jet_veto_flag(a, pt_j, year=jme_year))
         cols[f"jet_ht_pt20_{v}"] = ak.to_numpy(ak.sum(ak.where(tight & (pt_j > 20), pt_j, 0.0), axis=1))
@@ -349,11 +391,12 @@ def main():
         cols[f"met_pt_{v}"], cols[f"met_phi_{v}"] = met_pt, met_phi
         nb = ak.to_numpy(ak.sum(tagged & (pt_j >= BTAG_JET_PT_MIN), axis=1))
         cols[f"n_bjet_{v}"] = nb
-        wb = w_btag(pt_j, nb == 0, ("central", "up", "down") if v == "nom" else ("central",))
-        cols[f"w_btag_{v}"] = wb["central"]
-        if v == "nom":
-            cols["w_btag_up"], cols["w_btag_down"] = wb["up"], wb["down"]
-    for v in MU_VARS:
+        if not is_data:
+            wb = w_btag(pt_j, nb == 0, ("central", "up", "down") if v == "nom" else ("central",))
+            cols[f"w_btag_{v}"] = wb["central"]
+            if v == "nom":
+                cols["w_btag_up"], cols["w_btag_down"] = wb["up"], wb["down"]
+    for v in mu_vars:
         cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, *met_nom)
 
     # ---- summary ----

@@ -39,6 +39,7 @@ chain needs ~15 jet/genjet branches per file. Counts are unweighted, as in the o
 code (a sign(genWeight)-weighted variant was tried earlier and gave negative bin counts).
 """
 import glob
+import json
 import os
 import sys
 
@@ -64,6 +65,10 @@ for _era in ERAS:
     GROUPS[f"DsW_{_era}"] = (_era, [f"{NANO}/{_era}/Signal_DsW_H_phipimu"])
     GROUPS[f"DsstW_{_era}"] = (_era, [f"{NANO}/{_era}/Signal_DsstW_H_phipimu"])
     GROUPS[f"WtoLNu2Jets_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{jb}J_H_phipimu_GenTag" for jb in (0, 1, 2)])
+    # one map per jet bin as well: only used to check that the pooled W+jets map above is
+    # justified (per-bin efficiencies consistent within statistics), not by the corrections
+    for _jb in (0, 1, 2):
+        GROUPS[f"WtoLNu2Jets_{_jb}J_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{_jb}J_H_phipimu_GenTag"])
 OUT_DIR = f"{NANO}/2022/btag_efficiency"
 
 JET_PT_MIN = 20.0  # BTV SF validity floor, see docstring
@@ -178,6 +183,14 @@ def main():
     with open(out_json, "w") as f:
         f.write(cset_model.model_dump_json(exclude_unset=True))
     print(f"Wrote {out_json}")
+    # raw jet counts per (flavour, abseta, pt) bin, so maps can be compared with binomial
+    # errors (e.g. per-jet-bin W+jets maps against the pooled one)
+    out_counts = f"{OUT_DIR}/{group}_counts.json"
+    with open(out_counts, "w") as f:
+        json.dump(dict(group=group, abseta_edges=_ABSETA_EDGES, pt_edges=_PT_EDGES, n_events=n_events,
+                       total={str(fl): total[fl].tolist() for fl in _FLAVORS},
+                       passed={str(fl): passed[fl].tolist() for fl in _FLAVORS}), f)
+    print(f"Wrote {out_counts}")
 
     check = correctionlib.CorrectionSet.from_file(out_json)["particleNet_efficiency"]
     for flav, pt, eta in [(5, 40.0, 1.0), (4, 40.0, 1.0), (0, 40.0, 1.0), (5, 150.0, 2.0)]:

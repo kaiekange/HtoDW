@@ -1,7 +1,9 @@
 """Submit HTCondor jobs running apply_corrections.py, one job per nano output file.
 
-    python3 condor_submit_apply_corrections.py <era>/<sample dir> [<era>/<sample dir> ...]
-    e.g. python3 condor_submit_apply_corrections.py 2022/Signal_DsW_H_phipimu 2022EE/Signal_DsW_H_phipimu
+    python3 condor_submit_apply_corrections.py <era>/<sample dir> [...]          (MC)
+    python3 condor_submit_apply_corrections.py data/<era>/<CRAB task> [...]      (data)
+    e.g. python3 condor_submit_apply_corrections.py 2022/Signal_DsW_H_phipimu
+         python3 condor_submit_apply_corrections.py data/2022/Muon_Run2022D_NanoH_phipimu
 
 One cluster per sample directory, one job per output_*.root in it. Friend trees go to
 .../NanoMVA/MC/<era>/Corrections/<sample dir>/ (overwritten). Scheduler log per sample
@@ -13,6 +15,7 @@ import subprocess
 import sys
 
 NANO = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC"
+DATA = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Data"
 
 if len(sys.argv) < 2:
     sys.exit(__doc__)
@@ -20,11 +23,18 @@ if len(sys.argv) < 2:
 os.makedirs("condor_logs/apply_corrections", exist_ok=True)
 
 for target in sys.argv[1:]:
-    era, sample = target.strip("/").split("/")
-    files = sorted(glob.glob(f"{NANO}/{era}/{sample}/output_*.root"))
+    parts = target.strip("/").split("/")
+    if parts[0] == "data":
+        _, era, sample = parts
+        # CRAB layout: <task>/<timestamp>/<NNNN>/nano_N.root
+        files = sorted(glob.glob(f"{DATA}/{era}/Muon/{sample}/*/*/nano_*.root"))
+        tag = f"data_{era}_{sample}"
+    else:
+        era, sample = parts
+        files = sorted(glob.glob(f"{NANO}/{era}/{sample}/output_*.root"))
+        tag = f"{era}_{sample}"
     if not files:
-        sys.exit(f"no output_*.root under {NANO}/{era}/{sample}")
-    tag = f"{era}_{sample}"
+        sys.exit(f"no input nano files for {target}")
     file_list = f"condor_logs/apply_corrections/{tag}.txt"
     with open(file_list, "w") as f:
         f.write("\n".join(files) + "\n")

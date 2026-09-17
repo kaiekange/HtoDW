@@ -9,7 +9,8 @@ import os
 import subprocess
 import sys
 
-ALL_GROUPS = [f"{s}_{e}" for e in ("2022", "2022EE") for s in ("DsW", "DsstW", "WtoLNu2Jets")]
+ALL_GROUPS = [f"{s}_{e}" for e in ("2022", "2022EE")
+              for s in ("DsW", "DsstW", "WtoLNu2Jets", "WtoLNu2Jets_0J", "WtoLNu2Jets_1J", "WtoLNu2Jets_2J")]
 GROUPS = sys.argv[1:] if len(sys.argv) > 1 else ALL_GROUPS
 for g in GROUPS:
     if g not in ALL_GROUPS:

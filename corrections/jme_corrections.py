@@ -138,6 +138,11 @@ class JmeRefs:
             self.cfg = JecConfigReader.CorrCache.get_cfg("AK4")
             self.refs = JecConfigReader.CorrCache.get_refs("AK4", year, is_data, era)
 
+            if is_data:
+                self.jes_total_tag = None
+                self.jer_total_bin = None
+                return
+
             # get_syst_tag_names yields (fullTag, baseName) pairs.
             syst_tags = JecConfigReader.get_syst_tag_names(self.cfg, year)
             self.jes_total_tag = next(
@@ -214,12 +219,22 @@ def corrected_jet_pt(arrs, refs, variation="nominal"):
 
     pt_raw, rho_b = _jet_inputs(arrs)
     eta, phi = arrs["Jet_eta"], arrs["Jet_phi"]
+    # data: L2L3Residual is looked up at a representative run per year, but the tutorial
+    # still wants the run column broadcast to jet shape
+    runs = ak.broadcast_arrays(arrs["run"], arrs["Jet_pt"])[0] if refs.is_data else None
 
     with _in_tutorial_dir():
         pt_jes, _ = JecApplication.jes_nominal(
             pt_raw=pt_raw, eta=eta, phi=phi, area=arrs["Jet_area"], rho=rho_b,
-            year=refs.year, isData=refs.is_data, runs=None, refs=refs.refs,
+            year=refs.year, isData=refs.is_data, runs=runs, refs=refs.refs,
         )
+
+        # JES systematics and JER smearing are MC-only (JecApplication applies the JES shift
+        # only when not isData, and jer_smear needs GenJets, which data does not have)
+        if refs.is_data:
+            if variation != "nominal":
+                raise ValueError(f"data supports only the nominal jet pt, got {variation!r}")
+            return pt_jes
 
         if variation.startswith("jes_"):
             pt_jes = JecApplication.jes_syst_shift(
@@ -283,9 +298,10 @@ def corrected_met_pt(arrs, refs, variation="nominal"):
         arrs = {f: arrs[f] for f in arrs.fields}
     else:
         arrs = dict(arrs)
-    # same zero-GenJet crash guard as corrected_jet_pt (see _genjets_safe)
-    (arrs["GenJet_pt"], arrs["GenJet_eta"], arrs["GenJet_phi"],
-     arrs["Jet_genJetIdx"]) = _genjets_safe(arrs)
+    # same zero-GenJet crash guard as corrected_jet_pt (see _genjets_safe); data has no GenJets
+    if not refs.is_data:
+        (arrs["GenJet_pt"], arrs["GenJet_eta"], arrs["GenJet_phi"],
+         arrs["Jet_genJetIdx"]) = _genjets_safe(arrs)
     kind, jes_tag, jes_var, jer_bin, jer_var = "Nominal", None, None, None, "nom"
     if variation == "jes_up":
         kind, jes_tag, jes_var = "JES", refs.jes_total_tag, "Up"
@@ -318,9 +334,12 @@ def corrected_met_pt_phi(arrs, refs, variation="nominal"):
         arrs = {f: arrs[f] for f in arrs.fields}
     else:
         arrs = dict(arrs)
-    (arrs["GenJet_pt"], arrs["GenJet_eta"], arrs["GenJet_phi"],
-     arrs["Jet_genJetIdx"]) = _genjets_safe(arrs)
+    if not refs.is_data:
+        (arrs["GenJet_pt"], arrs["GenJet_eta"], arrs["GenJet_phi"],
+         arrs["Jet_genJetIdx"]) = _genjets_safe(arrs)
     kind, jes_tag, jes_var, jer_bin, jer_var = "Nominal", None, None, None, "nom"
+    if refs.is_data and variation != "nominal":
+        raise ValueError(f"data supports only the nominal MET, got {variation!r}")
     if variation == "jes_up":
         kind, jes_tag, jes_var = "JES", refs.jes_total_tag, "Up"
     elif variation == "jes_down":
