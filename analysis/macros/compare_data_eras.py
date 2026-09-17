@@ -37,7 +37,9 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-MODEL = "ssdata"
+# Optional first positional arg picks the training (default "ssdata"); "OS"/"SS" is
+# still recognised anywhere. Used to score the pileup control models the same way.
+MODEL = next((a for a in sys.argv[1:] if a in common.TRAININGS), "ssdata")
 PRED = f"{common.out_dir_for(MODEL)}/Prediction"
 
 M_DS, M_D, SR_HALF = 1.96835, 1.8696, 0.040
