@@ -7,15 +7,20 @@ Output: /eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC/<era>/Corrections/<sample di
 
     Lumi_reweight_i = genWeight_i * norm,   norm = sigma * L / sum(genWeight) = L / L_eff
 
+This is the BACKGROUND (amcatnloFXFX) convention. SIGNAL is different as of 2026-09-17 --
+see the SIGNAL section below: signal's weight formula drops genWeight entirely, so its
+`norm` denominator is genEventCount, not genEventSumw. `norm_denominator` in the output
+JSON records which one was actually used.
+
 Run once per sample after its nano production has finished (the sum is over every file
 present). It does not depend on the per-file friend trees, and they do not depend on it;
 the two are combined only when the analysis samples are built.
 
-DENOMINATOR. `Runs.genEventSumw`, filled by genWeightsTable in the nano job's sumw_step
-path on every generated event, i.e. before the producer's selection. Each nano job writes
-its own file (no hadd), so the sum is over the Runs entries of all files. A missing or
-failed job removes its events from numerator and denominator alike: the normalisation
-stays unbiased and only statistics is lost.
+DENOMINATOR (background). `Runs.genEventSumw`, filled by genWeightsTable in the nano job's
+sumw_step path on every generated event, i.e. before the producer's selection. Each nano
+job writes its own file (no hadd), so the sum is over the Runs entries of all files. A
+missing or failed job removes its events from numerator and denominator alike: the
+normalisation stays unbiased and only statistics is lost.
 
 CHECK. The NTrueIntCounterTableProducer counter is filled on the same events with the
 same weight, so for every file sum(nTrueIntSumw) + overflow + noInfo must equal
@@ -33,7 +38,15 @@ SIGNAL. The cross sections (given by the analyst) are for the final state
   BR(Ds*->Ds pi0) BR(pi0->gg), BR(Ds->phi pi) BR(phi->KK), BR(W->mu) + BR(W->tau) BR(tau->mu).)
 The samples are generated with W -> e/mu/tau all open and the Ds(*) chain forced, so only
 a fraction of the generated events lies in that final state:
-    norm = sigma * L / (sum(genWeight) * f_W_gen * f_Ds)
+    norm = sigma * L / (genEventCount * f_W_gen * f_Ds)
+  genEventCount, NOT sum(genWeight): signal's per-event weight (make_samples_nano.py) does
+           not carry a genWeight factor -- the ~49/1.6M events with genWeight=-23.1645
+           instead of +23.1645 (found 2026-09-17) are a technical two-valued weight with
+           no cross-section meaning for this LO-ish EvtGen+Pythia generation, unlike the
+           amcatnloFXFX case above, so it is dropped rather than propagated. Using
+           genEventCount here instead of genEventSumw is what keeps norm consistent with
+           that: dropping genWeight from the numerator but not this denominator would
+           silently rescale every signal yield by <genWeight> ~= 23.16.
   f_W_gen  fraction of generated W decays giving mu or tau->mu, from the branching ratios
            the GENERATOR used (Pythia 8.306 ParticleData.xml), not the PDG values in sigma:
            the numerator is the physical yield, the denominator counts generated events.
@@ -121,6 +134,24 @@ def main():
         if tot["sumw"] <= 0:
             sys.exit(f"{target}: sum(genWeight) = {tot['sumw']} -- refusing to normalise")
 
+        # DENOMINATOR, signal vs background. Background (W+jets) is amcatnloFXFX: its
+        # +-|genWeight| encodes a real NLO subtraction term, and Lumi_reweight_i =
+        # genWeight_i * norm needs the SIGNED sum(genWeight) in the denominator for the
+        # numerator/denominator cancellation to be self-consistent (the standard CMS
+        # convention, unchanged here).
+        #
+        # Signal is EvtGen+Pythia (not NLO-matched): 2026-09-17, 7/869,385 post-selection
+        # rows (49/1.6M pre-selection) were found to carry genWeight = -23.1645 instead of
+        # +23.1645, a technical two-valued weight with no corresponding physical
+        # cross-section meaning at LO here (unlike the amcatnloFXFX case) -- confirmed by
+        # the user, who reads genWeight as not meaningful for this signal generation and
+        # asked for it out of the signal weight entirely. So for SIGNALS, genWeight is
+        # dropped from BOTH the per-event weight (make_samples_nano.py) and this
+        # denominator: using genEventCount (plain N_gen) instead of genEventSumw keeps
+        # numerator (weight = norm * w_pu * w_mu * w_btag, no genWeight factor) and
+        # denominator consistent. Background is untouched.
+        denom = tot["count"] if sample in SIGNALS else tot["sumw"]
+
         xsec, lumi = XSEC_PB[sample], LUMI_PB[era]
         out = dict(
             era=era, sample=sample, n_files=len(files),
@@ -141,7 +172,8 @@ def main():
                 f_W_measured=f_w_meas, f_W_measured_err=(f_w_meas * (1 - f_w_meas) / n) ** 0.5,
                 f_joint_measured=gen["chain_and_mu_final"] / n,
             )
-        out.update(lumi_eff_pb=tot["sumw"] * acc / xsec, norm=xsec * lumi / (tot["sumw"] * acc))
+        out.update(lumi_eff_pb=denom * acc / xsec, norm=xsec * lumi / (denom * acc),
+                   norm_denominator=("genEventCount" if sample in SIGNALS else "genEventSumw"))
         os.makedirs(out_dir, exist_ok=True)
         with open(f"{out_dir}/normalization.json", "w") as fh:
             json.dump(out, fh, indent=1)
