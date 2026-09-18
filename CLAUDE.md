@@ -221,11 +221,28 @@ stage-1×stage-2 在 OS sideband data 上的**联合**拒绝率，这个还没�
 两个变体的 Prediction 文件跟 stage-1 的按 `(run,luminosityBlock,event)`
 关联起来，另写对比脚本——这是下一步。
 
+### 联合 WP1xWP2 FOM 对比：两种 stage-2 训练总体统计上不可区分
+
+用户指出单点 AUC 不是公平对比，要 2D FOM map(WP1×WP2 联合扫描，OS sideband
+和 GenTag MC 两种背景都算)——沿用仓库里已有的 `fom_scan_stage2d.py`(0916)框架，
+写了 `analysis/macros/compare_stage2_wp_fom.py`，对 "wjetsres"(依赖 stage-1
+90% 预筛)和 "wjetsres_nostage1"(全部 GenTag 1-5，不预筛)各跑一遍 2D 扫描再
+逐格对比。`wjetsres_nostage1` 自己的 Prediction 文件没有 `score_dsmu`(stage-1
+的分数，因为它是直接从 `SAMPLES_DIR` 打分的)，脚本靠断言(而非假设)两个
+Prediction 文件的 `(run,luminosityBlock,event)` 逐行一致来对齐，不做真正的 join
+(两者都是从同一份无筛选的源文件打分出来的，行序天然一致)。
+
+**结果**：OS sideband FOM 上两个变体几乎完全一致(ratio 处处 ≈1.000±0.005)；
+GenTag MC 共振背景 FOM 上 ratio 落在 0.94–1.03，没有系统性方向，跟统计噪声
+（该区 `Neff_res` 本来就接近统计地板）一致。**结论：两种训练总体统计上不可
+区分**——变体 (b) 单点 AUC 更高(0.95 vs 0.86)只是因为训练/测试问题本身更
+简单，不是训练总体真的更优；放进实际会用的联合工作点框架里两者等价。
+
 ### 下一步
 
-- 写联合(stage-1×stage-2)OS sideband 拒绝率对比脚本，两个 stage-2 变体都要
-  算，这才是能回答"两种训练总体哪个更好"的数字。
-- 重新扫 stage-1 的 ε_sig 工作点(旧的 70%/90% 不能直接假定还成立)。
+- 从 FOM 表里挑一个具体 WP1/WP2 组合定案(表已经是原材料)。
+- 定 stage-2 最终用哪个训练总体(两者等价，可能倾向 `wjetsres_nostage1`，因为
+  它不依赖 stage-1、架构更松耦合，以后重训 stage-1 不用连带重训 stage-2)。
 - Step 5：closure 检查收尾。
 
 详见 memory `[[project_nanomva_pipeline_migration]]`。
