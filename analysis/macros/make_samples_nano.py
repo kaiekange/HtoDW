@@ -26,12 +26,24 @@ Two modes, driven by condor_submit_make_samples_nano.py:
 SELECTION (friend columns, same combination as every corrections validator):
     pass_mu_nom & pass_muveto & ~jvm_veto_nom & (n_bjet_nom == 0)
 
-WEIGHT:
+WEIGHT (background, i.e. W+jets):
     weight = genWeight * norm * w_pu_nom * w_mu_nom * w_btag_nom
 `norm` is the piece's normalization.json value (xsec*L / (sum genWeight * acceptance
-correction), Corrections repo normalization.py). SIGNAL IS ON THE SAME ABSOLUTE SCALE AS
-BACKGROUND here -- unlike the old Samples/ (weight_mode="signal_era", relative, anchored
-at 1.0; see eras.py SIGNAL_ERA_WEIGHT) summing `weight` gives an expected yield.
+correction), Corrections repo normalization.py).
+
+WEIGHT (signal) -- changed 2026-09-17, genWeight dropped:
+    weight = norm * w_pu_nom * w_mu_nom * w_btag_nom
+Found 7/869,385 post-selection signal rows (49/1.6M pre-selection) with genWeight =
+-23.1645 instead of +23.1645 -- a technical two-valued weight with no cross-section
+meaning for this LO-ish EvtGen+Pythia generation (unlike the real amcatnloFXFX NLO
+subtraction term W+jets has). It crashed DNN.py's WeightedRandomSampler (torch.multinomial
+rejects any negative probability) the first time stage-1 was retrained on this sample.
+`norm` for signal now divides by genEventCount (plain N_gen), not sum(genWeight), to stay
+consistent with genWeight being absent from the numerator too -- see normalization.py.
+
+SIGNAL IS ON THE SAME ABSOLUTE SCALE AS BACKGROUND here -- unlike the old Samples/
+(weight_mode="signal_era", relative, anchored at 1.0; see eras.py SIGNAL_ERA_WEIGHT)
+summing `weight` gives an expected yield.
 
 DATA: no genWeight/normalization/SFs, so `weight` = 1.0 (present only so MC and data read
 the same way), no `norm`. OS data is BLINDED here: rows with |Ds_mass - M_DS| <
@@ -257,8 +269,14 @@ def worker(list_path, out_path, correct=False):
         if is_data:
             w = np.ones(n_sel, dtype=np.float64)
         else:
-            w = (nano["genWeight"][sel].astype(np.float64) * norm * fr["w_pu_nom"][sel]
-                 * fr["w_mu_nom"][sel] * fr["w_btag_nom"][sel])
+            # Signal drops genWeight (see module docstring, WEIGHT (signal)): the
+            # ~23.1645-magnitude technical weight isn't a real cross-section factor for
+            # this generation, and a rare sign flip (7/869,385 post-selection) crashes
+            # torch's WeightedRandomSampler downstream. normalization.py's `norm` for
+            # signal is computed to match (genEventCount denominator, not sum(genWeight)).
+            gw = (np.ones(n_sel, dtype=np.float64) if sample in SIGNAL_CHANNEL
+                  else nano["genWeight"][sel].astype(np.float64))
+            w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel] * fr["w_btag_nom"][sel]
             if not np.all(np.isfinite(w)):
                 sys.exit(f"non-finite weight in {nano_path} after selection")
         out = {b: nano[b][sel] for b in branches}
