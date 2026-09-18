@@ -112,7 +112,7 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-17)
+## Last Session (2026-09-17 ~ 09-18)
 
 ### NanoMVA pipeline 迁移 Step 1+2 完成；旧 EOS 模型目录已删(~127G)，当前无可用训练模型
 
@@ -181,6 +181,54 @@ Step 3 跑完、stage-1 把 WtoLNu2Jets_merged 打分完才能提交。
 - Step 3 跑完后提交变体 (a)：`condor_submit.py wjetsres`(BDT)。
 - 两个变体都跑完后对比 N_eff/AUC/OS sideband 拒绝率。
 - Step 5：closure 检查 + 更新这个文件。
+
+### Signal genWeight bug：崩训练→修复→重产→重训成功（09-18）
+
+Step 3 第一次提交后 `torch.multinomial` 崩了(`invalid multinomial distribution`)。
+追下去：`Signal_merged.root` 的 `weight` 分支 7/869,385 行是负的，根源是
+signal 的 `genWeight` 只取 `±23.1645` 两个值，其中一小撮是负的——EvtGen+Pythia
+生成，不是 amcatnloFXFX，这个 genWeight 对信号没有物理意义。用户判断直接拿掉。
+
+**改动比看起来大**：`normalization.py` 的 `norm = xsec*L/(sum(genWeight)*acc)`，
+分母是带符号求和，反推验证过旧 `norm` 值正是这样算出来的。只在
+`make_samples_nano.py` 去掉信号权重的 `genWeight` 因子而不动 `norm` 分母，
+分子分母不自洽，信号绝对产额会被系统性除以 ~23。两处一起改：
+`Corrections/corrections/normalization.py`(signal 的 norm 分母换成
+`genEventCount`，W+jets 不动，commit `8d1ba77`)+
+`CMSSW_15_0_5/analysis/macros/make_samples_nano.py`(signal weight 公式去掉
+genWeight，commit `5f007dd`)。重算 4 个 signal piece 的 normalization.json
+(`norm` 变化正好 ~23.16 倍)，重跑 6 个 skim chunk + merge，`Signal_merged.root`
+869,385 行不变、负权重 7→0。
+
+（中途一次虚惊：修完重交后 condor 显示 `ST=X`/`training.log` 0 字节，查
+scheduler log 发现是我和用户几乎同时都提交了一次 `ssdata` 撞车，用户自己
+`condor_rm` 清理后重交，不是权重修复的问题。）
+
+### Step 3 + Step 4 两个变体全部跑完
+
+**Step 3**(DNN, `ssdata`)：101 epoch early stop，val AUC 0.9973、test AUC
+0.9972(跟迁移前旧模型量级一致)。四个样本(Signal/WtoLNu2Jets/Data_OS/
+Data_SS)全部打分完，`score_dsmu` 写入。
+
+**Step 4 变体 (a)**(BDT, `wjetsres`，依赖 stage-1 90% WP 预筛)：训练背景
+16,133 行，test AUC 0.8605，拒绝率 2.5x(90%)/5.7x(70%)/11.3x(50%)。
+
+**Step 4 变体 (b)**(BDT, `wjetsres_nostage1`，不依赖 stage-1，训练总体是全部
+GenTag mode 1-5)：训练背景 75,581 行(4.7倍统计量)，test AUC 0.9502，拒绝率
+6.9x(90%)/19.1x(70%)。**两组数字不能直接比大小**——训练总体本身难度不同，
+(b) 的背景池子含大量 stage-1 已经能处理掉的"容易"部分。真正可比的指标是
+stage-1×stage-2 在 OS sideband data 上的**联合**拒绝率，这个还没算，需要把
+两个变体的 Prediction 文件跟 stage-1 的按 `(run,luminosityBlock,event)`
+关联起来，另写对比脚本——这是下一步。
+
+### 下一步
+
+- 写联合(stage-1×stage-2)OS sideband 拒绝率对比脚本，两个 stage-2 变体都要
+  算，这才是能回答"两种训练总体哪个更好"的数字。
+- 重新扫 stage-1 的 ε_sig 工作点(旧的 70%/90% 不能直接假定还成立)。
+- Step 5：closure 检查收尾。
+
+详见 memory `[[project_nanomva_pipeline_migration]]`。
 
 ## 上一 Session (2026-09-16 晚 ~ 09-17)
 
