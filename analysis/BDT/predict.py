@@ -99,7 +99,10 @@ for name in SAMPLES:
     with uproot.open(path)[TREE] as t:
         data = t.arrays(library="np")
 
-    X = np.column_stack([data[b].astype(np.float64) for b in feats.names])
+    # common.build_matrix, not a local column_stack: feats.names may contain DERIVED
+    # features (dphi_met_*) that are computed, not read, and the formula must be the
+    # one training used. See common.build_matrix.
+    X = common.build_matrix(data, feats)
     n = len(X)
 
     X, mask = common.preprocess(X, feats)

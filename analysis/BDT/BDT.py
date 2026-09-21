@@ -3,7 +3,7 @@ XGBoost BDT: H->Ds(*)W signal (OS) vs one of two background choices, phipimu cha
 
     python3 BDT.py ssdata           # background = SS data (Data_SS_merged, even event)
     python3 BDT.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
-    python3 BDT.py ssdata 101       # same config, different seed -> ..._f41_seed101
+    python3 BDT.py ssdata 101       # same config, different seed -> ..._f44_seed101
 
 **Everything except the algorithm is now shared with DNN.py via ../DNN/common.py**:
 the 41 features and their order, the preprocessing chain, the selection, the signal

@@ -55,10 +55,17 @@ ISO_PU = {"Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
           "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt", "Ds_IsoR04_RelIso",
           "Ds_IsoR03_RelIso", "mu_IsoR04_RelIso", "num_jets", "num_jets_pt30",
           "jet_ht", "jet_leadpt", "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
-          "Ds_nearestjet_dR", "Ds_nearestjet_bscore", "met_pt", "met_sig", "met_sumEt"}
+          "Ds_nearestjet_dR", "Ds_nearestjet_bscore", "met_pt", "met_sumEt"}
+# met_sig dropped from FEATURE_NAMES 2026-09-21 (no rebuildable corrected version --
+# see common.py), so its entry here is removed rather than left as a dead name.
+# mu_ipxysig added to VTX_IP in the same change: it is an impact-parameter variable, so
+# without this line it would fall through into the control group below and be counted as
+# evidence that the control group shifts -- the opposite of what this macro measures.
+# The three derived dphi_met_* features correctly land in the control group (they are
+# angles), which is why they are not listed anywhere above.
 VTX_IP = {"Ds_prob", "dira", "Ds_ipsig", "Ds_ipxysig", "Ds_FDsig", "Ds_FDxysig",
           "Kp_ipsig", "Km_ipsig", "pi_ipsig", "mu_ipsig",
-          "Kp_ipxysig", "Km_ipxysig", "pi_ipxysig"}
+          "Kp_ipxysig", "Km_ipxysig", "pi_ipxysig", "mu_ipxysig"}
 GROUP = {"isolation / jets / MET": ("#C0392B", ISO_PU),
          "vertex & impact parameter": ("#E67E22", VTX_IP),
          "kinematics & angles (control)": ("#2C7BB6", set(F) - ISO_PU - VTX_IP)}

@@ -3,7 +3,7 @@ DNN: H->Ds(*)W signal (OS) vs one of two background choices, phipimu channel.
 
     python3 DNN.py ssdata           # background = SS data (Data_SS_merged, even event)
     python3 DNN.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
-    python3 DNN.py ssdata 101       # same config, different seed -> ..._f41_seed101
+    python3 DNN.py ssdata 101       # same config, different seed -> ..._f44_seed101
 
 The optional seed exists to measure the run-to-run noise floor. Any claim that a
 model change improved background rejection has to clear that floor, and until it
