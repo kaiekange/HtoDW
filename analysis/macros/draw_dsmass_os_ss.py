@@ -1,18 +1,24 @@
-"""The four basic pre-MVA M(KKpi) comparisons, absolute yields, no classifier involved.
+"""Pre-MVA M(KKpi) comparisons, absolute yields, no classifier involved.
 
     python3 draw_dsmass_os_ss.py            # analysis selection (1 tight mu + b-veto)
     python3 draw_dsmass_os_ss.py --no-bveto # 1 tight mu only
 
-Four panels, each a spectrum plus its ratio:
+NanoMVA migration (2026-09-18): re-pointed at NanoMVA/Samples/ (Data_OS_merged,
+Data_SS_merged, WtoLNu2Jets_merged; weight column is now `weight`, not
+`Lumi_reweight`), and at both eras (era=1 restriction dropped -- the old comment
+about WJETS_WEIGHTS holding only preEE keys no longer applies, see
+project_nano_merged_samples memory). Two of the original four panels are DROPPED,
+not just skipped: there is no W+jets SS file in NanoMVA/Samples/ yet (only
+Data_OS_merged, Data_SS_merged, Signal_merged, WtoLNu2Jets_merged exist), so
+"wjets_os_vs_ss" and "ss_data_vs_wjets" cannot be computed. Re-add them once a
+W+jets SS production exists -- do NOT substitute WtoLNu2Jets_merged with an SS
+lepton mask, OS/SS are separate reconstructions that cannot be swapped in for
+each other (project_samples_merge_era_branch memory).
+
+Two panels, each a spectrum plus its ratio:
 
   1. Data OS vs Data SS     -- the charge asymmetry actually present in data
-  2. W+jets OS vs W+jets SS -- the charge asymmetry the MC predicts
-  3. Data OS vs W+jets OS   -- closure, opposite-sign
-  4. Data SS vs W+jets SS   -- closure, same-sign
-
-Panels 1 and 2 answer "does the MC reproduce the OS/SS asymmetry"; 3 and 4 answer
-"does it reproduce the yield". Together they are the baseline every post-MVA number
-has to be read against, and they were never drawn.
+  2. Data OS vs W+jets OS   -- closure, opposite-sign
 
 Everything is an ABSOLUTE yield. The lumi-weighted W+jets is a sigma x L prediction
 with no free normalization, so a ratio away from 1 means something on its own and
@@ -24,12 +30,15 @@ For the same reason SS data is used in FULL: the odd/even parity split exists on
 keep the ssdata model from being validated on its own training half, which cannot
 happen when no score cut is applied.
 
-The b-veto is a flag because it matters more than it looks: the OS ratio is 2.19
-without it and 1.44 with it (it removes 25% of data and 0.7% of W+jets MC). Quoting
-either number without saying which selection produced it has already caused confusion
-once.
+The b-veto is a flag because it matters more than it looks (pre-migration numbers:
+OS ratio 2.19 without it, 1.44 with it, removing 25% of data and 0.7% of W+jets MC --
+re-measure on this production before quoting). Quoting either number without saying
+which selection produced it has already caused confusion once.
 
-OS data is blinded in |M-M_Ds| < 40 MeV; those bins are left as gaps, never zeros.
+OS data is blinded in |M-M_Ds| < 40 MeV at PRODUCTION time now (make_samples_nano.py
+drops those rows outright for Data_OS_merged, not just at plot time) -- the blind=True
+NaN masking below is kept anyway since the bins would read zero otherwise, and zero is
+a measurement while NaN is missing information (feedback_blind_sideband_care memory).
 
 Usage:
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
@@ -51,6 +60,7 @@ sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DN
 import common
 
 SAMPLES = common.SAMPLES_DIR
+LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
 
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 M_D = 1.8696
@@ -69,7 +79,7 @@ def load(name, *, ss, era=None, want_w=False):
     if era is not None:
         br.append("era")
     if want_w:
-        br.append("Lumi_reweight")
+        br.append("weight")
     a = uproot.open(f"{SAMPLES}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -80,7 +90,7 @@ def load(name, *, ss, era=None, want_w=False):
     if era is not None:
         m &= a["era"] == era
     if want_w:
-        return a["Ds_mass"][m], a["Lumi_reweight"][m]
+        return a["Ds_mass"][m], a["weight"][m]
     return a["Ds_mass"][m]
 
 
@@ -103,39 +113,40 @@ def spectrum(mass, w=None, blind=False):
 
 print(f"Loading from {SAMPLES} "
       f"(selection: 1 tight muon{' + tight b-veto' if B_VETO else ', NO b-veto'}) ...")
-# preEE only (era=1), which is what this macro always plotted: WJETS_WEIGHTS held only
-# preEE keys and the data literal was Data_2022. Drop era=1 to include postEE.
-data = {c: load("Data" if c == "OS" else "Data_SS", ss=(c == "SS"), era=1)
-        for c in ("OS", "SS")}
+# Both eras (era=1 restriction dropped, see module docstring).
+data = {c: load(f"Data_{c}_merged", ss=(c == "SS")) for c in ("OS", "SS")}
 mc, mcw = {}, {}
+# No WtoLNu2Jets SS file exists in NanoMVA/Samples/ yet -- only the OS MC panel
+# is computable (see module docstring).
+mc["OS"], mcw["OS"] = load("WtoLNu2Jets_merged", ss=False, want_w=True)
 for c in ("OS", "SS"):
-    # Per-event Lumi_reweight from the file, replacing three per-file constants.
-    mc[c], mcw[c] = load("WtoLNu2Jets_SS" if c == "SS" else "WtoLNu2Jets",
-                         ss=(c == "SS"), era=1, want_w=True)
-for c in ("OS", "SS"):
-    print(f"  {c}: data {len(data[c]):>9,} | W+jets {mcw[c].sum():>11,.0f} "
-          f"({len(mc[c]):,} rows)")
+    print(f"  {c}: data {len(data[c]):>9,}"
+          + (f" | W+jets {mcw[c].sum():>11,.0f} ({len(mc[c]):,} rows)" if c in mc else ""))
 
 H = {("data", "OS"): spectrum(data["OS"], blind=True),
-     ("data", "SS"): spectrum(data["SS"]),
-     ("mc", "OS"): spectrum(mc["OS"], mcw["OS"]),
-     ("mc", "SS"): spectrum(mc["SS"], mcw["SS"])}
+     # SS data genuinely has 267,374 rows in |M-M_Ds|<40 MeV (unlike OS, which has
+     # none -- blinded at production, see module docstring): SS is not a signal
+     # region, so there is no analysis reason to hide it. It is excluded from the
+     # PLOT anyway, purely so the panel does not show a real SS peak sitting right
+     # next to the gap where OS is blind -- that visual is misleading side by side
+     # even though the two gaps mean different things. The integrated ratio below
+     # already excluded the SR from both sides regardless (CR = ~BLIND).
+     ("data", "SS"): spectrum(data["SS"], blind=True),
+     ("mc", "OS"): spectrum(mc["OS"], mcw["OS"])}
 
 # (title, numerator, denominator, ratio label)
 SEL_TXT = "1-tight-mu" + (" + b-veto" if B_VETO else "")
 TAG = {("data", "OS"): f"Data OS (SR blinded, {SEL_TXT})",
-       ("data", "SS"): f"Data SS ({SEL_TXT})",
-       ("mc", "OS"): f"W+jets MC OS (lumi-weighted, {SEL_TXT})",
-       ("mc", "SS"): f"W+jets MC SS (lumi-weighted, {SEL_TXT})"}
+       ("data", "SS"): f"Data SS (Ds SR excluded from plot, {SEL_TXT})",
+       ("mc", "OS"): f"W+jets MC OS (lumi-weighted, {SEL_TXT})"}
 
 # (filename stem, series A, series B, ratio label). A is plotted blue, B red, in
 # every figure -- keeping the colour meaning positional rather than per-sample means
-# the four figures can be flipped through without re-reading a legend each time.
+# the figures can be flipped through without re-reading a legend each time.
+# wjets_os_vs_ss / ss_data_vs_wjets dropped, see module docstring (no W+jets SS file).
 FIGS = [
     ("data_os_vs_ss", ("data", "OS"), ("data", "SS"), "OS / SS"),
-    ("wjets_os_vs_ss", ("mc", "OS"), ("mc", "SS"), "OS / SS"),
     ("os_data_vs_wjets", ("data", "OS"), ("mc", "OS"), "data / MC"),
-    ("ss_data_vs_wjets", ("data", "SS"), ("mc", "SS"), "data / MC"),
 ]
 
 print("\n=== integrated ratios (control region only, |M-M_Ds| >= 40 MeV) ===")
@@ -155,8 +166,8 @@ for stem, ka, kb, rlab in FIGS:
     ax.set_ylim(0, None)
     ax.set_ylabel("# events / 10 MeV")
     ax.legend(fontsize=12, loc="upper right")
-    hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=True, text="Preliminary",
-                  fontsize=11)
+    hep.cms.label(ax=ax, rlabel=rf"{LUMI/1000:.1f} fb$^{{-1}}$ (13.6 TeV)", data=True,
+                  text="Preliminary", fontsize=11)
 
     hn, en = H[ka]
     hd, ed = H[kb]

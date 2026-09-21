@@ -1,7 +1,14 @@
 """OS vs SS: is the charge selection itself moving the MVA input variables?
 
-    python3 check_os_vs_ss_features.py            # 2022 data (default)
-    python3 check_os_vs_ss_features.py wjets      # WtoLNu2Jets MC, lumi-weighted
+    python3 check_os_vs_ss_features.py            # 2022 data (default, both eras)
+
+NanoMVA migration (2026-09-18): re-pointed at NanoMVA/Samples/ (Data_OS_merged,
+Data_SS_merged; weight column is now `weight`, not `Lumi_reweight`), both eras
+(era=1-only restriction dropped). The `wjets` mode is DROPPED, not just disabled by
+default: there is no W+jets SS file in NanoMVA/Samples/ yet (only Data_OS_merged,
+Data_SS_merged, Signal_merged, WtoLNu2Jets_merged exist) -- see
+draw_dsmass_os_ss.py's module docstring for the same constraint. Re-add it once a
+W+jets SS production exists.
 
 Signal is selected OS (pi opposite-sign to mu). Training the classifier against an
 SS background means the two training classes differ structurally in charge
@@ -16,10 +23,9 @@ b-veto and differ only in charge configuration, and reports per feature a
 standardized mean difference (Cohen's d) and a KS statistic. Large values flag
 features where the charge selection, not physics, drives the distribution.
 
-Measured 2026-08-10 on data: max |d| = 0.10 (Ds_pt), max KS = 0.041 -- small enough
-that the univariate artifact is not a concern. That does not by itself rule out a
-multivariate combination encoding OS-vs-SS; the decisive check is scoring OS data
-with the trained model (compare_models.py).
+Measured 2026-08-10 on the pre-migration data (43 features, preEE-only, old
+tuplizer): max |d| = 0.10 (Ds_pt), max KS = 0.041. Re-measure on this run --
+different production, different feature set (41), both eras now.
 
 The feature list comes from common.py, so this can never drift from what is trained.
 
@@ -44,17 +50,17 @@ sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DN
 import common
 
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
+LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
 
-SAMPLE = sys.argv[1] if len(sys.argv) > 1 else "data"
-if SAMPLE not in ("data", "wjets"):
-    sys.exit("usage: python3 check_os_vs_ss_features.py [data|wjets]")
+if len(sys.argv) > 1:
+    sys.exit("usage: python3 check_os_vs_ss_features.py  (data only -- "
+             "no W+jets SS file exists in NanoMVA/Samples/ yet)")
 
 FEATURES = common.FEATURE_NAMES
 
 
-def load(name, ss, era=None):
-    br = list(dict.fromkeys(FEATURES + common.SELECTION
-                            + ["Ds_mass", "Lumi_reweight"] + (["era"] if era else [])))
+def load(name, ss):
+    br = list(dict.fromkeys(FEATURES + common.SELECTION + ["Ds_mass"]))
     a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
     if ss:
         m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
@@ -64,8 +70,6 @@ def load(name, ss, era=None):
     # OS data is SR-blinded, so the same sideband requirement goes on both sides to
     # compare like with like.
     m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
-    if era is not None:
-        m &= a["era"] == era
     out = {k: v[m] for k, v in a.items()}
     for feat, fill in common.SENTINEL_FIX.items():
         out[feat][out[feat] < -1] = fill
@@ -73,17 +77,11 @@ def load(name, ss, era=None):
 
 
 def load_group(ss):
-    """One sample for data, the lumi-weighted jet-bin sum for W+jets."""
-    # preEE only (era=1), as this macro always was. Per-event Lumi_reweight now comes
-    # from the file instead of three per-file constants.
-    if SAMPLE == "data":
-        d = load("Data_SS" if ss else "Data", ss, era=1)
-        return d, np.ones(len(d["Ds_mass"]))
-    d = load("WtoLNu2Jets_SS" if ss else "WtoLNu2Jets", ss, era=1)
-    return d, d["Lumi_reweight"]
+    d = load("Data_SS_merged" if ss else "Data_OS_merged", ss)
+    return d, np.ones(len(d["Ds_mass"]))
 
 
-print(f"Loading OS and SS ({SAMPLE}, both sideband-only)...")
+print("Loading OS and SS (data, both eras, sideband-only)...")
 os_, os_w = load_group(ss=False)
 ss_, ss_w = load_group(ss=True)
 print(f"OS: {len(os_['Ds_mass']):,} | SS: {len(ss_['Ds_mass']):,}")
@@ -125,9 +123,9 @@ for i, f in enumerate(panels):
         lo, hi = np.percentile(np.concatenate([x[fx], y[fy]]), [0.5, 99.5])
         bins = np.linspace(lo, hi, 50) if hi > lo else np.linspace(lo - 1, hi + 1, 50)
     ax.hist(x[fx], bins=bins, weights=os_w[fx], density=True, histtype="step", lw=2,
-            color="steelblue", label="OS (sideband)")
+            color="steelblue", label="OS (control region)")
     ax.hist(y[fy], bins=bins, weights=ss_w[fy], density=True, histtype="step", lw=2,
-            ls="--", color="firebrick", label="SS")
+            ls="--", color="firebrick", label="SS (control region)")
     if f == "Ds_mass":
         ax.axvspan(M_DS - SR_HALFWIDTH, M_DS + SR_HALFWIDTH, color="grey", alpha=0.15)
         ax.set_title("Ds_mass (fit variable, not an input)", fontsize=12)
@@ -136,14 +134,52 @@ for i, f in enumerate(panels):
     ax.set_ylabel("a.u.")
     ax.legend(fontsize=9)
     if i == 0:
-        hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=(SAMPLE == "data"),
-                      text="Preliminary" if SAMPLE == "data" else "Simulation", fontsize=10)
+        hep.cms.label(ax=ax, rlabel=rf"{LUMI/1000:.1f} fb$^{{-1}}$ (13.6 TeV)", data=True,
+                      text="Preliminary", fontsize=10)
 
 for j in range(len(panels), len(axes_flat)):
     axes_flat[j].set_visible(False)
 
 plt.tight_layout()
-out = common.fig_path(
-    "features", f"os_vs_ss_features{'' if SAMPLE == 'data' else '_' + SAMPLE}.png")
+out = common.fig_path("features", "os_vs_ss_features.png")
 plt.savefig(out, dpi=100)
 print(f"\nSaved {out}")
+
+# ---------- focused figure: an explicit fixed feature list ----------
+# dR_pi_mu/dR_Km_mu/dR_phi_mu/dR_Kp_mu move together with dR_Ds_mu (same geometric
+# quantity from different legs of the same decay, see printed table) -- keep only
+# dR_Ds_mu as the representative, no auto-fill from the ranking.
+top = ["Ds_pt", "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumNeutralHadronEt", "dira",
+       "Ds_nearestjet_dR", "Dsmu_mass_corr", "dR_Ds_mu"]
+N_COLS2 = 4
+N_ROWS2 = int(np.ceil(len(top) / N_COLS2))
+fig2, axes2 = plt.subplots(N_ROWS2, N_COLS2, figsize=(5.5 * N_COLS2, 4.6 * N_ROWS2))
+axes2_flat = axes2.flatten()
+
+for i, f in enumerate(top):
+    ax = axes2_flat[i]
+    x, y = os_[f], ss_[f]
+    fx, fy = np.isfinite(x), np.isfinite(y)
+    if f.startswith("n_b_jets") or f.startswith("num_jets"):
+        bins = np.arange(-0.5, 12.5, 1.0)
+    else:
+        lo, hi = np.percentile(np.concatenate([x[fx], y[fy]]), [0.5, 99.5])
+        bins = np.linspace(lo, hi, 50) if hi > lo else np.linspace(lo - 1, hi + 1, 50)
+    ax.hist(x[fx], bins=bins, weights=os_w[fx], density=True, histtype="step", lw=2,
+            color="steelblue", label="OS (control region)")
+    ax.hist(y[fy], bins=bins, weights=ss_w[fy], density=True, histtype="step", lw=2,
+            ls="--", color="firebrick", label="SS (control region)")
+    ax.set_title(f, fontsize=12)
+    ax.set_ylabel("a.u.")
+    ax.legend(fontsize=9)
+    if i == 0:
+        hep.cms.label(ax=ax, rlabel=rf"{LUMI/1000:.1f} fb$^{{-1}}$ (13.6 TeV)", data=True,
+                      text="Preliminary", fontsize=10)
+
+for j in range(len(top), len(axes2_flat)):
+    axes2_flat[j].set_visible(False)
+
+plt.tight_layout()
+out2 = common.fig_path("features", "os_vs_ss_features_selected.png")
+plt.savefig(out2, dpi=110)
+print(f"Saved {out2}")
