@@ -112,7 +112,101 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-17 ~ 09-18)
+## Last Session (2026-09-21)
+
+### 两级 MVA 特征集大改 + 删掉一个一直在偷偷生效的旧 veto
+
+**stage-1 `f41` -> `f44`(44 特征)**：删 `met_sig`、加 `mu_ipxysig`、加 3 个派生的
+`dphi(met_phi_corr, ·)`、**留** `met_sumEt`。
+- `met_sig` 删掉的理由不是"没修正"，是**本该有修正却建不出来**：它的 V 矩阵由
+  `metSignificance()` 用 jet pt×分辨率算，而 Puppi 的 V 没存进 nano，结构上不可重算。
+  后果具体：friend 的 `_jesUp/Down` 不重算它 -> 冻住 -> **JES 系统误差被低估**。
+- `met_sumEt` **留**：候选 ET 的标量和，Type-1 动的是 MET 矢量不是标量和，
+  **物理上就与 JES 无关，冻住它是正确行为**，不是缺陷。
+- `mu_ipxysig` 加回来的理由**不是** AUC(0.566，而且那个数带 signal=MC vs bkg=data 的
+  confound)，而是**相关性**：四对 2D/3D IP 里 mu 最不冗余(r=0.669 vs track 的 0.83-0.86)。
+- 3 个 dphi 是**派生特征**，不是分支。为此新增 **`common.build_matrix()`** —— 此前
+  `load()`/`DNN/predict.py`/`BDT/predict.py` **三处各自** `column_stack`，隐含假设
+  "每个特征名都是分支名"。现在三处共用一个入口，顺带统一了 dtype。
+
+**stage-2 `prodtopo_v1` 10 -> 28(`_f10` -> `_f28`)**：全 303 个合格分支系统审计
+(309 个在四个样本都有，减去 ID/权重/truth)，AUC 算在 stage-2 自己的问题上。
+- **排名最高的一批必须拒收**：`phi_pt` 0.716 / `dR_phi_Ds` 0.712 / `Kp_pt` 0.711 /
+  `dR_Kp_Km` 0.692 等 daughter kinematics —— `Kp_pt`+`Km_pt`+`dR_Kp_Km` **直接构成
+  m(KK)**，AUC 高是因为它们在偷看拟合变量。
+- **删 `mu_IsoR04_RelIso`**(0.506)：12 个 `mu_Iso*` 全在 0.500-0.515，结构性的 ——
+  两类的 μ 都来自真 W，没差别可找。
+- 加 10 个：`Ds_IsoR03_sumChargedHadronPt` 0.803、两个 `Ds_Iso*_PFIso`、`Dsmu_Ht_corr`、
+  三个 R03 sum、`Ds_FDsig`/`Kp_ipsig`/`Km_ipsig`、`dira`。
+- displacement 家族实测 `Ds_FDsig`≡`Ds_FDxysig`(**r=1.00**)、`pi_ipsig`与FDsig r=0.90，
+  所以只取不冗余的。`Ds_ipsig`/`Ds_ipxysig`/`Ds_prob` 都 ~0.5 不加。
+
+**删掉 `load()` 里重复施加的旧 muon veto**(`num_os_mu_tight==1 & num_ss_mu_tight==0`)。
+合并样本生产时已施过新的 `pass_muveto`，`load()` 又施一遍旧的，两者取交集而旧的紧
+50-100 倍：额外砍掉 **signal 1.98% / W+jets 3.18% / OS data 7.57%**。
+**我先说"要拆 charge guard 和 veto"是错的 —— 那个 guard 根本不存在**：
+`pi_charge_ref = sameSignPi ? mu.charge() : -mu.charge()` 是**从 best muon 反推定义的**，
+所以 best muon 恒落在文件类型对应的那侧，**是恒等式**(实测 100.000%，0 行例外)。
+换成 `selection_mask()`(修正后 mu pt>26/|eta|<2.4/tightId/relIso<0.15 + b-veto，
+三个值全由 correctionlib key 定死) + `check_charge_config()` 断言(用真实电荷
+`mu_charge==pi_charge`，SS 100% / OS 0%，配错文件当场 exit)。
+
+**验收**：cross-path 逐位相同(同一批行分别走 `load()` 和 `predict.py` 路径)、
+四样本 load+preprocess、五脚本 py_compile。
+
+### 模型重训
+
+- **stage-1 `ssdata` f44 完成**(cluster 12713688)：val AUC **0.9972**(与迁移前持平)，
+  四样本打分完，`feature_names.txt` 44 行与 common.py 逐位一致。
+- **stage-2 首轮**(12714187/88，1500 轮)：`wjetsres` AUC 0.8846(旧 f10 0.8605)、
+  `wjetsres_nostage1` 0.9589(旧 0.9502)。**但两个都欠拟合** ——
+  `best_iteration`=1497/1499 而 `n_estimators`=1500，`early_stopping_rounds=30` 从未触发。
+  **`best_iteration == n_estimators-1` 要读成「把上限再提」，不是收敛。**
+  已改 1500 -> 3000 重交(**12714494 / 12714495**)。
+
+### 物理：mass tilt 的第一次修正后测量，上侧破案
+
+**no cut 时三个质量窗口完全平**(1.243/1.216/1.240，双比值 **1.003±0.003**)，
+**tilt 只在 MVA cut 之后出现**并单调增长(1.338/1.926/2.663)。这一行不依赖任何模型，
+排除了"质量相关的归一化问题"。整体缺口 1.44 -> 1.24，**但 tilt 没缩**(0811 是 1.272)。
+**0824 那个「tilt 消失 1.004」确认是 era 不平衡的假象，结案。**
+
+**上侧**：K+->pi+ 质量互换后 D 峰 cut 后 70-88% 是 mode 5，**MC 高估约 2 倍**；
+上侧 misID 反射族占 MC 37%(ε90)。**mode 8 里还漏着真 D 反射** ——
+mode 8 的 `nmatched` 只取 1/2 从不取 3 且 `n_hf`≡`nmatched`，**它是 truth-matching
+的失败桶不是物理类别**；nmatched=1 那半有 6.3σ 的 D 峰，gen 层面确认配上的 `Kp`
+祖先是 **411(D+)** 而它自己是 **211(π)** —— 正是 mode 5 的签名。
+
+**Pythia 衰变表核对**(用户在 PDG 查 inclusive)：`Ds+->KKpipi0` Py/PDG **1.11**(主导项
+`phi rho+` 是**二体**，`meMode=0` 对二体是正确答案)；`D+->KKpipi0` Py/PDG **2.50**
+(主导项 `phi pi+ pi0` 是**三体 meMode=0**，这一条自己就比整个 PDG inclusive 高 1.7 倍)。
+**模式：Pythia 的 D+ 三体 `meMode=0` 道系统性高估 2-2.5 倍**，二体主导的道正常。
+
+**下侧仍未解释，但范围缩小了**：缺口 D=data-MC 对 cut 的抵抗力比已建模 W+jets 强
+3-5 倍、比信号弱 270 倍；ε=50% 时 D(299) 已超过整个已建模下侧本底(261)。
+OS-SS 判决显示**约 60% 是电荷关联的**。**用户纠正了一个我的错误**：我把 OS/SS 分数
+偏置(保留率 2.25-4.39 倍)整个当成分类器假象去校正，但 **OS 本来就有更多电荷关联的
+真 charm，那本来就更 signal-like**，所以那是**过度校正、得到的是下界**：
+真值夹在 1.123/1.361/1.533(下界) 和 1.175/1.471/1.821(上界) 之间，两端都显著 >1。
+**Pythia charm BR 这条假说死了 —— 方向相反**(高估，修正会让缺口更大)。
+
+### 下一步
+
+- 等 12714494/95，然后**重做联合 WP1xWP2 FOM 对比**(`compare_stage2_wp_fom.py`，
+  跑前要检查它是不是也在 stale macro 里)。
+- **重训 `wjets` 模型**(一个 job，配置现成)：训的是 signal-OS vs W+jets-**OS**，
+  结构上学不到 OS/SS 区别，是**唯一能直接判决「电荷关联是假象还是物理」**的测试。
+- 产 **W+jets SS**，拆开残余的 40%。
+- **7 个 macro 仍 stale**(手写施加已退役的 veto)：`check_feature_datamc_gap`、
+  `check_jetbin_closure_nanomva`、`draw_features`、`draw_stage1_dsmass_by_era`、
+  `draw_ds_mass_signal_data_wjets`、`screen_new_jet_vars`、`compare_stage2_eff_mass`。
+  (`check_os_vs_ss_features` 是合理用户，它本来就在做 OS-vs-SS 研究。)
+- `draw_era_feature_shift.py` 的 `ISO_PU` 用迁移前名字，四个 `_corr` 特征掉进了对照组
+  —— **破于 0917 的改名**，已修 `mu_ipxysig` 归类但那 4 个没动，
+  `project_era_pileup_mismodelling` 的 era 结论要不要复核由用户定。
+
+
+## 上一 Session (2026-09-17 ~ 09-18)
 
 ### NanoMVA pipeline 迁移 Step 1+2 完成；旧 EOS 模型目录已删(~127G)，当前无可用训练模型
 
