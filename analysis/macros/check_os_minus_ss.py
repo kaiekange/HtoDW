@@ -53,8 +53,7 @@ MODEL = "ssdata"
 PRED = f"{common.resolve(MODEL)['out_dir']}/Prediction"
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 EFFS = [1.0, 0.90, 0.70, 0.50]
-BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
-      common.B_VETO, "event_id"]
+BR = ["score_dsmu", "Ds_mass", *common.SELECTION, "event_id"]
 
 MBINS = np.linspace(M_DS - 0.3, M_DS + 0.3, 31)
 MCENT = 0.5 * (MBINS[1:] + MBINS[:-1])
@@ -70,11 +69,12 @@ def load(name, *, ss=False, sig=False, parity=None, era=None):
     br = list(dict.fromkeys(BR + ["Lumi_reweight"] + (["era"] if era else [])
                             + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:

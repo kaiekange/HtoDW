@@ -81,10 +81,8 @@ MOM = [f"{p}_{c}" for p in ("Kp", "Km", "pi") for c in ("px", "py", "pz")]
 sp = []
 for sn in common.SIGNALS:
     a = uproot.open(f"{PRED}/{sn}.root")["Events"].arrays(
-        MOM + ["score_dsmu", "Ds_match", "mu_match", "num_os_mu_tight",
-               "num_ss_mu_tight", common.B_VETO], library="np")
-    m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-         & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+        MOM + ["score_dsmu", "Ds_match", "mu_match", *common.SELECTION], library="np")
+    m = (common.selection_mask(a) & (a["score_dsmu"] > -1)
          & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool))
     sp.append({k: v[m] for k, v in a.items()})
 S = {k: np.concatenate([p[k] for p in sp]) for k in sp[0]}

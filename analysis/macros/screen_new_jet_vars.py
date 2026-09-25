@@ -61,9 +61,12 @@ EXTRA = ["Ds_mass", "phi_mass"]
 
 
 def one_tight_mu(a, ss=False):
-    if ss:
-        return (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0) & (a[common.B_VETO] == 0)
-    return (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0) & (a[common.B_VETO] == 0)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"one_tight_mu(ss={ss})")
+    return common.selection_mask(a)
 
 
 def load(name, truth_filter=False, ss=False, era=None):

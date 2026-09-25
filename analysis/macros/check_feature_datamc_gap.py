@@ -34,21 +34,32 @@ FEATURES = common.FEATURE_NAMES
 SEL = [*common.SELECTION]
 
 
+# ossel/sssel are now the SAME selection and are kept as two names only so the call
+# sites still read as "OS side" / "SS side". Which charge configuration a row has is a
+# property of the FILE (producer's sameSignPi), not of this mask -- the old
+# num_os/ss_mu_tight pair additionally imposed an uncalibrated soft-in-jet-muon tag,
+# which is what 2026-09-21 removed. See common.selection_mask.
 def ossel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-             & (a[common.B_VETO] == 0))
+    return common.selection_mask(a)
 
 
 def sssel(a):
-    return ((a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-             & (a[common.B_VETO] == 0))
+    return common.selection_mask(a)
 
 
 def load(name, extra, sel=ossel):
-    a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(
-        FEATURES + SEL + ["Ds_mass"] + extra, library="np")
+    # load_branches, not FEATURES: the three dphi_met_* are DERIVED (computed by
+    # build_matrix from met_phi_corr/mu_phi), not branches in the file.
+    br = list(dict.fromkeys(list(common.STAGE1.load_branches) + SEL + ["Ds_mass"] + extra))
+    a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
     m = sel(a) & (np.abs(a["Ds_mass"] - M_DS) >= SR_HALF)   # sideband, both samples
-    return {k: v[m] for k, v in a.items()}
+    out = {}
+    for f in FEATURES:
+        v = common.STAGE1.derived[f][0](a) if f in common.STAGE1.derived else a[f]
+        out[f] = np.asarray(v, dtype=np.float64)[m]
+    for k in ["Ds_mass"] + list(extra):
+        out[k] = np.asarray(a[k])[m]
+    return out
 
 
 print("Loading (OS + b-veto + Ds mass sideband)...")

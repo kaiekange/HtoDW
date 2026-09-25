@@ -73,8 +73,7 @@ def load(name, *, sig=False, era=None):
     if not os.path.exists(p):
         sys.exit(f"missing {p}")
     a = uproot.open(p)["Events"].arrays(BR_SIG if sig else BR, library="np")
-    m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-         & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1))
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     else:

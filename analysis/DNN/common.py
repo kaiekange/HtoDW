@@ -118,13 +118,59 @@ FEATURE_NAMES = [
     # b jet is surrounded by charged hadrons. RelIso divides by Ds_pt, which dilutes it.
     # No corrected counterpart exists for any of these (isolation sums are not JES/JER
     # quantities), so they are unchanged from the pre-migration feature set.
+    #
+    # 2026-09-22: ALL of Ds_IsoR03_*, Ds_IsoR04_* and mu_IsoR04_* -- 18 branches, 11 of
+    # them new. What was here before was the four R04 Ds components plus three RelIso, an
+    # asymmetry that was inherited rather than argued: the paragraph above says "the
+    # components, not just RelIso", yet R03 kept ONLY RelIso, the very form it calls
+    # diluted. mu_IsoR03_* is deliberately NOT included (not requested).
+    #
+    # R03 is not redundant with R04. R03 is the INNER cone, so R04 = R03 + the 0.3-0.4
+    # annulus, and measured on signal vs SS data: Ds_IsoR03_sumChargedHadronPt alone is
+    # AUC 0.825 (only R04_RelIso 0.844 and R04_sumChargedHadronPt 0.837 beat it, and it
+    # was not in the set); the annulus is AUC 0.606 and correlates only r = 0.164 with
+    # R03 inside signal, so core and annulus are near-independent and handing the model
+    # only their sum threw the decomposition away; the existing Ds_IsoR03_RelIso is NOT a
+    # proxy for it (r = 0.332). r(R03, R04) also differs by class -- 0.782 in signal vs
+    # 0.942 in SS data -- so "do the two cones track each other" discriminates in its own
+    # right, and is only constructible when both cones are present.
+    #
+    # KNOWN REDUNDANCY, KEPT DELIBERATELY (user decision 2026-09-22). Verified to float32
+    # precision on all three families:
+    #     PFIso  == sumCH + max(0, sumNH + sumPh - 0.5*sumPU)     (max rel dev 0, bitwise)
+    #     RelIso == PFIso / pt
+    # so the three PFIso and the two Ds RelIso are determined by the twelve sums plus
+    # Ds_pt. They stay because a NET CANNOT EASILY LEARN A RATIO -- handing it the
+    # combination costs one input and saves it from reconstructing a division out of
+    # log1p'd sums and a linear pt. (For a BDT the same columns would be dead weight.)
+    # mu_IsoR04_RelIso additionally carries something no other feature does: the
+    # UNCORRECTED mu_pt. That is not a convention slip -- the POG iso WP and its SF are
+    # defined on the uncorrected pt, which is why apply_corrections.py leaves RelIso as
+    # stored. mu_IsoR04_PFIso is the one near-miss: rebuilding it from its four sums is
+    # off by 7.4e-03, so muon isolation uses the official pfIsolationR04() rather than a
+    # plain dBeta sum.
+    #
+    # Numerics: all 11 new columns have min = 0, zero negative and zero non-finite across
+    # all four merged samples (9,452,569 rows after selection), so each one goes into
+    # LOG_FEATURES and none needs a SENTINEL_FIX entry.
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
     "Ds_IsoR04_sumPUPt",
     "Ds_IsoR04_RelIso",
+    "Ds_IsoR04_PFIso",
+    "Ds_IsoR03_sumChargedHadronPt",
+    "Ds_IsoR03_sumNeutralHadronEt",
+    "Ds_IsoR03_sumPhotonEt",
+    "Ds_IsoR03_sumPUPt",
     "Ds_IsoR03_RelIso",
+    "Ds_IsoR03_PFIso",
+    "mu_IsoR04_sumChargedHadronPt",
+    "mu_IsoR04_sumNeutralHadronEt",
+    "mu_IsoR04_sumPhotonEt",
+    "mu_IsoR04_sumPUPt",
     "mu_IsoR04_RelIso",
+    "mu_IsoR04_PFIso",
     # MET / event. num_jets_pt20..pt60 are near-duplicates (AUC all ~0.80), so only
     # one threshold is kept -- and that threshold's corrected counterpart is what is
     # used (num_jets_pt30_corr). num_jets (no threshold) is dropped, see the module
@@ -220,10 +266,26 @@ LOG_FEATURES = [
     "Km_ipxysig",
     "pi_ipxysig",
     "mu_ipxysig",
+    # Isolation: the heavy-tailed ABSOLUTE quantities -- the twelve cone sums and the
+    # three PFIso. The three RelIso stay OUT: they are ratios, already O(1), which is the
+    # convention this list has always followed. Added 2026-09-22 along with the eleven new
+    # isolation features; every one has min = 0 / zero negative / zero non-finite across
+    # the four merged samples, so log1p is safe and no sentinel is involved.
     "Ds_IsoR04_sumChargedHadronPt",
     "Ds_IsoR04_sumNeutralHadronEt",
     "Ds_IsoR04_sumPhotonEt",
     "Ds_IsoR04_sumPUPt",
+    "Ds_IsoR04_PFIso",
+    "Ds_IsoR03_sumChargedHadronPt",
+    "Ds_IsoR03_sumNeutralHadronEt",
+    "Ds_IsoR03_sumPhotonEt",
+    "Ds_IsoR03_sumPUPt",
+    "Ds_IsoR03_PFIso",
+    "mu_IsoR04_sumChargedHadronPt",
+    "mu_IsoR04_sumNeutralHadronEt",
+    "mu_IsoR04_sumPhotonEt",
+    "mu_IsoR04_sumPUPt",
+    "mu_IsoR04_PFIso",
 ]
 
 # Sentinel handling -- needed here but NOT in the BDT: trees just split around a
@@ -328,18 +390,24 @@ SELECTION = list(dict.fromkeys(
     [*MU_SEL_BRANCHES, *CHARGE_BRANCHES, B_VETO, *LEPTON_BRANCHES]))
 
 
-def selection_mask(a):
+def selection_mask(a, *, bveto=True):
     """The analysis row selection: corrected muon cuts + b-jet veto.
 
     One function so load() and stage1_threshold() cannot drift -- they used to carry
     two hand-written copies of the same condition, and only one of them would have been
     noticed if it had been changed alone.
+
+    bveto=False drops ONLY the b-jet veto and keeps the muon cuts. Two macros study the
+    b-veto itself -- draw_nbjets_veto.py picks its working point and draw_lepton_bjet_vs_cut.py
+    plots b-jet multiplicity with the veto lifted -- so applying it would collapse their own
+    observable to a spike at zero. They still need the MUON selection to come from here
+    rather than a hand-written copy, which is the entire point of this function.
     """
-    return ((a["mu_pt_corr"] > MU_PT_MIN)
-            & (np.abs(a["mu_eta"]) < MU_ETA_MAX)
-            & a["mu_isTight"].astype(bool)
-            & (a["mu_IsoR04_RelIso"] < MU_ISO_MAX)
-            & (a[B_VETO] == 0))
+    m = ((a["mu_pt_corr"] > MU_PT_MIN)
+         & (np.abs(a["mu_eta"]) < MU_ETA_MAX)
+         & a["mu_isTight"].astype(bool)
+         & (a["mu_IsoR04_RelIso"] < MU_ISO_MAX))
+    return (m & (a[B_VETO] == 0)) if bveto else m
 
 
 def check_charge_config(a, ss, where):
@@ -376,7 +444,7 @@ class FeatureSpec:
     nn.Linear(n_in, 128) and the feature_names.txt stamp. Reordering it without
     retraining produces garbage scores and raises nothing on its own --
     check_model_dir() / check_feature_stamp() below turn that into a readable
-    failure. `names` is NOT copied, so FEATURE_SETS["f44"].names is FEATURE_NAMES
+    failure. `names` is NOT copied, so FEATURE_SETS["f55"].names is FEATURE_NAMES
     itself and the back-compat shim below cannot drift from it.
 
     `dira` is a feature name or None. None (stage-2 has no `dira`) drops both the
@@ -417,109 +485,66 @@ class FeatureSpec:
 # outright, same reason as f41 -- no same-threshold corrected replacement exists,
 # and it is 11 features -> 10.
 PRODTOPO_V1 = [
-    "Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_RelIso", "Ds_IsoR03_RelIso",
-    # mu_IsoR04_RelIso REMOVED 2026-09-21. Measured on this set's own problem (signal vs
-    # W+jets GenTag 1-5, weighted) it is AUC 0.506 -- nothing. And that is forced, not
-    # accidental: in BOTH classes the muon comes from a real W, so it is a prompt isolated
-    # muon either way and there is no difference to find. All twelve mu_Iso* variables
-    # measure 0.500-0.515 here, so none of them belong in this set. (In stage-1 it is a
-    # different question -- there the background is combinatorial SS data.)
-    "Dsmu_mass_corr", "Dsmu_pt_corr", "dR_Ds_mu",
+    # 2026-09-22, USER FRAMEWORK: four classes, and one rule deciding membership --
+    # no daughter-level quantities, only the Ds and things above it. That is what this
+    # set always claimed ("production topology and not decay kinematics") but did not
+    # follow: Kp_ipsig/Km_ipsig were added 2026-09-21 in direct contradiction of it.
+    #
+    # The rule has a measured justification, not just symmetry: of the whole displacement
+    # family ONLY Kp_ipsig sculpts the fit variable. Within mode 3-5 the SR/sideband
+    # density ratio moves 1.119 -> 1.305 -> 1.482 (+-0.031/0.045/0.071, 6.8 sigma) as the
+    # cut tightens, while Ds_FDsig is flat (0.974 +- 0.053, 0.5 sigma) and Ds_ipsig and
+    # isolation are flat to under 1 sigma. Mechanism: 93% of mode 3-5 is mode 5 (K->pi
+    # misassignment), so the track ASSIGNED as K+ has its parameters coupled to the
+    # misreconstructed mass; Ds_FDsig is a whole-Ds quantity with no such coupling.
+    # HOW to measure this correctly is in the feedback_sculpting_measure memory: an
+    # SR/sideband ratio taken across MIXED components measures composition, not shape.
+
+    # --- class 1: isolation (8). The four sums are a BASIS -- PFIso == sumCH + max(0,
+    # sumNH + sumPh - 0.5*sumPU) and RelIso == PFIso / Ds_pt, both verified bitwise, so
+    # once the sums and Ds_pt are present the two PFIso and two RelIso are determined.
+    # Dropped: for a BDT a redundant column is dead weight. (stage-1 keeps its own for
+    # the OPPOSITE reason -- a net cannot easily learn a ratio, so handing it the
+    # combination is worth one input.)
+    "Ds_IsoR04_sumChargedHadronPt", "Ds_IsoR04_sumNeutralHadronEt",
+    "Ds_IsoR04_sumPhotonEt", "Ds_IsoR04_sumPUPt",
+    "Ds_IsoR03_sumChargedHadronPt", "Ds_IsoR03_sumNeutralHadronEt",
+    "Ds_IsoR03_sumPhotonEt", "Ds_IsoR03_sumPUPt",
+
+    # --- class 2: prompt Ds (3). Kp_ipsig/Km_ipsig REMOVED: daughter-level, sculpting
+    # (above), and r = 0.754 with Ds_FDsig, which measures the same flight directly and
+    # beats them inside every Ds_pt bin. Ds_ipsig ADDED: it asks whether the Ds MOMENTUM
+    # points back at the PV (the b->Ds question) rather than how far it flew, and is
+    # nearly independent of the rest (r = 0.180 with Ds_FDsig, 0.146 with Kp_ipsig,
+    # -0.380 with dira). AUC 0.519 is low BY CONSTRUCTION -- the ceiling for a variable
+    # tagging f ~ 11% of the background is 0.5 + f/2 = 0.555 -- and it is the only
+    # displacement variable that does NOT collapse inside the SR (0.5187 -> 0.5172, vs
+    # Kp_ipsig 0.6701 -> 0.5943 and Ds_FDsig 0.6781 -> 0.6118). The collapse happens
+    # because the SR is 82.9% real Ds while the sideband is 92% D/reflection, so the
+    # ctau-based Ds-vs-D separation these variables provide is work the mass window has
+    # already done.
+    "Ds_FDsig", "Ds_ipsig", "dira",
+
+    # --- class 3: jet / event activity (5).
     "met_sumEt", "num_jets_pt30_corr", "Ds_nearestjet_dR",
-    # Added 2026-09-21 with the same three DERIVED features stage-1 got. They satisfy
-    # every stated criterion of this set: they are production topology and not decay
-    # kinematics (they never touch the Ds decay, so they cannot sculpt the Ds/phi fit
-    # peaks), they are not lifetime/IP (so they do not run into the "displaced tt would
-    # be ranked higher" problem that keeps mu_ipxysig and every IP feature OUT of this
-    # set), and they are less pileup-coupled than met_sumEt, which is already here.
-    #
-    # Physics: in signal the Ds recoils against the W, so MET (the W neutrino) has a
-    # fixed angular relation to the Ds and the muon. In RESONANT W+jets -- this set's
-    # actual target, a real D/Ds that stage-1 cannot remove -- the MET is also a real W
-    # neutrino, but the Ds is a fragmentation product of a jet with no fixed orientation
-    # to it. That difference is production topology, which is exactly what this set is.
-    #
-    # NOT measured before adding (no AUC, no correlation against the other 10), same
-    # caveat as in FEATURE_NAMES. The directory tag moves off _f10 so the existing
-    # 10-feature models stay on disk instead of being overwritten.
-    "dphi_met_mu",
-    "dphi_met_Ds",
-    "dphi_met_Dsmu",
-    # --- Re-added 2026-09-21. These five were dropped from this set on the stated
-    # grounds "pileup sensitive, AND THE W+JETS PU REWEIGHT IS STILL PROVISIONAL". That
-    # second clause was the load-bearing one and it no longer holds: every row of
-    # NanoMVA/Samples/ now carries w_pu_nom from the official LUM puWeights JSON, applied
-    # by apply_corrections.py and folded into the `weight` column by make_samples_nano.py.
-    # The nTrueInt profile was checked against the official MC profile at the time
-    # (<nTrueInt> 37.45 vs 37.45, CDF agreeing to <= 7e-4), so what these features were
-    # being protected from is now a real correction rather than a missing one.
-    #
-    # Caveat worth keeping in view: PU reweighting fixes the nTrueInt DISTRIBUTION, not
-    # the detector-level modelling of PU-sensitive observables. For this set that is
-    # second order -- stage-2 trains MC vs MC (signal vs W+jets GenTag), so both classes
-    # carry the same PU modelling and a residual mismodelling does not become a free
-    # discriminant the way it does for stage-1's MC-vs-SS-data problem. It does still
-    # matter downstream, where the trained model is applied to real data.
-    "Ds_IsoR04_sumPUPt",
-    "Ds_IsoR04_sumNeutralHadronEt",
-    "Ds_IsoR04_sumPhotonEt",
-    # n_b_jets_*_dR04: b-tagged central jets with dR(Ds) > 0.4, i.e. EXCLUDING the jet the
-    # Ds is itself clustered into (HDsPhiPiMuProducer.cc:1045). No pt threshold on these
-    # two -- deliberate, and different from the b-VETO, which is n_bjet_corr at corrected
-    # pt >= 20. Not logged below: small integers, not heavy-tailed sums.
-    "n_b_jets_loose_dR04",
-    "n_b_jets_medium_dR04",
-    # --- Added 2026-09-21 after a systematic audit of all 303 eligible branches (the
-    # 309 present in ALL FOUR merged samples, minus IDs/weights/truth -- a feature the
-    # model is applied to on data cannot be MC-only). AUC below is on this set's own
-    # problem: signal vs W+jets GenTag mode 1-5, weighted.
-    #
-    # DELIBERATELY NOT ADDED although they rank at the very top: phi_pt 0.716, Kp_pt
-    # 0.711, Km_pt 0.708, dR_phi_Ds 0.712, dR_Kp_Km 0.692, Ds_p 0.685 and the rest of
-    # the daughter-kinematics family. Kp_pt, Km_pt and dR_Kp_Km TOGETHER RECONSTRUCT
-    # m(KK) (m^2 = 2 pT1 pT2 (cosh dEta - cos dPhi)); decay kinematics reproduce
-    # phi_mass to R^2 = 0.98 and Ds_mass to 0.94. Their high AUC is them reading the
-    # fit variable, and putting them in would sculpt the peaks this analysis fits.
-    # Dsst_*/gamma_* also left out (user decision): they are only meaningful for the
-    # DsstW channel and are sentinels on DsW rows.
-    "Ds_IsoR03_sumChargedHadronPt",   # 0.803, the R03 twin of this set's strongest input
-    "Ds_IsoR04_PFIso",                # 0.703, absolute isolation (RelIso divides by Ds_pt)
-    "Ds_IsoR03_PFIso",                # 0.687
-    "Ds_IsoR03_sumNeutralHadronEt",   # 0.541, R03 twins of the three R04 sums above
-    "Ds_IsoR03_sumPhotonEt",          # 0.536
-    "Ds_IsoR03_sumPUPt",              # 0.536
-    "Dsmu_Ht_corr",                   # 0.668, scalar pt sum of Ds+mu -- production level
-    # Displacement. The family collapses badly, so only the non-redundant best are taken:
-    # Ds_FDsig and Ds_FDxysig are r = 1.00 (literally the same variable, one is enough),
-    # pi_ipsig is r = 0.90 with Ds_FDsig, Kp_ipsig/Kp_ipxysig are r = 0.83. Ds_ipsig
-    # (0.524) and Ds_ipxysig (0.517) are left out as measuring nothing here, and so is
-    # Ds_prob (0.507) -- both classes contain a TRUE Ds, so there is no vertex-quality
-    # difference to find, which is also why Ds_prob only reaches 0.547 even in stage-1.
-    "Ds_FDsig",                       # 0.565, how far the Ds flew / its uncertainty
-    "Kp_ipsig",                       # 0.591, the strongest of the whole family here
-    "Km_ipsig",                       # 0.591
-    # dira = cos(angle between Ds momentum and the PV->SV vector), i.e. "was this Ds
-    # produced AT the primary vertex". It is the right variable for DISPLACED-Ds
-    # background (b->Ds), and it is nearly independent of Ds_FDsig (r = 0.63): FDsig is
-    # the displacement MAGNITUDE, dira is whether the direction points back.
-    # Honest accounting: it only reaches 0.533 here, and that is a property of the
-    # background, not a failure of the variable. A variable that tags a fraction f of
-    # the background has an AUC ceiling of 0.5 + f/2; with f ~ 11% b->Ds in W+jets true
-    # Ds that ceiling is 0.555, so dira already delivers ~60% of what is achievable.
-    # The displaced background it really targets is tt, which is NOT in this training
-    # sample -- so adding dira does NOT by itself buy tt protection, because the
-    # classifier cannot learn a weight for a background it never sees. That still needs
-    # a tt MC sample. It is included because it is cheap, independent of FDsig, and
-    # already in place for when tt arrives.
-    # NOTE: the b-vs-prompt origin of the Ds CANNOT be checked in these samples --
-    # cand_gen_common_hf_pdgId is the CLOSEST heavy-flavour ancestor, which for modes
-    # 1-5 is always the D/Ds itself (cand_gen_n_distinct_hf == 1 for all 77,562 rows).
-    # The 11% figure comes from a separate FWLite study on MiniAOD, not from here.
-    "dira",
+    "n_b_jets_loose_dR04", "n_b_jets_medium_dR04",
+
+    # --- class 4: Ds-mu back-to-back (8). Ds_pt ADDED: post-eps90 AUC 0.7189, the highest
+    # of anything measured on this problem, and a whole-Ds quantity (Kp_pt + Km_pt +
+    # dR_Kp_Km together rebuild m(KK); Ds_pt alone does not, so it cannot sculpt the fit
+    # peaks). CAVEAT: CLAUDE.md 2026-08-11 records Ds_pt as the worst data/MC-mismatched
+    # feature in the set (single-cut eps_data/eps_MC 2.52, rising to 4.57) -- harmless
+    # while training MC-vs-MC, but it propagates when the model is applied to data.
+    # mu_pt_corr ADDED in place of Dsmu_Ht_corr, which was exactly Ds_pt + mu_pt_corr to
+    # float32: with both originals present that sum is a fixed 1:1 combination the BDT can
+    # build itself and weight as it likes. Dsmu_pt_corr does NOT substitute for it -- that
+    # is the VECTOR sum, so given Ds_pt it does not determine mu_pt (a dphi is missing).
+    "dR_Ds_mu", "dphi_met_mu", "dphi_met_Ds", "dphi_met_Dsmu",
+    "Dsmu_mass_corr", "Dsmu_pt_corr", "Ds_pt", "mu_pt_corr",
 ]
 
 FEATURE_SETS = {
-    "f44": FeatureSpec(FEATURE_NAMES, log=LOG_FEATURES, sentinel=SENTINEL_FIX,
+    "f55": FeatureSpec(FEATURE_NAMES, log=LOG_FEATURES, sentinel=SENTINEL_FIX,
                        dira="dira", derived=DERIVED),
     "prodtopo_v1": FeatureSpec(
         PRODTOPO_V1,
@@ -533,16 +558,15 @@ FEATURE_SETS = {
              "Ds_IsoR04_sumNeutralHadronEt", "Ds_IsoR04_sumPhotonEt",
              "Ds_IsoR03_sumChargedHadronPt", "Ds_IsoR03_sumPUPt",
              "Ds_IsoR03_sumNeutralHadronEt", "Ds_IsoR03_sumPhotonEt",
-             "Ds_IsoR04_PFIso", "Ds_IsoR03_PFIso",
-             "Ds_FDsig", "Kp_ipsig", "Km_ipsig"],
+             "Ds_FDsig", "Ds_ipsig"],
         # Ds_nearestjet_dR IS in this set (Ds_nearestjet_bscore and jet_leadpt_corr
-        # are not) and needs the same "-777 (no jet) -> far away" sentinel as f44.
+        # are not) and needs the same "-777 (no jet) -> far away" sentinel as f55.
         sentinel={"Ds_nearestjet_dR": 5.0},
         # dira="dira" (was None): dira is in this set as of 2026-09-21, so it needs the
         # same log(1.01 - dira) transform stage-1 gives it. Without this it stays a raw
         # cosine piled up against 1.0 and is numerically almost a constant.
         dira="dira",
-        # The SAME DERIVED dict object as f44, so there is one definition of the dphi
+        # The SAME DERIVED dict object as f55, so there is one definition of the dphi
         # formulas for both stages instead of a second copy that could drift. Sharing it
         # works only because all three of its keys are in this set's names too --
         # FeatureSpec REQUIRES every derived key to appear in `names` and raises
@@ -553,7 +577,7 @@ FEATURE_SETS = {
 
 # Back-compat shims: the stage-1 macros import these names directly and must keep
 # working untouched. They are the f41 spec's attributes, by identity for `names`.
-STAGE1 = FEATURE_SETS["f44"]
+STAGE1 = FEATURE_SETS["f55"]
 LOAD_BRANCHES = STAGE1.load_branches
 DIRA_IDX = STAGE1.dira_idx
 LOG_IDX = STAGE1.log_idx
@@ -566,7 +590,7 @@ LOG_IDX = STAGE1.log_idx
 # raised 800 -> 1500 on 2026-09-09: the first seed-42 run hit the 800 cap without
 # early-stopping (val AUC still rising ~1e-4/round at round 799), i.e. underfit.
 BDT_PARAMS = {
-    "f44": dict(n_estimators=2000, max_depth=5, learning_rate=0.05,
+    "f55": dict(n_estimators=2000, max_depth=5, learning_rate=0.05,
                 subsample=0.8, colsample_bytree=0.8, min_child_weight=10),
     # n_estimators history: 800 -> 1500 (2026-09-09) -> 3000 (2026-09-21). Each raise
     # was forced by the SAME symptom, not by tuning: the run ends with best_iteration at
@@ -617,7 +641,7 @@ ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "Data_OS_merged", "Data_SS
 # in project_genweight_missing memory for why a per-bin constant cannot work at all).
 WJETS_JET_BINS = (0, 1, 2)
 
-# The two background configurations. `_f44` is a feature-set generation tag: a
+# The two background configurations. `_f55` is a feature-set generation tag: a
 # future feature change gets its own suffix rather than clobbering these.
 #
 # out_name vs out_dir: `out_name` is the bare directory name, which out_dir_for()
@@ -669,8 +693,8 @@ TRAININGS = {
         weighted=False,          # real data: no per-process lumi reweighting
         label="Data SS",
         is_data=True,
-        out_name="dsw_dsstw_ssdata_f44",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f44",
+        out_name="dsw_dsstw_ssdata_f55",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f55",
     ),
     "wjets": dict(
         # One file, both eras and all three jet bins inside (WtoLNu2Jets_merged, was
@@ -683,8 +707,8 @@ TRAININGS = {
         weighted=True,
         label="W+jets MC",
         is_data=False,
-        out_name="dsw_dsstw_wjets_f44",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f44",
+        out_name="dsw_dsstw_wjets_f55",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f55",
     ),
     "wjetsres": dict(
         # Stage 2 of the two-stage MVA: signal MC vs W+jets RESONANT background (real
@@ -726,8 +750,8 @@ TRAININGS = {
         # DNN-convention path (the out_dir == MVA_DIR/out_name assertion below pins it).
         # A BDT-only entry still needs the field; every stage-2 macro must resolve the
         # real dir with common.out_dir_for("wjetsres", tool="BDT"), never cfg["out_dir"].
-        out_name="dsw_dsstw_wjetsres_f28_wp90",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f28_wp90",
+        out_name="dsw_dsstw_wjetsres_f24_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f24_wp90",
     ),
     "wjetsres_nostage1": dict(
         # Comparison arm for Step 4 of the NanoMVA migration plan: same background
@@ -757,8 +781,8 @@ TRAININGS = {
         score_branch="score_dsmu_res",
         label="W+jets resonant (GenTag 1-5, no stage-1 pre-filter)",
         is_data=False,
-        out_name="dsw_dsstw_wjetsres_nostage1_f28",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_nostage1_f28",
+        out_name="dsw_dsstw_wjetsres_nostage1_f24",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_nostage1_f24",
     ),
 }
 
@@ -772,7 +796,7 @@ TRAININGS = {
 # different stage-1 seed's own Prediction/ dir and threshold; train stage-2 behind
 # each (itself at seed=42, so only the stage-1 side varies) and compare the resulting
 # rejection spread to the fixed-stage-1 spread already measured from wjetsres seeds
-# 101/102/103. Requires dsw_dsstw_ssdata_f44_seed{101,102,103} to exist first -- the
+# 101/102/103. Requires dsw_dsstw_ssdata_f55_seed{101,102,103} to exist first -- the
 # pre-migration f43 seed models this study originally measured were deleted with the
 # rest of the pre-NanoMVA model directories (2026-09-17), so this needs re-running,
 # not just re-pointing.
@@ -782,8 +806,8 @@ for _s1seed in (101, 102, 103):
         TRAININGS["wjetsres"],
         stage1_cut=dict(key="ssdata", tool="DNN", seed=_s1seed, eff_sig=0.90),
         label=f"W+jets resonant (GenTag 1-5, post stage-1 seed{_s1seed} 90%)",
-        out_name=f"dsw_dsstw_{_name}_f28_wp90",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f28_wp90",
+        out_name=f"dsw_dsstw_{_name}_f24_wp90",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f24_wp90",
     )
 
 for _k, _c in TRAININGS.items():
@@ -795,7 +819,7 @@ for _k, _c in TRAININGS.items():
 # forgets score_branch should fail loudly rather than silently write into stage-1's
 # "score_dsmu".
 for _c in TRAININGS.values():
-    _c.setdefault("feature_set", "f44")
+    _c.setdefault("feature_set", "f55")
     _c["features"] = FEATURE_SETS[_c["feature_set"]]
     _c.setdefault("score_branch", "score_dsmu")
 
@@ -814,7 +838,7 @@ def out_dir_for(key, tool="DNN", seed=None):
     """Model directory for one (background, tool, seed) combination.
 
     seed=None or the default 42 gives the canonical path -- i.e. the existing
-    dsw_dsstw_*_f44 dirs, which the seed-spread study must not touch. Any other
+    dsw_dsstw_*_f55 dirs, which the seed-spread study must not touch. Any other
     seed gets a _seed{N} suffix so several runs of the same config coexist.
     """
     if tool not in TOOLS:

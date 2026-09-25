@@ -75,18 +75,18 @@ BLIND = np.abs(MCENT - M_DS) < SR_HALFWIDTH
 
 
 def load(name, *, ss, era=None, want_w=False):
-    br = ["Ds_mass", "num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
+    br = ["Ds_mass", *common.SELECTION]
     if era is not None:
         br.append("era")
     if want_w:
         br.append("weight")
     a = uproot.open(f"{SAMPLES}/{name}.root")["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    if B_VETO:
-        m &= a[common.B_VETO] == 0
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a, bveto=bool(B_VETO))
     if era is not None:
         m &= a["era"] == era
     if want_w:

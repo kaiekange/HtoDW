@@ -5,16 +5,18 @@ OS data overlaid as points with the SR blinded, data/MC ratio sub-panel) but for
 WP instead of a 4-column efficiency scan, and two mass variables side by side instead
 of one.
 
-WP2 is CONDITIONAL on WP1 (see fom_scan_stage2d.py): thr2 is the quantile of
-score_dsmu_res among truth-matched signal that already passes thr1, so eps_total =
-WP1 * WP2. Both mass variables use the SAME event selection (score_dsmu > thr1 AND
+WP2 IS UNCONDITIONAL (2026-09-22, matching fom_map_stage2_run3.py): thr2 is the
+quantile of score_dsmu_res over ALL truth-matched signal, not over the subset that
+already passed thr1, so WP2 names one fixed stage-2 cut whatever WP1 is. eps_total
+is therefore NOT WP1*WP2 -- the two cuts are correlated -- and is counted directly
+from the AND. Both mass variables use the SAME event selection (score_dsmu > thr1 AND
 score_dsmu_res > thr2) -- phi_mass is not itself blinded, but events in the Ds_mass
 blind window are excluded from OS data for BOTH panels, because blindness is a
 property of the event, not of which variable happens to be on the x-axis.
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
-    python3 draw_wp_mass.py [WP1] [WP2]        # defaults 0.50 0.75
+    python3 draw_wp_mass.py [WP1] [WP2]        # defaults 0.40 0.55
 """
 import sys
 
@@ -30,14 +32,14 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-WP1 = float(sys.argv[1]) if len(sys.argv) > 1 else 0.50
-WP2 = float(sys.argv[2]) if len(sys.argv) > 2 else 0.75
+WP1 = float(sys.argv[1]) if len(sys.argv) > 1 else 0.40
+WP2 = float(sys.argv[2]) if len(sys.argv) > 2 else 0.55
 
 S2_DIR = common.out_dir_for("wjetsres", tool="BDT", seed=42)
 PRED = f"{S2_DIR}/Prediction"
 M_DS, M_PHI, SR_HALF = 1.96835, 1.019460, 0.040
 LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
-SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
+SEL = [*common.SELECTION]
 
 GROUPS = [   # (label, modes, colour) -- stack bottom -> top, same as stage2_mass_stack
     (r"other (mode 0,6-10)",        [0, 6, 7, 8, 9, 10], "#5a9e78"),
@@ -59,8 +61,11 @@ VARS = [   # (branch, label, bin edges, blind half-width or None, ref line or No
 
 
 def ossel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-            & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return (common.selection_mask(a) & (a["score_dsmu"] > -1)
+            & (a["score_dsmu_res"] > -1))
 
 
 def rd(name, extra):
@@ -69,34 +74,38 @@ def rd(name, extra):
         library="np")
 
 
-# ---- thresholds: thr1 unconditional, thr2 conditional on thr1 (fom_scan_stage2d.py) ----
+# ---- thresholds: both unconditional, on all truth-matched signal ----
 s1, s2, sw = [], [], []
 for s in common.SIGNALS:
-    a = rd(s, ["Ds_match", "mu_match", "Lumi_reweight"])
+    a = rd(s, ["Ds_match", "mu_match", "weight"])
     m = ossel(a) & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     s1.append(a["score_dsmu"][m])
     s2.append(a["score_dsmu_res"][m])
-    sw.append(a["Lumi_reweight"][m])
+    sw.append(a["weight"][m])
 s1, s2, sw = np.concatenate(s1), np.concatenate(s2), np.concatenate(sw)
 thr1 = float(np.quantile(s1, 1 - WP1))
-s2_cond = s2[s1 > thr1]
-thr2 = float(np.quantile(s2_cond, 1 - WP2))
+# WP2 >= 1 means "stage-1 only": no stage-2 cut at all. Taking the 0th quantile is NOT
+# the same thing -- `> min(score)` would still drop the single lowest-scoring row.
+STAGE1_ONLY = WP2 >= 1.0
+thr2 = -np.inf if STAGE1_ONLY else float(np.quantile(s2, 1 - WP2))
 eps_tot = float(sw[(s1 > thr1) & (s2 > thr2)].sum() / sw.sum())
-print(f"WP1={WP1:.2f} (thr1={thr1:.4f})  WP2={WP2:.2f} conditional (thr2={thr2:.4f})  "
-      f"eps_total={eps_tot:.4f}")
+print(f"WP1={WP1:.3f} (thr1={thr1:.4f})  "
+      + ("stage-1 ONLY, no stage-2 cut" if STAGE1_ONLY else
+         f"WP2={WP2:.2f} unconditional (thr2={thr2:.4f})")
+      + f"  eps_total={eps_tot:.4f}")
 
 # ---- W+jets GenTag: apply the 2D cut once, keep both mass branches ----
-g = rd("WtoLNu2Jets_GenTag", ["cand_gen_mode", "Lumi_reweight"])
+g = rd("WtoLNu2Jets_merged", ["cand_gen_mode", "weight"])
 gk = ossel(g) & (g["score_dsmu"] > thr1) & (g["score_dsmu_res"] > thr2)
 g_ds, g_phi, gm, gw = (g["Ds_mass"][gk], g["phi_mass"][gk],
-                       g["cand_gen_mode"][gk], g["Lumi_reweight"][gk].astype(float))
+                       g["cand_gen_mode"][gk], g["weight"][gk].astype(float))
 
 # ---- OS data: same 2D cut, blinded on Ds_mass for BOTH panels (see docstring) ----
-d = rd("Data", [])
+d = rd("Data_OS_merged", [])
 dk = (ossel(d) & (d["score_dsmu"] > thr1) & (d["score_dsmu_res"] > thr2)
       & (np.abs(d["Ds_mass"] - M_DS) >= SR_HALF))
 d_ds, d_phi = d["Ds_mass"][dk], d["phi_mass"][dk]
-print(f"W+jets GenTag rows passing cut: {gk.sum():,}   OS data rows passing cut "
+print(f"W+jets rows passing cut: {gk.sum():,}   OS data rows passing cut "
       f"(Ds SR blinded): {dk.sum():,}")
 
 fig = plt.figure(figsize=(15.0, 7.5))
@@ -171,10 +180,12 @@ for col, (branch, xlabel, bins, blind_half, refline) in enumerate(VARS):
     if col == 0:
         rax.set_ylabel("data / MC")
 
-fig.suptitle(rf"WP1 $\varepsilon_1$={WP1:.0%}  +  WP2 $\varepsilon_2$={WP2:.0%} "
-             rf"(conditional)  $\to$  $\varepsilon_{{tot}}$={eps_tot:.0%}", fontsize=14)
+fig.suptitle((rf"stage-1 only, WP1 $\varepsilon_1$={WP1:.1%}" if STAGE1_ONLY else
+              rf"WP1 $\varepsilon_1$={WP1:.0%}  +  WP2 $\varepsilon_2$={WP2:.0%}")
+             + rf"  $\to$  $\varepsilon_{{tot}}$={eps_tot:.1%}", fontsize=14)
 
-out = common.fig_path("comparisons", f"wp_mass_wp1_{WP1:.2f}_wp2_{WP2:.2f}.png",
+out = common.fig_path("comparisons", (f"wp_mass_wp1_{WP1:.3f}_stage1only.png" if STAGE1_ONLY else
+                        f"wp_mass_wp1_{WP1:.2f}_wp2_{WP2:.2f}.png"),
                       key="wjetsres", tool="BDT")
 plt.savefig(out, dpi=120, bbox_inches="tight")
 plt.close(fig)

@@ -61,7 +61,7 @@ ERA_INFO = {1: ("2022 (preEE)",    "7.99 fb$^{-1}$"),
             2: ("2022EE (postEE)", "26.68 fb$^{-1}$")}
 
 BR = ["score_dsmu", "Ds_mass", "phi_mass", "Lumi_reweight", "event_id", "era",
-      "num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
+      *common.SELECTION]
 BR_SIG = [b for b in BR if b not in ("Lumi_reweight", "era")] + ["Ds_match", "mu_match"]
 
 argv = sys.argv[1:]
@@ -89,11 +89,12 @@ PRED = f"{common.out_dir_for(BKG, tool=TOOL, seed=SEED)}/Prediction"
 def load(name, *, sig=False, is_data=False, era=None):
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(
         BR_SIG if sig else BR, library="np")
-    if SIGN == "SS" and not sig:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, SIGN == "SS" and not sig, f"load({name!r})")
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if PHI_HW is not None:
         m &= np.abs(a["phi_mass"] - 1.019460) < PHI_HW
     if era is not None:
@@ -127,10 +128,9 @@ for era in ERA_INFO:
     f_odd = 1.0
     if SIGN == "SS":
         all_ss = uproot.open(f"{PRED}/{DATA_NAME}.root")["Events"].arrays(
-            ["num_ss_mu_tight", "num_os_mu_tight", common.B_VETO, "score_dsmu", "era"],
-            library="np")
-        base = ((all_ss["num_ss_mu_tight"] == 1) & (all_ss["num_os_mu_tight"] == 0)
-                & (all_ss[common.B_VETO] == 0) & (all_ss["score_dsmu"] > -1)
+            [*common.SELECTION, "score_dsmu", "era"], library="np")
+        common.check_charge_config(all_ss, True, f"f_odd({DATA_NAME!r})")
+        base = (common.selection_mask(all_ss) & (all_ss["score_dsmu"] > -1)
                 & (all_ss["era"] == era))
         f_odd = len(data["Ds_mass"]) / max(base.sum(), 1)
     D[era] = dict(data=data, wj=wj, wjw=wj["Lumi_reweight"] * f_odd, f_odd=f_odd)

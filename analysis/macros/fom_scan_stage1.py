@@ -1,29 +1,42 @@
-"""Stage-1 working-point scan for the two-stage MVA (see the stage-2 plan, section 4a).
+"""Stage-1 standalone working-point scan, Punzi a=3, scaled to Run-3 (326 /fb).
 
 Stage-1's job is to reject NON-resonant background (combinatorial + partial-match +
 misID). Its working point is therefore chosen against that background only -- the
-resonant piece (GenTag modes 1-5) is stage-2's problem and is NOT counted in B here.
+resonant piece (GenTag modes 1-5) is stage-2's problem and is NOT counted in B.
 
-For a grid of stage-1 signal efficiencies WP1:
-  eps_sig(WP1)  Lumi_reweight-weighted survival of truth-matched HtoDsW+HtoDsstW
-                (OS + tight b-veto). S has no absolute scale (signal_era weights are
-                relative), so S proportional to eps_sig and the FOM numerator is eps_sig.
-  B_nonres      lumi-weighted SR yield (|M(KKpi) - M_Ds| < 40 MeV, both eras) of
-                WtoLNu2Jets_GenTag with cand_gen_mode in {0,6,7,8,9,10}.
-  B_data_sb     OS-sideband data count surviving the cut -- a second, model-free
-                probe of "how fast does non-resonant background fall" (cross-check
-                only; different normalisation, compare where the curves flatten).
+MIGRATED 2026-09-22 to the NanoMVA samples (it read Lumi_reweight /
+WtoLNu2Jets_GenTag / Data, none of which exist any more, so it could not run at
+all) and reworked to the 2026-09-22 request: Punzi a=3 only, the two backgrounds
+scanned SEPARATELY rather than one folded FOM, everything scaled to 326 /fb.
 
-  FOM (Punzi)   eps_sig / (a/2 + sqrt(B)),  tabulated for a in {2, 3, 5}
-  FOM (naive)   eps_sig / sqrt(B)
+    FOM = eps_sig / (1.5 + sqrt(B))        Punzi a=3
 
-Guard-rail columns, because the Punzi a/2 term is negligible here (B is in the
-hundreds+, sqrt(B) >> a/2) so the FOM has no interior maximum -- what actually
-bounds WP1 is:
-  N_eff(1-5, full)   effective size of the stage-2 TRAINING background after this
-                     cut = (sum w)^2 / sum w^2 for modes 1-5, full mass range.
-                     Pick the TIGHTEST WP1 that keeps this above ~1500.
-  N_eff(B_nonres)     if this is small the FOM value itself is noise.
+Punzi is BR-INDEPENDENT, which is exactly why it is the right choice here: the
+signal normalisation carries whatever BR(H->DsW) the sample was generated with, so
+any S/sqrt(B) number would inherit that assumption. The scaled signal yield is
+printed once as context and deliberately kept out of the comparison.
+
+TWO BACKGROUNDS, SCANNED SEPARATELY
+  B_wjets   WtoLNu2Jets_merged, cand_gen_mode in {0,6,7,8,9,10}, weight-weighted,
+            SR window |M(KKpi) - M_Ds| < 40 MeV. Pure non-resonant W+jets -- but
+            tt/DY/QCD are absent entirely (the pre-cut data/MC gap is 1.44 and
+            rises steeply with jet multiplicity), so this UNDERSTATES B.
+  B_data    OS data in the CONTROL REGION, |M(KKpi) - M_Ds| >= 40 MeV, counted as
+            it stands. The SR stays blind and is NOT extrapolated into. Model-free
+            and it does contain tt/DY/QCD, at the cost of not being the SR.
+
+THE TWO ARMS ARE NOT COMPARABLE IN ABSOLUTE VALUE. B_wjets is an 80 MeV SR yield,
+B_data a 520 MeV sideband yield, so B_data is larger by roughly the width ratio and
+its Punzi value is correspondingly smaller. What IS comparable, and the only thing
+read across the two arms, is WHERE IN WP1 the optimum sits.
+
+WHY THE 326 /fb SCALING MOVES THE ANSWER: Punzi's a/2 term is what creates an
+interior maximum. At 34.67 /fb it is a ~12% regularizer at WP1=0.55; at 326 /fb
+the same cell has sqrt(B) three times larger and 1.5 is ~4%, so Punzi collapses
+toward eps/sqrt(B), which has NO interior maximum. Scaling multiplies weights but
+adds no MC rows and no data events, so what bounds the scan is the statistics
+floor below, NOT the FOM. Any maximum sitting on the floor must be reported as
+"still rising where the background estimate runs out of events".
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
@@ -38,133 +51,230 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 import uproot
 
-plt.style.use(hep.style.CMS)
-
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
+import eras
+
+plt.style.use(hep.style.CMS)
 
 MODEL = "ssdata"
-PRED = f"{common.out_dir_for(MODEL)}/Prediction"
+PRED = f"{common.out_dir_for(MODEL, tool='DNN')}/Prediction"
+MC_SAMPLE = "WtoLNu2Jets_merged"
+DATA_SAMPLE = "Data_OS_merged"
+
 M_DS, SR_HALF = 1.96835, 0.040
 NONRES = [0, 6, 7, 8, 9, 10]
 RES = [1, 2, 3, 4, 5]
-WP1_GRID = [0.99, 0.97, 0.95, 0.92, 0.90, 0.87, 0.85, 0.80, 0.75, 0.70, 0.60, 0.50]
-NEFF_FLOOR = 1500.0
-SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO, "score_dsmu"]
+PUNZI_A = 3.0
+
+LUMI_NOW_PB = sum(e["lumi_pb"] for e in eras.ERAS.values())     # 2022 preEE+postEE
+LUMI_RUN3_PB = 326000.0
+SCALE = LUMI_RUN3_PB / LUMI_NOW_PB
+
+WP1_GRID = [0.99, 0.97, 0.95, 0.92, 0.90, 0.87, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60,
+            0.55, 0.50, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10]
+# Statistics floors. Lumi scaling adds no events, so these are unchanged by it and
+# they -- not the FOM -- are what bounds the usable scan.
+#
+# NEFF_B_FLOOR is a ROUND NUMBER CHOSEN FOR ~10% Punzi error (Kish N_eff = 25 -> 20%
+# on B -> 10% on sqrt(B)), not derived from anything. It is NOT what determines the
+# answer, and the floor-sensitivity block below prints the proof: the argmax stays at
+# WP1=0.55 for every floor from 5 to 40, and only moves once cells with N_eff ~ 3 are
+# admitted -- where the paired bootstrap puts them at +0.4 sigma, i.e. nowhere.
+NEFF_B_FLOOR = 25.0                 # effective MC rows behind B_wjets
+N_CR_FLOOR = 50                     # raw OS data events in the control region
+NEFF_RES_FLOOR = 1500.0             # stage-2 training background (guard rail only)
+SEL = [*common.SELECTION]
 
 
 def sel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-            & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return common.selection_mask(a) & (a["score_dsmu"] > -1)
 
 
 def neff(w):
+    """Kish effective sample size: the relative statistical error on sum(w) is
+    1/sqrt(neff). Rows are candidates, not events, so this would understate the
+    error if one event contributed several rows -- measured 2026-09-22 on the
+    non-resonant SR subset: 490,965 rows for 490,965 unique (run, lumi, event),
+    exactly 1.000 rows/event, so rows ARE independent events here and both this
+    and the row-wise Poisson bootstrap below are valid."""
     s2 = np.sum(w ** 2)
     return float(np.sum(w) ** 2 / s2) if s2 > 0 else 0.0
+
+
+def punzi(eps, B):
+    return eps / (PUNZI_A / 2 + np.sqrt(B)) if B > 0 else np.nan
 
 
 # ---------- signal: thresholds and weighted efficiency ----------
 s_score, s_w = [], []
 for s in common.SIGNALS:
     a = uproot.open(f"{PRED}/{s}.root")["Events"].arrays(
-        ["score_dsmu", "Ds_match", "mu_match", "Lumi_reweight"] + SEL, library="np")
+        ["score_dsmu", "Ds_match", "mu_match", "weight"] + SEL, library="np")
     m = sel(a) & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     s_score.append(a["score_dsmu"][m])
-    s_w.append(a["Lumi_reweight"][m])
+    s_w.append(a["weight"][m])
 s_score = np.concatenate(s_score)
 s_w = np.concatenate(s_w)
 S_TOT = s_w.sum()
-print(f"truth-matched signal: {len(s_score):,} rows, weighted {S_TOT:,.1f}")
+print(f"Luminosity: {LUMI_NOW_PB/1000:.2f} /fb -> {LUMI_RUN3_PB/1000:.0f} /fb  "
+      f"(scale {SCALE:.4f})")
+print(f"truth-matched signal: {len(s_score):,} rows, weighted {S_TOT:.4f} events "
+      f"-> {S_TOT*SCALE:.3f} at Run-3.\n  CONTEXT ONLY: that yield carries the "
+      f"generated BR(H->DsW); Punzi is BR-independent and is the number to compare.")
 
+# Thresholds are defined on the FULL-range truth-matched signal, same as every other
+# stage-1 WP in this analysis (common.stage1_threshold), so WP1=0.90 here is the
+# same cut as the stage-2 pre-filter.
 THR = {wp: float(np.quantile(s_score, 1 - wp)) for wp in WP1_GRID}
 
-# ---------- background: GenTag ----------
-b = uproot.open(f"{PRED}/WtoLNu2Jets_GenTag.root")["Events"].arrays(
-    ["score_dsmu", "cand_gen_mode", "Ds_mass", "Lumi_reweight"] + SEL, library="np")
+# ---------- background A: W+jets non-resonant, SR ----------
+b = uproot.open(f"{PRED}/{MC_SAMPLE}.root")["Events"].arrays(
+    ["score_dsmu", "cand_gen_mode", "Ds_mass", "weight"] + SEL, library="np")
 k = sel(b)
 b_sc, b_mode, b_mass, b_w = (b["score_dsmu"][k], b["cand_gen_mode"][k],
-                             b["Ds_mass"][k], b["Lumi_reweight"][k])
-b_sr = np.abs(b_mass - M_DS) < SR_HALF
-b_nonres = np.isin(b_mode, NONRES)
+                             b["Ds_mass"][k], b["weight"][k])
+b_nr_sr = np.isin(b_mode, NONRES) & (np.abs(b_mass - M_DS) < SR_HALF)
 b_res = np.isin(b_mode, RES)
-print(f"GenTag scored rows after selection: {k.sum():,}")
+print(f"{MC_SAMPLE}: {k.sum():,} rows after selection, "
+      f"{int(b_nr_sr.sum()):,} non-resonant in SR")
 
-# ---------- cross-check background: OS sideband data ----------
-d = uproot.open(f"{PRED}/Data.root")["Events"].arrays(
+# ---------- background B: OS data control region (SR left blind) ----------
+d = uproot.open(f"{PRED}/{DATA_SAMPLE}.root")["Events"].arrays(
     ["score_dsmu", "Ds_mass"] + SEL, library="np")
 kd = sel(d)
 d_sc, d_mass = d["score_dsmu"][kd], d["Ds_mass"][kd]
-d_sb = np.abs(d_mass - M_DS) >= SR_HALF     # OS data is SR-blind anyway
-print(f"OS data scored rows after selection: {kd.sum():,}\n")
+d_cr = np.abs(d_mass - M_DS) >= SR_HALF
+print(f"{DATA_SAMPLE}: {kd.sum():,} rows after selection, "
+      f"{int(d_cr.sum()):,} in the control region\n")
 
 # ---------- scan ----------
 rows = []
 for wp in WP1_GRID:
     thr = THR[wp]
-    pas = b_sc > thr
-    w_sr_nr = b_w[pas & b_sr & b_nonres]
-    B = float(w_sr_nr.sum())
-    raw_nr = int((pas & b_sr & b_nonres).sum())
-    w_res_full = b_w[pas & b_res]
-    neff_res = neff(w_res_full)
-    Bd = int(np.sum((d_sc > thr) & d_sb))
-    eps = float(s_w[s_score > thr].sum() / S_TOT)
-    rows.append(dict(wp=wp, thr=thr, eps=eps, B=B, raw=raw_nr, neff_B=neff(w_sr_nr),
-                     neff_res=neff_res, Bd=Bd))
+    w_nr = b_w[(b_sc > thr) & b_nr_sr]
+    n_cr = int(np.sum((d_sc > thr) & d_cr))
+    rows.append(dict(
+        wp=wp, thr=thr,
+        eps=float(s_w[s_score > thr].sum() / S_TOT),
+        B_w=float(w_nr.sum()) * SCALE, raw_w=int(w_nr.size), neff_w=neff(w_nr),
+        neff_res=neff(b_w[(b_sc > thr) & b_res]),
+        n_cr=n_cr, B_d=n_cr * SCALE,
+    ))
 
-hdr = (f"{'WP1':>5} {'thr':>8} {'eps_sig':>8} {'B_nonres':>10} {'rawB':>7} "
-       f"{'NeffB':>7} {'Neff(1-5)':>10} {'Bdata_sb':>9} "
-       f"{'FOM a2':>8} {'FOM a3':>8} {'FOM a5':>8} {'eps/vB':>8}")
+hdr = (f"{'WP1':>5} {'thr':>8} {'eps':>7} | {'B_wjets':>9} {'rawB':>6} {'NeffB':>6} "
+       f"{'Punzi_w':>8} | {'n_CR':>7} {'B_data':>10} {'Punzi_d':>8} | {'Neff(1-5)':>9}")
 print(hdr)
 print("-" * len(hdr))
 for r in rows:
-    vB = np.sqrt(r["B"]) if r["B"] > 0 else np.nan
-    fa = {a: r["eps"] / (a / 2 + vB) for a in (2, 3, 5)}
-    flag = "  <-- Neff(1-5) below floor" if r["neff_res"] < NEFF_FLOOR else ""
-    print(f"{r['wp']:>5.2f} {r['thr']:>8.4f} {r['eps']:>8.4f} {r['B']:>10.1f} "
-          f"{r['raw']:>7d} {r['neff_B']:>7.0f} {r['neff_res']:>10.0f} {r['Bd']:>9d} "
-          f"{fa[2]:>8.5f} {fa[3]:>8.5f} {fa[5]:>8.5f} "
-          f"{(r['eps']/vB if vB>0 else np.nan):>8.5f}{flag}")
+    ok_w, ok_d = r["neff_w"] >= NEFF_B_FLOOR, r["n_cr"] >= N_CR_FLOOR
+    flag = "" if (ok_w and ok_d) else ("   below floor: " + ",".join(
+        x for x, o in (("MC", ok_w), ("data", ok_d)) if not o))
+    print(f"{r['wp']:>5.2f} {r['thr']:>8.4f} {r['eps']:>7.4f} | "
+          f"{r['B_w']:>9.1f} {r['raw_w']:>6d} {r['neff_w']:>6.0f} "
+          f"{punzi(r['eps'], r['B_w']):>8.5f} | "
+          f"{r['n_cr']:>7d} {r['B_d']:>10.1f} {punzi(r['eps'], r['B_d']):>8.5f} | "
+          f"{r['neff_res']:>9.0f}{flag}")
 
-ok = [r for r in rows if r["neff_res"] >= NEFF_FLOOR]
-if ok:
-    wp_star = min(ok, key=lambda r: r["wp"])["wp"]
-    print(f"\nTightest WP1 with Neff(modes 1-5, full) >= {NEFF_FLOOR:.0f}: "
-          f"eps_sig = {wp_star:.2f}  (thr = {THR[wp_star]:.4f})")
-    print("This is the WP1* candidate -- fill it into TRAININGS['wjetsres'] "
-          "stage1_cut.eff_sig and out_name '_wp<NN>'.")
-else:
-    print(f"\nNo WP1 keeps Neff(modes 1-5) above {NEFF_FLOOR:.0f} -- loosen the floor "
-          "or reconsider stage-2 (BDT on fewer features, or a cut set).")
+
+def best(key, name, floor_ok):
+    usable = [r for r in rows if floor_ok(r)]
+    vals = [punzi(r["eps"], r[key]) for r in usable]
+    i = int(np.nanargmax(vals))
+    r = usable[i]
+    edge = ("AT THE STATISTICS FLOOR -- the FOM is still rising where the background "
+            "estimate runs out of events" if i == len(usable) - 1 else "interior")
+    print(f"{name:>46}: max {vals[i]:.5f} at WP1 = {r['wp']:.2f} "
+          f"(thr {r['thr']:.4f}, B = {r[key]:.1f})  [{edge}]")
+
+
+print(f"\n---------- best WP1, Punzi a={PUNZI_A:.0f}, {LUMI_RUN3_PB/1000:.0f} /fb "
+      f"(inside the statistics floor) ----------")
+best("B_w", f"B = W+jets non-resonant SR (NeffB>={NEFF_B_FLOOR:.0f})",
+     lambda r: r["neff_w"] >= NEFF_B_FLOOR)
+best("B_d", f"B = OS data control region (n_CR>={N_CR_FLOOR})",
+     lambda r: r["n_cr"] >= N_CR_FLOOR)
+
+wr = [r for r in rows if r["neff_res"] >= NEFF_RES_FLOOR]
+if wr:
+    print(f"\nGuard rail (stage-2 training, not part of this FOM): tightest WP1 with "
+          f"Neff(modes 1-5) >= {NEFF_RES_FLOOR:.0f} is {min(r['wp'] for r in wr):.2f}")
+
+# ---------- is the floor value doing the work? ----------
+# The point of a floor is to stop the scan where the background estimate runs out of
+# events. If the reported argmax moved around as the floor moved, the floor would BE
+# the answer -- so print the dependence rather than assert independence.
+print("\nFloor sensitivity, B = W+jets non-resonant: argmax of Punzi among WP1 with "
+      "NeffB >= floor")
+for fl in (50, 40, 30, 25, 20, 15, 10, 5, 3, 0):
+    ok = [r for r in rows if r["neff_w"] >= fl]
+    if not ok:
+        continue
+    bst = max(ok, key=lambda r: punzi(r["eps"], r["B_w"]))
+    print(f"  floor {fl:>3}: usable down to WP1={min(r['wp'] for r in ok):.2f}, "
+          f"argmax = {bst['wp']:.2f} (Punzi {punzi(bst['eps'], bst['B_w']):.5f})")
+
+# ---------- paired Poisson bootstrap: is the maximum distinguishable? ----------
+print(f"\n---------- paired Poisson bootstrap ({400} replicas, one resample shared "
+      f"across all WP1) ----------")
+rng = np.random.default_rng(42)
+NBOOT = 400
+BG = list(WP1_GRID)
+EPS = {r["wp"]: r["eps"] for r in rows}
+
+# Each arm resamples ONE pool of rows and reuses that single resample across every
+# WP1, so the cut-to-cut differences carry the correct (correlated) error -- nested
+# cuts share events, and treating the WP1 columns as independent would inflate the
+# difference errors by roughly sqrt(2).
+ARMS = (
+    ("B = W+jets non-resonant SR", b_w[b_nr_sr],
+     {wp: (b_sc > THR[wp])[b_nr_sr] for wp in BG}),
+    ("B = OS data control region", np.full(int(d_cr.sum()), 1.0),
+     {wp: (d_sc > THR[wp])[d_cr] for wp in BG}),
+)
+for label, pool_w, pool_pass in ARMS:
+    fom = {wp: np.empty(NBOOT) for wp in BG}
+    for i in range(NBOOT):
+        c = rng.poisson(1.0, len(pool_w))
+        for wp in BG:
+            fom[wp][i] = punzi(EPS[wp], float((pool_w * c)[pool_pass[wp]].sum()) * SCALE)
+    means = {wp: float(np.nanmean(fom[wp])) for wp in BG}
+    wstar = max(BG, key=lambda wp: means[wp])
+    print(f"\n{label}  (bootstrap-mean peak at WP1 = {wstar:.2f})")
+    print(f"{'WP1':>5} {'FOM':>9} {'+-':>8} {'rel':>6} | {'vs peak':>9} "
+          f"{'+-(paired)':>11} {'sigma':>6}")
+    for wp in BG:
+        dd = fom[wp] - fom[wstar]
+        sd = float(np.nanstd(dd))
+        sig = float(np.nanstd(fom[wp]))
+        print(f"{wp:>5.2f} {means[wp]:>9.5f} {sig:>8.5f} {sig/means[wp]:>6.1%} | "
+              f"{float(np.nanmean(dd)):>9.5f} {sd:>11.5f} "
+              f"{(float(np.nanmean(dd))/sd if sd > 0 else 0):>6.2f}")
 
 # ---------- figure ----------
-wps = np.array([r["wp"] for r in rows])
 eps = np.array([r["eps"] for r in rows])
-B = np.array([r["B"] for r in rows])
-Bd = np.array([float(r["Bd"]) for r in rows])
-neff_res = np.array([r["neff_res"] for r in rows])
-vB = np.sqrt(np.where(B > 0, B, np.nan))
-vBd = np.sqrt(np.where(Bd > 0, Bd, np.nan))
-
-fig, ax = plt.subplots(1, 2, figsize=(17, 7))
-for a_, ls in ((2, "-"), (5, "--")):
-    ax[0].plot(eps, eps / (a_ / 2 + vB), ls, marker="o", color="seagreen",
-               label=rf"B$_{{\rm nonres}}$ (Punzi a={a_})")
-    ax[0].plot(eps, eps / (a_ / 2 + vBd), ls, marker="s", color="steelblue",
-               label=rf"B$_{{\rm data\ sb}}$ (Punzi a={a_})")
-ax[0].set_xlabel(r"stage-1 $\varepsilon_{sig}$")
-ax[0].set_ylabel(r"FOM $= \varepsilon_{sig} / (a/2 + \sqrt{B})$")
-ax[0].legend(fontsize=11)
-ax[0].invert_xaxis()
-hep.cms.label(ax=ax[0], data=False, text="Simulation", fontsize=11)
-
-ax[1].plot(eps, neff_res, "o-", color="#D1495B")
-ax[1].axhline(NEFF_FLOOR, color="black", ls=":", label=f"floor {NEFF_FLOOR:.0f}")
-ax[1].set_xlabel(r"stage-1 $\varepsilon_{sig}$")
-ax[1].set_ylabel(r"N$_{\rm eff}$(modes 1-5, full range) = stage-2 training background")
-ax[1].legend(fontsize=11)
-ax[1].invert_xaxis()
-
+RLABEL = rf"{LUMI_RUN3_PB/1000:.0f} fb$^{{-1}}$ (13.6 TeV)"
+fig, ax = plt.subplots(1, 2, figsize=(16, 7))
+for i, (key, c, lab) in enumerate((
+        ("B_w", "seagreen", r"B = W+jets non-resonant (SR, 80 MeV)"),
+        ("B_d", "steelblue", r"B = OS data (control region, SR blind)"))):
+    y = np.array([punzi(r["eps"], r[key]) for r in rows])
+    ax[i].plot(eps, y, "-", marker="o", color=c, label=lab)
+    ax[i].set_xlabel(r"stage-1 $\varepsilon_{sig}$ (WP1)")
+    ax[i].set_ylabel(r"Punzi FOM $=\varepsilon_{sig}/(1.5+\sqrt{B})$")
+    ax[i].legend(fontsize=11, loc="upper left")
+    ax[i].invert_xaxis()
+    # text=, NOT label= -- mplhep deprecated the `label` kwarg of cms.label(), so it
+    # emits a FutureWarning and SILENTLY DROPS the word. Every other macro in this
+    # directory uses text=; match them.
+    hep.cms.label(ax=ax[i], rlabel=RLABEL, data=(key == "B_d"),
+                  text="Preliminary", fontsize=11)
+fig.suptitle(rf"stage-1 alone, Punzi a=3, scaled to {LUMI_RUN3_PB/1000:.0f} fb$^{{-1}}$"
+             "   (the two panels share no normalisation -- compare positions, not values)",
+             fontsize=14)
 plt.tight_layout()
 out = common.fig_path("comparisons", "fom_scan_stage1.png", key=MODEL)
 plt.savefig(out, dpi=120)

@@ -67,8 +67,10 @@ GROUPS = [
 
 
 def sel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-            & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return common.selection_mask(a) & (a["score_dsmu"] > -1)
 
 
 # ---------- signal thresholds, from truth-matched signal ----------

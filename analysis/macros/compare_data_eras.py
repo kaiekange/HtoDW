@@ -54,15 +54,16 @@ L_PRE, L_POST = common.ERAS[1]["lumi_pb"], common.ERAS[2]["lumi_pb"]
 SF_POST = L_PRE / L_POST
 print(f"sign: {SIGN}   postEE -> preEE luminosity scale factor: {SF_POST:.5f}")
 
-SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO, "score_dsmu"]
+SEL = [*common.SELECTION, "score_dsmu"]
 
 
 def sel(a, sign="OS"):
-    if sign == "SS":
-        base = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        base = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    return base & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, sign == "SS", f"sel(sign={sign!r})")
+    return common.selection_mask(a) & (a["score_dsmu"] > -1)
 
 
 # ---------- thresholds from truth-matched signal ----------

@@ -902,7 +902,9 @@ def main():
     # That framing was wrong: there is no pending decision, because the analysis applies
     # no electron selection at all. The selection is, in full (analysis/DNN/common.py
     # load(), with the branch names coming from analysis/eras.py):
-    #     num_os_mu_tight == 1 & num_ss_mu_tight == 0 & n_b_jets_tight_dR04 == 0
+    #     mu_pt_corr > 26 & |mu_eta| < 2.4 & mu_isTight & mu_IsoR04_RelIso < 0.15 & n_bjet_corr == 0
+    # (as of 2026-09-21; it used to be num_os_mu_tight==1 & num_ss_mu_tight==0 &
+    # n_b_jets_tight_dR04==0, which was never a muon selection -- see common.selection_mask)
     # No electron cut, no electron veto, and FEATURE_NAMES contains no electron variable
     # either. An ID scale factor corrects the efficiency of a cut that was applied; with
     # no cut applied there is nothing for it to correct, exactly as for TAU.
@@ -932,7 +934,7 @@ def main():
             sf_vals.append(c.evaluate(EGM_YEAR, "sf", "Veto", float(e), float(max(p, 10.0))))
     sf_vals = np.array(sf_vals)
     print("\n[EGM] NOT APPLICABLE -- the analysis selection applies no electron cut at all")
-    print("  (num_os_mu_tight==1 & num_ss_mu_tight==0 & n_b_jets_tight_dR04==0; no electron")
+    print("  (mu_pt_corr > 26 & |mu_eta| < 2.4 & mu_isTight & mu_IsoR04_RelIso < 0.15 & n_bjet_corr == 0; no electron")
     print("  term, and no electron feature in FEATURE_NAMES). Lookups below are a liveness")
     print("  check on the JSON and the supercluster-eta convention only -- no weight is built.")
     print(f"  events with >=1 electron: {n_with_ele}/{n}, electrons scored: {len(sf_vals)}")

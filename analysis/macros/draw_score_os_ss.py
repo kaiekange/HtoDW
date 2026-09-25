@@ -71,18 +71,18 @@ M_D, D_HALFWIDTH = 1.8696, 0.04     # same half-width as the Ds window, delibera
 SBINS = np.linspace(0.0, 1.0, 51)
 SCENT = 0.5 * (SBINS[1:] + SBINS[:-1])
 
-BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
-      common.B_VETO, "event_id"]
+BR = ["score_dsmu", "Ds_mass", *common.SELECTION, "event_id"]
 
 
 def load(name, *, ss=False, parity=None, cr=False, era=None):
     br = list(dict.fromkeys(BR + ["Lumi_reweight"] + (["era"] if era else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if cr or VETO_PEAKS:
         m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
     if VETO_PEAKS:

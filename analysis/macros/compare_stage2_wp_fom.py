@@ -78,12 +78,14 @@ NEFF_MC_FLOOR = 50.0
 N_DATA_FLOOR = 10
 
 IDS = ["run", "luminosityBlock", "event"]
-SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
+SEL = [*common.SELECTION]
 
 
 def sel_mask(a, has_score2=True):
-    m = ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-         & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if has_score2:
         m &= (a["score_dsmu_res"] > -1)
     return m
@@ -301,7 +303,7 @@ for key in STAGE2_KEYS:
         fig, ax_ = plt.subplots(figsize=(13, 11))
         im = draw_panel(ax_, Z, low_stat, eps_tot, f"{title}\n({key})")
         fig.colorbar(im, ax=ax_, label="FOM")
-        hep.cms.label(ax=ax_, data=False, text="Simulation", fontsize=11)
+        hep.cms.label(ax=ax_, data=False, text="Preliminary", fontsize=11)
         plt.tight_layout()
         out = common.fig_path("comparisons", f"fom_scan_stage2d_{tag}.png",
                               key=key, tool=STAGE2_TOOL)
@@ -324,3 +326,34 @@ for ra, rb in zip(a_rows, b_rows):
     r_mc = fb_mc / fa_mc if (fa_mc and not np.isnan(fa_mc) and not np.isnan(fb_mc)) else np.nan
     print(f"{ra['wp1']:>5.2f} {ra['wp2']:>5.2f} {fa_sb:>11.5f} {fb_sb:>11.5f} {r_sb:>10.3f} "
           f"{fa_mc:>11.5f} {fb_mc:>11.5f} {r_mc:>10.3f}")
+
+
+# ---------- background survival at MATCHED signal efficiency, split res / non-res ----------
+# The FOM table above folds efficiency and background into one number. This one answers
+# the more basic question directly: at the same (WP1, WP2) cell -- hence the same nominal
+# signal efficiency -- how much background is LEFT, and is the difference in the resonant
+# part (real D/Ds, what stage-2 exists for) or the non-resonant part (combinatorial,
+# which is stage-1's job)?
+#
+# CAVEAT on "matched": thr2 is an UNWEIGHTED quantile of the signal score while eps_tot is
+# WEIGHTED, so the realized eps_tot of the two arms differs slightly in the same cell. The
+# eps_tot columns are printed side by side so the residual mismatch is visible rather than
+# assumed; measured median 1.4e-3 relative, which propagates to ~0.4% on B (local
+# dlnB/dlnE ~ 2). Ratios far from 1 survive that; ratios within ~1% of 1 do not.
+print(f"\n{'='*70}\nBackground left at the same cell, b=wjetsres_nostage1 vs a=wjetsres"
+      f"\n(b/a < 1 means b leaves LESS background = rejects more)\n{'='*70}")
+hdr2 = (f"{'WP1':>5} {'WP2':>5} {'eps_a':>7} {'eps_b':>7} | {'Bres a':>8} {'Bres b':>8} {'b/a':>6} | "
+        f"{'Bnres a':>8} {'Bnres b':>8} {'b/a':>6} | {'Bsb a':>7} {'Bsb b':>7} {'b/a':>6} | "
+        f"{'res% a':>6} {'res% b':>6} {'Neff':>5}")
+print(hdr2)
+print("-" * len(hdr2))
+for ra, rb in zip(a_rows, b_rows):
+    anr, bnr = ra["B_nonres"], rb["B_nonres"]
+    q = lambda x, y: (y / x) if x else np.nan
+    low = " *" if min(ra["Neff_res"], rb["Neff_res"]) < NEFF_RES_FLOOR else ""
+    print(f"{ra['wp1']:>5.2f} {ra['wp2']:>5.2f} {ra['eps_and']:>7.4f} {rb['eps_and']:>7.4f} | "
+          f"{ra['B_res']:>8.1f} {rb['B_res']:>8.1f} {q(ra['B_res'], rb['B_res']):>6.3f} | "
+          f"{anr:>8.1f} {bnr:>8.1f} {q(anr, bnr):>6.3f} | "
+          f"{ra['B_data_sb']:>7d} {rb['B_data_sb']:>7d} {q(ra['B_data_sb'], rb['B_data_sb']):>6.3f} | "
+          f"{100 * ra['B_res'] / ra['B_mc_total']:>5.1f}% {100 * rb['B_res'] / rb['B_mc_total']:>5.1f}% "
+          f"{min(ra['Neff_res'], rb['Neff_res']):>5.0f}{low}")

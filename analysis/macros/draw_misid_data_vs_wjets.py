@@ -140,10 +140,8 @@ for era, (tag, _) in ERAS.items():
 sig = []
 for sn in common.SIGNALS:
     d = uproot.open(f"{PRED}/{sn}.root")["Events"].arrays(
-        ["score_dsmu", "Ds_match", "mu_match", "num_os_mu_tight",
-         "num_ss_mu_tight", common.B_VETO], library="np")
-    m = ((d["num_os_mu_tight"] == 1) & (d["num_ss_mu_tight"] == 0)
-         & (d[common.B_VETO] == 0) & (d["score_dsmu"] > -1)
+        ["score_dsmu", "Ds_match", "mu_match", *common.SELECTION], library="np")
+    m = (common.selection_mask(d) & (d["score_dsmu"] > -1)
          & d["Ds_match"].astype(bool) & d["mu_match"].astype(bool))
     sig.append(d["score_dsmu"][m])
 sig = np.concatenate(sig)

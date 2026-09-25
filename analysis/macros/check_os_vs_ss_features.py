@@ -25,7 +25,7 @@ features where the charge selection, not physics, drives the distribution.
 
 Measured 2026-08-10 on the pre-migration data (43 features, preEE-only, old
 tuplizer): max |d| = 0.10 (Ds_pt), max KS = 0.041. Re-measure on this run --
-different production, different feature set (41), both eras now.
+different production, different feature set (55 as of 2026-09-22), both eras now.
 
 The feature list comes from common.py, so this can never drift from what is trained.
 
@@ -60,17 +60,27 @@ FEATURES = common.FEATURE_NAMES
 
 
 def load(name, ss):
-    br = list(dict.fromkeys(FEATURES + common.SELECTION + ["Ds_mass"]))
+    # FEATURES may contain DERIVED entries -- the three dphi_met_* added 2026-09-21 are
+    # computed by build_matrix(), not stored as branches. Read load_branches (which
+    # resolves derived features to the branches they need) and evaluate the derived ones
+    # exactly as build_matrix() does, so this script cannot drift from what is trained.
+    br = list(dict.fromkeys(list(common.STAGE1.load_branches)
+                            + list(common.SELECTION) + ["Ds_mass"]))
     a = uproot.open(f"{common.SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= a[common.B_VETO] == 0
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a)
     # OS data is SR-blinded, so the same sideband requirement goes on both sides to
     # compare like with like.
     m &= np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH
-    out = {k: v[m] for k, v in a.items()}
+    out = {}
+    for f in FEATURES:
+        v = common.STAGE1.derived[f][0](a) if f in common.STAGE1.derived else a[f]
+        out[f] = np.asarray(v, dtype=np.float64)[m]
+    out["Ds_mass"] = np.asarray(a["Ds_mass"], dtype=np.float64)[m]
     for feat, fill in common.SENTINEL_FIX.items():
         out[feat][out[feat] < -1] = fill
     return out

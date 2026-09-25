@@ -30,19 +30,20 @@ sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DN
 import common
 
 SIG_FILE = f"{common.SAMPLES_DIR}/Signal_merged.root"
-BINS = np.arange(1.95, 2.26 + 1e-9, 0.003)
+BINS = np.arange(1.95, 2.26 + 1e-9, 0.005)
 BC = 0.5 * (BINS[1:] + BINS[:-1])
 WIDTH = BINS[1] - BINS[0]
 
 CHANNELS = [(0, "DsW"), (1, "DsstW")]
-COLOR_TRUE, COLOR_FAKE = "#c0392b", "#5a9e78"
+COLOR_TRUE, COLOR_FAKE = "firebrick", "seagreen"
+LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
 
 a = uproot.open(SIG_FILE)["Events"].arrays(
     ["channel", "Ds_match", "mu_match", "has_gamma", "gamma_match", "Dsst_mass", "weight"],
     library="np")
 base = a["Ds_match"].astype(bool) & a["mu_match"].astype(bool) & a["has_gamma"].astype(bool)
 
-fig, axes = plt.subplots(1, 2, figsize=(15.0, 6.5))
+fig, axes = plt.subplots(1, 2, figsize=(17.0, 7.0), gridspec_kw={"wspace": 0.24})
 
 for col, (ch, label) in enumerate(CHANNELS):
     ax = axes[col]
@@ -52,28 +53,31 @@ for col, (ch, label) in enumerate(CHANNELS):
 
     h_true, _ = np.histogram(a["Dsst_mass"][true_m], bins=BINS, weights=a["weight"][true_m])
     h_fake, _ = np.histogram(a["Dsst_mass"][fake_m], bins=BINS, weights=a["weight"][fake_m])
+    e_tot = np.sqrt(np.histogram(a["Dsst_mass"][sel], bins=BINS, weights=a["weight"][sel] ** 2)[0])
+    h_tot = h_fake + h_true
     n_true, n_fake = true_m.sum(), fake_m.sum()
 
-    ax.bar(BC, h_fake, width=WIDTH, color=COLOR_FAKE, alpha=0.9, edgecolor="none",
-           label=f"fake/combinatorial $\\gamma$  N={n_fake:,}")
-    ax.bar(BC, h_true, width=WIDTH, bottom=h_fake, color=COLOR_TRUE, alpha=0.9,
-           edgecolor="none", label=f"true gen $\\gamma$  N={n_true:,}")
+    ax.bar(BC, h_fake, width=WIDTH, color=COLOR_FAKE, alpha=0.55, edgecolor="none",
+           label=f"fake/combinatorial $\\gamma$  N={n_fake:,}  yield={h_fake.sum():.4f}")
+    ax.bar(BC, h_true, width=WIDTH, bottom=h_fake, color=COLOR_TRUE, alpha=0.55,
+           edgecolor="none", label=f"true gen $\\gamma$  N={n_true:,}  yield={h_true.sum():.4f}")
+    ax.bar(BC, 2 * e_tot, width=WIDTH, bottom=h_tot - e_tot, color="none",
+           hatch="////", edgecolor="0.35", linewidth=0.0, zorder=3, label="MC stat")
 
     ax.set_xlim(BINS[0], BINS[-1])
-    ax.set_ylim(0, max(h_fake + h_true) * 1.30)
-    ax.set_xlabel(r"$M(D_s^\pm\gamma)$ [GeV]", fontsize=13)
+    ax.set_ylim(0, h_tot.max() * 1.55)
+    ax.set_xlabel(r"$M(D_s^\pm\gamma)$ [GeV]")
     if col == 0:
-        ax.set_ylabel(f"weighted events / {WIDTH*1000:.1f} MeV", fontsize=13)
-    ax.tick_params(labelsize=11)
+        ax.set_ylabel(f"Events / {WIDTH*1000:.0f} MeV")
     # panel description goes in the legend title, not ax.set_title(), so it never
     # fights hep.cms.label() for the same row above the axes
-    ax.legend(fontsize=9, loc="upper right",
-              title=f"{label} signal, Dsmu truth-matched\nN={sel.sum():,}", title_fontsize=9)
+    ax.legend(fontsize=8.5, loc="upper right",
+              title=f"{label} signal, Dsmu truth-matched  N={sel.sum():,}", title_fontsize=8.5)
     if col == 0:
-        hep.cms.label(ax=ax, data=False, text="Preliminary", fontsize=14)
+        hep.cms.label(ax=ax, data=False, text="Preliminary",
+                      rlabel=rf"{LUMI/1000:.1f} fb$^{{-1}}$ (13.6 TeV)", fontsize=10)
 
 out = common.fig_path("preselection", "signal_dsst_mass_gamma_truth.png", key=None)
-plt.tight_layout()
 plt.savefig(out, dpi=120, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved {out}")

@@ -86,7 +86,7 @@ for j, (lbl, eff) in enumerate(COLS):
         ax.set_ylabel(f"W+jets events / {WIDTH*1000:.0f} MeV")
         # data=False ALREADY renders "Simulation"; passing text="Simulation" on top of
         # it prints "CMS Simulation Simulation" (mplhep signature is label(text, label)).
-        hep.cms.label(ax=ax, data=False,
+        hep.cms.label(ax=ax, data=False, text="Preliminary",
                       rlabel=rf"{LUMI/1000:.1f} fb$^{{-1}}$ (13.6 TeV)", fontsize=10)
 
 fig.suptitle("GenTag mode 8 = partial truth-matching: does it hide the D misID reflection?",

@@ -59,8 +59,7 @@ MODEL = "ssdata"
 PRED = f"{common.resolve(MODEL)['out_dir']}/Prediction"
 M_DS, SR_HALFWIDTH = 1.96835, 0.04
 EFFS = [0.90, 0.70, 0.50]
-BR = ["score_dsmu", "Ds_mass", "num_jets_pt30",
-      "num_os_mu_tight", "num_ss_mu_tight", common.B_VETO, "event_id"]
+BR = ["score_dsmu", "Ds_mass", "num_jets_pt30", *common.SELECTION, "event_id"]
 
 # Reconstructed jet-multiplicity slices, exhaustive and mutually exclusive.
 # Split past 2 on purpose: WtoLNu2Jets has matrix elements only up to 2 jets, so the
@@ -87,11 +86,13 @@ def load(name, *, ss=False, sig=False, parity=None, era=None, jet_bin=None):
                             + (["jet_bin"] if jet_bin is not None else [])
                             + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= a["score_dsmu"] > -1
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    # bveto=False: this macro splits b-veto vs b-tagged regions itself downstream.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a, bveto=False) & (a["score_dsmu"] > -1)
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if parity is not None:

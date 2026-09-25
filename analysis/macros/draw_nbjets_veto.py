@@ -61,7 +61,9 @@ SEL = ["num_os_mu_tight", "num_ss_mu_tight"]
 def load(name, truth_filter=False):
     br = VARS + SEL + ["Ds_mass"] + (["Ds_match", "mu_match"] if truth_filter else [])
     a = uproot.open(f"{SAMPLES_DIR}/{name}.root")["Events"].arrays(br, library="np")
-    m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
+    # bveto=False: this macro PICKS the b-veto working point, so applying it here would
+    # collapse the very distribution being plotted. Muon cuts still come from common.
+    m = common.selection_mask(a, bveto=False)
     if truth_filter:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     return {k: v[m] for k, v in a.items()}

@@ -78,8 +78,7 @@ COLORS = ["black", "steelblue", "darkorange", "firebrick"]
 # WITHIN a run: the preEE data slice has ~1.08M rows but fewer distinct event_id,
 # i.e. 646 cross-run collisions. Keying identity on event_id alone would quietly
 # mis-assign those when computing the two models' overlap below.
-BR = ["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight",
-      common.B_VETO, "run_id", "lumi_id", "event_id"]
+BR = ["score_dsmu", "Ds_mass", *common.SELECTION, "run_id", "lumi_id", "event_id"]
 BR_SIG = BR + ["Ds_match", "mu_match"]
 
 if len(sys.argv) < 3:
@@ -123,11 +122,12 @@ def load(model_key, name, *, ss=False, sig=False, sideband=False, parity=None, e
         return None
     br = list(dict.fromkeys((BR_SIG if sig else BR) + ["Lumi_reweight", "era"]))
     a = uproot.open(pred)["Events"].arrays(br, library="np")
-    if ss:
-        m = (a["num_ss_mu_tight"] == 1) & (a["num_os_mu_tight"] == 0)
-    else:
-        m = (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-    m &= (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1)
+    # OS/SS is a property of the FILE (producer's sameSignPi), so it is an ASSERTION now,
+    # not a selection; the muon cuts come from common.selection_mask. The old
+    # num_os/ss_mu_tight ==1/==0 pair conflated the two and additionally imposed an
+    # uncalibrated soft-in-jet-muon tag. See common.check_charge_config / selection_mask.
+    common.check_charge_config(a, ss, f"load({name!r})")
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     if sideband:

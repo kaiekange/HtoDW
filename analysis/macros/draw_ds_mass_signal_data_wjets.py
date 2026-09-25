@@ -59,8 +59,10 @@ VARS = [   # (branch, xlabel, bin edges, blind half-width or None, ref line or N
 
 
 def ossel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-             & (a[common.B_VETO] == 0))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return common.selection_mask(a)
 
 
 def read(name, extra):

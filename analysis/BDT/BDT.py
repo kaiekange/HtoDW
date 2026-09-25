@@ -3,7 +3,7 @@ XGBoost BDT: H->Ds(*)W signal (OS) vs one of two background choices, phipimu cha
 
     python3 BDT.py ssdata           # background = SS data (Data_SS_merged, even event)
     python3 BDT.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
-    python3 BDT.py ssdata 101       # same config, different seed -> ..._f44_seed101
+    python3 BDT.py ssdata 101       # same config, different seed -> ..._f55_seed101
 
 **Everything except the algorithm is now shared with DNN.py via ../DNN/common.py**:
 the 41 features and their order, the preprocessing chain, the selection, the signal
@@ -88,13 +88,19 @@ if cfg.get("stage1_cut"):
 # Every panel's CMS stamp follows the background: real data gets "Preliminary" and
 # data=True, simulation gets "Simulation" and data=False. This file used to hardcode
 # "Simulation" in three places, which would have labelled every SS-data panel wrong.
-CMS_TEXT = "Preliminary" if cfg["is_data"] else "Simulation"
 BKG_LABEL = cfg["label"]
 
 
 def cms_label(ax, fontsize=13):
-    hep.cms.label(CMS_TEXT, ax=ax, rlabel="2022 (13.6 TeV)",
-                  data=cfg["is_data"], fontsize=fontsize)
+    # ALWAYS text="Preliminary"; `data=` alone decides whether mplhep prepends
+    # "Simulation". data=True -> "CMS Preliminary", data=False -> "CMS Simulation
+    # Preliminary". Two ways to get this wrong, both committed in this repo:
+    # passing text="Simulation" on top of data=False gives "Simulation Simulation",
+    # and dropping text= entirely gives a bare "CMS Simulation" with no
+    # Preliminary. The deprecated `label=` kwarg (= the first POSITIONAL arg of
+    # cms.label) silently drops the word outright.
+    hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=cfg["is_data"],
+                  text="Preliminary", fontsize=fontsize)
 
 
 # ========= 2. 加载数据 =========

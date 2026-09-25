@@ -3,7 +3,7 @@ DNN: H->Ds(*)W signal (OS) vs one of two background choices, phipimu channel.
 
     python3 DNN.py ssdata           # background = SS data (Data_SS_merged, even event)
     python3 DNN.py wjets            # background = WtoLNu2Jets MC (0J+1J+2J, lumi-reweighted)
-    python3 DNN.py ssdata 101       # same config, different seed -> ..._f44_seed101
+    python3 DNN.py ssdata 101       # same config, different seed -> ..._f55_seed101
 
 The optional seed exists to measure the run-to-run noise floor. Any claim that a
 model change improved background rejection has to clear that floor, and until it
@@ -97,13 +97,19 @@ if cfg.get("stage1_cut"):
 # Every panel's CMS stamp follows the background: real data gets "Preliminary" and
 # data=True, simulation gets "Simulation" and data=False. Hardcoding it is what made
 # the pre-refactor SS run label every plot "Simulation" while training on real data.
-CMS_TEXT = "Preliminary" if cfg["is_data"] else "Simulation"
 BKG_LABEL = cfg["label"]
 
 
 def cms_label(ax, fontsize=13):
-    hep.cms.label(CMS_TEXT, ax=ax, rlabel="2022 (13.6 TeV)",
-                  data=cfg["is_data"], fontsize=fontsize)
+    # ALWAYS text="Preliminary"; `data=` alone decides whether mplhep prepends
+    # "Simulation". data=True -> "CMS Preliminary", data=False -> "CMS Simulation
+    # Preliminary". Two ways to get this wrong, both committed in this repo:
+    # passing text="Simulation" on top of data=False gives "Simulation Simulation",
+    # and dropping text= entirely gives a bare "CMS Simulation" with no
+    # Preliminary. The deprecated `label=` kwarg (= the first POSITIONAL arg of
+    # cms.label) silently drops the word outright.
+    hep.cms.label(ax=ax, rlabel="2022 (13.6 TeV)", data=cfg["is_data"],
+                  text="Preliminary", fontsize=fontsize)
 
 
 print(f"Loading signal ({'+'.join(SIGNALS)})...")

@@ -14,9 +14,13 @@ Rows are the variables, columns the working points.
 Two variables are deliberately absent and two selections are deliberately different,
 both for the same reason -- a counter that the selection fixes carries no information:
 
-* `num_os_mu_tight` and `num_ss_mu_tight` are not plotted at all. The analysis
-  selection IS `num_os_mu_tight==1 & num_ss_mu_tight==0`, so they would be single
-  bars. Loose and medium are supersets of tight and do vary.
+* `num_os_mu_tight` and `num_ss_mu_tight` are not plotted at all. NOTE (2026-09-22):
+  the stated reason -- "the analysis selection IS num_os_mu_tight==1 &
+  num_ss_mu_tight==0, so they would be single bars" -- EXPIRED on 2026-09-21, when that
+  condition was replaced by common.selection_mask (corrected muon cuts). These two
+  counters are no longer fixed by the selection and would now vary, so whether they are
+  worth a row again is an open question, not a settled one. Loose and medium are
+  supersets of tight and do vary.
 * The b-jet figure has the **b-veto removed** (`n_b_jets_tight_dR04==0` is the veto
   itself, so with it applied the tight row would be a spike at zero and the medium row
   would be biased by it). Muons and electrons keep the full selection.
@@ -67,11 +71,8 @@ BR = (["score_dsmu", "Ds_mass", "num_os_mu_tight", "num_ss_mu_tight"]
 def load(name, *, drop_bveto, sig=False):
     br = list(dict.fromkeys(BR + (["Ds_match", "mu_match"] if sig else [])))
     a = uproot.open(f"{PRED}/{name}.root")["Events"].arrays(br, library="np")
-    m = ((a["score_dsmu"] > -1)
-         & (a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
+    m = (common.selection_mask(a, bveto=not drop_bveto) & (a["score_dsmu"] > -1)
          & (np.abs(a["Ds_mass"] - M_DS) >= SR_HALFWIDTH))
-    if not drop_bveto:
-        m &= a[B_VETO] == 0
     if sig:
         m &= a["Ds_match"].astype(bool) & a["mu_match"].astype(bool)
     return {k: v[m] for k, v in a.items()}

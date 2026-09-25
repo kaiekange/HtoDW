@@ -91,8 +91,10 @@ SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO, "score_dsmu", "score
 
 
 def sel(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-            & (a[common.B_VETO] == 0)
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return (common.selection_mask(a)
             & (a["score_dsmu"] > -1) & (a["score_dsmu_res"] > -1))
 
 
@@ -301,7 +303,7 @@ for tag, Z, low_stat, title in FOM_PANELS:
     fig, ax_ = plt.subplots(figsize=(13, 11))
     im = draw_panel(ax_, Z, low_stat, title)
     fig.colorbar(im, ax=ax_, label="FOM")
-    hep.cms.label(ax=ax_, data=False, text="Simulation", fontsize=11)
+    hep.cms.label(ax=ax_, data=False, text="Preliminary", fontsize=11)
     plt.tight_layout()
     out = common.fig_path("comparisons", f"fom_scan_stage2d_{tag}.png",
                           key=STAGE2_KEY, tool=STAGE2_TOOL)

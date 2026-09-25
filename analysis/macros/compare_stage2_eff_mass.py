@@ -61,8 +61,11 @@ SEL = ["num_os_mu_tight", "num_ss_mu_tight", common.B_VETO]
 
 
 def sel_mask(a):
-    return ((a["num_os_mu_tight"] == 1) & (a["num_ss_mu_tight"] == 0)
-            & (a[common.B_VETO] == 0) & (a["score_dsmu"] > -1) & (a["score_dsmu_res"] > -1))
+    # common.selection_mask (the 2026-09-21 selection), NOT a hand-written copy: the old
+    # num_os/ss_mu_tight condition was an uncalibrated soft-in-jet-muon tag, not a muon
+    # selection, and NanoMVA/Samples/ already has the corrected cuts baked in. See common.py.
+    return (common.selection_mask(a) & (a["score_dsmu"] > -1)
+            & (a["score_dsmu_res"] > -1))
 
 
 def load_joined(sample, stage2_key, extra_cols):
@@ -210,7 +213,7 @@ ax.set_xlim(BINS[0], BINS[-1])
 ax.set_xlabel(r"$M(K^+K^-\pi^\pm)$ [GeV]")
 ax.set_title("W+jets GenTag modes 1-5 (true D$_s$/D, weighted)")
 ax.legend(fontsize=10)
-hep.cms.label(ax=ax, data=False, text="Simulation", fontsize=10)
+hep.cms.label(ax=ax, data=False, text="Preliminary", fontsize=10)
 
 fig.suptitle(rf"WP1 $\varepsilon_1$={WP1_PLOT:.0%}, stage-2 $\varepsilon_2$={EFF2_PLOT:.0%} "
              r"(conditional) -- both stage-2 variants at matched (WP1,$\varepsilon_2$)",
