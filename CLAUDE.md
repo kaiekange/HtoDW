@@ -112,7 +112,89 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-21)
+## Last Session (2026-09-22 ~ 09-25)
+
+### 特征集大改 + 两级重训 + 工作点第一次被真正算出来
+
+**stage-1 `f44` -> `f55`**：isolation 三组(`Ds_IsoR03_*`/`Ds_IsoR04_*`/`mu_IsoR04_*`)全 18 项
+放进去，`LOG_FEATURES` 16->27。**6 个精确冗余故意保留**(`PFIso≡sumCH+max(0,sumNH+sumPh−0.5sumPU)`、
+`RelIso≡PFIso/pt`、`W_tmass_corr≡sqrt(2·mu_pt·met_pt·(1−cos dphi))`)——**数学冗余≠可学性冗余，
+ReLU 学不了除法，对 DNN 留着比删好、对 BDT 相反**。结果：82 分钟、epoch 126、AUC 0.9975，
+**OS sideband 本底比 f44 低 10.2%/9.8%/15.2%**(噪声底 2/3/4%)，而 AUC 什么都没显示出来。
+
+**stage-2 `prodtopo_v1` 28 -> 24(`_f28`->`_f24`)**：重写成四类(isolation / prompt-Ds / jet /
+Ds-mu back-to-back)，**删掉所有子粒子量**(`Kp/Km/pi_ipsig`)。删 `Kp_ipsig` 的理由是实测它
+**6.8σ mass sculpting**——mode 5 的 K->pi 误指认把 K+ 那条径的 IP 跟错重建的质量耦合起来。
+best_iteration 831(上限 3000，这次真收敛了)、AUC 0.8835。
+
+**全仓库 30 个 macro 从已退役的 `num_os_mu_tight==1 & num_ss_mu_tight==0` 迁到
+`common.selection_mask()`**，`bveto` 开关按脚本语义分别给。
+
+### 工作点：WP1 有数据支撑，WP2 没有
+
+全部 Punzi a=3、scale 到 **Run-3 326 /fb**(2022 = 34.67 /fb，factor 9.4030)。
+两个新脚本：`fom_map_stage2_run3.py`(2D map，两个背景各一张)、`draw_higgs_mass_wp.py`；
+`fom_scan_stage1.py` 从「读 `Lumi_reweight` 根本跑不起来」迁活。
+
+- **WP1=0.40 是算出来的**：1D standalone 两条 arm(W+jets non-res 0.55 / OS data CR 0.40)
+  加 2D map 两条 arm(**都是 0.40**)，四条一致；**现行 WP1=0.90 被排除在 −7.6σ / −30σ**，
+  只有峰值的 1/2.2-1/2.4。
+- **WP2=0.55 不是任何扫描的最优点**，是指定的。事后检验：W+jets arm 上 0.40/0.45/0.50/0.55
+  统计并列(0.3σ 内)而 **0.55 在并列点里信号效率最高、MC 统计最好**，所以可辩护；
+  **但 data CR arm 在 6.5σ 上要 0.80**。这个分歧是结构性的——**stage-2 砍的真 Ds/D 峰在 SR 里，
+  control region 按构造看不见**，所以 CR 图对 WP2 单调下降，**不能读成「stage-2 没用」**。
+- **ε_tot=31.3% 是结果不是选择，且 ≠ 0.40×0.55=0.22**：两个 score 高度相关(stage-2 的训练
+  总体就是 stage-1 筛过的)，必须从 AND 直接数。为此 2D map 的 **WP2 改成非条件效率**。
+- **naive `ε/√B` 不可用**：没有内部极大，一路涨到 grid 边界(B=2.8 来自 6 行 MC)。只能用 Punzi。
+- **绝对尺度**：truth-matched 信号 Run-3 只有 **1.10 个事例**(带生成时假设的 BR)，所以
+  **只报 Punzi(BR-无关)，不报 S/√B**。
+
+### 两级到底买到了多少：×1.38
+
+同一 B 定义(W+jets 全 mode、SR)、匹配 ε_tot：**B_SR 2572 -> 1312，Punzi ×1.384 ± 0.077(5.1σ)**。
+三种算法一致(in-sample max-vs-max 1.407 / out-of-sample 1.350 / pre-specified 1.384)，
+**winner's curse 实测只占 4%**(B 的网格 4712 格 vs A 的 86 格)。**引用 pre-specified 那条。**
+
+**stage-2 确实在杀 resonant**：同 ε_tot 下 mode 1-5 全质量范围 **×2.65**、SR 内 ×2.02，
+而 non-resonant 只 ×1.23。**但「SR 里 78% 还是 resonant」跟这个不矛盾**——紧 WP1 把 non-resonant
+也一起压下去了，**成分比例不是判据**。两级收益高度重叠(WP1=0.90 时 stage-2 的 resonant 拒绝
+是 ×3.3，WP1=0.40 时只剩 ×1.9)，**这就是 2D FOM map 那么平的物理原因**。
+
+### 图与工具
+
+- `draw_wp_mass.py` 迁到 NanoMVA + WP2 非条件 + 加 **`WP2>=1` = stage-1 only**(thr2=−inf)。
+  注意 **WP1 参数是不加权分位数**(`common.stage1_threshold` 既定惯例)，要对齐加权 ε_tot=31.35%
+  得传 **0.3223** 不是 0.313。
+- `draw_higgs_mass_wp.py`(新)：corrected m(Ds μ ν)，ν 的 pz 由 W 质量约束解。
+  **signal 68% = [121, 158] GeV，W+jets 落在里面 62.5%**；complex-pz 比例 signal 41.8% /
+  W+jets 42.7%(几乎相同，所以取实部不制造 signal/bkg 差别)。**这个变量还没进 MVA。**
+- **`hep.cms.label` 两个坑，全仓库修了 6 处**：`label=` 已废弃会**静默丢字**(而且它就是第一个
+  位置参数，`label(CMS_TEXT, ...)` 同样中招)；`data=False` **自带 "Simulation"**，再传
+  `text="Simulation"` 就成 "Simulation Simulation"。**统一成永远传 `text="Preliminary"`**，
+  让 `data=` 决定前缀 -> `CMS Preliminary` / `CMS Simulation Preliminary`。
+
+### 我犯的错
+
+1. **2D 扫描把 FOM 跟元组的 `[1]`(=WP2)比而不是跟 FOM 比**，循环一格没更新、停在第一格，
+   报出「两级更差 ×0.692，−15.7σ」的假结论。**元组索引当比较键是高危写法。**
+2. **擅自给「全套 W+jets」加了 SR 质量窗**，被纠正。
+3. **CMS 标注连错两轮**：先用废弃的 `label=` 把 Preliminary 丢了，纠正时又矫枉过正把 `text`
+   整个删掉、变成没有 Preliminary 的裸 "CMS Simulation"。
+4. **Poisson 抽样放进内层循环**(2000×8 次 49 万长度)跑到超时；然后 `pkill -f "python3 -"`
+   把自己刚启动的那个也杀了。
+5. **statistics floor NeffB≥25 是我取的圆整值**，一开始没说清它是不是在决定答案；
+   实测 floor 从 40 放到 5 argmax 都不变，**它不决定答案**。
+
+### 下一步
+
+- **WP2 定案要不要信 MC arm**(两条 arm 差 6.5σ，且 MC arm 最优区 NeffB 已经在百的量级)。
+- **sideband data/MC 在 ε_tot=31% 处是 1.87**(0921 记的整体缺口 1.24、ε90 闭合到 ~1)。
+  **还没区分是「cut 越紧越差」还是 stage-2 特有**——两张匹配 ε_tot 的图已经画出来了，没做这个数。
+- **corrected m(Dsμν) 进不进 MVA/当不当 cut**，目前完全没用上。
+- W+jets MC 在 ε_tot≲0.15 统计耗尽(出现负权重产额)；W+jets 缺 tt̄/DY/QCD，MC 侧 B 全是低估。
+- **17 个 macro 仍读迁移前列名**(`Lumi_reweight`/`event_id`/`num_jets_pt30`)，跑不出图。
+
+## 上一 Session (2026-09-21)
 
 ### 两级 MVA 特征集大改 + 删掉一个一直在偷偷生效的旧 veto
 
