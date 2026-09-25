@@ -192,7 +192,12 @@ best_iteration 831(上限 3000，这次真收敛了)、AUC 0.8835。
   **还没区分是「cut 越紧越差」还是 stage-2 特有**——两张匹配 ε_tot 的图已经画出来了，没做这个数。
 - **corrected m(Dsμν) 进不进 MVA/当不当 cut**，目前完全没用上。
 - W+jets MC 在 ε_tot≲0.15 统计耗尽(出现负权重产额)；W+jets 缺 tt̄/DY/QCD，MC 侧 B 全是低估。
-- **17 个 macro 仍读迁移前列名**(`Lumi_reweight`/`event_id`/`num_jets_pt30`)，跑不出图。
+- ~~17 个 macro 仍读迁移前列名~~ **0925 已清理**：对照新样本分支表，真正缺的只有
+  `Lumi_reweight`/`event_id`(`num_jets_pt30` 还在)。读这两列的 22 个里 git rm 了 20 个
+  (含旧流水线 `make_samples.py`/`highest_pt_dedup.py`、被 `fom_map_stage2_run3.py` 取代的
+  `fom_scan_stage2d.py`)，**`compare_models.py`、`draw_features.py` 保留待迁移**。EOS 旧模型
+  f41/f44/f10/f28 六个目录(~43G)已删，现存只有 `ssdata_f55`、`wjetsres_f24_wp90`。
+  `Tuples/WtoLNu2Jets/finish_gentag_postee.sh` 仍调用已删的 `make_samples.py`。
 
 ## 上一 Session (2026-09-21)
 
