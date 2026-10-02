@@ -3,7 +3,7 @@
     cmsRun NANO_H_phipimu.py SAMPLE=DsW YEAR=2022 JOBID=0 GROUPSIZE=1 OUTFILE=file:nano.root
 
 Knobs (VarParsing 'analysis'):
-  SAMPLE    DsW | DsstW | WJ0 | WJ1 | WJ2   (or leave empty and pass inputFiles=... directly)
+  SAMPLE    DsW | DsstW | WJ0-2 | TTto2L2Nu | TTtoLNu2Q | DY0J-2J   (or leave empty and pass inputFiles=...)
   YEAR      2022 (Run3Summer22, preEE) | 2022EE (Run3Summer22EE, postEE)
   JOBID     job index; GROUPSIZE files per job -> [JOBID*GROUPSIZE, +GROUPSIZE)
   OUTFILE   output file (file:...)
@@ -12,7 +12,7 @@ Knobs (VarParsing 'analysis'):
 
 Input files come from FILELIST (one root:// URL per line, sliced by JOBID/GROUPSIZE) or
 explicit inputFiles=. condor_submit.py builds the FILELIST at submit time (xrootd ls for
-signal, the static dasgoclient dump for W+jets). Data is not handled yet (per-era-subset GT).
+signal, the static dasgoclient dumps for W+jets/ttbar/DY). Data is not handled yet (per-era-subset GT).
 """
 import sys
 import FWCore.ParameterSet.Config as cms
