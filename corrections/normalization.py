@@ -69,6 +69,13 @@ XSEC_PB = {
     "WtoLNu2Jets_0J_H_phipimu_GenTag": 51846.0,
     "WtoLNu2Jets_1J_H_phipimu_GenTag": 8860.0,
     "WtoLNu2Jets_2J_H_phipimu_GenTag": 3284.0,
+    # ttbar, 13.6 TeV, per decay-filtered dataset (given by the analyst 2026-09-29)
+    "TTto2L2Nu_H_phipimu_GenTag": 101.8,
+    "TTtoLNu2Q_H_phipimu_GenTag": 407.8,
+    # DY -> ll, MLL > 50, 13.6 TeV, per jet bin (given by the analyst 2026-10-01, provisional)
+    "DYto2L2Jets_0J_H_phipimu_GenTag": 5378.0,
+    "DYto2L2Jets_1J_H_phipimu_GenTag": 1017.0,
+    "DYto2L2Jets_2J_H_phipimu_GenTag": 385.5,
     "Signal_DsW_H_phipimu": 5.437e-6,
     "Signal_DsstW_H_phipimu": 10.13e-6,
 }
