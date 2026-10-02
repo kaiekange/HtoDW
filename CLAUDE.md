@@ -112,7 +112,76 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-22 ~ 09-25)
+## Last Session (2026-09-28 ~ 10-01)
+
+### tt̄ 和 DY 的 custom-NanoAOD 全链条产完，加进 Ds_mass data/MC
+
+**生产**（`CMSSW_13_0_13/.../condor/condor_submit.py` 新增 `CENTRAL` 表，只做 OS + GenTag）：
+- 命名照 W+jets：DAS 名去连字符 -> `TTto2L2Nu`、`TTtoLNu2Q`、`DYto2L2Jets_{0J,1J,2J}`；DAS 文件列表只 dump 一次存 `condor/das/`。
+- tt̄ 758 job 全部 return 0，`genEventCount` 与 DAS 逐位相同。
+- DY 3149 job：补交后仍有 31 个坏（30 xrootd FileOpen/ReadError + 1 超墙钟），**用户决定不再重跑、删掉**；
+  名单 `condor_logs/DY_bad_jobs_dropped_20261001.txt`，事例损失 0-1.6%，归一化不受影响。
+- 截面（用户给）：TTto2L2Nu 101.8、TTtoLNu2Q 407.8、DY 0J/1J/2J 5378/1017/385.5 pb（DY 暂用）。
+
+**下游**：Corrections 仓库四处样本表 + `normalization.py` 截面；b-tag 效率图、`apply_corrections`（tt̄ 758、DY 3118）全部 ok；
+`make_samples_nano.py` 新组 `TT_merged`（标签 `tt_decay`）、`DY_merged`（标签 `jet_bin`）；
+`common.ALL_SAMPLES` 加两个；stage-1 和 stage-2 都打完分。新 wrapper `analysis/DNN/run_predict.sh`：**只打分**——
+`run.sh` 会先重训、覆盖模型，不能用来补打分。
+
+### 物理：DY 让 lower sideband 的 tilt 基本消失，但 cut 后 W+jets 偏多
+
+`draw_stage1_mass_by_score_cut.py --add TT,DY` / `draw_wp_mass.py --add TT,DY`（两个脚本都加了 `--add`）：
+- **tt̄ 只占 MC 约 4%**，lower tilt 只缩 5%。
+- **DY**：cut 前占 MC 6%，cut 后在 low 窗口占 26/48/59%（ε90/70/50），过 cut 效率是 W+jets 的 3-7 倍，91% 是纯组合（mode 0，没配上 gen）。
+  low/high 双比值 1.33/1.79/2.56 -> **1.11/1.13/1.34**。但 data/allMC 从 cut 前的 1.12（平）变成 cut 后的 0.5-0.77。
+  现行工作点（WP1=40%，WP2=55%）上 DY 是 MC 最大成分（low 窗口 74%）；只用 W+jets 时 low 窗口 data/MC 是 2.89。
+- `check_dy_after_cut.py`（ε90）：DY 的 m_T 平均 33 GeV，**「丢一个 μ 假 MET」不成立**；DY 主导的低 m_T 区 data/MC 约 0.95；
+  **偏多的是 W 峰（m_T 50-160，W+jets 主导）data/MC 0.70-0.75**，即 W+jets 在 MC 里过 cut 的效率偏高（QCD 缺失会在低 m_T 混进来，没拆开）。
+- **新异常**：loose μ 计数 data 平均 4.4、MC 2.9（data 约 60% 的事例 ≥4 个），更像 producer 计数问题，不进 selection，没查。
+- 其他：tt̄ 非有限特征行 0.6%（W+jets 0.15%），都是 IP/FD significance，producer 层老问题。
+
+### 我犯的错
+
+1. 拿 condor `--njobs 1`（10 个 MiniAOD、2-4 小时）当 smoke test -> `feedback_smoke_test_means_minutes`。
+2. 用「输出文件数 == job 数」判断 DY 跑完（NanoAODOutputModule 边跑边写），据此误报完成。
+3. `pkill -f "condor_history"` 把自己那条命令的 shell 也杀了（memory 里记过同类错）。
+4. memory 里「merge 必须 cmsenv」是 el8 节点的旧情况，用户纠正，已改。
+
+### 下一步
+
+- 用 m_T>50 当 W+jets 控制区，量 W+jets 过 cut 效率的 data/MC；查 producer 的 loose μ 计数。
+- DY 截面定案；D± 窗口 φ 部分 data/MC≈0.5 仍待核实；corrections 逐项检验仍在待办。
+- `draw_wp_mass.py` 的 phi_mass ratio 没对 MC 挖 SR（原有问题，未改）。
+- **全部未 commit**：15_0_5（`common.py`、`make_samples_nano.py`、两个 draw 脚本、`run_predict.sh`、4 个新 macro、本文件）、
+  Corrections（4 文件）、13_0_13（`condor_submit.py`、`NANO_H_phipimu.py`）。
+
+## 上一 Session (2026-09-28)
+
+### lower mass sideband 的 data 超出：排除了三个候选，定位到非共振 KK
+
+upper sideband 已由被 MC 高估约 2 倍的 D->Kpipi(pi 被当成 K)反射解释。本次只看 lower（M<1.830），全部在 f55 上测。
+
+- **Λc⁺->pK⁻π⁺(p 被当成 K) 不是主因**。`analysis/macros/draw_lambdac_misid_mass.py`：Kp->proton 互换后，
+  2.2865 处只有 2-3σ 的 hint，且随 binning 移动（10/20/40 MeV 下是 2.8/3.4/3.0σ）；Km 对照约 0σ。
+  MC 的 charm-baryon 起源成分在三个质量窗口里都约 1.5%，不偏下侧；即使 data 那 ~110 个全是真 Λc，也远小于约 1000 的缺口。
+  互换后原始质量的 SR 凹口正好压在 Λc 窗口上，所以 no cut 那列不可用。
+- **带真 φ 的 partial-reco 被 data 否定**。`analysis/macros/check_partialreco_phi.py`：每个窗口拟合 M(KK)，
+  下侧 φ 峰部分 data/MC 是 0.87/0.71/0.70，非共振部分是 **1.11/1.59/2.23**（ε90/70/50）。
+  **缺口 100% 在非共振 KK 部分。** 不带 φ 的 partial-reco 这个检验覆盖不到，仍然开放。
+  原始质量上的残差是一个平台，1.833/1.735 处没有端点。
+- **多 lepton 假说（用户提出：换 veto 之后才出现）不成立**：在当前 selection 上重新施加旧 veto，
+  下侧 1.074->1.047 / 1.408->1.394 / 1.739->1.695；tilt 在 0 或 ≥1 个 electron、1 或 ≥2 个 loose μ 里都有。
+- **顺带的新发现（未核实）**：D± 窗口里 φ 峰部分的 data/MC ≈ **0.5**，即 MC 把真 D+->φπ 高估约 2 倍，
+  和 mode 5 反射的 ×2 同量级。以前说的「D± 窗口 ~1.0」是被非共振部分抵消的结果。
+  另外 loose μ 计数本身 data/MC 失配（≥2 个：data 94% vs MC 80%），原因没查。
+
+### 被纠正的两处（已写进 memory）
+
+1. 「约 60% 电荷关联」：来自 OS data vs SS data 的对比，**没有 SS MC 就不能叫电荷关联**。
+2. 「partial-reco 已排除」：memory 原文是「未排除」，死掉的只是「BR 偏低」这一个子假说。
+   -> `feedback_dont_upgrade_memory_hedges`
+
+## 上一 Session (2026-09-22 ~ 09-25)
 
 ### 特征集大改 + 两级重训 + 工作点第一次被真正算出来
 
