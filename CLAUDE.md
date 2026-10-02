@@ -152,7 +152,7 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - 用 m_T>50 当 W+jets 控制区，量 W+jets 过 cut 效率的 data/MC；查 producer 的 loose μ 计数。
 - DY 截面定案；D± 窗口 φ 部分 data/MC≈0.5 仍待核实；corrections 逐项检验仍在待办。
 - `draw_wp_mass.py` 的 phi_mass ratio 没对 MC 挖 SR（原有问题，未改）。
-- **全部未 commit**：15_0_5（`common.py`、`make_samples_nano.py`、两个 draw 脚本、`run_predict.sh`、4 个新 macro、本文件）、
+- ~~全部未 commit~~ **1002 已 commit + push**；原清单：15_0_5（`common.py`、`make_samples_nano.py`、两个 draw 脚本、`run_predict.sh`、4 个新 macro、本文件）、
   Corrections（4 文件）、13_0_13（`condor_submit.py`、`NANO_H_phipimu.py`）。
 
 ## 上一 Session (2026-09-28)
