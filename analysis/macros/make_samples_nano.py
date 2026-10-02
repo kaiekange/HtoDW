@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Merged custom-NanoAOD samples: signal (DsW+DsstW), W+jets GenTag (0J/1J/2J), and
-Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
+"""Merged custom-NanoAOD samples: signal (DsW+DsstW), W+jets GenTag (0J/1J/2J),
+ttbar GenTag (2L2Nu + LNu2Q), DY GenTag (0J/1J/2J), and Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
 NanoAOD-pipeline analogue of the old tuplizer-based make_samples.py.
 
 Two modes, driven by condor_submit_make_samples_nano.py:
@@ -17,7 +17,7 @@ Two modes, driven by condor_submit_make_samples_nano.py:
       submission instead of two; the friends are still written because MC systematics
       need unselected rows and the skim gets re-run far more often than the corrections.
 
-  merge <group>   (Signal_merged | WtoLNu2Jets_merged | Data_OS_merged | Data_SS_merged)
+  merge <group>   (Signal_merged | WtoLNu2Jets_merged | TT_merged | DY_merged | Data_OS_merged | Data_SS_merged)
       Reads the chunk lists the submit script wrote (never re-globs), requires every
       chunk's .root+.json, checks that the chunks cover exactly the files on disk and
       share one branch list, hadds them in list order, writes <group>_meta.json (per
@@ -26,7 +26,7 @@ Two modes, driven by condor_submit_make_samples_nano.py:
 SELECTION (friend columns, same combination as every corrections validator):
     pass_mu_nom & pass_muveto & ~jvm_veto_nom & (n_bjet_nom == 0)
 
-WEIGHT (background, i.e. W+jets):
+WEIGHT (background, i.e. W+jets, ttbar and DY):
     weight = genWeight * norm * w_pu_nom * w_mu_nom * w_btag_nom
 `norm` is the piece's normalization.json value (xsec*L / (sum genWeight * acceptance
 correction), Corrections repo normalization.py).
@@ -51,7 +51,8 @@ SR_HALF_WIDTH (eras.py, 1.96835 +- 0.04) are dropped after the selection, the sa
 definition as highest_pt_dedup.apply_row_cuts(blind=True). SS data is not blinded.
 
 PROVENANCE BRANCHES: era (eras.py wire format, 1=2022, 2=2022EE, data too); signal file: channel (0=DsW, 1=DsstW);
-W+jets file: jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
+W+jets file: jet_bin (0/1/2);
+ttbar file: tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q); DY file: jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
 
 CARRIED: every custom analyzer branch (everything not in a stock NanoAOD collection this
 analysis never reads, see _STD_PREFIXES) + run/luminosityBlock/event/genWeight/nTrueInt;
@@ -89,6 +90,16 @@ WJETS_BIN = {
     "WtoLNu2Jets_1J_H_phipimu_GenTag": 1,
     "WtoLNu2Jets_2J_H_phipimu_GenTag": 2,
 }
+# ttbar decay-filtered datasets -> tt_decay tag (normalized separately, each with its own xsec)
+TT_DECAY = {
+    "TTto2L2Nu_H_phipimu_GenTag": 0,
+    "TTtoLNu2Q_H_phipimu_GenTag": 1,
+}
+DY_BIN = {
+    "DYto2L2Jets_0J_H_phipimu_GenTag": 0,
+    "DYto2L2Jets_1J_H_phipimu_GenTag": 1,
+    "DYto2L2Jets_2J_H_phipimu_GenTag": 2,
+}
 DATA_RUNS = {"2022": ("C", "D"), "2022EE": ("E", "F", "G")}
 
 
@@ -104,6 +115,8 @@ DATA_TASK_BLIND = {data_task(r, ss): not ss
 GROUPS = {
     "Signal_merged": [(e, s) for e in ("2022", "2022EE") for s in SIGNAL_CHANNEL],
     "WtoLNu2Jets_merged": [(e, s) for e in ("2022", "2022EE") for s in WJETS_BIN],
+    "TT_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_DECAY],
+    "DY_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_BIN],
     "Data_OS_merged": [(e, data_task(r, False)) for e, runs in DATA_RUNS.items() for r in runs],
     "Data_SS_merged": [(e, data_task(r, True)) for e, runs in DATA_RUNS.items() for r in runs],
 }
@@ -195,7 +208,7 @@ def parse_nano_path(path):
     era, sample = parts[-3], parts[-2]
     if parts[-4] != "MC" or era not in TAG_TO_ERA or not _IDX_RE.search(parts[-1]):
         sys.exit(f"not a nano MC path: {path}")
-    if sample not in SIGNAL_CHANNEL and sample not in WJETS_BIN:
+    if not any(sample in t for t in (SIGNAL_CHANNEL, WJETS_BIN, TT_DECAY, DY_BIN)):
         sys.exit(f"sample {sample!r} belongs to no group")
     friend = os.sep.join(parts[:-2] + ["Corrections", sample, parts[-1]])
     return era, sample, friend, False
@@ -231,6 +244,10 @@ def worker(list_path, out_path, correct=False):
                        + list(FRIEND_CORR_KIN))
         if sample in SIGNAL_CHANNEL:
             tags["channel"] = SIGNAL_CHANNEL[sample]
+        elif sample in TT_DECAY:
+            tags["tt_decay"] = TT_DECAY[sample]
+        elif sample in DY_BIN:
+            tags["jet_bin"] = DY_BIN[sample]
         else:
             tags["jet_bin"] = WJETS_BIN[sample]
 

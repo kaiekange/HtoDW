@@ -16,7 +16,12 @@ property of the event, not of which variable happens to be on the x-axis.
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
-    python3 draw_wp_mass.py [WP1] [WP2]        # defaults 0.40 0.55
+    python3 draw_wp_mass.py [WP1] [WP2] [--add TT,DY]   # defaults 0.40 0.55
+
+--add stacks extra background MC on top of the W+jets GenTag groups (TT = TT_merged,
+DY = DY_merged; each must have been scored by stage-1 AND stage-2), the ratio uses the
+full MC sum, and a low / D+- / high window table is printed. Same option as
+draw_stage1_mass_by_score_cut.py.
 """
 import sys
 
@@ -32,8 +37,21 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-WP1 = float(sys.argv[1]) if len(sys.argv) > 1 else 0.40
-WP2 = float(sys.argv[2]) if len(sys.argv) > 2 else 0.55
+EXTRA_DEF = {   # key -> (Prediction file, legend label, colour); same as draw_stage1_mass_by_score_cut.py
+    "TT": ("TT_merged", r"$t\bar{t}$ (2L2Nu + LNu2Q)", "#7f5fbf"),
+    "DY": ("DY_merged", r"DY$\to\ell\ell$ (0J+1J+2J)", "#4a90c2"),
+}
+_argv = sys.argv[1:]
+ADD = []
+if "--add" in _argv:
+    i = _argv.index("--add")
+    ADD = [x for x in _argv[i + 1].split(",") if x]
+    _argv = _argv[:i] + _argv[i + 2:]
+_bad = [k for k in ADD if k not in EXTRA_DEF]
+if _bad:
+    sys.exit(f"--add: unknown {_bad}; choices {list(EXTRA_DEF)}")
+WP1 = float(_argv[0]) if len(_argv) > 0 else 0.40
+WP2 = float(_argv[1]) if len(_argv) > 1 else 0.55
 
 S2_DIR = common.out_dir_for("wjetsres", tool="BDT", seed=42)
 PRED = f"{S2_DIR}/Prediction"
@@ -100,6 +118,15 @@ gk = ossel(g) & (g["score_dsmu"] > thr1) & (g["score_dsmu_res"] > thr2)
 g_ds, g_phi, gm, gw = (g["Ds_mass"][gk], g["phi_mass"][gk],
                        g["cand_gen_mode"][gk], g["weight"][gk].astype(float))
 
+# ---- extra background MC (--add): same 2D cut, never SR-excluded ----
+EXTRA = {}
+for key in ADD:
+    x = rd(EXTRA_DEF[key][0], ["weight"])
+    xk = ossel(x) & (x["score_dsmu"] > thr1) & (x["score_dsmu_res"] > thr2)
+    EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=x["phi_mass"][xk],
+                      w=x["weight"][xk].astype(float))
+    print(f"{key} rows passing cut: {xk.sum():,}  sum(w)={EXTRA[key]['w'].sum():,.1f}")
+
 # ---- OS data: same 2D cut, blinded on Ds_mass for BOTH panels (see docstring) ----
 d = rd("Data_OS_merged", [])
 dk = (ossel(d) & (d["score_dsmu"] > thr1) & (d["score_dsmu_res"] > thr2)
@@ -129,16 +156,22 @@ for col, (branch, xlabel, bins, blind_half, refline) in enumerate(VARS):
         h, _ = np.histogram(mc_vals[mm], bins=bins, weights=gw[mm])
         e2, _ = np.histogram(mc_vals[mm], bins=bins, weights=gw[mm] ** 2)
         hs.append(h); errs.append(np.sqrt(e2))
+    tot_wj = np.sum(hs, axis=0)
+    h_extra = {}
+    for key, X in EXTRA.items():
+        h, _ = np.histogram(X[branch], bins=bins, weights=X["w"])
+        e2, _ = np.histogram(X[branch], bins=bins, weights=X["w"] ** 2)
+        hs.append(h); errs.append(np.sqrt(e2)); h_extra[key] = h
     tot = np.sum(hs, axis=0)
     tot_err = np.sqrt(np.sum(np.square(errs), axis=0))
     bottom = np.zeros(len(bc))
-    for (lab, _, cl), h in zip(GROUPS, hs):
+    for (lab, _, cl), h in zip(GROUPS + [(EXTRA_DEF[k][1], None, EXTRA_DEF[k][2]) for k in EXTRA], hs):
         ax.bar(bc, h, width=width, bottom=bottom, color=cl, alpha=0.9,
                label=f"{lab}  N={h.sum():,.0f}", edgecolor="none")
         bottom = bottom + h
     ax.bar(bc, 2 * tot_err, width=width, bottom=tot - tot_err, color="none",
            hatch="////", edgecolor="0.35", linewidth=0.0, zorder=3,
-           label="W+jets MC stat")
+           label="MC stat")
 
     dh, _ = np.histogram(d_vals, bins=bins)
     assert dh.sum() == len(d_vals), (
@@ -180,12 +213,26 @@ for col, (branch, xlabel, bins, blind_half, refline) in enumerate(VARS):
     if col == 0:
         rax.set_ylabel("data / MC")
 
+    if branch == "Ds_mass":
+        for wname, wsel in (("low <1.830", bc < 1.830),
+                            ("D+- 1.83-1.91", (bc >= 1.830) & (bc < 1.910)),
+                            ("high >2.008", bc > M_DS + SR_HALF)):
+            nd, nw, nall = dh[wsel].sum(), tot_wj[wsel].sum(), tot[wsel].sum()
+            ew = np.sqrt((tot_err[wsel] ** 2).sum())
+            rr = nd / nall
+            shares = "  ".join(f"{k} {h[wsel].sum():8,.1f} ({100*h[wsel].sum()/nall:4.1f}%)"
+                               for k, h in h_extra.items())
+            print(f"  {wname:14}: data {nd:7,.0f}  W+jets {nw:9,.1f}  {shares}"
+                  f"  data/Wjets {nd/nw:.3f}"
+                  f"  data/allMC {rr:.3f}+-{rr*np.hypot(1/np.sqrt(max(nd,1)), ew/nall):.3f}")
+
 fig.suptitle((rf"stage-1 only, WP1 $\varepsilon_1$={WP1:.1%}" if STAGE1_ONLY else
               rf"WP1 $\varepsilon_1$={WP1:.0%}  +  WP2 $\varepsilon_2$={WP2:.0%}")
              + rf"  $\to$  $\varepsilon_{{tot}}$={eps_tot:.1%}", fontsize=14)
 
 out = common.fig_path("comparisons", (f"wp_mass_wp1_{WP1:.3f}_stage1only.png" if STAGE1_ONLY else
-                        f"wp_mass_wp1_{WP1:.2f}_wp2_{WP2:.2f}.png"),
+                        f"wp_mass_wp1_{WP1:.2f}_wp2_{WP2:.2f}")
+                      .replace(".png", "") + ("_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "") + ".png",
                       key="wjetsres", tool="BDT")
 plt.savefig(out, dpi=120, bbox_inches="tight")
 plt.close(fig)

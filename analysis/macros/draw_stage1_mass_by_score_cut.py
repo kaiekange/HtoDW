@@ -60,7 +60,14 @@ and the uncommitted draw_ds_mass_signal_data_wjets.py -- do NOT all get them rig
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
-    python3 draw_stage1_mass_by_score_cut.py
+    python3 draw_stage1_mass_by_score_cut.py [--add TT,DY]
+
+--add stacks extra background MC samples (each ONE entry, its own sigma*L weight) on top
+of the W+jets GenTag groups: TT = TT_merged (TTto2L2Nu + TTtoLNu2Q), DY = DY_merged
+(DYto2L2Jets 0J/1J/2J). The ratio denominator becomes the full MC sum, and a window table
+(low <1.830 / D+- 1.83-1.91 / high >2.008) prints each sample's share and data/MC with
+W+jets alone and with everything. Output names get a _wjets_<tt_dy...> suffix so the
+W+jets-only figures survive. (--tt is kept as an alias for --add TT.)
 """
 import sys
 
@@ -76,6 +83,20 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
+EXTRA_DEF = {   # key -> (Prediction file, legend label, colour)
+    "TT": ("TT_merged", r"$t\bar{t}$ (2L2Nu + LNu2Q)", "#7f5fbf"),
+    "DY": ("DY_merged", r"DY$\to\ell\ell$ (0J+1J+2J)", "#4a90c2"),
+}
+ADD = []
+if "--tt" in sys.argv:
+    ADD = ["TT"]
+for i, a in enumerate(sys.argv):
+    if a.startswith("--add"):
+        val = a.split("=", 1)[1] if "=" in a else sys.argv[i + 1]
+        ADD = [x for x in val.split(",") if x]
+bad = [k for k in ADD if k not in EXTRA_DEF]
+if bad:
+    sys.exit(f"--add: unknown {bad}; choices {list(EXTRA_DEF)}")
 MODEL_KEY = "ssdata"
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 M_DS, M_PHI, SR_HALF = 1.96835, 1.019460, 0.040
@@ -156,6 +177,17 @@ assert covered.all(), (
     f"({sorted(np.unique(w_mode[~covered]).tolist())}) -- would silently vanish "
     f"from the stack.")
 
+# ---- extra background MC (--add): same base selection, full mass range, never SR-excluded ----
+EXTRA = {}
+for key in ADD:
+    fname, _lab, _col = EXTRA_DEF[key]
+    x = rd(fname, ["weight"])
+    xk = ossel(x)
+    print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after OS+b-veto+score>-1")
+    EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=x["phi_mass"][xk],
+                      score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float))
+    EXTRA[key]["not_sr"] = np.abs(EXTRA[key]["Ds_mass"] - M_DS) >= SR_HALF
+
 # ---- OS data: base selection, Ds-mass SR excluded ONCE for both panels (point 2) ----
 d = rd("Data_OS_merged", [])
 dk = ossel(d) & (np.abs(d["Ds_mass"] - M_DS) >= SR_HALF)
@@ -211,17 +243,24 @@ for branch, xlabel, bins, blind_half, refline in VARS:
                 print(f"  [{branch} col={lbl!r} group={lab!r}] {neg} bin(s) sum negative "
                       f"(amcatnloFXFX sign, point 4) -- min={h.min():.3g}")
             hs.append(h); errs.append(e)
+        tot_wj = np.sum(hs, axis=0)
+        h_extra, xcuts = {}, {}
+        for key, X in EXTRA.items():
+            xcuts[key] = np.ones(len(X["w"]), dtype=bool) if eff is None else (X["score"] > THR[eff])
+            h, e = hist(X[branch][xcuts[key]], X["w"][xcuts[key]], bins)
+            hs.append(h); errs.append(e); h_extra[key] = h
         tot = np.sum(hs, axis=0)
         tot_err = np.sqrt(np.sum(np.square(errs), axis=0))
 
         bottom = np.zeros(len(bc))
-        for (lab, _ms, cl), h in zip(GROUPS, hs):
+        stack = GROUPS + [(EXTRA_DEF[k][1], None, EXTRA_DEF[k][2]) for k in EXTRA]
+        for (lab, _ms, cl), h in zip(stack, hs):
             ax.bar(bc, h, width=width, bottom=bottom, color=cl, alpha=0.9,
                    label=f"{lab}  N={h.sum():,.0f}", edgecolor="none")
             bottom = bottom + h
         ax.bar(bc, 2 * tot_err, width=width, bottom=tot - tot_err, color="none",
                hatch="////", edgecolor="0.35", linewidth=0.0, zorder=3,
-               label="W+jets MC stat")
+               label="MC stat")
         ax.axhline(0, color="black", lw=0.8, alpha=0.5)
 
         # ---- ratio denominator: SR-excluded W+jets total, phi_mass panel only
@@ -229,6 +268,9 @@ for branch, xlabel, bins, blind_half, refline in VARS:
         if blind_half is None:
             m_ratio = cutmask & w_not_sr
             tot_ratio, _ = hist(w_vals[m_ratio], w_w[m_ratio], bins)
+            for key, X in EXTRA.items():
+                mt = xcuts[key] & X["not_sr"]
+                tot_ratio = tot_ratio + hist(X[branch][mt], X["w"][mt], bins)[0]
         else:
             tot_ratio = tot
 
@@ -277,13 +319,30 @@ for branch, xlabel, bins, blind_half, refline in VARS:
         if col == 0:
             rax.set_ylabel("data / MC")
 
-        print(f"{branch} col={lbl!r}: W+jets N={tot.sum():,.1f} (n={cutmask.sum():,})  "
-              f"OS data N={dh.sum():,.0f} (n={dcutmask.sum():,})")
+        print(f"{branch} col={lbl!r}: W+jets N={tot_wj.sum():,.1f} (n={cutmask.sum():,})  "
+              + "".join(f"{k} N={h.sum():,.1f}  " for k, h in h_extra.items())
+              + f"OS data N={dh.sum():,.0f} (n={dcutmask.sum():,})")
+        if branch == "Ds_mass" and EXTRA:
+            for wname, wsel in (("low <1.830", bc < 1.830),
+                                ("D+- 1.83-1.91", (bc >= 1.830) & (bc < 1.910)),
+                                ("high >2.008", bc > M_DS + SR_HALF)):
+                nd, nw, nall = dh[wsel].sum(), tot_wj[wsel].sum(), tot[wsel].sum()
+                ew = np.sqrt((tot_err[wsel] ** 2).sum())
+                rr = nd / nall
+                shares = "  ".join(f"{k} {h[wsel].sum():9,.1f} ({100*h[wsel].sum()/nall:4.1f}%)"
+                                   for k, h in h_extra.items())
+                print(f"    {wname:14}: data {nd:9,.0f}  W+jets {nw:11,.1f}  {shares}"
+                      f"  data/Wjets {nd/nw:.3f}"
+                      f"  data/allMC {rr:.3f}+-{rr*np.hypot(1/np.sqrt(max(nd,1)), ew/nall):.3f}")
 
     var_tex = r"$M(K^+K^-\pi^\pm)$" if branch == "Ds_mass" else r"$M(K^+K^-)$"
-    fig.suptitle(f"Stage-1 (ssdata DNN) score cut scan -- {var_tex}", fontsize=15)
+    fig.suptitle(f"Stage-1 (ssdata DNN) score cut scan -- {var_tex}"
+                 + ("".join(f" + {k}" for k in EXTRA) and " -- W+jets" + "".join(f" + {k}" for k in EXTRA)),
+                 fontsize=15)
 
-    out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut.png", key=MODEL_KEY)
+    out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut"
+                          + ("_wjets_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "")
+                          + ".png", key=MODEL_KEY)
     plt.savefig(out, dpi=120, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out}")
