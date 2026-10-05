@@ -112,7 +112,32 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-09-28 ~ 10-01)
+## Last Session (2026-10-05)
+
+### DY 的 Ds_mass 随 stage-1 cut 的形状 + sideband 拟合 MC 缩放因子
+
+两个新 macro：`draw_stage1_dy_mass_by_cut.py`（从 `draw_stage1_mass_by_score_cut.py` 复制后删减，只画 DY）、
+`fit_sideband_scales_stage1.py`。图在 `ssdata_f55/figures/closure/`。
+
+- **DY 自己的形状**：low/high 比值 1.30（no cut）→ 2.04 / 2.34 / 2.20（ε90/70/50），cut 让它更偏低质量端；97-100% 是组合本底。
+- **sideband 拟合（用户定的模型）**：只浮动 W+jets mode 3+4 (r34)、W+jets mode 5 (r5)、DY 整体 (k)；W+jets 组合本底、
+  mode 1+2、tt̄ 固定为 1；**三个系数所有 cut 共用一组**，在 ε90-70 / 70-50 / >50 三段上联合拟合，**no cut 不拟合**。
+  结果 **r34 = 0.50±0.07、r5 = 0.16±0.07、k = 0.30±0.05**（χ²/ndf 73.4/75）。**r34、r5 用户之后要用别的方法另外定。**
+- **共享 k 被 data 拒绝**（诊断：Δχ² 17.0/2，p=2e-4；ε70/50 的 low 窗口 postfit data/MC 是 1.1-1.6）。k 物理上必须是常数，
+  所以是某个**固定**成分不对：W+jets 组合本底或 DY 的 score 分布，或者没有建模的 QCD。只用 Ds_mass 分不开：
+  W+jets 组合本底和 DY 的质量形状几乎一样（ρ −0.85 到 −1.0）。
+- r34 ≈ 0.5 不管模型怎么取都一样；r5 依赖模型（组合本底系数自由时约 0.5，固定为 1 时约 0.16）。
+
+### 我犯的错
+
+把每个 cut 单独拟合的结果当主结果给了用户，用户以为我在提议让系数随 cut 浮动 -> `feedback_shared_scale_factors`。
+
+### 下一步
+
+- 用户先做别的事，去定 r34、r5。
+- 候选：在 m_T>50（W+jets 主导）的区域按 ε90/70/50 测 data/MC，检验「W+jets 组合本底不用系数」。
+
+## 上一 Session (2026-09-28 ~ 10-01)
 
 ### tt̄ 和 DY 的 custom-NanoAOD 全链条产完，加进 Ds_mass data/MC
 
