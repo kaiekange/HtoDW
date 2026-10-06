@@ -73,6 +73,9 @@ for _era in ERAS:
     # justified (per-bin efficiencies consistent within statistics), not by the corrections
     for _jb in (0, 1, 2):
         GROUPS[f"WtoLNu2Jets_{_jb}J_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{_jb}J_H_phipimu_GenTag"])
+    # same-sign-pi control region: its own map per jet bin, like every other sample
+    for _jb in (0, 1, 2):
+        GROUPS[f"WtoLNu2Jets_{_jb}J_SS_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{_jb}J_H_phipimu_GenTag_SS"])
 OUT_DIR = f"{NANO}/2022/btag_efficiency"
 
 JET_PT_MIN = 20.0  # BTV SF validity floor, see docstring

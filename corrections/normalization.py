@@ -69,6 +69,10 @@ XSEC_PB = {
     "WtoLNu2Jets_0J_H_phipimu_GenTag": 51846.0,
     "WtoLNu2Jets_1J_H_phipimu_GenTag": 8860.0,
     "WtoLNu2Jets_2J_H_phipimu_GenTag": 3284.0,
+    # same-sign-pi control region: same datasets, same cross sections
+    "WtoLNu2Jets_0J_H_phipimu_GenTag_SS": 51846.0,
+    "WtoLNu2Jets_1J_H_phipimu_GenTag_SS": 8860.0,
+    "WtoLNu2Jets_2J_H_phipimu_GenTag_SS": 3284.0,
     # ttbar, 13.6 TeV, per decay-filtered dataset (given by the analyst 2026-09-29)
     "TTto2L2Nu_H_phipimu_GenTag": 101.8,
     "TTtoLNu2Q_H_phipimu_GenTag": 407.8,
