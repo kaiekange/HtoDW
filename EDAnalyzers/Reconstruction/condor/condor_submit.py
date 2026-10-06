@@ -4,8 +4,9 @@
     python3 condor_submit.py DsstW 2022EE
     python3 condor_submit.py WJ1 2022 --gentag        # W+jets 1-jet bin, GenTag tuplizer
     python3 condor_submit.py WJ1 2022 --ss            # same-sign-pi control region
-    python3 condor_submit.py TTto2L2Nu 2022 --gentag  # ttbar dilepton, GenTag tuplizer (OS only)
-    python3 condor_submit.py DY1J 2022EE --gentag     # DY 1-jet bin, GenTag tuplizer (OS only)
+    python3 condor_submit.py TTto2L2Nu 2022 --gentag  # ttbar dilepton, GenTag tuplizer (add --ss for SS)
+    python3 condor_submit.py DY1J 2022EE --gentag     # DY 1-jet bin, GenTag tuplizer (add --ss for SS)
+    python3 condor_submit.py TTtoLNu2Q_ext1 2022 --gentag --ss  # ttbar ext1 extension, SS
     python3 condor_submit.py DsW 2022 --njobs 1       # smoke test: only the first job
 
 The input file list is resolved HERE (on lxplus, where xrootd tools work) and written to
@@ -29,7 +30,7 @@ ERA = {
 SIGNAL_DAS = {"DsW": "ggHtoDsW_phipi", "DsstW": "ggHtoDsstW_phipi"}
 WJ_BIN = {"WJ0": "0J", "WJ1": "1J", "WJ2": "2J"}
 WJ_FILELIST_DIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/WtoLNu2Jets"
-# Central-MC sub-dominant backgrounds (ttbar, DY), produced OS + GenTag only.
+# Central-MC sub-dominant backgrounds (ttbar, DY), GenTag tuplizer only (OS and SS).
 # sample key -> (output dir base, {year: DAS dataset}). The file list is dumped from DAS
 # ONCE into das/<sample>_<year>.txt and reused, so a resubmission slices the same list.
 _TT = "_TuneCP5_13p6TeV_powheg-pythia8/"
@@ -43,6 +44,14 @@ CENTRAL = {
     "TTtoLNu2Q": ("TTtoLNu2Q", {"2022": "/TTtoLNu2Q" + _TT + _PRE.format("v2"),
                                 "2022EE": "/TTtoLNu2Q" + _TT + _POST.format("v2")}),
 }
+# ttbar _ext1 extensions (same process, more events). Own sample key and output dir, NOT
+# appended to the nominal file list: a job slices [JOBID*GROUPSIZE, +GROUPSIZE), so
+# appending would change the file slice of the last, already-produced nominal job.
+# Downstream the nominal and ext1 dirs must share ONE normalization denominator.
+_PRE_EXT, _POST_EXT = (_PRE.replace("_v5-", "_v5_ext1-"), _POST.replace("_v6-", "_v6_ext1-"))
+for _tt in ("TTto2L2Nu", "TTtoLNu2Q"):
+    CENTRAL[f"{_tt}_ext1"] = (f"{_tt}_ext1", {"2022": f"/{_tt}" + _TT + _PRE_EXT.format("v2"),
+                                              "2022EE": f"/{_tt}" + _TT + _POST_EXT.format("v2")})
 for _jb in ("0J", "1J", "2J"):
     CENTRAL[f"DY{_jb}"] = (f"DYto2L2Jets_{_jb}", {"2022": _DY.format(_jb) + _PRE.format("v3"),
                                                   "2022EE": _DY.format(_jb) + _POST.format("v3")})
@@ -113,8 +122,8 @@ def main():
     ap.add_argument("--flavour", default="workday", help='+JobFlavour (workday=8h, tomorrow=1d)')
     args = ap.parse_args()
 
-    if args.sample in CENTRAL and (args.ss or not args.gentag):
-        raise SystemExit("ttbar/DY are produced OS + GenTag only: pass --gentag, not --ss")
+    if args.sample in CENTRAL and not args.gentag:
+        raise SystemExit("ttbar/DY are produced with the GenTag tuplizer only: pass --gentag")
     filelist, nfiles = build_filelist(args.sample, args.year)
     njobs = args.njobs or math.ceil(nfiles / GROUPSIZE)
 
