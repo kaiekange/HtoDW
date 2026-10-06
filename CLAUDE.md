@@ -152,7 +152,7 @@ OS DNN / SS DNN（ε90/70/50）：
 3. 又一次 `pkill -f` 把自己 shell 的后台循环杀了；说反了 3-prong 的电荷关联强弱（用户先提，我核对后纠正）。
 
 ### 下一步
-- `draw_dy_m3pi.py` 写好没跑（EOS fuse 挂了）：M(πππ) ≤ m_τ=1.777 检验 3-prong，带信号对照行。
+- **M(πππ) 已画**（`draw_dy_m3pi.py`，`dy_m3pi_mu_origin_ssdata_vs_osdata.png`）：DY μ←τ 是 ~1.2 GeV 的 a1(1260) 宽峰 → τ→3πν 三叉；prompt μ 无此结构；信号是贴近 1.7 的尖峰。注意「低于 m_τ 的比例」不是判据（三者都 90-100%），看形状。
 - DY SS MC（未交）判决 Z→ττ 是不是 data 的 OS-only 成分；另外量一下 DY ττ 能占 data OS 低端超出的多少。
 - 1006 上午未交的 tt̄ ext1 / tt̄ SS / DY SS 仍未交。
 - 废图未删：`MVA/figures/os_ss/model_response_by_*.png`（`compare_model_response_tt_dy.py` 的画图部分，表格输出有用）、

@@ -91,9 +91,9 @@ for row, (olab, m3pi, w, pass_b, pass_o, g, is_sig) in enumerate(ROWS):
         hb, vb = h(m3pi[pb], w[pb], bins)
         ho, vo = h(m3pi[po], w[po], bins)
         hep.histplot(hb, bins, ax=ax, histtype="errorbar", yerr=np.sqrt(np.abs(vb)), color="steelblue",
-                     marker="o", markersize=5, elinewidth=1.3, label=f"{BASE} (SS DNN) cut  N={hb.sum():,.0f}")
+                     marker="o", markersize=5, elinewidth=1.3, label=f"{BASE} (SS DNN) cut  N={hb.sum():,.3g}")
         hep.histplot(ho, bins, ax=ax, histtype="errorbar", yerr=np.sqrt(np.abs(vo)), color="black",
-                     marker="s", markersize=5, elinewidth=1.3, label=f"{KEY_OS} (OS DNN) cut  N={ho.sum():,.0f}")
+                     marker="s", markersize=5, elinewidth=1.3, label=f"{KEY_OS} (OS DNN) cut  N={ho.sum():,.3g}")
         ax.axvline(M_TAU, color="green", ls=":", lw=1.5)
         ax.set_xlim(bins[0], bins[-1])
         top = max(hb.max(), ho.max())
