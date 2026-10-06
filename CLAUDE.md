@@ -112,7 +112,53 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-02 ~ 10-06)
+## Last Session (2026-10-06 下午)
+
+### data 的 OS-only 成分：在 MC 里对上的是 DY 的 Z/γ*→ττ（μ 来自 τ）
+
+**方法**：SS DNN（`ssdata`）和 OS DNN（`osdata`）在**同一批行**上、各自 ε_sig 阈值下比 Ds_mass，
+同 panel 叠加 + 逐 bin OS/SS 比值（误差按 both-pass / only-one 拆三块）。`draw_mass_ss_vs_os_dnn.py`，
+图 `MVA/figures/os_ss/ds_mass_ssdata_vs_osdata_{DY,TT,WJets,WJets_SS,Data,Data_SS}.png`。
+OS DNN / SS DNN（ε90/70/50）：
+
+| W+jets OS | W+jets SS | TT | DY | data OS | data SS |
+|---|---|---|---|---|---|
+| 0.98/0.98/0.94 | 1.10/1.20/1.13 | 1.16/1.26/1.28 | **0.79/0.53/0.43** | **0.90/0.77/0.68** | 1.04/1.09/0.98 |
+
+- data 不对称：OS DNN 拒 SS data 和 SS DNN 一样好，SS DNN 拒不掉 OS data 里那部分 → OS data 有 SS data 没有的成分。
+- W+jets SS 1.1-1.2 = 「各自更会拒训练时见过的构型」，量级小、方向与 DY 相反，解释不了 DY。TT 偏离主要是 lν2q（2l2ν ≈1）。
+- **DY 拆开**（`draw_dy_mass_components.py`）：差别全在 mode 0，0J 最强（mode 0：0J 0.70/0.41/0.31、2J 0.94/0.73/0.66），
+  Ds_mass、phi_mass 形状都不变（比值平）。W+jets mode 0 ≈1 → 不是「组合本底」普遍现象，是 DY 特有。
+- **μ 来源**（`draw_dy_mu_origin.py`）：合并样本没有 μ truth，从原始 nano 读 `Muon_genPartFlav`，按 (era, jet_bin, lumi, event)+ΔR
+  对上 best μ，1,765,154 行全部匹配，缓存 `MVA/aux/DY_merged_mu_genPartFlav.npz`。cut 后 DY **87-97% 是 μ←τ**（no cut 17%）；
+  OS/SS：**μ←τ 0.76/0.50/0.41，prompt μ 1.01/1.02/0.91** → 差别就是 Z/γ*→ττ（样本 MLL>50，γ* 和 Z 分不开，也不用分）。
+- **电荷论证**：OS/SS 只差 π 那个位置（K⁺ 恒异号、K⁻ 恒同号）。另一个 τ→3-prong（两异一同）**只能填满 OS**，是 100% 电荷关联；
+  1-prong 只在占到 π 位时偏 OS；τ→μ/e 进不了 track pool，无关联。3-prong 是有位移的真顶点，最像 Ds，最容易过 cut。
+- 排除掉的：「Z 的第二个 μ 当 π」——只 0.2% 行有 track 配到 gen μ，且全在 mode 1/6/7/8；mode 0 的 track 全无 gen 匹配（pruning）。
+  M(μ, π→μ) 在 ~50 GeV 的峰（`draw_dy_mumu_mass.py`、`draw_dy_mumu_peak_origin.py`）是 cut 挑出「Ds 硬、与 μ 背对背」的投影
+  （M(μπ) ≈ 0.74 M(Dsμ)）；cut 后 DY 的 M(Dsμ) 是 ~70 GeV 的窄峰、m_Z 以下截止，比信号低 15-20 GeV。
+
+### 其它
+- `draw_os_minus_ss.py`：只留 data − W+jets 一行（用户要求），bin 随 cut 变宽 10/20/26/52 MeV（blind 窗边对齐）。
+- `score_dsmu = −777` 的行：IP/FD significance 的 error 为 NaN（kinematic fit 协方差非正定；FDsig NaN 的行 100% SV 协方差对角元 <0）。
+  TT 0.60%、W+jets 0.14%、data 0.23%。cut 后全被去掉，**no cut 列里还在**。
+- `Ds_nearestjet_bscore` 的 −10 = 最近 jet pt<15 GeV（ParticleNet 不算，`BTagProbabilityToDiscriminator` 返回 −10）；
+  比例 data OS 17.5% vs W+jets 13.6%，data/MC 不一致，影响没查。
+- TT/DY 的 osdata/oswjets 打分用户本地跑（condor 满）。
+
+### 我犯的错
+1. 两次没理解要什么图：先画了「比值 vs ε」曲线，又画成上下两行堆叠。**用户要的是同 panel 叠加 SS vs OS DNN + 比值子图** → `feedback_ss_vs_os_dnn_plot`。
+2. 「mode 0 纯组合 = 电荷无关对照」被纠正：W+jets 反冲 jet 带和 W 相反的电荷。
+3. 又一次 `pkill -f` 把自己 shell 的后台循环杀了；说反了 3-prong 的电荷关联强弱（用户先提，我核对后纠正）。
+
+### 下一步
+- `draw_dy_m3pi.py` 写好没跑（EOS fuse 挂了）：M(πππ) ≤ m_τ=1.777 检验 3-prong，带信号对照行。
+- DY SS MC（未交）判决 Z→ττ 是不是 data 的 OS-only 成分；另外量一下 DY ττ 能占 data OS 低端超出的多少。
+- 1006 上午未交的 tt̄ ext1 / tt̄ SS / DY SS 仍未交。
+- 废图未删：`MVA/figures/os_ss/model_response_by_*.png`（`compare_model_response_tt_dy.py` 的画图部分，表格输出有用）、
+  `dy_mass_components_ssdata_osdata.png`（堆叠版）。
+
+## 上一 Session (2026-10-02 ~ 10-06)
 
 ### W+jets SS 全链条 + OS−SS 双差 + 用 OS 本底训练的镜像检验
 

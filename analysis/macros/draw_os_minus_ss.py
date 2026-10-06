@@ -4,9 +4,8 @@
 
 Columns: no cut and stage-1 (<key> f55) eps_sig = 90/70/50%. Stage-1 only -- stage-2 was
 trained on W+jets OS, so after a stage-2 cut OS W+jets is in-sample and SS is not.
-  row 1: data - W+jets, OS (black) and SS (blue) overlaid
-  row 2: (data - W+jets)_OS - (data - W+jets)_SS; nonzero = a charge-correlated component the
-         W+jets MC does not describe (missing process, or W+jets' own charge-correlated part wrong)
+Each panel: data - W+jets, OS (black) and SS (blue) overlaid. Bins widen with the cut
+(10/20/26/52 MeV) as the statistics drop; the blind-window edges stay on bin edges.
 The model's own training sample (ssdata: SS data, osdata: OS data, oswjets: OS W+jets) is
 used on its odd-event half x2 only (the even half trained it). OS data is blinded in the Ds
 window, so that window is dropped from every curve to keep OS and SS on the same footing.
@@ -32,9 +31,16 @@ PRED = common.out_dir_for(KEY, "DNN") + "/Prediction"
 # the sample(s) this model trained on: only their held-out odd half is usable
 HELD_OUT = set(_cfg["samples"]) if _cfg["parity"] is not None else set()
 EFFS = [1.0, 0.90, 0.70, 0.50]
-mbins = np.linspace(M_DS - 0.3, M_DS + 0.3, 61)   # 10 MeV; blind window on bin edges
-mcent = 0.5 * (mbins[1:] + mbins[:-1])
-SR_BIN = np.abs(mcent - M_DS) < SR_HALFWIDTH
+# bins per side of the blind window (each side is 0.26 GeV wide): 10/20/26/52 MeV
+NBINS_SIDE = {1.0: 26, 0.90: 13, 0.70: 10, 0.50: 5}
+
+
+def mass_bins(n):
+    """Edges with the blind window [M_DS-0.04, M_DS+0.04] as one bin in the middle (index n)."""
+    return np.concatenate([np.linspace(M_DS - 0.3, M_DS - SR_HALFWIDTH, n + 1),
+                           np.linspace(M_DS + SR_HALFWIDTH, M_DS + 0.3, n + 1)])
+
+
 WANT = list(dict.fromkeys(["Ds_mass", "weight", "score_dsmu", "event", "mu_charge", "pi_charge",
                            *common.SELECTION]))
 
@@ -53,7 +59,7 @@ def get(name, ss):
                 data=name.startswith("Data"), scale=scale)
 
 
-def hist(s, thr):
+def hist(s, thr, mbins, sr_bin):
     k = s["score"] > thr
     h, _ = np.histogram(s["mass"][k], bins=mbins, weights=s["w"][k])
     if s["data"]:   # Poisson on the raw count, times the odd-half scale
@@ -62,8 +68,8 @@ def hist(s, thr):
     else:
         e = np.sqrt(np.histogram(s["mass"][k], bins=mbins, weights=s["w"][k] ** 2)[0])
     h, e = h.astype(float), e.astype(float)
-    h[SR_BIN] = np.nan
-    e[SR_BIN] = np.nan
+    h[sr_bin] = np.nan
+    e[sr_bin] = np.nan
     return h, e
 
 
@@ -71,13 +77,16 @@ S = {"dOS": get("Data_OS_merged", False), "dSS": get("Data_SS_merged", True),
      "wOS": get("WtoLNu2Jets_merged", False), "wSS": get("WtoLNu2Jets_SS_merged", True)}
 
 plt.style.use(hep.style.CMS)
-fig, axes = plt.subplots(2, len(EFFS), figsize=(8.5 * len(EFFS), 14), squeeze=False)
+fig, axes = plt.subplots(1, len(EFFS), figsize=(8.5 * len(EFFS), 7.5), squeeze=False)
 for col, eff in enumerate(EFFS):
     thr = -np.inf if eff >= 1.0 else common.stage1_threshold(
         {"key": KEY, "tool": "DNN", "eff_sig": eff})[0]
-    H = {k: hist(s, thr) for k, s in S.items()}
+    n = NBINS_SIDE[eff]
+    mbins = mass_bins(n)
+    width = 1000 * (M_DS - SR_HALFWIDTH - mbins[0]) / n
+    H = {k: hist(s, thr, mbins, n) for k, s in S.items()}
     lbl = "no cut" if eff >= 1.0 else rf"stage-1 {KEY} $\varepsilon_{{sig}}$={100 * eff:.0f}%"
-    R = {}
+    tot = {}
     ax = axes[0][col]
     for key_d, key_w, color, marker, name in (("dOS", "wOS", "black", "s", "OS"),
                                               ("dSS", "wSS", "steelblue", "o", "SS")):
@@ -85,37 +94,25 @@ for col, eff in enumerate(EFFS):
             name += " (odd half x2)"
         r = H[key_d][0] - H[key_w][0]
         er = np.hypot(H[key_d][1], H[key_w][1])
-        R[key_d] = (r, er)
+        tot[key_d] = np.nansum(r)
         hep.histplot(r, mbins, ax=ax, histtype="errorbar", yerr=er, color=color, marker=marker,
                      markersize=4.5, elinewidth=1.4,
-                     label=f"{name}: data $-$ W+jets  N={np.nansum(r):,.0f}")
+                     label=f"{name}: data $-$ W+jets  N={tot[key_d]:,.0f}")
     ax.axhline(0, color="grey", lw=1)
-    ax.set_ylabel("(data $-$ W+jets) Events / 10 MeV")
+    ax.set_ylabel(f"(data $-$ W+jets) Events / {width:.0f} MeV")
     ax.set_title(lbl, fontsize=15)
-
-    ax = axes[1][col]
-    dd = R["dOS"][0] - R["dSS"][0]
-    edd = np.hypot(R["dOS"][1], R["dSS"][1])
-    hep.histplot(dd, mbins, ax=ax, histtype="errorbar", yerr=edd, color="darkred", marker="D",
-                 markersize=4.5, elinewidth=1.4,
-                 label=f"(data$-$W+jets)$_{{OS}}$ $-$ (data$-$W+jets)$_{{SS}}$  N={np.nansum(dd):,.0f}")
-    ax.axhline(0, color="grey", lw=1)
-    ax.set_ylabel("double difference / 10 MeV")
-
-    for row in (0, 1):
-        ax = axes[row][col]
-        ax.axvspan(M_DS - SR_HALFWIDTH, M_DS + SR_HALFWIDTH, color="grey", alpha=0.15)
-        ax.axvline(M_D, color="green", ls=":", lw=1.5)
-        lo, hi = ax.get_ylim()
-        ax.set_ylim(lo, hi + 0.25 * (hi - lo))   # room for legend and peak labels
-        top = ax.get_ylim()[1]
-        ax.text(M_D, top * 0.97 if top > 0 else top, r"D$^\pm$", color="green", ha="center",
-                va="top", fontsize=13)
-        ax.text(M_DS, top * 0.97 if top > 0 else top, r"D$_s^\pm$", color="dimgrey",
-                ha="center", va="top", fontsize=13)
-        ax.set_xlabel(r"$M(K^+K^-\pi^\pm)$ [GeV]")
-        ax.legend(fontsize=11, loc="upper right")
-    print(f"{lbl}: data-W+jets OS {np.nansum(R['dOS'][0]):,.0f} SS {np.nansum(R['dSS'][0]):,.0f}  double diff {np.nansum(dd):,.0f}")
+    ax.axvspan(M_DS - SR_HALFWIDTH, M_DS + SR_HALFWIDTH, color="grey", alpha=0.15)
+    ax.axvline(M_D, color="green", ls=":", lw=1.5)
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi + 0.25 * (hi - lo))   # room for legend and peak labels
+    top = ax.get_ylim()[1]
+    ax.text(M_D, top * 0.97 if top > 0 else top, r"D$^\pm$", color="green", ha="center",
+            va="top", fontsize=13)
+    ax.text(M_DS, top * 0.97 if top > 0 else top, r"D$_s^\pm$", color="dimgrey",
+            ha="center", va="top", fontsize=13)
+    ax.set_xlabel(r"$M(K^+K^-\pi^\pm)$ [GeV]")
+    ax.legend(fontsize=11, loc="upper right")
+    print(f"{lbl}: data-W+jets OS {tot['dOS']:,.0f} SS {tot['dSS']:,.0f}")
 
 hep.cms.label(ax=axes[0][0], rlabel="2022 (13.6 TeV)", data=True, text="Preliminary", fontsize=11)
 plt.tight_layout()
