@@ -112,7 +112,44 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-05)
+## Last Session (2026-10-02 ~ 10-06)
+
+### W+jets SS 全链条 + OS−SS 双差 + 用 OS 本底训练的镜像检验
+
+**W+jets GenTag SS nano**（13_0_13 `condor_submit.py WJ<n> <year> --gentag --ss`）6 个 (bin, era) 全部产完。
+- 验收判据：同 JOBID 的 SS 和 OS 读同一批输入，`Runs.genEventCount/Sumw` 必须逐个相等（比较用 1e-9 容差）。
+- postEE 的 `FileReadError`：两边都崩的是坏输入；单边崩的补跑后有 11 个在同一事例上再崩。
+  **用户规则：OS/SS 任一边缺的 JOBID 两边都删**，崩溃输出不留截断文件，名单
+  `13_0_13/.../condor_logs/WJ_SS_bad_jobs_dropped_20261002.txt`。现在两边 JOBID 集合逐个相同（postEE 0J 1297、1J 1112、2J 816）。
+- 下游：SS 单独建 b-tag 效率图（和 OS 基本一致，0J light 边缘 p≈0.03）；OS 0J postEE 文件集变了 → 效率图、修正、
+  normalization（norm +0.63%）、skim 全部重做。`make_samples_nano.py` 新组 `WtoLNu2Jets_SS_merged`（3,381,372 行），
+  `WtoLNu2Jets_merged` 重做（4,024,036 行）；`common.ALL_SAMPLES` 加 SS。打分一律 condor，每个样本一个 job（`run_predict.sh`）。
+
+**OS−SS 双差**（`analysis/macros/draw_os_minus_ss.py [key]`，图在各模型 `figures/os_ss/data_minus_wjets_os_ss_mass.png`）：
+- no cut：OS、SS 的 data − W+jets 几乎重合 → 缺口电荷对称。
+- ssdata cut 后：SS 的 data − W+jets ≈ 0，OS 低质量端为正（高质量端/D± 为负 = 已知 misID 高估，别再拿来当论据）。
+
+**DNN 看得到电荷构型**（Ds–μ 相关量）：W+jets mode 0 纯组合 OS/SS 过 cut 效率比约 2-3。
+镜像检验：新训练 key `oswjets`（OS W+jets MC）、`osdata`（OS data sideband），都 parity 0；`DNN/run_train.sh` 只训练。
+`analysis/macros/compare_os_ss_retention.py` 对比（low 窗 ε90/70/50 的 ε_OS/ε_SS）：
+- W+jets mode 0 三个模型都约 2-3，**不翻转** → OS 偏好来自信号侧（信号是 OS），与训练背景无关。
+- data：ssdata 2.56/4.47/7.28，oswjets 2.07/3.67/7.92，**osdata 2.21/2.92/4.23** → 只有 OS data 训练能去掉 data 多出的 OS 偏好。
+  **结论：存在只在 OS data 里、SS data 和 W+jets MC 都没有的电荷关联成分**；候选 tt̄/DY 电荷关联部分、QCD 重味（未验证）。
+
+**`DNN.py` 负权重修法**（oswjets 第一次崩在 `torch.multinomial`）：按 |w| 抽样 + 每事例 loss 乘 sign(w)；
+sklearn AUC/ROC 拒负权重 → 自写 `signed_roc`/`signed_auc`（正权重时与 sklearn 逐位相同）。
+
+**tt̄ ext1 + tt̄/DY SS**：13_0_13 CENTRAL 加 `TTto2L2Nu_ext1`/`TTtoLNu2Q_ext1`（单独目录——接在 nominal 列表后面会改变最后一个 job 的切片），
+去掉 CENTRAL 拒绝 `--ss`。已交：两个 ext1 preEE 的 OS/SS、TTto2L2Nu 全部（ext1 postEE OS/SS、nominal SS 两 era）。
+**ext1 和 nominal 下游必须共用一个归一化分母**（还没改 normalization.py）。
+
+### 下一步
+
+- 未交：TTtoLNu2Q_ext1 postEE OS/SS（881+881）、TTtoLNu2Q nominal SS（119/457）、DY SS（713/2436）。提交要在 el8 节点。
+- 新样本出来后：normalization 合并 ext1、b-tag/修正/skim/打分，然后用 tt̄/DY 的 SS 检验那个 OS-only 成分。
+- 可先用 `Dsmu_mass` 查 QCD 重味假设（同链 b→cμν 的 Ds+μ 质量 < m_B）。
+
+## 上一 Session (2026-10-05)
 
 ### DY 的 Ds_mass 随 stage-1 cut 的形状 + sideband 拟合 MC 缩放因子
 

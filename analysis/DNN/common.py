@@ -632,7 +632,8 @@ SIGNALS = ["Signal_merged"]
 # overlap in the pre-migration samples) -- everything else that used to be a
 # filename axis (channel, era, jet_bin, GenTag's cand_gen_mode) is now a BRANCH
 # inside one of these four files.
-ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "TT_merged", "DY_merged", "Data_OS_merged", "Data_SS_merged"]
+ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "WtoLNu2Jets_SS_merged", "TT_merged", "DY_merged",
+               "Data_OS_merged", "Data_SS_merged"]
 
 # WtoLNu2Jets_merged holds all three jet-multiplicity bins of the SAME physical
 # process as a `jet_bin` branch, and its per-event `weight` column already carries
@@ -709,6 +710,34 @@ TRAININGS = {
         is_data=False,
         out_name="dsw_dsstw_wjets_f55",
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f55",
+    ),
+    # Mirror test of ssdata (2026-10-06): ssdata is trained against SS data and keeps the
+    # OS configuration of charge-symmetric combinatorial ~2.3x more than SS (W+jets GenTag
+    # mode 0, measured). Train against an OS background instead and check whether the
+    # preference flips (SS kept more than OS). Both use parity=0 for training so the
+    # odd half of the OS background is out-of-sample for the OS-vs-SS comparison --
+    # without it the OS side would be scored in-sample and the comparison biased.
+    "oswjets": dict(
+        samples={"WtoLNu2Jets_merged": 1.0},
+        ss=False,
+        parity=0,
+        weighted=True,
+        label="W+jets MC OS (even events)",
+        is_data=False,
+        out_name="dsw_dsstw_oswjets_f55",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_oswjets_f55",
+    ),
+    "osdata": dict(
+        # Data_OS_merged is blinded at skim time (Ds window rows dropped), so this is the
+        # OS sideband only.
+        samples={"Data_OS_merged": 1.0},
+        ss=False,
+        parity=0,
+        weighted=False,
+        label="Data OS sideband (even events)",
+        is_data=True,
+        out_name="dsw_dsstw_osdata_f55",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_osdata_f55",
     ),
     "wjetsres": dict(
         # Stage 2 of the two-stage MVA: signal MC vs W+jets RESONANT background (real

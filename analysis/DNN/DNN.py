@@ -58,10 +58,26 @@ import mplhep as hep
 plt.style.use(hep.style.CMS)
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_curve, roc_auc_score
 
 import common
 from common import SIGNALS
+
+
+# Per-event weights may be NEGATIVE: W+jets (amcatnloFXFX) carries genWeight's sign in
+# `weight`. sklearn's roc_auc_score/roc_curve refuse that (the curve is then not monotonic),
+# so the ROC is built from signed cumulative sums. With all-positive weights (ssdata,
+# osdata) this is the ordinary weighted ROC.
+def signed_roc(y, s, w):
+    o = np.argsort(-s, kind="stable")
+    y, w = y[o], w[o]
+    tp = np.concatenate([[0.0], np.cumsum(w * (y == 1))])
+    fp = np.concatenate([[0.0], np.cumsum(w * (y == 0))])
+    return fp / fp[-1], tp / tp[-1]
+
+
+def signed_auc(y, s, w):
+    fpr, tpr = signed_roc(y, s, w)
+    return float(np.trapezoid(tpr, fpr))
 
 # ========= 1. 配置 =========
 # Feature set, preprocessing, network and the background table all live in
@@ -279,16 +295,21 @@ print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 # ========= 12. 训练 =========
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
 criterion = nn.BCEWithLogitsLoss()
+criterion_ev = nn.BCEWithLogitsLoss(reduction="none")
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5)
 
 EPOCHS, PATIENCE, BATCH_SIZE = 200, 30, 1024
 
 # Sample by the physical luminosity weight (already class-balanced above), so the
 # network sees the true background composition rather than a flat MC mixture.
+# Negative weights (amcatnloFXFX W+jets) cannot be sampling probabilities: sample by |w|
+# and multiply each event's loss by sign(w), which has the same expectation as the
+# signed weighting. All-positive weights (ssdata, osdata): sign is +1, nothing changes.
 sampler = torch.utils.data.WeightedRandomSampler(
-    torch.tensor(sw_train, dtype=torch.float64), len(y_train), replacement=True
+    torch.tensor(np.abs(sw_train), dtype=torch.float64), len(y_train), replacement=True
 )
-dataset = torch.utils.data.TensorDataset(X_train_t, y_train_t)
+sign_train_t = torch.tensor(np.sign(sw_train).reshape(-1, 1), dtype=torch.float32)
+dataset = torch.utils.data.TensorDataset(X_train_t, y_train_t, sign_train_t)
 loader  = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, sampler=sampler)
 
 best_val_auc, patience_counter, best_state = -1.0, 0, None
@@ -298,9 +319,9 @@ print("\nStart training...")
 for epoch in range(EPOCHS):
     model.train()
     epoch_loss = 0.0
-    for xb, yb in loader:
+    for xb, yb, sb in loader:
         pred = model(xb)
-        loss = criterion(pred, yb)
+        loss = (criterion_ev(pred, yb) * sb).mean()
         optimizer.zero_grad(); loss.backward(); optimizer.step()
         epoch_loss += loss.item() * len(xb)
     epoch_loss /= len(X_train_t)
@@ -310,7 +331,7 @@ for epoch in range(EPOCHS):
         val_pred   = model(X_val_t)
         val_loss   = criterion(val_pred, y_val_t).item()
         val_scores = torch.sigmoid(val_pred).numpy().flatten()
-    val_auc = roc_auc_score(y_val, val_scores, sample_weight=sw_val)
+    val_auc = signed_auc(y_val, val_scores, sw_val)
 
     train_losses.append(epoch_loss)
     val_losses.append(val_loss)
@@ -337,7 +358,7 @@ print(f"\nBest val AUC: {best_val_auc:.4f}")
 model.eval()
 with torch.no_grad():
     scores = torch.sigmoid(model(X_test_t)).numpy().flatten()
-auc = roc_auc_score(y_test, scores, sample_weight=sw_test)
+auc = signed_auc(y_test, scores, sw_test)
 print(f"Test AUC (weighted): {auc:.4f}")
 
 np.save(f"{out_dir}/train_losses.npy", np.array(train_losses))
@@ -363,7 +384,7 @@ axes[1].plot(val_aucs, color="steelblue")
 axes[1].set_xlabel("Epoch"); axes[1].set_ylabel("Val AUC")
 cms_label(axes[1])
 
-fpr, tpr, _ = roc_curve(y_test, scores, sample_weight=sw_test)
+fpr, tpr = signed_roc(y_test, scores, sw_test)
 axes[2].plot(fpr, tpr, label=f"AUC = {auc:.4f}"); axes[2].plot([0, 1], [0, 1], "k--")
 axes[2].set_xlabel("False Positive Rate"); axes[2].set_ylabel("True Positive Rate"); axes[2].legend()
 cms_label(axes[2])
@@ -396,7 +417,7 @@ for i in range(len(feats.names)):
     X_perm[:, i] = rng.permutation(X_perm[:, i])
     with torch.no_grad():
         perm_scores = torch.sigmoid(model(to_tensor(X_perm))).numpy().flatten()
-    importances[i] = auc - roc_auc_score(y_test, perm_scores, sample_weight=sw_test)
+    importances[i] = auc - signed_auc(y_test, perm_scores, sw_test)
 
 np.save(f"{out_dir}/feature_importances.npy", importances)
 sorted_idx = np.argsort(importances)
