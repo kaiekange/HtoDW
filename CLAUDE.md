@@ -153,6 +153,7 @@ OS DNN / SS DNN（ε90/70/50）：
 
 ### 下一步
 - **M(πππ) 已画**（`draw_dy_m3pi.py`，`dy_m3pi_mu_origin_ssdata_vs_osdata.png`）：DY μ←τ 是 ~1.2 GeV 的 a1(1260) 宽峰 → τ→3πν 三叉；prompt μ 无此结构；信号是贴近 1.7 的尖峰。注意「低于 m_τ 的比例」不是判据（三者都 90-100%），看形状。
+- **M(π⁺π⁻) 已画（1007，`draw_dy_m2pi.py`）**：(π,K⁻) 对在 DY μ←τ 里是干净的 ρ(770) 峰（m_ρ±150 MeV 内 76-78%，prompt μ 30-35%、信号 22%）→ **τ→a1ν→ρ⁰πν 定案**；(K⁺,K⁻) 对被 φ cut 压在 <0.5 GeV、无信息。
 - DY SS MC（未交）判决 Z→ττ 是不是 data 的 OS-only 成分；另外量一下 DY ττ 能占 data OS 低端超出的多少。
 - 1006 上午未交的 tt̄ ext1 / tt̄ SS / DY SS 仍未交。
 - 废图未删：`MVA/figures/os_ss/model_response_by_*.png`（`compare_model_response_tt_dy.py` 的画图部分，表格输出有用）、
