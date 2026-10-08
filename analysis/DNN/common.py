@@ -632,8 +632,8 @@ SIGNALS = ["Signal_merged"]
 # overlap in the pre-migration samples) -- everything else that used to be a
 # filename axis (channel, era, jet_bin, GenTag's cand_gen_mode) is now a BRANCH
 # inside one of these four files.
-ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "WtoLNu2Jets_SS_merged", "TT_merged", "DY_merged",
-               "Data_OS_merged", "Data_SS_merged"]
+ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "WtoLNu2Jets_SS_merged", "TT_merged", "TT_SS_merged",
+               "DY_merged", "Data_OS_merged", "Data_SS_merged"]
 
 # WtoLNu2Jets_merged holds all three jet-multiplicity bins of the SAME physical
 # process as a `jet_bin` branch, and its per-event `weight` column already carries

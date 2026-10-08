@@ -2,7 +2,7 @@
 
     python3 condor_submit_make_samples_nano.py <group> [--pieces=<era>/<sample>,...] [--correct] [--dry-run]
     python3 condor_submit_make_samples_nano.py <group> [--pieces=...] [--correct] --only-missing
-    <group>: Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | DY_merged | Data_OS_merged | Data_SS_merged
+    <group>: Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | Data_OS_merged | Data_SS_merged
 
 Default: for every piece of the group, rewrite the chunk lists (numeric order of
 output_N, FILES_PER_JOB per chunk), delete that piece's old skim chunks, submit every chunk.

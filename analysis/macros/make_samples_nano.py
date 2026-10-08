@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Merged custom-NanoAOD samples: signal (DsW+DsstW), W+jets GenTag (0J/1J/2J; OS and same-sign-pi SS),
-ttbar GenTag (2L2Nu + LNu2Q), DY GenTag (0J/1J/2J), and Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
+ttbar GenTag (2L2Nu + LNu2Q, nominal + ext1; OS and same-sign-pi SS), DY GenTag (0J/1J/2J), and Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
 NanoAOD-pipeline analogue of the old tuplizer-based make_samples.py.
 
 Two modes, driven by condor_submit_make_samples_nano.py:
@@ -17,7 +17,7 @@ Two modes, driven by condor_submit_make_samples_nano.py:
       submission instead of two; the friends are still written because MC systematics
       need unselected rows and the skim gets re-run far more often than the corrections.
 
-  merge <group>   (Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | DY_merged | Data_OS_merged | Data_SS_merged)
+  merge <group>   (Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | Data_OS_merged | Data_SS_merged)
       Reads the chunk lists the submit script wrote (never re-globs), requires every
       chunk's .root+.json, checks that the chunks cover exactly the files on disk and
       share one branch list, hadds them in list order, writes <group>_meta.json (per
@@ -52,7 +52,7 @@ definition as highest_pt_dedup.apply_row_cuts(blind=True). SS data is not blinde
 
 PROVENANCE BRANCHES: era (eras.py wire format, 1=2022, 2=2022EE, data too); signal file: channel (0=DsW, 1=DsstW);
 W+jets files (OS and SS): jet_bin (0/1/2);
-ttbar file: tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q); DY file: jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
+ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 carry the same tag); DY file: jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
 
 CARRIED: every custom analyzer branch (everything not in a stock NanoAOD collection this
 analysis never reads, see _STD_PREFIXES) + run/luminosityBlock/event/genWeight/nTrueInt;
@@ -96,7 +96,12 @@ WJETS_SS_BIN = {f"{s}_SS": b for s, b in WJETS_BIN.items()}
 TT_DECAY = {
     "TTto2L2Nu_H_phipimu_GenTag": 0,
     "TTtoLNu2Q_H_phipimu_GenTag": 1,
+    # _ext1: same process, more events; normalization.py gives it the nominal's shared norm
+    "TTto2L2Nu_ext1_H_phipimu_GenTag": 0,
+    "TTtoLNu2Q_ext1_H_phipimu_GenTag": 1,
 }
+# same-sign-pi ttbar, same tt_decay tag
+TT_SS_DECAY = {f"{s}_SS": d for s, d in TT_DECAY.items()}
 DY_BIN = {
     "DYto2L2Jets_0J_H_phipimu_GenTag": 0,
     "DYto2L2Jets_1J_H_phipimu_GenTag": 1,
@@ -119,6 +124,7 @@ GROUPS = {
     "WtoLNu2Jets_merged": [(e, s) for e in ("2022", "2022EE") for s in WJETS_BIN],
     "WtoLNu2Jets_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in WJETS_SS_BIN],
     "TT_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_DECAY],
+    "TT_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_SS_DECAY],
     "DY_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_BIN],
     "Data_OS_merged": [(e, data_task(r, False)) for e, runs in DATA_RUNS.items() for r in runs],
     "Data_SS_merged": [(e, data_task(r, True)) for e, runs in DATA_RUNS.items() for r in runs],
@@ -211,7 +217,7 @@ def parse_nano_path(path):
     era, sample = parts[-3], parts[-2]
     if parts[-4] != "MC" or era not in TAG_TO_ERA or not _IDX_RE.search(parts[-1]):
         sys.exit(f"not a nano MC path: {path}")
-    if not any(sample in t for t in (SIGNAL_CHANNEL, WJETS_BIN, WJETS_SS_BIN, TT_DECAY, DY_BIN)):
+    if not any(sample in t for t in (SIGNAL_CHANNEL, WJETS_BIN, WJETS_SS_BIN, TT_DECAY, TT_SS_DECAY, DY_BIN)):
         sys.exit(f"sample {sample!r} belongs to no group")
     friend = os.sep.join(parts[:-2] + ["Corrections", sample, parts[-1]])
     return era, sample, friend, False
@@ -249,6 +255,8 @@ def worker(list_path, out_path, correct=False):
             tags["channel"] = SIGNAL_CHANNEL[sample]
         elif sample in TT_DECAY:
             tags["tt_decay"] = TT_DECAY[sample]
+        elif sample in TT_SS_DECAY:
+            tags["tt_decay"] = TT_SS_DECAY[sample]
         elif sample in DY_BIN:
             tags["jet_bin"] = DY_BIN[sample]
         elif sample in WJETS_SS_BIN:
