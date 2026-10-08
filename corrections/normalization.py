@@ -2,6 +2,7 @@
 """Per-sample MC normalisation: sum of generator weights before any selection.
 
 Usage: normalization.py <era>/<sample dir> [<era>/<sample dir> ...]
+       (a dir in NORM_GROUP -- ttbar nominal + _ext1 -- is normalised over all dirs of its group)
        e.g. normalization.py 2022/WtoLNu2Jets_0J_H_phipimu_GenTag
 Output: /eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC/<era>/Corrections/<sample dir>/normalization.json
 
@@ -76,6 +77,13 @@ XSEC_PB = {
     # ttbar, 13.6 TeV, per decay-filtered dataset (given by the analyst 2026-09-29)
     "TTto2L2Nu_H_phipimu_GenTag": 101.8,
     "TTtoLNu2Q_H_phipimu_GenTag": 407.8,
+    # ttbar _ext1 extensions and same-sign-pi control region: same process, same cross section
+    "TTto2L2Nu_ext1_H_phipimu_GenTag": 101.8,
+    "TTtoLNu2Q_ext1_H_phipimu_GenTag": 407.8,
+    "TTto2L2Nu_H_phipimu_GenTag_SS": 101.8,
+    "TTtoLNu2Q_H_phipimu_GenTag_SS": 407.8,
+    "TTto2L2Nu_ext1_H_phipimu_GenTag_SS": 101.8,
+    "TTtoLNu2Q_ext1_H_phipimu_GenTag_SS": 407.8,
     # DY -> ll, MLL > 50, 13.6 TeV, per jet bin (given by the analyst 2026-10-01, provisional)
     "DYto2L2Jets_0J_H_phipimu_GenTag": 5378.0,
     "DYto2L2Jets_1J_H_phipimu_GenTag": 1017.0,
@@ -84,6 +92,16 @@ XSEC_PB = {
     "Signal_DsstW_H_phipimu": 10.13e-6,
 }
 SIGNALS = ("Signal_DsW_H_phipimu", "Signal_DsstW_H_phipimu")
+# Sample dirs that are ONE sample split over several productions: the ttbar nominal and
+# _ext1 datasets are the same process with more events, so they share one denominator
+# (sum of genEventSumw over every dir of the group). Each dir's normalization.json then
+# carries the same norm, and an event gets the same weight whichever dir it is in.
+NORM_GROUP = {}
+for _tt in ("TTto2L2Nu", "TTtoLNu2Q"):
+    for _ss in ("", "_SS"):
+        _dirs = [f"{_tt}_H_phipimu_GenTag{_ss}", f"{_tt}_ext1_H_phipimu_GenTag{_ss}"]
+        for _d in _dirs:
+            NORM_GROUP[_d] = _dirs
 # Pythia 8.306 (CMSSW_12_4_14_patch3, the generation release) ParticleData.xml
 BR_GEN = dict(W_e=0.108166, W_mu=0.108166, W_tau=0.108087, tau_mu=0.1731072)
 F_W_GEN = ((BR_GEN["W_mu"] + BR_GEN["W_tau"] * BR_GEN["tau_mu"])
@@ -120,9 +138,15 @@ def main():
         era, sample = target.strip("/").split("/")
         if era not in LUMI_PB or sample not in XSEC_PB:
             sys.exit(f"unknown era/sample {target!r}")
-        files = sorted(glob.glob(f"{NANO}/{era}/{sample}/output_*.root"))
-        if not files:
-            sys.exit(f"no output_*.root under {NANO}/{era}/{sample}")
+        norm_dirs = NORM_GROUP.get(sample, [sample])
+        if len({XSEC_PB[d] for d in norm_dirs}) != 1:
+            sys.exit(f"{target}: dirs {norm_dirs} of one normalisation group have different xsec")
+        files = []
+        for d in norm_dirs:
+            dir_files = sorted(glob.glob(f"{NANO}/{era}/{d}/output_*.root"))
+            if not dir_files:
+                sys.exit(f"no output_*.root under {NANO}/{era}/{d}")
+            files += dir_files
         out_dir = f"{NANO}/{era}/Corrections/{sample}"
         tot = dict(count=0.0, sumw=0.0, sumw2=0.0)
         gen = {}
@@ -165,8 +189,9 @@ def main():
 
         xsec, lumi = XSEC_PB[sample], LUMI_PB[era]
         out = dict(
-            era=era, sample=sample, n_files=len(files),
-            files=[os.path.basename(f) for f in files],
+            era=era, sample=sample, norm_dirs=norm_dirs, n_files=len(files),
+            files=[os.path.relpath(f, f"{NANO}/{era}/{sample}") if len(norm_dirs) > 1
+                   else os.path.basename(f) for f in files],
             genEventCount=tot["count"], genEventSumw=tot["sumw"], genEventSumw2=tot["sumw2"],
             n_eff=tot["sumw"] ** 2 / tot["sumw2"],
             lumi_pb=lumi, xsec_pb=xsec,

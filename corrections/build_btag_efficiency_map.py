@@ -66,8 +66,12 @@ for _era in ERAS:
     GROUPS[f"DsstW_{_era}"] = (_era, [f"{NANO}/{_era}/Signal_DsstW_H_phipimu"])
     for _jb in (0, 1, 2):
         GROUPS[f"DYto2L2Jets_{_jb}J_{_era}"] = (_era, [f"{NANO}/{_era}/DYto2L2Jets_{_jb}J_H_phipimu_GenTag"])
+    # ttbar nominal + _ext1 are one sample (same process, more events): one pooled map,
+    # and one for the same-sign-pi control region, like W+jets SS
     for _tt in ("TTto2L2Nu", "TTtoLNu2Q"):
-        GROUPS[f"{_tt}_{_era}"] = (_era, [f"{NANO}/{_era}/{_tt}_H_phipimu_GenTag"])
+        for _ss in ("", "_SS"):
+            GROUPS[f"{_tt}{_ss}_{_era}"] = (_era, [f"{NANO}/{_era}/{_tt}{_x}_H_phipimu_GenTag{_ss}"
+                                                   for _x in ("", "_ext1")])
     GROUPS[f"WtoLNu2Jets_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{jb}J_H_phipimu_GenTag" for jb in (0, 1, 2)])
     # one map per jet bin as well: only used to check that the pooled W+jets map above is
     # justified (per-bin efficiencies consistent within statistics), not by the corrections

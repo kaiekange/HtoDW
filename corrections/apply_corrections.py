@@ -88,6 +88,13 @@ EFF_GROUP = {
     "WtoLNu2Jets_2J_H_phipimu_GenTag_SS": "WtoLNu2Jets_2J_SS",
     "TTto2L2Nu_H_phipimu_GenTag": "TTto2L2Nu",
     "TTtoLNu2Q_H_phipimu_GenTag": "TTtoLNu2Q",
+    # ttbar _ext1 shares the nominal map (one pooled map, see build_btag_efficiency_map.py)
+    "TTto2L2Nu_ext1_H_phipimu_GenTag": "TTto2L2Nu",
+    "TTtoLNu2Q_ext1_H_phipimu_GenTag": "TTtoLNu2Q",
+    "TTto2L2Nu_H_phipimu_GenTag_SS": "TTto2L2Nu_SS",
+    "TTtoLNu2Q_H_phipimu_GenTag_SS": "TTtoLNu2Q_SS",
+    "TTto2L2Nu_ext1_H_phipimu_GenTag_SS": "TTto2L2Nu_SS",
+    "TTtoLNu2Q_ext1_H_phipimu_GenTag_SS": "TTtoLNu2Q_SS",
     "DYto2L2Jets_0J_H_phipimu_GenTag": "DYto2L2Jets_0J",
     "DYto2L2Jets_1J_H_phipimu_GenTag": "DYto2L2Jets_1J",
     "DYto2L2Jets_2J_H_phipimu_GenTag": "DYto2L2Jets_2J",
