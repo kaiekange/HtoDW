@@ -1,17 +1,19 @@
 """Ds_mass after the SS-trained (ssdata) vs the OS-trained (osdata) stage-1 cut, overlaid.
 
-    python3 draw_mass_ss_vs_os_dnn.py [KEY_OS]      (default osdata; compared with ssdata)
+    python3 draw_mass_ss_vs_os_dnn.py [KEY_OS] [TAG ...] [--modes]   (default osdata vs ssdata, all tags)
 
 Per sample one figure; columns eps_sig = 90/70/50% (each model at its own stage1_threshold).
 Each panel overlays the two cuts on the SAME rows; the sub-panel is KEY_OS / ssdata per bin,
 error from the both-pass / only-one splitting (the two selections overlap heavily).
-DY, ttbar, W+jets OS and W+jets SS: all GenTag modes together.
+DY, ttbar OS/SS, W+jets OS/SS: all GenTag modes together (--modes: plus one row per mode group,
+output name gets _by_mode).
 Neither model trained on DY, ttbar or W+jets, so all rows are used (no parity cut). MC, so the Ds
 window is not blinded; the grey band only marks the SR.
 Data OS / data SS: each is one model's training sample (osdata / ssdata, even events), so BOTH
 models are compared on the odd half only, x2. Data bins sit on the blind-window edges
 (13/10/5 per side = 20/26/52 MeV); the blinded OS Ds window is left empty.
-Output: os_ss/ds_mass_ssdata_vs_<KEY_OS>_{DY,TT,WJets,WJets_SS,Data,Data_SS}.png (shared dir).
+TT_2L2Nu / TT_LNu2Q / TT_SS_2L2Nu / TT_SS_LNu2Q: one ttbar decay channel (tt_decay).
+Output: os_ss/ds_mass_ssdata_vs_<KEY_OS>_{DY,TT,TT_SS,WJets,WJets_SS,Data,Data_SS}.png (shared dir).
 """
 import os
 import sys
@@ -28,7 +30,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 import common  # noqa: E402
 
 BASE = "ssdata"
-KEY_OS = sys.argv[1] if len(sys.argv) > 1 else "osdata"
+ARGS = [x for x in sys.argv[1:] if not x.startswith("--")]
+KEY_OS = ARGS[0] if ARGS else "osdata"
+BY_MODE = "--modes" in sys.argv
+MODE_GROUPS = [("mode 0: comb.", [0]), ("mode 7: multi-charm", [7]), ("mode 8: partial", [8]),
+               (r"mode 1+2: true D$_s$", [1, 2]), (r"mode 3+4: D$\to$KK$\pi$", [3, 4]),
+               (r"mode 5: D$\to$K$\pi\pi$ misID", [5]), ("mode 6+9+10: other", [6, 9, 10])]
 EFFS = (0.90, 0.70, 0.50)
 BIN_MEV = {0.90: 20, 0.70: 30, 0.50: 40}
 M_DS, M_D, SR_HALF = 1.96835, 1.8696, 0.04
@@ -36,11 +43,15 @@ M_DS, M_D, SR_HALF = 1.96835, 1.8696, 0.04
 SAMPLES = {
     "DY": ("DY_merged", r"DY$\to\ell\ell$ (0J+1J+2J), OS", [("all modes", None)]),
     "TT": ("TT_merged", r"$t\bar{t}$ (2L2Nu + LNu2Q), OS", [("all modes", None)]),
+    "TT_SS": ("TT_SS_merged", r"$t\bar{t}$ (2L2Nu + LNu2Q), SS", [("all modes", None)]),
+    **{f"TT{ss}_{d}": (f"TT{ss}_merged", rf"$t\bar{{t}}$ {d}, {ss[1:] or 'OS'}", [("all modes", None)])
+       for ss in ("", "_SS") for d in ("2L2Nu", "LNu2Q")},
     "WJets": ("WtoLNu2Jets_merged", "W+jets (0J+1J+2J), OS", [("all modes", None)]),
     "WJets_SS": ("WtoLNu2Jets_SS_merged", "W+jets (0J+1J+2J), SS", [("all modes", None)]),
     "Data": ("Data_OS_merged", "data OS (odd half x2)", [("data OS", None)]),
     "Data_SS": ("Data_SS_merged", "data SS (odd half x2)", [("data SS", None)]),
 }
+TT_DECAY = {"2L2Nu": 0, "LNu2Q": 1}   # tt_decay tag; TT*_<decay> keeps one channel
 NSIDE_DATA = {0.90: 13, 0.70: 10, 0.50: 5}   # bins per 0.26 GeV side of the blind window
 WANT = list(dict.fromkeys(["Ds_mass", "weight", "score_dsmu", "event", "mu_charge", "pi_charge",
                            *common.SELECTION]))
@@ -54,18 +65,25 @@ def h(x, w, bins):
     return np.histogram(x, bins=bins, weights=w)[0], np.histogram(x, bins=bins, weights=w ** 2)[0]
 
 
-for tag, (fname, title, groups) in SAMPLES.items():
+TAGS = ARGS[1:] or list(SAMPLES)
+for tag in TAGS:
+    fname, title, groups = SAMPLES[tag]
     is_data = fname.startswith("Data")
+    if BY_MODE and not is_data:
+        groups = groups + MODE_GROUPS
     arr = {}
     for k in (BASE, KEY_OS):
         with uproot.open(f"{common.out_dir_for(k, 'DNN')}/Prediction/{fname}.root")[common.TREE] as t:
-            arr[k] = t.arrays(WANT + ([] if is_data else ["cand_gen_mode"]), library="np")
+            arr[k] = t.arrays(WANT + ([] if is_data else ["cand_gen_mode"])
+                              + (["tt_decay"] if fname.startswith("TT") else []), library="np")
     a0 = arr[BASE]
     assert np.array_equal(arr[KEY_OS]["Ds_mass"], a0["Ds_mass"]), f"{fname}: row order differs"
     common.check_charge_config(a0, fname.endswith("_SS_merged"), fname)
     sel = common.selection_mask(a0)
     if is_data:   # odd half, x2: the even half trained one of the two models
         sel &= (a0["event"] % 2) == 1
+    if tag.rsplit("_", 1)[-1] in TT_DECAY:
+        sel &= a0["tt_decay"] == TT_DECAY[tag.rsplit("_", 1)[-1]]
     mass, w = a0["Ds_mass"][sel], a0["weight"][sel].astype(float) * (2.0 if is_data else 1.0)
     mode = None if is_data else a0["cand_gen_mode"][sel]
     pass_b = {e: arr[BASE]["score_dsmu"][sel] > thr[BASE][e] for e in EFFS}
@@ -122,8 +140,12 @@ for tag, (fname, title, groups) in SAMPLES.items():
             rax.errorbar(bc, r, yerr=er, fmt="o", ms=4, color="black", elinewidth=1.1)
             rax.axhline(1.0, color="red", lw=1.0)
             rax.axvspan(M_DS - SR_HALF, M_DS + SR_HALF, color="grey", alpha=0.15)
-            rax.set_ylim(0.0, 1.99)
-            rax.set_yticks([0.5, 1.0, 1.5])
+            if BY_MODE:   # per-mode ratios can leave [0, 2]; scale on bins whose error < value
+                ok = np.isfinite(r) & np.isfinite(er) & (er < np.abs(r))
+                rax.set_ylim(0.0, max(1.99, 1.15 * np.max(r[ok] + er[ok])) if ok.any() else 1.99)
+            else:
+                rax.set_ylim(0.0, 1.99)
+                rax.set_yticks([0.5, 1.0, 1.5])
             rax.set_xlim(bins[0], bins[-1])
             rax.set_xlabel(r"$M(K^+K^-\pi^\pm)$ [GeV]")
             rax.set_ylabel("OS / SS")
@@ -134,7 +156,7 @@ for tag, (fname, title, groups) in SAMPLES.items():
     hep.cms.label(ax=fig.axes[0], rlabel="2022 (13.6 TeV)", data=is_data, text="Preliminary", fontsize=11)
     fig.suptitle(f"{title}: Ds_mass after SS-trained ({BASE}) vs OS-trained ({KEY_OS}) stage-1 cut",
                  fontsize=18, y=0.995)
-    out = common.fig_path("os_ss", f"ds_mass_{BASE}_vs_{KEY_OS}_{tag}.png")
+    out = common.fig_path("os_ss", f"ds_mass_{BASE}_vs_{KEY_OS}_{tag}{'_by_mode' if BY_MODE else ''}.png")
     plt.savefig(out, dpi=100, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out}")

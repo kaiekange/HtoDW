@@ -112,7 +112,30 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-06 下午)
+## Last Session (2026-10-08)
+
+### tt̄ OS 低质量端压不下去 = TTto2L2Nu 的 W→τ→3-prong
+
+tt̄ nominal+ext1 的 OS（`TT_merged` 4.14M 行）和 SS（`TT_SS_merged` 3.85M 行）都用 ssdata/osdata 打完分。
+- `draw_tt_os_vs_ss_mass.py [KEY] [--modes] [--decay=2L2Nu|LNu2Q]`（新）：tt̄ OS 对 SS 叠加，列 no cut + ε90/70/50。
+  ssdata 下 OS/SS 1.08 → 2.1/3.2/4.2，低质量 CR 2.4/4.5/7.7；OS 的 low/high CR 比几乎不随 cut 变，SS 降到 no cut 的 0.44。
+- 按 mode × 衰变道拆：**只有 TTto2L2Nu OS mode 0 异常**（OS/SS 12.6/41/91，过 ε90 效率 2.5%，LNu2Q OS m0 0.50%、SS m0 0.21%）；
+  其余所有格子只是 1.2-3 的普遍 OS 偏好。ssdata vs osdata 在它上面 0.97-1.00 —— 两个 DNN 都拒不掉。
+- **τ 证据**（`draw_tt_m3pi.py`、`draw_tt_m2pi.py`，从 DY 版复制，`--decay=` 按 mode 分行）：M(πππ) a1 峰、M(π,K⁻) 在 ρ±150 内 74-78%（DY μ←τ 76-78%）；
+  **LNu2Q 当 b jet 对照**（同样两个 b）：mode 0 38-43% 无峰。mode 0 本身分不开 τ 和 b jet（用户指出），靠这个对照。
+- 电荷：tt̄ 两个 W 永远异号，3-prong τ 只能进 OS —— 和 DY 一样的只是电荷机制。
+- **为什么压不下去**：Ds 侧（真位移、孤立、硬）和 μ 侧（μ 来自真 W：m_T 86、Dsμ pt 62）都像信号。
+  DY ττ 能被 osdata 拒是靠 Z 拓扑（被拒的 DY m0：dR(Ds,μ)≈3.0、m_T≈16、Dsμ pt≈12）；ssdata ε90 区 DY m0 是 tt̄ 2L2Nu m0 的 27 倍，osdata 学到的就是 DY。
+- 可能的处理（只讨论、未做）：π 质量假设的 M(π,K⁻)/M(πππ) 当特征或 ρ-veto，先查 sculpting 和信号损失。
+- `draw_mass_ss_vs_os_dnn.py` 加了 `--modes`、`TT_SS`、`TT{,_SS}_{2L2Nu,LNu2Q}` 和 tag 参数。详见 memory `project_ttbar_tau_3prong`。
+
+### 我犯的错
+1. `ls --time-style=+%H:%M:%S` 不带日期，让用户以为图是旧的；输出接 `| grep` 被缓冲，看起来像卡住（以后 `python3 -u`）。
+2. 用户说「永远别再用 condor_history」→ `feedback_no_condor_history`。查结果读 scheduler log。
+3. 两个画图进程并行读大文件被 kill（137），改成串行。
+4. 「把 LNu2Q 和 2L2Nu 分开画」理解成了 SS/OS DNN 图，用户要的是 misID 修正质量图。
+
+## 上一 Session (2026-10-06 下午)
 
 ### data 的 OS-only 成分：在 MC 里对上的是 DY 的 Z/γ*→ττ（μ 来自 τ）
 
