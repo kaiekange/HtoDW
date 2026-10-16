@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Merged custom-NanoAOD samples: signal (DsW+DsstW), W+jets GenTag (0J/1J/2J; OS and same-sign-pi SS),
-ttbar GenTag (2L2Nu + LNu2Q, nominal + ext1; OS and same-sign-pi SS), DY GenTag (0J/1J/2J), and Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
+ttbar GenTag (2L2Nu + LNu2Q, nominal + ext1; OS and same-sign-pi SS), DY GenTag (0J/1J/2J; OS and same-sign-pi SS), and Muon data OS / SS (Run2022 C-G), each merged over 2022+2022EE into one file.
 NanoAOD-pipeline analogue of the old tuplizer-based make_samples.py.
 
 Two modes, driven by condor_submit_make_samples_nano.py:
@@ -17,14 +17,18 @@ Two modes, driven by condor_submit_make_samples_nano.py:
       submission instead of two; the friends are still written because MC systematics
       need unselected rows and the skim gets re-run far more often than the corrections.
 
-  merge <group>   (Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | Data_OS_merged | Data_SS_merged)
+  merge <group>   (Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | DY_SS_merged | Data_OS_merged | Data_SS_merged)
       Reads the chunk lists the submit script wrote (never re-globs), requires every
       chunk's .root+.json, checks that the chunks cover exactly the files on disk and
       share one branch list, hadds them in list order, writes <group>_meta.json (per
       piece sums) and asserts merged entries == sum of selected rows.
 
-SELECTION (friend columns, same combination as every corrections validator):
-    pass_mu_nom & pass_muveto & ~jvm_veto_nom & (n_bjet_nom == 0)
+SELECTION (friend columns, same combination as every corrections validator), plus the phi window:
+    pass_mu_nom & pass_muveto & ~jvm_veto_nom & (n_bjet_nom == 0) & (|phi_mass - M_PHI| < PHI_WIN)
+The phi window (|M(KK) - m_phi| < 20 MeV on the post-fit phi_mass branch, on top of the
+producer's M(KK) < m_phi + 50 MeV) was added 2026-10-16 (user: keeps 0.949 of signal and
+~0.5 of every non-resonant background). The b-tag efficiency maps are measured inside the
+same window. Its value is written into every chunk .json and the merged <group>_meta.json.
 
 WEIGHT (background, i.e. W+jets, ttbar and DY):
     weight = genWeight * norm * w_pu_nom * w_mu_nom * w_btag_nom
@@ -52,7 +56,7 @@ definition as highest_pt_dedup.apply_row_cuts(blind=True). SS data is not blinde
 
 PROVENANCE BRANCHES: era (eras.py wire format, 1=2022, 2=2022EE, data too); signal file: channel (0=DsW, 1=DsstW);
 W+jets files (OS and SS): jet_bin (0/1/2);
-ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 carry the same tag); DY file: jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
+ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 carry the same tag); DY files (OS and SS): jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
 
 CARRIED: every custom analyzer branch (everything not in a stock NanoAOD collection this
 analysis never reads, see _STD_PREFIXES) + run/luminosityBlock/event/genWeight/nTrueInt;
@@ -82,6 +86,7 @@ SKIM_DIR = f"{OUT_DIR}/skim"
 LIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "condor_logs", "make_samples_nano", "lists")
 FILES_PER_JOB = 50
+M_PHI, PHI_WIN = 1.019460, 0.020  # GeV, phi window of the selection (see docstring)
 APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/apply_corrections.py"
 
 SIGNAL_CHANNEL = {"Signal_DsW_H_phipimu": 0, "Signal_DsstW_H_phipimu": 1}
@@ -107,6 +112,8 @@ DY_BIN = {
     "DYto2L2Jets_1J_H_phipimu_GenTag": 1,
     "DYto2L2Jets_2J_H_phipimu_GenTag": 2,
 }
+# same-sign-pi DY, same jet_bin tag
+DY_SS_BIN = {f"{s}_SS": b for s, b in DY_BIN.items()}
 DATA_RUNS = {"2022": ("C", "D"), "2022EE": ("E", "F", "G")}
 
 
@@ -126,6 +133,7 @@ GROUPS = {
     "TT_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_DECAY],
     "TT_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_SS_DECAY],
     "DY_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_BIN],
+    "DY_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_SS_BIN],
     "Data_OS_merged": [(e, data_task(r, False)) for e, runs in DATA_RUNS.items() for r in runs],
     "Data_SS_merged": [(e, data_task(r, True)) for e, runs in DATA_RUNS.items() for r in runs],
 }
@@ -217,7 +225,7 @@ def parse_nano_path(path):
     era, sample = parts[-3], parts[-2]
     if parts[-4] != "MC" or era not in TAG_TO_ERA or not _IDX_RE.search(parts[-1]):
         sys.exit(f"not a nano MC path: {path}")
-    if not any(sample in t for t in (SIGNAL_CHANNEL, WJETS_BIN, WJETS_SS_BIN, TT_DECAY, TT_SS_DECAY, DY_BIN)):
+    if not any(sample in t for t in (SIGNAL_CHANNEL, WJETS_BIN, WJETS_SS_BIN, TT_DECAY, TT_SS_DECAY, DY_BIN, DY_SS_BIN)):
         sys.exit(f"sample {sample!r} belongs to no group")
     friend = os.sep.join(parts[:-2] + ["Corrections", sample, parts[-1]])
     return era, sample, friend, False
@@ -259,6 +267,8 @@ def worker(list_path, out_path, correct=False):
             tags["tt_decay"] = TT_SS_DECAY[sample]
         elif sample in DY_BIN:
             tags["jet_bin"] = DY_BIN[sample]
+        elif sample in DY_SS_BIN:
+            tags["jet_bin"] = DY_SS_BIN[sample]
         elif sample in WJETS_SS_BIN:
             tags["jet_bin"] = WJETS_SS_BIN[sample]
         else:
@@ -288,7 +298,7 @@ def worker(list_path, out_path, correct=False):
                 sys.exit(f"join mismatch on {c}: {nano_path} vs {friend_path}")
 
         sel = (fr["pass_mu_nom"] & fr["pass_muveto"] & ~fr["jvm_veto_nom"]
-               & (fr["n_bjet_nom"] == 0))
+               & (fr["n_bjet_nom"] == 0) & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
         if blind:
             in_sr = sel & (np.abs(nano["Ds_mass"] - M_DS) < SR_HALF_WIDTH)
             n_blinded += int(in_sr.sum())
@@ -325,7 +335,7 @@ def worker(list_path, out_path, correct=False):
                 files=[os.path.basename(p) for p in nano_files], n_files=len(nano_files),
                 n_rows_total=n_total, n_rows_selected=n_sel_total, n_rows_blinded=n_blinded,
                 weight_sum=wsum,
-                norm=norm, xsec_pb=xsec_pb, lumi_pb=lumi_pb,
+                norm=norm, xsec_pb=xsec_pb, lumi_pb=lumi_pb, phi_win=PHI_WIN,
                 branches_sha1=None, root_written=False)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     if n_sel_total:
@@ -395,8 +405,8 @@ def merge(group):
             for key in ("n_files", "n_rows_total", "n_rows_selected", "n_rows_blinded",
                         "weight_sum"):
                 agg[key] += m[key]
-            for key in ("norm", "xsec_pb", "lumi_pb"):
-                agg[key] = m[key]
+            for key in ("norm", "xsec_pb", "lumi_pb", "phi_win"):
+                agg[key] = m.get(key)
         on_disk = [os.path.basename(p) for p in piece_nano_files(era, sample)]
         if sorted(listed) != sorted(on_disk) or len(set(listed)) != len(listed):
             problems.append(f"{era}/{sample}: chunk lists ({len(listed)}) do not cover the "

@@ -60,7 +60,11 @@ and the uncommitted draw_ds_mass_signal_data_wjets.py -- do NOT all get them rig
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
-    python3 draw_stage1_mass_by_score_cut.py [--add TT,DY]
+    python3 draw_stage1_mass_by_score_cut.py [--add TT,DY] [--key=ssdata_phi20]
+
+--key=K picks the stage-1 model (default ssdata): its Prediction/ dir, its thresholds and its
+figures dir. If K's training config sets phi_win, the same |phi_mass - M_phi| window is
+applied to every sample here (ossel), so the plotted population is the one K was trained on.
 
 --add stacks extra background MC samples (each ONE entry, its own sigma*L weight) on top
 of the W+jets GenTag groups: TT = TT_merged (TTto2L2Nu + TTtoLNu2Q), DY = DY_merged
@@ -102,7 +106,8 @@ bad = [k for k in ADD if k not in EXTRA_DEF]
 if bad:
     sys.exit(f"--add: unknown {bad}; choices {list(EXTRA_DEF)}")
 MC_SR_EXCL = "--mc-sr-excl" in sys.argv
-MODEL_KEY = "ssdata"
+MODEL_KEY = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key=")), "ssdata")
+PHI_WIN = common.resolve(MODEL_KEY).get("phi_win")
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 M_DS, M_PHI, SR_HALF = 1.96835, 1.019460, 0.040
 LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
@@ -139,7 +144,10 @@ def ossel(a):
     # NanoMVA/Samples/. Keeping the old copy here would draw this figure on a DIFFERENT
     # event set than the model on the x-axis was trained and scored with -- exactly the
     # like-for-like failure point 1 of this docstring warns about, one level up.
-    return common.selection_mask(a) & (a["score_dsmu"] > -1)
+    m = common.selection_mask(a) & (a["score_dsmu"] > -1)
+    if PHI_WIN is not None:
+        m &= np.abs(a["phi_mass"] - M_PHI) < PHI_WIN
+    return m
 
 
 def rd(name, extra):

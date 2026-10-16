@@ -112,7 +112,39 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-16)
+## Last Session (2026-10-16 下午)
+
+### φ 窗口 ±20 MeV 进生产链 + stage-1 φ20 重训 + Ds_mass RooFit 拟合 + charm SF 方案
+
+**φ 窗口**（用户定）：|phi_mass − Mφ| < 20 MeV（≈[1.00,1.04]，不留 φ sideband CR）。信号留 0.949，non-resonant 一律约 0.5
+（OS data CR、DY、tt̄ 2L2Nu、W+jets mode 0/5），真 Ds/D 0.88-0.96。SR 内 MC 的 ε_s/√ε_b 在 ±10~±20 是平台。
+- **只加在 skim**（`make_samples_nano.py` 的 sel 行，和 pass_mu/pass_muveto/jvm/n_bjet 一起），值写进 chunk/merged `_meta.json`。
+  **b-tag 效率图不加**（按 jet flavour/pt/eta 统计，与 Ds 的 M(KK) 无关）——我一度加了并交了 38 组，用户问「有必要重跑吗」后撤掉。
+- 非 DY 7 组用现有 friend 重新 skim → 合并：新/旧行数 Signal 0.942、W OS/SS 0.487/0.483、TT OS/SS 0.507/0.506、Data OS/SS 0.495/0.497。
+  旧版留 `Samples/*_prephi20*`、`skim_prephi20/`、`lists_prephi20/`、`btag_efficiency_prephi20/`。
+- **DY**：SS custom nano 验收完（3084 对 Runs 0 mismatch），**任一边坏的 65 个 JOBID 两边都删**（名单 13_0_13 `condor_logs/DY_SS_bad_jobs_dropped_20261016.txt`）；
+  normalization 重做（OS==SS，新/旧 1.000-1.040，截面沿用暂用值）；12 张 b-tag 图（OS+SS）验收 ok；`--correct` skim 已交（SS 19078168、OS 19078171），后台自动验收→合并→打分。
+- 新训练 key `ssdata_phi20` / `osdata_phi20`（`common.load(phi_win=)`，`stage1_threshold` 也按 key 的 phi_win 取信号），
+  非 DY 7 组 × 两模型打分完成并验收（行数=输入）。`DNN/condor_submit.py` 加 `--train-only`、`--predict --samples`。
+
+**τ 3-prong**：`draw_tau3pi_masses_by_cut.py [--phi-win=0.020]`（data/信号/DY/tt̄ 2L2Nu/W+jets × 6 个质量）。pipi（π,K⁻→π）在 cut 后 OS data、DY、tt̄ 都有 ρ⁰ 峰。
+ρ-veto 强 sculpt（通过率随 Ds_mass 0.4→0.9）、收益只 ×1.04；解耦版 `pipi_nom`（Ds 静止系换标称质量、实验室系换质量，闭合 0.000 MeV）对组合本底平，但 τ 在 SR 出凹陷。
+**stage-2 加 τ 本底（DY μ←τ + tt̄ 2L2Nu mode 0），不加 pipi_nom**（诊断：f24 单独 AUC 0.92）；DY 训练可能要单独 SF，未定。
+
+**Ds_mass RooFit 拟合**：`run_ds_mass_fit.sh --key= --cuts=0.70,0.60,0.50 --joint=slices|nested --float=r34,r5,k [--bin=0.010]`
+（ds_dnn 建输入 → cmsenv HistFactory，sideband-only、BB-lite、MINOS → ds_dnn 画图）。用户定：**只做系数共享的联合拟合**、**r12 不浮动**、正式用 slices（nested 事例重复计入、误差偏小）。
+旧模型验证：线性 χ² 逐位复现 1005；受 MC 统计限制（MC 误差 ≈1.75× data）；10/20 MeV 分 bin k 差 ~1.5σ。正式结果等 DY 打完分。
+
+**charm 产额 SF**（memory `project_charm_yield_scale_factors`）：**重点是 tt̄ 控制区（反转 b-veto）在 OS 直接看 Ds/D± 峰测 r12/r34**；
+另有 BR 重新加权（先做）、SS 搬比值、OS 低分区解 blind、外部测量。Z+jets 就是 DY，Z→μμ CR 只定 DY 归一化。
+
+### 我犯的错
+1. b-tag 效率图擅自加 φ 窗口并全部重交（用户：没必要）；φ 窗口只在 skim。
+2. 「cosθ_h 等价于标称质量下的 pipi」是错的：K⁻→π 换质量在实验室系做，不是 Lorentz 不变（闭合差 180 MeV 才发现）。
+3. 拿错误的 `eos ls` 路径（/eos/home-k/... 不是服务器端路径）的报错当成「服务器端已删」的证据；正确是 `eos root://eosuser.cern.ch ls /eos/user/k/kakang/...`。
+4. 非 DY 样本不依赖 DY 效率图，我却排在后面没交（用户问「你为什么不加」）；拟合只报数字不出图（用户：拟合都要画图）。
+
+## 上一 Session (2026-10-16 上午)
 
 ### 清理 H2DW 的过时文件（EOS 403G → 348G）
 

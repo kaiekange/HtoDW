@@ -633,7 +633,7 @@ SIGNALS = ["Signal_merged"]
 # filename axis (channel, era, jet_bin, GenTag's cand_gen_mode) is now a BRANCH
 # inside one of these four files.
 ALL_SAMPLES = ["Signal_merged", "WtoLNu2Jets_merged", "WtoLNu2Jets_SS_merged", "TT_merged", "TT_SS_merged",
-               "DY_merged", "Data_OS_merged", "Data_SS_merged"]
+               "DY_merged", "DY_SS_merged", "Data_OS_merged", "Data_SS_merged"]
 
 # WtoLNu2Jets_merged holds all three jet-multiplicity bins of the SAME physical
 # process as a `jet_bin` branch, and its per-event `weight` column already carries
@@ -839,6 +839,24 @@ for _s1seed in (101, 102, 103):
         out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f24_wp90",
     )
 
+# phi window +-20 MeV (2026-10-16): |phi_mass - M_PHI| < 0.020 on top of the producer's
+# M(KK) < M_PHI + 50 MeV, applied to signal AND background at training time (load(phi_win=)).
+# Measured on the f55 models: keeps 0.949 of truth-matched signal, ~0.50 of every
+# non-resonant background (OS data CR, DY, tt 2L2Nu, W+jets mode 0, mode 5 misID), 0.88-0.96
+# of true Ds/D. Otherwise identical to ssdata / osdata. NOT yet in selection_mask(): before
+# these models are scored or used as a stage-2 pre-filter, stage1_threshold() and the
+# plotting macros must apply the same window, or the WP thresholds are derived on a
+# different signal population than the one trained on.
+for _base in ("ssdata", "osdata"):
+    _name = f"{_base}_phi20"
+    TRAININGS[_name] = dict(
+        TRAININGS[_base],
+        phi_win=0.020,
+        label=f"{TRAININGS[_base]['label']}, |M(KK)-m_phi|<20 MeV",
+        out_name=f"dsw_dsstw_{_name}_f55",
+        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f55",
+    )
+
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
 
@@ -921,8 +939,11 @@ def fig_path(category, name, *, key=None, tool="DNN", seed=None):
 
 
 # ========= 数据加载 =========
+M_PHI = 1.019460   # GeV, phi(1020) mass; load(phi_win=) cuts around it
+
+
 def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=False,
-         parity=None, gen_mode_filter=None, stage1=None, extra_branches=()):
+         parity=None, gen_mode_filter=None, stage1=None, phi_win=None, extra_branches=()):
     """Load one Samples/ file, apply the analysis selection, return the feature matrix.
 
     feats:   which FeatureSpec to build the matrix for (default = stage-1 f41).
@@ -938,6 +959,8 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
              carrying score_dsmu) instead of Samples/, and rows are additionally
              required to have score_dsmu > stage1["thr"]. TRAINING-TIME ONLY --
              predict.py does its own input redirect and applies no threshold.
+    phi_win: keep only |phi_mass - M_PHI| < phi_win GeV (post-fit branch), on top of the
+             producer's M(KK) < M_PHI + 50 MeV. None = no extra cut.
     Returns (X, extras) where extras is a dict of any extra_branches requested,
     already masked in step with X.
     """
@@ -954,6 +977,8 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
         branches += ["cand_gen_mode"]
     if stage1 is not None:
         branches += ["score_dsmu"]
+    if phi_win is not None:
+        branches += ["phi_mass"]
     branches += list(extra_branches)
     branches = list(dict.fromkeys(branches))
 
@@ -989,6 +1014,8 @@ def load(name, *, feats=STAGE1, era=None, jet_bin=None, truth_filter=False, ss=F
         m &= np.isin(a["cand_gen_mode"], list(gen_mode_filter))
     if stage1 is not None:
         m &= a["score_dsmu"] > stage1["thr"]
+    if phi_win is not None:
+        m &= np.abs(a["phi_mass"] - M_PHI) < phi_win
 
     X = build_matrix(a, feats, mask=m)
     print(f"  {name:18s} {n_in:>9,} -> {m.sum():>9,} rows after selection")
@@ -1030,13 +1057,19 @@ def stage1_threshold(stage1_cut):
 
     This defines the stage-2 TRAINING POPULATION; DNN.py / BDT.py stamp the returned
     value into stage1_filter.txt, and it moves if stage-1 is ever re-scored.
+
+    A key whose config sets phi_win (e.g. ssdata_phi20) was trained on signal inside
+    that phi window, so its thresholds are quantiles of the same windowed signal.
     """
     pred = (f"{out_dir_for(stage1_cut['key'], stage1_cut.get('tool', 'DNN'), stage1_cut.get('seed'))}"
             f"/Prediction")
     # Same selection as load(), via selection_mask() -- this used to be a second
     # hand-written copy of the condition, so the WP1 threshold could silently be derived
     # on a different signal subset than the one the model was trained on.
+    phi_win = resolve(stage1_cut["key"]).get("phi_win")
     want = ["score_dsmu", *SELECTION, "Ds_match", "mu_match", "weight"]
+    if phi_win is not None:
+        want.append("phi_mass")
     want = list(dict.fromkeys(want))
     sc, w = [], []
     for name in SIGNALS:
@@ -1045,6 +1078,8 @@ def stage1_threshold(stage1_cut):
         check_charge_config(a, False, f"stage1_threshold({name!r})")
         m = (selection_mask(a)
              & a["Ds_match"].astype(bool) & a["mu_match"].astype(bool) & (a["score_dsmu"] > -1))
+        if phi_win is not None:
+            m &= np.abs(a["phi_mass"] - M_PHI) < phi_win
         sc.append(a["score_dsmu"][m])
         w.append(a["weight"][m])
     sc = np.concatenate(sc)

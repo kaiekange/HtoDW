@@ -94,6 +94,8 @@ out_dir = common.out_dir_for(BKG, tool="DNN", seed=SEED)
 os.makedirs(out_dir, exist_ok=True)
 print(f"Background: {BKG} ({cfg['label']}), seed={SEED} -> {out_dir}")
 print(f"Feature set: {cfg['feature_set']} ({len(feats.names)} features)")
+if cfg.get("phi_win") is not None:
+    print(f"phi window: |phi_mass - {common.M_PHI}| < {cfg['phi_win']} GeV (signal and background)")
 
 rng = np.random.default_rng(SEED)
 torch.manual_seed(SEED)
@@ -137,7 +139,7 @@ print(f"Loading signal ({'+'.join(SIGNALS)})...")
 sig_X, sig_w = [], []
 for name in SIGNALS:
     x, ex = common.load(name, feats=feats, truth_filter=True, stage1=STAGE1_CUT,
-                        extra_branches=("weight",))
+                        phi_win=cfg.get("phi_win"), extra_branches=("weight",))
     sig_X.append(x)
     sig_w.append(ex["weight"])
 X_sig = np.vstack(sig_X)
@@ -158,7 +160,8 @@ print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_no
 bkg_X, bkg_w = [], []
 for name, wgt in cfg["samples"].items():
     load_kw = dict(feats=feats, ss=cfg["ss"], parity=cfg["parity"],
-                   gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT)
+                   gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT,
+                   phi_win=cfg.get("phi_win"))
     if cfg["weighted"]:
         x, ex = common.load(name, extra_branches=("weight",), **load_kw)
         bkg_w.append(ex["weight"])
