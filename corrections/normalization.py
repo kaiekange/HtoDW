@@ -88,6 +88,10 @@ XSEC_PB = {
     "DYto2L2Jets_0J_H_phipimu_GenTag": 5378.0,
     "DYto2L2Jets_1J_H_phipimu_GenTag": 1017.0,
     "DYto2L2Jets_2J_H_phipimu_GenTag": 385.5,
+    # same-sign-pi control region: same datasets, same cross sections
+    "DYto2L2Jets_0J_H_phipimu_GenTag_SS": 5378.0,
+    "DYto2L2Jets_1J_H_phipimu_GenTag_SS": 1017.0,
+    "DYto2L2Jets_2J_H_phipimu_GenTag_SS": 385.5,
     "Signal_DsW_H_phipimu": 5.437e-6,
     "Signal_DsstW_H_phipimu": 10.13e-6,
 }

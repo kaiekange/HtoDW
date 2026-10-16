@@ -30,6 +30,9 @@ same jets the weight is applied to:
   included it.
 Events: every event in the nano files, i.e. after the producer's event selection and
 BEFORE the b-veto. Measuring after the veto would force eps -> 0 by construction.
+(The phi-mass window added to the analysis on 2026-10-16 is applied only in the skim,
+make_samples_nano.py, not here: it selects on the Ds candidate's M(KK), which does not
+change the per-jet (flavour, pt, |eta|) efficiency.)
 
 compute-and-write logic is adapted from cms-analysis-corrections/BTV/examples
 lib/btag_sf.py (same _ABSETA_EDGES/_PT_EDGES/_FLAVORS, same schemav2 structure, same
@@ -66,6 +69,8 @@ for _era in ERAS:
     GROUPS[f"DsstW_{_era}"] = (_era, [f"{NANO}/{_era}/Signal_DsstW_H_phipimu"])
     for _jb in (0, 1, 2):
         GROUPS[f"DYto2L2Jets_{_jb}J_{_era}"] = (_era, [f"{NANO}/{_era}/DYto2L2Jets_{_jb}J_H_phipimu_GenTag"])
+        # same-sign-pi DY (2026-10-16), own map per jet bin like W+jets SS
+        GROUPS[f"DYto2L2Jets_{_jb}J_SS_{_era}"] = (_era, [f"{NANO}/{_era}/DYto2L2Jets_{_jb}J_H_phipimu_GenTag_SS"])
     # ttbar nominal + _ext1 are one sample (same process, more events): one pooled map,
     # and one for the same-sign-pi control region, like W+jets SS
     for _tt in ("TTto2L2Nu", "TTtoLNu2Q"):

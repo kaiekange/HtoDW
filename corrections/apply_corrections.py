@@ -98,6 +98,9 @@ EFF_GROUP = {
     "DYto2L2Jets_0J_H_phipimu_GenTag": "DYto2L2Jets_0J",
     "DYto2L2Jets_1J_H_phipimu_GenTag": "DYto2L2Jets_1J",
     "DYto2L2Jets_2J_H_phipimu_GenTag": "DYto2L2Jets_2J",
+    "DYto2L2Jets_0J_H_phipimu_GenTag_SS": "DYto2L2Jets_0J_SS",
+    "DYto2L2Jets_1J_H_phipimu_GenTag_SS": "DYto2L2Jets_1J_SS",
+    "DYto2L2Jets_2J_H_phipimu_GenTag_SS": "DYto2L2Jets_2J_SS",
 }
 
 MU_PRECUT = 24.0       # HDsPhiPiMuProducer: best muon = highest-pt tight muon, pt >= 24
