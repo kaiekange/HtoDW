@@ -68,6 +68,10 @@ of the W+jets GenTag groups: TT = TT_merged (TTto2L2Nu + TTtoLNu2Q), DY = DY_mer
 (low <1.830 / D+- 1.83-1.91 / high >2.008) prints each sample's share and data/MC with
 W+jets alone and with everything. Output names get a _wjets_<tt_dy...> suffix so the
 W+jets-only figures survive. (--tt is kept as an alias for --add TT.)
+
+--mc-sr-excl also removes the Ds-mass SR (|Ds_mass-M_Ds|<40 MeV) from every MC sample at
+the base selection, so the drawn stack (not only the phi_mass ratio denominator, point 3)
+covers the same event set as the OS data points. Output names get a _mcsrexcl suffix.
 """
 import sys
 
@@ -97,6 +101,7 @@ for i, a in enumerate(sys.argv):
 bad = [k for k in ADD if k not in EXTRA_DEF]
 if bad:
     sys.exit(f"--add: unknown {bad}; choices {list(EXTRA_DEF)}")
+MC_SR_EXCL = "--mc-sr-excl" in sys.argv
 MODEL_KEY = "ssdata"
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 M_DS, M_PHI, SR_HALF = 1.96835, 1.019460, 0.040
@@ -153,7 +158,10 @@ for eff, _lbl in CUTS:
 # ---- W+jets GenTag: base selection (OS + b-veto + score>-1), full mass range ----
 w = rd("WtoLNu2Jets_merged", ["cand_gen_mode", "weight"])
 wk = ossel(w)
-print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after OS+b-veto+score>-1")
+if MC_SR_EXCL:
+    wk &= np.abs(w["Ds_mass"] - M_DS) >= SR_HALF
+print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after OS+b-veto+score>-1"
+      + ("+Ds-SR-excluded" if MC_SR_EXCL else ""))
 w_ds, w_phi = w["Ds_mass"][wk], w["phi_mass"][wk]
 w_mode, w_score, w_w = w["cand_gen_mode"][wk], w["score_dsmu"][wk], w["weight"][wk].astype(float)
 w_not_sr = np.abs(w_ds - M_DS) >= SR_HALF
@@ -183,6 +191,8 @@ for key in ADD:
     fname, _lab, _col = EXTRA_DEF[key]
     x = rd(fname, ["weight"])
     xk = ossel(x)
+    if MC_SR_EXCL:
+        xk &= np.abs(x["Ds_mass"] - M_DS) >= SR_HALF
     print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after OS+b-veto+score>-1")
     EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=x["phi_mass"][xk],
                       score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float))
@@ -342,6 +352,7 @@ for branch, xlabel, bins, blind_half, refline in VARS:
 
     out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut"
                           + ("_wjets_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "")
+                          + ("_mcsrexcl" if MC_SR_EXCL else "")
                           + ".png", key=MODEL_KEY)
     plt.savefig(out, dpi=120, bbox_inches="tight")
     plt.close(fig)
