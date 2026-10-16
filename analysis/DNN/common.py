@@ -40,8 +40,8 @@ from eras import B_VETO_BRANCH, ERAS, LEPTON_BRANCHES, TAG_TO_ERA  # noqa: F401 
 # moved. NanoMVA/Samples/ is the custom-NanoAOD + POG-corrections production
 # (make_samples_nano.py), which replaced the private-tuplizer MVA/Samples/ production
 # as of the 2026-09-17 migration (project_nano_merged_samples memory). The old
-# MVA/Samples/*.root files are left on disk (not deleted) for reference, but nothing
-# in this module reads them any more.
+# MVA/Samples/*.root files were deleted on 2026-10-16; only MVA/Samples/pileup/
+# (eras.PU_PROFILE_DIR) is left there.
 MVA_ROOT = "/eos/home-k/kakang/H2DW/Analysis/MVA"
 SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
 MVA_DIR = f"{MVA_ROOT}/DNN"

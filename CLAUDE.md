@@ -112,7 +112,18 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-08)
+## Last Session (2026-10-16)
+
+### 清理 H2DW 的过时文件（EOS 403G → 348G）
+
+- **EOS 删掉旧私有 tuplizer 整条线**：`Analysis/Data/`、`Analysis/MC/`（含 `*_prePU`）、`MVA/Samples/*.root` 和 `*.prePU`。
+  **`MVA/Samples/pileup/` 保留**（`eras.PU_PROFILE_DIR` 读它）。另删 1006 记的 4 张废图。
+- AFS 删 `Tuples/*/crab_*`（26 个旧 `H_phipimu` CRAB 目录，未被 git 跟踪，会给出假 COMPLETED）。
+- `git rm analysis/Samples/`（旧 dedup 流水线 `best_cand_tuple.cc`/`condor_submit.py`/`run.sh`，输入输出都已删）。
+- 列为候选但用户选择**保留**：`oswjets_f55`（其 TT_merged Prediction 早于 ext1，过时）、`NanoMVA/Samples/skim/`、模型 `X_*.npy`、condor log。
+- 详见 memory `project_cleanup_20261016`。
+
+## 上一 Session (2026-10-08)
 
 ### tt̄ OS 低质量端压不下去 = TTto2L2Nu 的 W→τ→3-prong
 
