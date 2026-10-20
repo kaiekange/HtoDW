@@ -39,6 +39,7 @@ COLUMN SEMANTICS
                corrected pt >= 20; the b-veto is n_bjet == 0
   w_mu*        NaN where pass_mu (of that variation) is False
   w_btag*      NaN where n_bjet (of that variation) > 0
+  w_btag_any_* (nom/up/down only) valid at any n_bjet: tagged jets give SF, untagged (1-SF*eps)/(1-eps)
 NaN, not 1, so a weight used without its cut poisons the sum instead of passing silently.
 
 NOT CORRECTED (stored nano values stay as they are): met_sig and met_sumEt -- the JME
@@ -370,14 +371,17 @@ def main():
     examined = (abs(a["Jet_eta"]) < 2.5) & (a["Jet_jetId"] >= 2) & (dR > 0.4)
     tagged = examined & (a["Jet_btagPNetB"] > wp_tight)
 
-    def w_btag(pt_j, veto_pass, systs):
+    def w_btag(pt_j, veto_pass, systs, any_nb=False):
         """Pi (1-SF*eps)/(1-eps) over the examined pt>=20 jets (all untagged in veto-passing
-        events); SF and eps at the corrected pt of this JME variation."""
+        events); SF and eps at the corrected pt of this JME variation.
+        any_nb=True: valid at any n_bjet (method 1a, one WP) -- tagged jets contribute SF,
+        untagged (1-SF*eps)/(1-eps); no NaN mask. Equals the default at n_bjet == 0."""
         scored = examined & (pt_j >= BTAG_JET_PT_MIN)
         counts = ak.to_numpy(ak.num(pt_j[scored], axis=1))
         pt_s = ak.to_numpy(ak.flatten(pt_j[scored])).astype(float)
         abseta = np.abs(ak.to_numpy(ak.flatten(a["Jet_eta"][scored]))).astype(float)
         flav = ak.to_numpy(ak.flatten(a["Jet_hadronFlavour"][scored])).astype(int)
+        tag_s = ak.to_numpy(ak.flatten(tagged[scored])).astype(bool)
         eps = eff_map.evaluate("T", flav, abseta, pt_s)
         heavy = (flav == 4) | (flav == 5)
         out = {}
@@ -386,8 +390,10 @@ def main():
             sf[heavy] = c_comb.evaluate(s, "T", flav[heavy], abseta[heavy], pt_s[heavy])
             sf[~heavy] = c_light.evaluate(s, "T", flav[~heavy], abseta[~heavy], pt_s[~heavy])
             per_jet = np.where(eps < 1.0, (1.0 - sf * eps) / (1.0 - eps), 1.0)
+            if any_nb:
+                per_jet = np.where(tag_s, sf, per_jet)
             w = ak.to_numpy(ak.prod(ak.unflatten(per_jet, counts), axis=1))
-            out[s] = np.where(veto_pass, w, np.nan)
+            out[s] = w if any_nb else np.where(veto_pass, w, np.nan)
         return out
 
     met_nom = None
@@ -414,6 +420,10 @@ def main():
             cols[f"w_btag_{v}"] = wb["central"]
             if v == "nom":
                 cols["w_btag_up"], cols["w_btag_down"] = wb["up"], wb["down"]
+            if v == "nom":   # valid at any n_bjet (ttcr); = w_btag_* where n_bjet == 0
+                wa = w_btag(pt_j, nb == 0, ("central", "up", "down"), any_nb=True)
+                cols["w_btag_any_nom"], cols["w_btag_any_up"], cols["w_btag_any_down"] = (
+                    wa["central"], wa["up"], wa["down"])
     for v in mu_vars:
         cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, *met_nom)
 
