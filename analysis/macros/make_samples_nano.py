@@ -89,6 +89,32 @@ FILES_PER_JOB = 50
 M_PHI, PHI_WIN = 1.019460, 0.020  # GeV, phi window of the selection (see docstring)
 APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/apply_corrections.py"
 
+# Control regions (2026-10-19, plan cr-z-mumu-w-jets-ttbar). "sr" is the analysis skim above
+# and stays byte-for-byte what it was; a CR writes under OUT_DIR/CR/<region>/ and reuses the
+# SR chunk lists (same files, same chunking). CR rows are never blinded and carry extra-lepton
+# columns (EXTRA_LEP_DOC). Selections, all on top of pass_mu_nom & ~jvm_veto_nom:
+#   zmumu: ~pass_muveto & n_bjet_nom == 0 & exactly one extra muon, opposite charge to the
+#          best muon; NO phi window (applied, if wanted, at plot time). b-veto removes ttbar
+#          and keeps it disjoint from the ttbar mumu category; ~pass_muveto keeps it disjoint
+#          from the SR. MC weight as in the SR (w_btag valid at n_bjet == 0).
+#   ttcr:  n_bjet_nom >= 1 & phi window; categories (1l / mumu / emu) are cut downstream from
+#          the lepton columns. MC weight WITHOUT w_btag (NaN by design at n_bjet > 0; first
+#          pass, user 2026-10-19) -> meta btag_sf_applied = False.
+# Extra muons: corrected pt (MuonScaRe, as prompt_muon_veto) + ID x loose-iso SF (w_xmu,
+# multiplied into the zmumu weight; stored for ttcr). Extra electrons: raw, no SF yet.
+REGIONS = ("sr", "zmumu", "ttcr")
+HF_MATCH_DR = 0.3   # ttcr charm-origin match, reco Ds direction vs GenPart c hadron (see hf_origin_cols)
+EXTRA_LEP_DOC = """n_xmu, xmu_{pt,eta,phi,charge}: muons other than the best one with tightId,
+|eta|<2.4, pfIsoId>=2 (loose PF iso), CORRECTED pt>=15 -- exactly the pass_muveto definition
+(n_xmu>=1 == ~pass_muveto, asserted); leading one (by corrected pt) stored, xmu_pt is the
+corrected pt, xmu_pt_raw the nano one; w_xmu = its ID x loose-iso SF (MC, else 1). n_xele, xele_*: Electron_cutBased>=4 (tight, iso included), pt>15,
+|eta|<2.5. m_mumu / m_emu: best muon (corrected pt) + leading extra muon / electron.
+-777 where absent."""
+
+
+def region_dir(region):
+    return OUT_DIR if region == "sr" else f"{OUT_DIR}/CR/{region}"
+
 SIGNAL_CHANNEL = {"Signal_DsW_H_phipimu": 0, "Signal_DsstW_H_phipimu": 1}
 WJETS_BIN = {
     "WtoLNu2Jets_0J_H_phipimu_GenTag": 0,
@@ -208,8 +234,8 @@ def piece_chunks(era, sample):
     return sorted(lists, key=lambda p: int(re.search(r"_chunk(\d+)\.txt$", p).group(1)))
 
 
-def skim_path(era, sample, k):
-    return f"{SKIM_DIR}/{era}/{sample}/chunk_{k}.root"
+def skim_path(era, sample, k, region="sr"):
+    return f"{region_dir(region)}/skim/{era}/{sample}/chunk_{k}.root"
 
 
 def parse_nano_path(path):
@@ -232,7 +258,148 @@ def parse_nano_path(path):
 
 
 # ---------------------------------------------------------------- worker
-def worker(list_path, out_path, correct=False):
+def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
+    """EXTRA_LEP_DOC columns for every row of one nano file, in nano row order. The best
+    muon is re-identified with apply_corrections.locate_selected_muon (same code the friend
+    used; it exits if mu_pt/eta/charge are not reproduced). Extra muons get the corrected
+    pt of apply_corrections.prompt_muon_veto -- the same MuonScaRe calls in the same order
+    (scale; + resolution smearing on MC) -- so n_xmu >= 1 must equal ~pass_muveto row by
+    row; the caller asserts it."""
+    import awkward as ak
+    import correctionlib
+    import numpy as np
+    import uproot
+    sys.path.insert(0, os.path.dirname(APPLY_CORRECTIONS))
+    import apply_corrections as acorr
+    muo = acorr.muo
+
+    with uproot.open(nano_path) as fn:
+        a = fn["Events"].arrays(
+            ["event", "luminosityBlock", "mu_pt", "mu_eta", "mu_phi", "mu_charge", "Muon_pt",
+             "Muon_eta", "Muon_phi", "Muon_charge", "Muon_tightId", "Muon_pfIsoId",
+             "Muon_nTrackerLayers", "Electron_pt", "Electron_eta", "Electron_phi",
+             "Electron_charge", "Electron_cutBased"])
+    # Same correction files as apply_corrections.main() (keep the date in sync with it).
+    mdir = f"{acorr.POG_DIR}/MUO/{acorr.CAMPAIGN[era]}/2026-06-18"
+    cset_ss = correctionlib.CorrectionSet.from_file(f"{mdir}/muon_scalesmearing.json.gz")
+    cset_z = correctionlib.CorrectionSet.from_file(f"{mdir}/muon_Z.json.gz")
+    idx = acorr.locate_selected_muon(a)
+    null = acorr.NULL
+    n_ev = len(a)
+
+    # ---- extra muons: candidates as in prompt_muon_veto, corrected pt, >= 15 ----
+    cand = ((a["Muon_tightId"] == 1) & (abs(a["Muon_eta"]) < acorr.MU_ETA_MAX)
+            & (a["Muon_pfIsoId"] >= 2) & (ak.local_index(a["Muon_pt"]) != idx))
+    evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
+    ev_of = np.repeat(np.arange(n_ev), ak.to_numpy(ak.num(a["Muon_pt"], axis=1)))
+    flat = {f: ak.to_numpy(ak.flatten(a[f"Muon_{f}"])) for f in
+            ("pt", "eta", "phi", "charge", "nTrackerLayers")}
+    cflat = ak.to_numpy(ak.flatten(cand))
+    pt_corr = np.full(len(cflat), -1.0)
+    for j in np.where(cflat)[0]:
+        i = ev_of[j]
+        eta_j = float(np.clip(flat["eta"][j], -2.399, 2.399))
+        p = muo.muo_pt_scale(cset_ss, is_data, float(flat["pt"][j]), eta_j, float(flat["phi"][j]),
+                             int(flat["charge"][j]))
+        if not is_data:
+            p = muo.muo_pt_resol(cset_ss, p, eta_j, float(flat["phi"][j]),
+                                 float(flat["nTrackerLayers"][j]), evt[i], lumi[i])
+        pt_corr[j] = p
+    xsel = cflat & (pt_corr >= acorr.VETO_MU_PT_MIN)
+    n_xmu = np.bincount(ev_of[xsel], minlength=n_ev).astype(np.int32)
+    lead = np.full(n_ev, -1)
+    order = np.argsort(np.where(xsel, -pt_corr, np.inf), kind="stable")   # highest corrected pt first
+    for j in order[:xsel.sum()][::-1]:
+        lead[ev_of[j]] = j
+    has = lead >= 0
+    out = {"n_xmu": n_xmu}
+    out["xmu_pt"] = np.where(has, pt_corr[lead], null)
+    out["xmu_pt_raw"] = np.where(has, flat["pt"][lead], null)
+    out["xmu_eta"] = np.where(has, flat["eta"][lead], null)
+    out["xmu_phi"] = np.where(has, flat["phi"][lead], null)
+    out["xmu_charge"] = np.where(has, flat["charge"][lead], int(null)).astype(np.int32)
+    # ID x loose-iso SF of the leading extra muon (MC; 1 elsewhere). Domain |eta|<2.4, pt>=15:
+    # exactly the extra-muon selection, so no clamping is needed.
+    w = np.ones(n_ev)
+    if not is_data and has.any():
+        e_, p_ = out["xmu_eta"][has], out["xmu_pt"][has]
+        w[has] = (cset_z[muo.MUO_ID_KEY].evaluate(e_, p_, "nominal")
+                  * cset_z["NUM_LoosePFIso_DEN_TightID"].evaluate(e_, p_, "nominal"))
+    out["w_xmu"] = w
+
+    # ---- extra electrons: raw (no electron corrections/SF yet) ----
+    xele = ((a["Electron_cutBased"] >= 4) & (a["Electron_pt"] > 15.0)
+            & (abs(a["Electron_eta"]) < 2.5))
+    n = ak.to_numpy(ak.sum(xele, axis=1)).astype(np.int32)
+    im = ak.argmax(ak.where(xele, a["Electron_pt"], -1.0), axis=1, keepdims=True)
+    out["n_xele"] = n
+    for f in ("pt", "eta", "phi", "charge"):
+        v = ak.to_numpy(ak.flatten(ak.fill_none(a[f"Electron_{f}"][im], null))).astype(
+            np.int32 if f == "charge" else np.float64)
+        out[f"xele_{f}"] = np.where(n > 0, v, int(null) if f == "charge" else null)
+
+    mu_eta, mu_phi = ak.to_numpy(a["mu_eta"]), ak.to_numpy(a["mu_phi"])
+    for tag, mname in (("xmu", "m_mumu"), ("xele", "m_emu")):
+        h = out[f"n_{tag}"] > 0   # absent rows hold -777: keep them out of cosh (overflow)
+        dphi = np.abs(np.where(h, out[f"{tag}_phi"], mu_phi) - mu_phi)
+        dphi = np.where(dphi > np.pi, 2 * np.pi - dphi, dphi)
+        deta = np.where(h, out[f"{tag}_eta"], mu_eta) - mu_eta
+        m2 = 2 * mu_pt_corr * np.where(h, out[f"{tag}_pt"], 0.0) * (np.cosh(deta) - np.cos(dphi))
+        out[mname] = np.where(h, np.sqrt(np.maximum(m2, 0)), null)
+    return out
+
+
+def hf_origin_cols(nano_path, is_data):
+    """cand_hf_from_b per nano row: does the candidate's true charm hadron come from a b hadron?
+    GenTag gives only the hadron's species (cand_gen_common_hf_pdgId, set when all three
+    tracks share one c/b-hadron ancestor); the nano GenPart keeps every c/b hadron with its
+    mother index (not their hadronic daughters). Match: the GenPart with the same |pdgId|
+    nearest in dR to the reco Ds direction, dR < HF_MATCH_DR; then walk genPartIdxMother up
+    for a b hadron (|pdgId| 500-599 or 5000-5999).
+    -1 = no truth (data, signal without GenTag, no common CHARM ancestor, or no match); 0 = prompt
+    charm; 1 = from b. cand_hf_dR = the matched dR (-777 if none)."""
+    import awkward as ak
+    import numpy as np
+    import uproot
+
+    with uproot.open(nano_path) as fn:
+        t = fn["Events"]
+        n = t.num_entries
+        if is_data or "cand_gen_common_hf_pdgId" not in t.keys():
+            return {"cand_hf_from_b": np.full(n, -1, np.int32), "cand_hf_dR": np.full(n, -777.0)}
+        a = t.arrays(["cand_gen_common_hf_pdgId", "Ds_eta", "Ds_phi", "GenPart_pdgId",
+                      "GenPart_genPartIdxMother", "GenPart_eta", "GenPart_phi"])
+    hf = np.abs(ak.to_numpy(a["cand_gen_common_hf_pdgId"]))
+    deta_, dphi_ = ak.to_numpy(a["Ds_eta"]), ak.to_numpy(a["Ds_phi"])
+    origin = np.full(n, -1, np.int32)
+    dr_out = np.full(n, -777.0)
+    # charm ancestors only: a common b-hadron ancestor (no charm in between) has no
+    # "prompt vs from-b" question, it stays -1
+    for i in np.where(((hf >= 400) & (hf < 500)) | ((hf >= 4000) & (hf < 5000)))[0]:
+        pid = np.abs(ak.to_numpy(a["GenPart_pdgId"][i]))
+        cand = np.where(pid == hf[i])[0]
+        if len(cand) == 0:
+            continue
+        eta = ak.to_numpy(a["GenPart_eta"][i])[cand]
+        phi = ak.to_numpy(a["GenPart_phi"][i])[cand]
+        dphi = np.abs((phi - dphi_[i] + np.pi) % (2 * np.pi) - np.pi)
+        dr = np.hypot(eta - deta_[i], dphi)
+        k = int(np.argmin(dr))
+        if dr[k] >= HF_MATCH_DR:
+            continue
+        dr_out[i] = dr[k]
+        mo = ak.to_numpy(a["GenPart_genPartIdxMother"][i])
+        j, from_b = mo[cand[k]], 0
+        while j >= 0:
+            if 500 <= pid[j] < 600 or 5000 <= pid[j] < 6000:
+                from_b = 1
+                break
+            j = mo[j]
+        origin[i] = from_b
+    return {"cand_hf_from_b": origin, "cand_hf_dR": dr_out}
+
+
+def worker(list_path, out_path, correct=False, region="sr"):
     # numpy/uproot only here and in merge(): the submit script imports this module from
     # lxplus's native python, which has neither.
     import numpy as np
@@ -247,10 +414,12 @@ def worker(list_path, out_path, correct=False):
         sys.exit(f"{list_path} mixes pieces: {sorted(pieces)}")
     era, sample, _, is_data = parse_nano_path(nano_files[0])
 
+    if region not in REGIONS:
+        sys.exit(f"unknown region {region!r}, choose from {REGIONS}")
     tags = {"era": TAG_TO_ERA[era]}
     if is_data:
         norm = xsec_pb = lumi_pb = None
-        blind = DATA_TASK_BLIND[sample]
+        blind = DATA_TASK_BLIND[sample] and region == "sr"
         friend_cols = FRIEND_JOIN_COLS + FRIEND_CUT_COLS + list(FRIEND_CORR_KIN)
     else:
         with open(f"{MC_BASE}/{era}/Corrections/{sample}/normalization.json") as f:
@@ -297,8 +466,21 @@ def worker(list_path, out_path, correct=False):
             if not np.array_equal(nano[c], fr[c]):
                 sys.exit(f"join mismatch on {c}: {nano_path} vs {friend_path}")
 
-        sel = (fr["pass_mu_nom"] & fr["pass_muveto"] & ~fr["jvm_veto_nom"]
-               & (fr["n_bjet_nom"] == 0) & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
+        if region == "sr":
+            sel = (fr["pass_mu_nom"] & fr["pass_muveto"] & ~fr["jvm_veto_nom"]
+                   & (fr["n_bjet_nom"] == 0) & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
+        else:
+            lep = extra_lepton_cols(nano_path, fr["mu_pt_nom"], era, is_data)
+            if not np.array_equal(lep["n_xmu"] >= 1, ~fr["pass_muveto"]):
+                sys.exit(f"{nano_path}: extra-muon count disagrees with pass_muveto on "
+                         f"{int(((lep['n_xmu'] >= 1) != ~fr['pass_muveto']).sum())} rows")
+            sel = fr["pass_mu_nom"] & ~fr["jvm_veto_nom"]
+            if region == "zmumu":
+                sel = (sel & ~fr["pass_muveto"] & (fr["n_bjet_nom"] == 0) & (lep["n_xmu"] == 1)
+                       & (lep["xmu_charge"] == -nano["mu_charge"]))
+            else:  # ttcr
+                sel = (sel & (fr["n_bjet_nom"] >= 1)
+                       & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
         if blind:
             in_sr = sel & (np.abs(nano["Ds_mass"] - M_DS) < SR_HALF_WIDTH)
             n_blinded += int(in_sr.sum())
@@ -316,7 +498,11 @@ def worker(list_path, out_path, correct=False):
             # signal is computed to match (genEventCount denominator, not sum(genWeight)).
             gw = (np.ones(n_sel, dtype=np.float64) if sample in SIGNAL_CHANNEL
                   else nano["genWeight"][sel].astype(np.float64))
-            w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel] * fr["w_btag_nom"][sel]
+            w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel]
+            if region != "ttcr":   # w_btag is NaN by design at n_bjet > 0 (see REGIONS)
+                w = w * fr["w_btag_nom"][sel]
+            if region == "zmumu":  # every zmumu row has exactly one extra muon
+                w = w * lep["w_xmu"][sel]
             if not np.all(np.isfinite(w)):
                 sys.exit(f"non-finite weight in {nano_path} after selection")
         out = {b: nano[b][sel] for b in branches}
@@ -327,6 +513,12 @@ def worker(list_path, out_path, correct=False):
             out[ocol] = fr[fcol][sel]
         for k, v in tags.items():
             out[k] = np.full(n_sel, v, dtype=np.int32)
+        if region != "sr":
+            for k, v in lep.items():
+                out[k] = v[sel]
+        if region == "ttcr":
+            for k, v in hf_origin_cols(nano_path, is_data).items():
+                out[k] = v[sel]
         parts.append(out)
         n_sel_total += n_sel
         wsum += float(w.sum())
@@ -337,6 +529,10 @@ def worker(list_path, out_path, correct=False):
                 weight_sum=wsum,
                 norm=norm, xsec_pb=xsec_pb, lumi_pb=lumi_pb, phi_win=PHI_WIN,
                 branches_sha1=None, root_written=False)
+    if region != "sr":   # SR .json stays exactly as before
+        meta.update(region=region, phi_win=None if region == "zmumu" else PHI_WIN,
+                    btag_sf_applied=region != "ttcr", extra_muon_corrected=True,
+                    extra_muon_sf_in_weight=region == "zmumu", extra_electron_sf_applied=False)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     if n_sel_total:
         cols = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
@@ -363,8 +559,11 @@ def worker(list_path, out_path, correct=False):
 
 
 # ---------------------------------------------------------------- merge
-def merge(group):
+def merge(group, region="sr"):
     import uproot
+
+    if region not in REGIONS:
+        sys.exit(f"unknown region {region!r}, choose from {REGIONS}")
 
     if group not in GROUPS:
         sys.exit(f"unknown group {group!r}, choose from {sorted(GROUPS)}")
@@ -386,7 +585,7 @@ def merge(group):
             with open(lp) as f:
                 names = [os.path.basename(x.strip()) for x in f if x.strip()]
             listed += names
-            rp = skim_path(era, sample, k)
+            rp = skim_path(era, sample, k, region)
             jp = rp[:-len(".root")] + ".json"
             if not os.path.exists(jp):
                 problems.append(f"missing {jp}")
@@ -417,7 +616,7 @@ def merge(group):
     if problems:
         sys.exit("merge refused:\n  " + "\n  ".join(problems))
 
-    target = f"{OUT_DIR}/{group}.root"
+    target = f"{region_dir(region)}/{group}.root"
     with tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR")) as tmp:
         local = os.path.join(tmp, f"{group}.root")
         subprocess.run(["hadd", "-f", local] + roots, check=True)
@@ -427,7 +626,7 @@ def merge(group):
         n_got = f["Events"].num_entries
     if n_got != n_expect:
         sys.exit(f"{target}: {n_got} entries, chunk JSONs sum to {n_expect}")
-    with open(f"{OUT_DIR}/{group}_meta.json", "w") as f:
+    with open(f"{region_dir(region)}/{group}_meta.json", "w") as f:
         json.dump(piece_meta, f, indent=1)
     for p in piece_meta:
         xl = "" if p["xsec_pb"] is None else f" xsec*L={p['xsec_pb'] * p['lumi_pb']:.6g}"
@@ -438,13 +637,17 @@ def merge(group):
 
 
 def main():
-    if len(sys.argv) in (4, 5) and sys.argv[1] == "worker" and sys.argv[4:] in ([], ["--correct"]):
-        worker(sys.argv[2], sys.argv[3], correct=len(sys.argv) == 5)
-    elif len(sys.argv) == 3 and sys.argv[1] == "merge":
-        merge(sys.argv[2])
+    argv = [a for a in sys.argv[1:] if not a.startswith("--region=")]
+    regions = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--region=")]
+    region = regions[-1] if regions else "sr"
+    if len(argv) in (3, 4) and argv[0] == "worker" and argv[3:] in ([], ["--correct"]):
+        worker(argv[1], argv[2], correct=len(argv) == 4, region=region)
+    elif len(argv) == 2 and argv[0] == "merge":
+        merge(argv[1], region)
     else:
-        sys.exit("usage: make_samples_nano.py worker <list.txt> <out.root> [--correct]\n"
-                 "       make_samples_nano.py merge <" + "|".join(GROUPS) + ">")
+        sys.exit("usage: make_samples_nano.py worker <list.txt> <out.root> [--correct] [--region=R]\n"
+                 "       make_samples_nano.py merge <" + "|".join(GROUPS) + "> [--region=R]\n"
+                 f"       R in {REGIONS}, default sr")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
     python3 condor_submit_make_samples_nano.py <group> [--pieces=<era>/<sample>,...] [--correct] [--dry-run]
     python3 condor_submit_make_samples_nano.py <group> [--pieces=...] [--correct] --only-missing
+    python3 condor_submit_make_samples_nano.py <group> --region=<zmumu|ttcr> [--pieces=...] [--only-missing]
     <group>: Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | DY_SS_merged | Data_OS_merged | Data_SS_merged
 
 Default: for every piece of the group, rewrite the chunk lists (numeric order of
@@ -13,7 +14,11 @@ then skims -- no separate corrections submission; friends need not exist beforeh
 --pieces: restrict to these pieces of the group (e.g. a data era whose CRAB task is done);
 merge still requires every piece of the group.
 
-Then, once all jobs are done:  make_samples_nano.py merge <group>  (inside cmssw-el9).
+--region (a control region, make_samples_nano.REGIONS): REUSES the SR chunk lists (never
+rewrites them, so the SR skim is untouched), deletes only that region's old chunks under
+Samples/CR/<region>/skim/, and passes --region to every worker. Needs existing friends.
+
+Then, once all jobs are done:  make_samples_nano.py merge <group> [--region=R]  (inside cmssw-el9).
 One cluster per group. Chunk lists under condor_logs/make_samples_nano/lists/, scheduler
 log under condor_logs/, per-job output under condor_logs/make_samples_nano/.
 """
@@ -28,12 +33,16 @@ args = [a for a in sys.argv[1:] if not a.startswith("--")]
 flags = {a.split("=", 1)[0]: a.split("=", 1)[1] if "=" in a else None
          for a in sys.argv[1:] if a.startswith("--")}
 if len(args) != 1 or args[0] not in msn.GROUPS or set(flags) - {"--dry-run", "--only-missing",
-                                                                 "--pieces", "--correct"}:
+                                                                 "--pieces", "--correct",
+                                                                 "--region"}:
     sys.exit(__doc__)
 group = args[0]
 dry_run = "--dry-run" in flags
 only_missing = "--only-missing" in flags
 correct = "--correct" in flags
+region = flags.get("--region") or "sr"
+if region not in msn.REGIONS or (region != "sr" and correct):
+    sys.exit(f"--region must be one of {msn.REGIONS}; --correct only with the SR skim")
 pieces = msn.GROUPS[group]
 if "--pieces" in flags:
     wanted = [tuple(x.split("/")) for x in (flags["--pieces"] or "").split(",") if x]
@@ -51,9 +60,23 @@ for era, sample in pieces:
             sys.exit(f"--only-missing but no chunk lists for {era}/{sample}")
         for lp in lists:
             k = int(lp.rsplit("_chunk", 1)[1][:-len(".txt")])
-            out = msn.skim_path(era, sample, k)
+            out = msn.skim_path(era, sample, k, region)
             if not os.path.exists(out[:-len(".root")] + ".json"):
                 jobs.append((lp, out))
+        continue
+
+    if region != "sr":
+        lists = msn.piece_chunks(era, sample)
+        if not lists:
+            sys.exit(f"--region={region} reuses the SR chunk lists, none for {era}/{sample}")
+        print(f"{era}/{sample}: {len(lists)} chunks (region {region})")
+        if dry_run:
+            continue
+        for old in glob.glob(f"{msn.region_dir(region)}/skim/{era}/{sample}/chunk_*"):
+            os.remove(old)
+        for lp in lists:
+            k = int(lp.rsplit("_chunk", 1)[1][:-len(".txt")])
+            jobs.append((lp, msn.skim_path(era, sample, k, region)))
         continue
 
     files = msn.piece_nano_files(era, sample)
@@ -88,6 +111,8 @@ if not jobs:
 
 os.makedirs("condor_logs/make_samples_nano", exist_ok=True)
 tag = group if "--pieces" not in flags else f"{group}_" + "_".join(s for _, s in pieces)
+if region != "sr":
+    tag = f"{region}_{tag}"
 job_table = f"condor_logs/make_samples_nano/{tag}_jobs.txt"
 with open(job_table, "w") as f:
     f.write("\n".join(f"{lp} {out}" for lp, out in jobs) + "\n")
@@ -97,7 +122,7 @@ if os.path.exists(scheduler_log):
 
 submit_description = f"""
 executable = run_make_samples_nano.sh
-arguments = $(LIST) $(OUT){" --correct" if correct else ""}
+arguments = $(LIST) $(OUT){" --correct" if correct else ""}{f" --region={region}" if region != "sr" else ""}
 log = {scheduler_log}
 JobBatchName = make_samples_nano_{tag}
 request_cpus = 1

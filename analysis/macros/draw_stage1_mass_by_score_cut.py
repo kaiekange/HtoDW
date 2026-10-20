@@ -76,6 +76,15 @@ W+jets-only figures survive. (--tt is kept as an alias for --add TT.)
 --mc-sr-excl also removes the Ds-mass SR (|Ds_mass-M_Ds|<40 MeV) from every MC sample at
 the base selection, so the drawn stack (not only the phi_mass ratio denominator, point 3)
 covers the same event set as the OS data points. Output names get a _mcsrexcl suffix.
+
+--br-rw multiplies every MC weight (W+jets and --add samples) by common.br_reweight(),
+the Pythia->PDG BR factor of GenTag modes 1-4. Output names get a _brrw suffix.
+
+--dy-sf multiplies the DY weights (--add DY) by common.dy_jetbin_sf(), the per-jet-bin DY
+normalisation from the Z->mumu CR. Output names get a _dysf suffix.
+
+Binning widens as the cut tightens (DS_NSIDE / PHI_WIDTH): Ds_mass 10/20/26/52 MeV,
+phi_mass 2/4/5/8 MeV with edges on the phi window (2/3/5/6 MeV without one).
 """
 import sys
 
@@ -106,6 +115,11 @@ bad = [k for k in ADD if k not in EXTRA_DEF]
 if bad:
     sys.exit(f"--add: unknown {bad}; choices {list(EXTRA_DEF)}")
 MC_SR_EXCL = "--mc-sr-excl" in sys.argv
+BR_RW = "--br-rw" in sys.argv
+DY_SF = "--dy-sf" in sys.argv
+BR_COLS = ["cand_gen_mode", "cand_gen_common_hf_pdgId"] if BR_RW else []
+if DY_SF and "DY" not in ADD:
+    sys.exit("--dy-sf needs --add DY")
 MODEL_KEY = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key=")), "ssdata")
 PHI_WIN = common.resolve(MODEL_KEY).get("phi_win")
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
@@ -127,11 +141,48 @@ GROUPS = [   # stack bottom -> top, same order/colours as draw_wp_mass.py
     (r"true D$_s$ (mode 1+2)",       [1, 2],              "#c0392b"),
 ]
 
-VARS = [   # (branch, xlabel, bin edges, blind half-width or None, ref line or None)
-    ("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]",
-     np.arange(M_DS - 0.3, M_DS + 0.3 + 1e-9, 0.010), SR_HALF, None),
-    ("phi_mass", r"$M(K^+K^-)$ [GeV]",
-     np.arange(0.984, 1.074 + 1e-9, 0.002), None, M_PHI),
+# Bin width grows as the cut tightens (fewer events). Ds_mass: sideband bins per side of
+# the blind window (each side 0.26 GeV) -> 10/20/26/52 MeV, same as draw_os_minus_ss.py;
+# the SR is split into bins of the same width when it divides 80 MeV (10, 20), else it is
+# ONE bin whose content is drawn scaled to the sideband width. phi_mass: uniform widths.
+DS_NSIDE = {None: 26, 0.90: 13, 0.70: 10, 0.50: 5}
+# With a phi window the edges sit on M_phi +- PHI_WIN (widths divide 40 MeV) plus two empty
+# bins either side, so no bin is cut by the window; without one, 0.984-1.074 (divide 90 MeV).
+PHI_WIDTH = ({None: 0.002, 0.90: 0.004, 0.70: 0.005, 0.50: 0.008} if PHI_WIN is not None
+             else {None: 0.002, 0.90: 0.003, 0.70: 0.005, 0.50: 0.006})
+
+
+def ds_edges(eff):
+    n = DS_NSIDE[eff]
+    w = (0.3 - SR_HALF) / n
+    n_sr = int(round(2 * SR_HALF / w))
+    n_sr = n_sr if abs(n_sr * w - 2 * SR_HALF) < 1e-9 else 1
+    return np.concatenate([np.linspace(M_DS - 0.3, M_DS - SR_HALF, n + 1),
+                           np.linspace(M_DS - SR_HALF, M_DS + SR_HALF, n_sr + 1)[1:-1],
+                           np.linspace(M_DS + SR_HALF, M_DS + 0.3, n + 1)])
+
+
+def phi_edges(eff):
+    w = PHI_WIDTH[eff]
+    lo, hi = ((M_PHI - PHI_WIN - 2 * w, M_PHI + PHI_WIN + 2 * w) if PHI_WIN is not None
+              else (0.984, 1.074))
+    n = int(round((hi - lo) / w))
+    assert abs(n * w - (hi - lo)) < 1e-9, (lo, hi, w)
+    return np.linspace(lo, hi, n + 1)
+
+
+def phi_clip(x):
+    """The window cut is evaluated in float32, so a few passing rows sit a float32 hair
+    outside M_phi +- PHI_WIN and would land in the empty bins next to the window; clip them
+    onto it (only rows that already passed the cut, never more than ~1e-7 GeV)."""
+    if PHI_WIN is None:
+        return x
+    return np.clip(x, M_PHI - PHI_WIN + 1e-7, M_PHI + PHI_WIN - 1e-7)
+
+
+VARS = [   # (branch, xlabel, edges(eff), blind half-width or None, ref line or None)
+    ("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]", ds_edges, SR_HALF, None),
+    ("phi_mass", r"$M(K^+K^-)$ [GeV]", phi_edges, None, M_PHI),
 ]
 
 
@@ -164,18 +215,20 @@ for eff, _lbl in CUTS:
     THR[eff] = thr
 
 # ---- W+jets GenTag: base selection (OS + b-veto + score>-1), full mass range ----
-w = rd("WtoLNu2Jets_merged", ["cand_gen_mode", "weight"])
+w = rd("WtoLNu2Jets_merged", list(dict.fromkeys(["cand_gen_mode", "weight"] + BR_COLS)))
+if BR_RW:
+    w["weight"] = w["weight"] * common.br_reweight(w)
 wk = ossel(w)
 if MC_SR_EXCL:
     wk &= np.abs(w["Ds_mass"] - M_DS) >= SR_HALF
 print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after OS+b-veto+score>-1"
       + ("+Ds-SR-excluded" if MC_SR_EXCL else ""))
-w_ds, w_phi = w["Ds_mass"][wk], w["phi_mass"][wk]
+w_ds, w_phi = w["Ds_mass"][wk], phi_clip(w["phi_mass"][wk])
 w_mode, w_score, w_w = w["cand_gen_mode"][wk], w["score_dsmu"][wk], w["weight"][wk].astype(float)
 w_not_sr = np.abs(w_ds - M_DS) >= SR_HALF
 
 for branch, vals in (("Ds_mass", w_ds), ("phi_mass", w_phi)):
-    bins = next(b for br, _l, b, _bh, _r in VARS if br == branch)
+    bins = next(f for br, _l, f, _bh, _r in VARS if br == branch)(None)
     n_out = len(vals) - ((vals >= bins[0]) & (vals <= bins[-1])).sum()
     # A handful of rows can sit float-precision-past the post-fit |M-M_Ds|<0.3 cut
     # boundary the tuplizer applied; anything beyond that (a bin-range typo) is loud.
@@ -197,12 +250,16 @@ assert covered.all(), (
 EXTRA = {}
 for key in ADD:
     fname, _lab, _col = EXTRA_DEF[key]
-    x = rd(fname, ["weight"])
+    x = rd(fname, ["weight"] + BR_COLS + (["jet_bin"] if DY_SF and key == "DY" else []))
+    if BR_RW:
+        x["weight"] = x["weight"] * common.br_reweight(x)
+    if DY_SF and key == "DY":
+        x["weight"] = x["weight"] * common.dy_jetbin_sf(x)
     xk = ossel(x)
     if MC_SR_EXCL:
         xk &= np.abs(x["Ds_mass"] - M_DS) >= SR_HALF
     print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after OS+b-veto+score>-1")
-    EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=x["phi_mass"][xk],
+    EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=phi_clip(x["phi_mass"][xk]),
                       score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float))
     EXTRA[key]["not_sr"] = np.abs(EXTRA[key]["Ds_mass"] - M_DS) >= SR_HALF
 
@@ -211,10 +268,10 @@ d = rd("Data_OS_merged", [])
 dk = ossel(d) & (np.abs(d["Ds_mass"] - M_DS) >= SR_HALF)
 print(f"OS data: {len(d['Ds_mass']):,} rows -> {dk.sum():,} after OS+b-veto+score>-1"
       f"+Ds-SR-excluded")
-d_ds, d_phi, d_score = d["Ds_mass"][dk], d["phi_mass"][dk], d["score_dsmu"][dk]
+d_ds, d_phi, d_score = d["Ds_mass"][dk], phi_clip(d["phi_mass"][dk]), d["score_dsmu"][dk]
 
 for branch, vals in (("Ds_mass", d_ds), ("phi_mass", d_phi)):
-    bins = next(b for br, _l, b, _bh, _r in VARS if br == branch)
+    bins = next(f for br, _l, f, _bh, _r in VARS if br == branch)(None)
     n_out = len(vals) - ((vals >= bins[0]) & (vals <= bins[-1])).sum()
     assert n_out <= max(5, int(1e-5 * len(vals))), (
         f"OS data {branch}: {n_out} selected rows fall outside "
@@ -230,12 +287,7 @@ def hist(vals, w=None, bins=None):
     return h, np.sqrt(e2)
 
 
-for branch, xlabel, bins, blind_half, refline in VARS:
-    bc = 0.5 * (bins[1:] + bins[:-1])
-    width = bins[1] - bins[0]
-    blind_bins = (np.abs(bc - M_DS) < blind_half) if blind_half else np.zeros_like(bc, dtype=bool)
-    vis = ~blind_bins
-
+for branch, xlabel, edges_fn, blind_half, refline in VARS:
     w_vals = w_ds if branch == "Ds_mass" else w_phi
     d_vals = d_ds if branch == "Ds_mass" else d_phi
 
@@ -246,6 +298,15 @@ for branch, xlabel, bins, blind_half, refline in VARS:
     for col, (eff, lbl) in enumerate(CUTS):
         cutmask = np.ones(len(w_vals), dtype=bool) if eff is None else (w_score > THR[eff])
         dcutmask = np.ones(len(d_vals), dtype=bool) if eff is None else (d_score > THR[eff])
+
+        bins = edges_fn(eff)
+        bc = 0.5 * (bins[1:] + bins[:-1])
+        widths = np.diff(bins)
+        width = widths[0]               # sideband bin width: the "Events / X MeV" unit
+        scale = width / widths          # != 1 only for a single wide SR bin (drawn only)
+        blind_bins = ((np.abs(bc - M_DS) < blind_half) if blind_half
+                      else np.zeros_like(bc, dtype=bool))
+        vis = ~blind_bins
 
         inner = gridspec.GridSpecFromSubplotSpec(
             2, 1, subplot_spec=outer[col], height_ratios=[3, 1], hspace=0.05)
@@ -273,10 +334,10 @@ for branch, xlabel, bins, blind_half, refline in VARS:
         bottom = np.zeros(len(bc))
         stack = GROUPS + [(EXTRA_DEF[k][1], None, EXTRA_DEF[k][2]) for k in EXTRA]
         for (lab, _ms, cl), h in zip(stack, hs):
-            ax.bar(bc, h, width=width, bottom=bottom, color=cl, alpha=0.9,
+            ax.bar(bc, h * scale, width=widths, bottom=bottom, color=cl, alpha=0.9,
                    label=f"{lab}  N={h.sum():,.0f}", edgecolor="none")
-            bottom = bottom + h
-        ax.bar(bc, 2 * tot_err, width=width, bottom=tot - tot_err, color="none",
+            bottom = bottom + h * scale
+        ax.bar(bc, 2 * tot_err * scale, width=widths, bottom=(tot - tot_err) * scale, color="none",
                hatch="////", edgecolor="0.35", linewidth=0.0, zorder=3,
                label="MC stat")
         ax.axhline(0, color="black", lw=0.8, alpha=0.5)
@@ -297,8 +358,9 @@ for branch, xlabel, bins, blind_half, refline in VARS:
         assert n_drop <= 5, (
             f"{branch} col={lbl!r}: histogram dropped "
             f"{n_drop} OS data events as under/overflow.")
-        dh_m = np.where(vis, dh, np.nan) if blind_half else dh.astype(float)
-        ax.errorbar(bc, dh_m, yerr=np.sqrt(np.where(vis, dh, 0)) if blind_half else np.sqrt(dh),
+        dh_m = (np.where(vis, dh, np.nan) if blind_half else dh.astype(float)) * scale
+        ax.errorbar(bc, dh_m, yerr=(np.sqrt(np.where(vis, dh, 0)) if blind_half
+                                    else np.sqrt(dh)) * scale,
                     fmt="o", ms=4, color="black", elinewidth=1.2,
                     label=f"OS data (Ds-SR excl.)  N={dh.sum():,.0f}")
 
@@ -311,8 +373,7 @@ for branch, xlabel, bins, blind_half, refline in VARS:
         peak = np.nanmax([bottom.max(), np.nanmax(dh_m)])
         ax.set_ylim(0, peak * 1.5 if peak > 0 else 1.0)
         ax.tick_params(labelbottom=False)
-        if col == 0:
-            ax.set_ylabel(f"Events / {width*1000:.0f} MeV")
+        ax.set_ylabel(f"Events / {width*1000:.0f} MeV", fontsize=14 if col else None)
         ax.legend(fontsize=8, loc="upper right")
         ax.set_title(f"{lbl}", fontsize=13, pad=6)
         if col == 0:
@@ -324,7 +385,7 @@ for branch, xlabel, bins, blind_half, refline in VARS:
             re = np.where(vis & (tot_ratio > 0),
                           np.sqrt(np.where(vis, dh, 0)) / tot_ratio, np.nan)
             mc_band = np.where(vis & (tot_ratio > 0), tot_err / tot_ratio, np.nan)
-        rax.bar(bc, 2 * mc_band, width=width, bottom=1 - mc_band, color="none",
+        rax.bar(bc, 2 * mc_band, width=widths, bottom=1 - mc_band, color="none",
                 hatch="////", edgecolor="0.35", linewidth=0.0)
         rax.errorbar(bc, r, yerr=re, fmt="o", ms=3.5, color="black", elinewidth=1.0)
         rax.axhline(1.0, color="red", lw=1.0)
@@ -341,14 +402,25 @@ for branch, xlabel, bins, blind_half, refline in VARS:
               + "".join(f"{k} N={h.sum():,.1f}  " for k, h in h_extra.items())
               + f"OS data N={dh.sum():,.0f} (n={dcutmask.sum():,})")
         if branch == "Ds_mass" and EXTRA:
-            for wname, wsel in (("low <1.830", bc < 1.830),
-                                ("D+- 1.83-1.91", (bc >= 1.830) & (bc < 1.910)),
-                                ("high >2.008", bc > M_DS + SR_HALF)):
-                nd, nw, nall = dh[wsel].sum(), tot_wj[wsel].sum(), tot[wsel].sum()
-                ew = np.sqrt((tot_err[wsel] ** 2).sum())
+            # Counted on the unbinned Ds_mass, NOT from the histograms: the drawn bin width
+            # changes with the cut and its edges do not fall on 1.830 / 1.910 (until
+            # 2026-10-19 the table read bin centres, which moved these window edges).
+            WIN = (("low <1.830", lambda x: x < 1.830),
+                   ("D+- 1.83-1.91", lambda x: (x >= 1.830) & (x < 1.910)),
+                   ("high >2.008", lambda x: x > M_DS + SR_HALF))
+            for wname, wf in WIN:
+                mw = cutmask & wf(w_vals)
+                nw, e2 = w_w[mw].sum(), (w_w[mw] ** 2).sum()
+                xs = {}
+                for key, X in EXTRA.items():
+                    mx = xcuts[key] & wf(X[branch])
+                    xs[key] = X["w"][mx].sum()
+                    e2 += (X["w"][mx] ** 2).sum()
+                nall = nw + sum(xs.values())
+                ew = np.sqrt(e2)
+                nd = int((dcutmask & wf(d_vals)).sum())
                 rr = nd / nall
-                shares = "  ".join(f"{k} {h[wsel].sum():9,.1f} ({100*h[wsel].sum()/nall:4.1f}%)"
-                                   for k, h in h_extra.items())
+                shares = "  ".join(f"{k} {v:9,.1f} ({100*v/nall:4.1f}%)" for k, v in xs.items())
                 print(f"    {wname:14}: data {nd:9,.0f}  W+jets {nw:11,.1f}  {shares}"
                       f"  data/Wjets {nd/nw:.3f}"
                       f"  data/allMC {rr:.3f}+-{rr*np.hypot(1/np.sqrt(max(nd,1)), ew/nall):.3f}")
@@ -361,6 +433,8 @@ for branch, xlabel, bins, blind_half, refline in VARS:
     out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut"
                           + ("_wjets_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "")
                           + ("_mcsrexcl" if MC_SR_EXCL else "")
+                          + ("_brrw" if BR_RW else "")
+                          + ("_dysf" if DY_SF else "")
                           + ".png", key=MODEL_KEY)
     plt.savefig(out, dpi=120, bbox_inches="tight")
     plt.close(fig)

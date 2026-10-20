@@ -910,6 +910,7 @@ FIG_CATEGORIES = (
     "features",       # input-feature distributions and screening
     "preselection",   # pre-MVA selection studies
     "comparisons",    # anything overlaying several models
+    "sf",             # Ds/D/DY scale factors: BR reweighting, Z->mumu and ttbar CRs
 )
 
 # Model-free figures (pre-MVA, feature screening, multi-model overlays) have no
@@ -1092,6 +1093,65 @@ def stage1_threshold(stage1_cut):
     print(f"  stage1_threshold({stage1_cut['key']}, eff_sig={stage1_cut['eff_sig']}): "
           f"thr={thr:.6f} (weighted {thr_w:.6f}), from {len(sc):,} truth-matched signal rows")
     return thr, len(sc)
+
+
+# ========= BR 修正 (Pythia -> PDG) =========
+# Per-row factor PDG/Pythia for the true-charm GenTag modes, keyed by (cand_gen_mode,
+# |cand_gen_common_hf_pdgId|). Decided 2026-10-19 (user):
+#   - modes 1-4 only; channels with extra pi0 etc. that land in the same mode get the
+#     SAME factor as the clean channel ("带 pi0 按照不带 pi0 的修"), so no mass split;
+#   - phi modes (1, 3) use the phi pi+ factor, non-resonant direct K K pi (2, 4) the
+#     inclusive D(s)+ -> K+ K- pi+ factor.
+# PDG 2024 summary tables; the phi entries are the Dalitz "phi pi+, phi -> K+ K-" products,
+# i.e. exactly what a phi -> K+K- inside the M(KK) window measures, so no separate
+# B(phi -> KK) enters. Pythia 306 (W+jets/tt/DY GEN) ParticleData.xml, identical to 311 for
+# these channels; inclusive K+K-pi+ = phi pi+ x B(phi->KK) + K+ K*0bar x B(K*->K pi)
+# + non-resonant (feedback_pythia_decay_table):
+#   Ds+ phi pi+ (phi->KK) 2.21e-2 / (0.044 x 0.4893042)      = 1.0265
+#   Ds+ K+K-pi+ incl.     5.37e-2 / 5.91270e-2               = 0.9082
+#   D+  phi pi+ (phi->KK) 2.69e-3 / (0.007 x 0.4893042)      = 0.7854
+#   D+  K+K-pi+ incl.     9.68e-3 / 1.08180e-2               = 0.8948
+# D0 (421) rows in modes 3/4 and every other mode keep factor 1.
+_PY_PHIKK = 0.4893042
+BR_FACTORS = {
+    (1, 431): 2.21e-2 / (0.044 * _PY_PHIKK),
+    (2, 431): 5.37e-2 / 5.91270e-2,
+    (3, 411): 2.69e-3 / (0.007 * _PY_PHIKK),
+    (4, 411): 9.68e-3 / 1.08180e-2,
+}
+
+
+# ========= DY 归一化 (Z->mumu CR) =========
+# One factor per DY generator jet-bin sample (jet_bin 0/1/2 = DYto2L2Jets_0J/1J/2J), from
+# analysis/macros/fit_dy_jetbin_zmumu.py, 2026-10-19: zmumu CR, 76 < M(mumu) < 106, phi
+# window 20 MeV, no DNN cut, fitted on the full pT(mumu) spectrum (the only variable that
+# separates the three samples). Second muon with MuonScaRe-corrected pt and ID x loose-iso
+# SF (w_xmu) since 2026-10-19 (was 0.773/0.726/1.106 without them). Stat errors
+# 0.007 / 0.015 / 0.026; chi2/ndf 135/13, the residual being the lowest pT(mumu) bins.
+# MET and m_T stay mismodelled after it.
+DY_JETBIN_SF = {0: 0.801, 1: 0.763, 2: 1.151}
+
+
+def dy_jetbin_sf(a):
+    """Per-row DY_JETBIN_SF factor from the jet_bin column (DY samples only)."""
+    jb = np.asarray(a["jet_bin"])
+    f = np.full(len(jb), np.nan)
+    for j, v in DY_JETBIN_SF.items():
+        f[jb == j] = v
+    if np.isnan(f).any():
+        raise ValueError(f"jet_bin outside {sorted(DY_JETBIN_SF)}: {np.unique(jb[np.isnan(f)])}")
+    return f
+
+
+def br_reweight(a):
+    """Per-row Pythia->PDG BR factor (BR_FACTORS); 1 for rows not in the table.
+    Needs cand_gen_mode and cand_gen_common_hf_pdgId (GenTag MC only)."""
+    mode = np.asarray(a["cand_gen_mode"])
+    hf = np.abs(np.asarray(a["cand_gen_common_hf_pdgId"]))
+    f = np.ones(len(mode), dtype=np.float64)
+    for (m, h), v in BR_FACTORS.items():
+        f[(mode == m) & (hf == h)] = v
+    return f
 
 
 # ========= 预处理 =========

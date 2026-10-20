@@ -37,6 +37,13 @@ argv = sys.argv[1:]
 TRAIN_ONLY = "--train-only" in argv
 PREDICT = "--predict" in argv
 argv = [x for x in argv if x not in ("--train-only", "--predict")]
+REGION = None
+if "--region" in argv:   # --predict only: score Samples/CR/<R>/ (predict.py --region)
+    i = argv.index("--region")
+    REGION = argv[i + 1]
+    argv = argv[:i] + argv[i + 2:]
+    if not PREDICT:
+        sys.exit("--region only makes sense with --predict")
 if TRAIN_ONLY and PREDICT:
     sys.exit("--train-only and --predict are exclusive")
 SAMPLES = ""
@@ -98,12 +105,14 @@ def submit_predict():
     if not os.path.exists(f"{OUTDIR}/phipimu_model.pt"):
         sys.exit(f"no trained model in {OUTDIR}")
     os.makedirs("condor_logs", exist_ok=True)
+    rarg = f" --region {REGION}" if REGION else ""
+    rtag = f"{REGION}_" if REGION else ""
     for smp in samples:
         submit_description = f"""
 executable = run_predict.sh
-arguments = "DNN {BKG} {SEED} --samples {smp}"
-log = condor_logs/HTCondor_predict_DNN_{TAG}_{smp}.log
-JobBatchName = phipimu_DNN_predict_{TAG}_{smp}
+arguments = "DNN {BKG} {SEED} --samples {smp}{rarg}"
+log = condor_logs/HTCondor_predict_DNN_{TAG}_{rtag}{smp}.log
+JobBatchName = phipimu_DNN_predict_{TAG}_{rtag}{smp}
 request_cpus = 8
 request_memory = 24G
 request_disk = 100M

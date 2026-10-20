@@ -39,7 +39,7 @@ import common
 from common import SAMPLES_DIR, TREE
 
 USAGE = (f"usage: python3 {os.path.basename(__file__)} "
-         f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c]")
+         f"<{'|'.join(common.TRAININGS)}> [seed] [--samples a,b,c] [--region R]")
 
 # Everything in Samples/. Defined ONCE in common.py and imported here, so DNN and BDT
 # necessarily score the same files -- these were two hand-maintained literal lists that
@@ -50,6 +50,15 @@ ALL_SAMPLES = common.ALL_SAMPLES
 
 argv = sys.argv[1:]
 SAMPLES = ALL_SAMPLES
+# --region R scores the control-region skim Samples/CR/<R>/<name>.root (make_samples_nano.py
+# --region) into Prediction/<R>_<name>.root, beside the SR files. Stage-1 keys only.
+REGION = None
+if "--region" in argv:
+    i = argv.index("--region")
+    if i + 1 >= len(argv):
+        sys.exit(USAGE)
+    REGION = argv[i + 1]
+    argv = argv[:i] + argv[i + 2:]
 if "--samples" in argv:
     i = argv.index("--samples")
     if i + 1 >= len(argv):
@@ -79,6 +88,11 @@ os.makedirs(OUT_DIR, exist_ok=True)
 s1 = cfg.get("stage1_cut")
 IN_DIR = (f"{common.out_dir_for(s1['key'], s1.get('tool', 'DNN'), s1.get('seed'))}/Prediction"
           if s1 else SAMPLES_DIR)
+if REGION is not None:
+    if s1:
+        sys.exit("--region: control-region scoring is for stage-1 keys only")
+    IN_DIR = f"{SAMPLES_DIR}/CR/{REGION}"
+OUT_PREFIX = f"{REGION}_" if REGION else ""
 SCORE_BRANCH = cfg["score_branch"]
 
 print(f"Loading model from {MODEL_DIR} (background={BKG}, seed={SEED})...")
@@ -127,7 +141,7 @@ for name in SAMPLES:
     scores[mask] = s.astype(np.float32)
 
     data[SCORE_BRANCH] = scores
-    out_file = f"{OUT_DIR}/{name}.root"
+    out_file = f"{OUT_DIR}/{OUT_PREFIX}{name}.root"
     with uproot.recreate(out_file) as f:
         f.mktree(TREE, {k: v.dtype for k, v in data.items()})
         f[TREE].extend(data)

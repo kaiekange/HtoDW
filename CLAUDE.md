@@ -112,7 +112,37 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-16 下午)
+## Last Session (2026-10-19 ~ 10-20)
+
+### Ds/D/DY scale factor 三步走（plan `~/.claude/plans/cr-z-mumu-w-jets-ttbar-floating-dragon.md`），Step 1-2 完成，Step 3 skim 已产
+
+**Step 1 BR 修正**：`common.BR_FACTORS`/`br_reweight()`，按 (cand_gen_mode, |hf|) 不看质量，带 π⁰ 道跟同类（用户定）。PDG 2024/Pythia 306：
+mode1 Ds→φπ 1.027、mode2 Ds KKπ incl 0.908、mode3 D⁺→φπ 0.785、mode4 D⁺ KKπ incl 0.895；D⁰ 与其他 mode =1。只动 D± 窗（ε90 data/MC 0.68→0.75）。
+`draw_stage1_mass_by_score_cut.py` 加 `--br-rw`/`--dy-sf`，bin 随 cut 变宽（Ds_mass 10/20/26/52 MeV，phi_mass 2/4/5/8 MeV，边沿对齐 φ 窗）；
+**修了我引入的 bug**：窗口产额表改为按无 bin 的 Ds_mass 计数（原按 bin 中心，bin 变宽后窗口边界跑偏）。
+
+**Step 2 Z→μμ CR**（`make_samples_nano.py --region=zmumu`，247 chunk condor，SR 输出回归逐位一致）：pass_mu & ~pass_muveto & b-veto & 恰好 1 个异号额外 μ（MuonScaRe 修正 pt + ID×loose iso SF，断言 n_xmu≥1≡~pass_muveto）。
+三个 DY 样本 M(μμ) 形状相同，只能靠 pT(μμ) 区分 → 全域 pT(μμ) 拟合（φ20，无 DNN cut；ε90 统计量太少，用户定不用）：
+**`common.DY_JETBIN_SF = {0: 0.801, 1: 0.763, 2: 1.151}`**（一个因子 0.857）。reco N_jet 分类给矛盾的 k_2J（0.74）→ reco jet 建模问题。
+拟合后 M(μμ)/pt_μ1/pt_μ2 平，N_jet≥4 偏低 20%，**MET/m_T 不对**：`draw_zmumu_met_raw_vs_corr.py` 显示 producer 原始 MET/m_T 几乎对上，
+**`_corr` 修正链（Type-1 + Summer22 V4 + MC JER 传播）让 MC MET 变硬** → 很可能是 cut 后 MC 的 DNN 通过率偏高（SR cut 后 MC 仍高 25-35%）的原因；用户自己去查 MET。
+DY（cut 后）按 μ 来源：μ←τ 占 85-99%（`draw_dy_tau_fraction.py`）；Pythia τ→3π BR 与 PDG 一致（9.26% vs 9.02%）。
+
+**Step 3 tt̄ CR**：`--region=ttcr`（pass_mu & ~jvm & n_bjet≥1 & φ20，MC 无 b-tag SF，新列 `cand_hf_from_b`：−1/0 prompt/1 来自 b），
+488 chunk（OS+SS 全部样本）condor 全部 return 0，**还没验收/merge**。`draw_cr_ttbar.py` 已写（1l_b1/1l_b2/1l_b2j4/mumu/emu × OS/SS，OS Ds SR 默认挖掉，`--unblind` 解盲须用户同意）。
+**下一步**：验收 → `make_samples_nano.py merge <组> --region=ttcr`（OS 5 组 + SS 4 组）→ 先给用户看信号在各类别 SR 的产额/S/B、纯度、峰事例数、prompt/b 比例 → 再定 r12/r34 测法；
+SS 打分/ε cut 要 `predict.py --region ttcr`（还没做）。
+
+### 我犯的错
+1. 两次 `pkill -f` 杀了自己的 shell（以后用具体 PID）。2. 提交命令用 `| tail` 截输出（违反 feedback）。
+3. 对「分 N_jet 类拟合简并」说得过头（只分了 0/1/2/≥3 四类）。4. 窗口表按 bin 中心划窗（见上）。5. 画图一度用 log y 轴、多余的 data−ΣMC 栏，被纠正。
+
+## 上一 Session (2026-10-16 下午 ~ 10-19)
+
+**10-19 收尾：φ20 样本全部就绪**。DY OS skim 65/65 ok（10-16 会话关闭时后台自动合并流水线被停，10-19 手动验收+合并+打分）；
+`DY_merged` 841,472 行（旧 1,765,154，0.477）、`DY_SS_merged` 817,140 行。**9 个样本 × `ssdata_phi20`/`osdata_phi20` 打分全部完成并验收**（行数=输入）。
+**下一步**：① `draw_stage1_mass_by_score_cut.py --key=ssdata_phi20 --add TT,DY`；② `run_ds_mass_fit.sh --key=ssdata_phi20 --cuts=0.70,0.60,0.50 --joint=slices`；
+③ charm SF（memory `project_charm_yield_scale_factors`）；④ stage-2 加 τ 本底。scratchpad 会在会话重启时清空，长流程辅助脚本别只放那里。
 
 ### φ 窗口 ±20 MeV 进生产链 + stage-1 φ20 重训 + Ds_mass RooFit 拟合 + charm SF 方案
 
