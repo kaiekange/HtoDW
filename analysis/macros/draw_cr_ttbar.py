@@ -11,18 +11,23 @@ Categories (cut here from the skim columns; n_xmu == 0 is exactly pass_muveto):
     1l_b2j4    n_xmu == 0, n_xele == 0, n_bjet >= 2, Njet(pT>30) >= 4
     mumu       n_xmu == 1 opposite-sign, |M(mumu) - 91| > 15     (MC x w_xmu)
     emu        n_xmu == 0, n_xele >= 1 opposite-sign (leading electron)
+    mumu_b2 / emu_b2   the two above with n_bjet >= 2 (opt-in via --cats, not in the default list)
 For each category and charge (OS / SS) one figure: n_bjet, Njet, m_T, MET (+ M(ll) for 2l)
 as data vs stack {ttbar 2L2Nu, ttbar LNu2Q, W+jets, DY} + signal line; then Ds_mass and
 phi_mass with MC stacked by truth: combinatorial (modes 0,6-10), D->Kpipi misID (5),
 true D (3+4) prompt / from b, true Ds (1+2) prompt / from b (origin -1 rows of modes 1-4 go
 with "prompt" and are counted in the table).
 
-MC weights: skim weight (genWeight*norm*w_pu*w_mu, NO b-tag SF -- NaN at n_bjet > 0, first
-pass) x common.br_reweight x common.dy_jetbin_sf (DY) x w_xmu (mumu only). No electron SF.
+MC weights: skim weight (genWeight*norm*w_pu*w_mu*w_btag_any, b-tag SF method 1a, added
+2026-10-20) x common.br_reweight x common.dy_jetbin_sf (DY) x w_xmu (mumu only). No electron SF.
 OS data in the Ds SR (|Ds_mass - M_Ds| < 40 MeV) is hidden unless --unblind (user gate:
 first show signal yield and S/B in the SR, printed here).
 
-    python3 draw_cr_ttbar.py [--cats=1l_b2,mumu] [--unblind] [--key=ssdata_phi20]
+--eff=0.90: stage-1 score cut (score_dsmu > common.stage1_threshold at that signal efficiency of
+--key), read from that model's Prediction/ttcr_<sample>.root (predict.py --region ttcr);
+figures get an _eff90 suffix.
+
+    python3 draw_cr_ttbar.py [--cats=1l_b2,mumu] [--unblind] [--key=ssdata_phi20] [--eff=0.90]
 """
 import os
 import sys
@@ -43,6 +48,12 @@ ARGS = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and 
 CR_DIR = ARGS.get("dir", f"{common.SAMPLES_DIR}/CR/ttcr")
 MODEL_KEY = ARGS.get("key", "ssdata_phi20")
 UNBLIND = "--unblind" in sys.argv
+EFF = float(ARGS["eff"]) if "eff" in ARGS else None
+if EFF is not None:
+    THR, _n = common.stage1_threshold(dict(key=MODEL_KEY, tool="DNN", seed=42, eff_sig=EFF))
+    PRED_DIR = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
+    print(f"stage-1 {MODEL_KEY}: eff_sig {EFF} -> score_dsmu > {THR:.6f}")
+TAG = "" if EFF is None else f"_eff{round(100 * EFF)}"
 M_DS, M_D, SR_HALF, M_Z = 1.96835, 1.86966, 0.040, 91.19
 LUMI_FB = (common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]) / 1000.0
 
@@ -76,7 +87,10 @@ CATS = {
                        & (np.abs(a["m_mumu"] - M_Z) > 15)),
     "emu": lambda a: (a["n_xmu"] == 0) & (a["n_xele"] >= 1) & OS_LEP(a, a["xele_charge"]),
 }
-SEL_CATS = [c for c in ARGS.get("cats", ",".join(CATS)).split(",") if c]
+OPT_IN = {"mumu_b2", "emu_b2"}
+CATS["mumu_b2"] = lambda a: CATS["mumu"](a) & (a["n_bjet_corr"] >= 2)
+CATS["emu_b2"] = lambda a: CATS["emu"](a) & (a["n_bjet_corr"] >= 2)
+SEL_CATS = [c for c in ARGS.get("cats", ",".join(c for c in CATS if c not in OPT_IN)).split(",") if c]
 CTRL = [  # (column, x label, bins)
     ("n_bjet_corr", r"$n_b$ (tight, $p_T>20$)", np.arange(0.5, 5.5, 1.0)),
     ("num_jets_pt30_corr", r"$N_{jet}$ ($p_T>30$ GeV)", np.arange(-0.5, 9.5, 1.0)),
@@ -84,6 +98,7 @@ CTRL = [  # (column, x label, bins)
     ("met_pt_corr", r"$p_T^{miss}$ [GeV]", np.arange(0.0, 200.0 + 1e-9, 10.0)),
 ]
 LL = {"mumu": ("m_mumu", r"$M(\mu\mu)$ [GeV]"), "emu": ("m_emu", r"$M(e\mu)$ [GeV]")}
+LL.update({"mumu_b2": LL["mumu"], "emu_b2": LL["emu"]})
 DS_BINS = np.concatenate([np.linspace(M_DS - 0.30, M_DS - SR_HALF, 14),
                           np.linspace(M_DS - SR_HALF, M_DS + SR_HALF, 5)[1:-1],
                           np.linspace(M_DS + SR_HALF, M_DS + 0.30, 14)])   # 20 MeV, SR = 4 bins
@@ -95,13 +110,18 @@ TRUTH_COLS = ["cand_gen_mode", "cand_gen_common_hf_pdgId", "cand_hf_from_b"]
 
 
 def read(fname, role):
-    path = f"{CR_DIR}/{fname}.root"
+    path = f"{CR_DIR}/{fname}.root" if EFF is None else f"{PRED_DIR}/ttcr_{fname}.root"
     if not os.path.exists(path):
         sys.exit(f"missing {path}")
     with uproot.open(path)["Events"] as t:
         keys = set(t.keys())
         want = COLS + [c for c in TRUTH_COLS + ["tt_decay", "jet_bin"] if c in keys]
+        if EFF is not None:
+            want.append("score_dsmu")
         a = t.arrays(want, library="np")
+    if EFF is not None:
+        keep = a["score_dsmu"] > THR
+        a = {k: v[keep] for k, v in a.items()}
     a["weight"] = a["weight"].astype(float)
     if role in ("TT", "W", "DY"):
         a["weight"] = a["weight"] * common.br_reweight(a)
@@ -162,7 +182,7 @@ for charge, files in GROUPS.items():
     for cat in SEL_CATS:
         cf = CATS[cat]
         m = {role: cf(a) for role, a in S.items()}
-        wl = {role: a["weight"] * (a["w_xmu"] if cat == "mumu" and role != "data" else 1.0)
+        wl = {role: a["weight"] * (a["w_xmu"] if cat.startswith("mumu") and role != "data" else 1.0)
               for role, a in S.items()}
         mc_roles = ("TT", "W", "DY")
         blind = (M_DS - SR_HALF, M_DS + SR_HALF) if (charge == "OS" and not UNBLIND) else None
@@ -178,7 +198,7 @@ for charge, files in GROUPS.items():
         for lab, y in rows:
             plain = lab.replace(r"$t\bar{t}$", "ttbar")
             print(f"   {plain:14s} {y:11,.1f}  ({100 * y / tot:5.1f}% of MC)")
-        print(f"   data/MC = {m['data'].sum() / tot:.3f}  (no b-tag SF in MC)")
+        print(f"   data/MC = {m['data'].sum() / tot:.3f}")
         sr = lambda a: np.abs(a["Ds_mass"] - M_DS) < SR_HALF
         dwin = lambda a: np.abs(a["Ds_mass"] - M_D) < 0.030
         if "sig" in S:
@@ -236,9 +256,10 @@ for charge, files in GROUPS.items():
                   blind=blind if col == "Ds_mass" else None, sig=sig)
             if blind is not None and col == "phi_mass":
                 ax.set_title("data: Ds SR events removed (MC not)", fontsize=12)
-        fig.suptitle(f"ttbar CR {charge}, {cat}: pass_mu & b-tag & phi window "
-                     f"(MC: BR rw, DY jet-bin SF, no b-tag SF)", fontsize=16, y=0.975)
-        out = common.fig_path("sf", f"cr_ttbar_{charge}_{cat}.png", key=MODEL_KEY)
+        cut_txt = "" if EFF is None else f" & stage-1 eff {round(100 * EFF)}%"
+        fig.suptitle(f"ttbar CR {charge}, {cat}: pass_mu & b-tag & phi window{cut_txt} "
+                     f"(MC: BR rw, DY jet-bin SF, b-tag SF)", fontsize=16, y=0.975)
+        out = common.fig_path("sf", f"cr_ttbar_{charge}_{cat}{TAG}.png", key=MODEL_KEY)
         plt.savefig(out, dpi=90, bbox_inches="tight")
         plt.close(fig)
         print(f"   Saved {out}")

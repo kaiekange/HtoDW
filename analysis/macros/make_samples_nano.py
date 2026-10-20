@@ -98,8 +98,8 @@ APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/app
 #          and keeps it disjoint from the ttbar mumu category; ~pass_muveto keeps it disjoint
 #          from the SR. MC weight as in the SR (w_btag valid at n_bjet == 0).
 #   ttcr:  n_bjet_nom >= 1 & phi window; categories (1l / mumu / emu) are cut downstream from
-#          the lepton columns. MC weight WITHOUT w_btag (NaN by design at n_bjet > 0; first
-#          pass, user 2026-10-19) -> meta btag_sf_applied = False.
+#          the lepton columns. MC weight x w_btag_any_nom (friend column valid at n_bjet >= 1;
+#          the first pass 2026-10-19 had no b-tag SF, meta btag_sf_applied was False).
 # Extra muons: corrected pt (MuonScaRe, as prompt_muon_veto) + ID x loose-iso SF (w_xmu,
 # multiplied into the zmumu weight; stored for ttcr). Extra electrons: raw, no SF yet.
 REGIONS = ("sr", "zmumu", "ttcr")
@@ -428,6 +428,8 @@ def worker(list_path, out_path, correct=False, region="sr"):
         blind = False
         friend_cols = (FRIEND_JOIN_COLS + FRIEND_WEIGHT_COLS + FRIEND_CUT_COLS
                        + list(FRIEND_CORR_KIN))
+        if region == "ttcr":   # b-tag SF valid at n_bjet >= 1 (friend column added 2026-10-20)
+            friend_cols = friend_cols + ["w_btag_any_nom"]
         if sample in SIGNAL_CHANNEL:
             tags["channel"] = SIGNAL_CHANNEL[sample]
         elif sample in TT_DECAY:
@@ -499,8 +501,8 @@ def worker(list_path, out_path, correct=False, region="sr"):
             gw = (np.ones(n_sel, dtype=np.float64) if sample in SIGNAL_CHANNEL
                   else nano["genWeight"][sel].astype(np.float64))
             w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel]
-            if region != "ttcr":   # w_btag is NaN by design at n_bjet > 0 (see REGIONS)
-                w = w * fr["w_btag_nom"][sel]
+            # w_btag_nom is NaN by design at n_bjet > 0; ttcr uses the any-n_bjet column
+            w = w * fr["w_btag_any_nom" if region == "ttcr" else "w_btag_nom"][sel]
             if region == "zmumu":  # every zmumu row has exactly one extra muon
                 w = w * lep["w_xmu"][sel]
             if not np.all(np.isfinite(w)):
@@ -531,7 +533,7 @@ def worker(list_path, out_path, correct=False, region="sr"):
                 branches_sha1=None, root_written=False)
     if region != "sr":   # SR .json stays exactly as before
         meta.update(region=region, phi_win=None if region == "zmumu" else PHI_WIN,
-                    btag_sf_applied=region != "ttcr", extra_muon_corrected=True,
+                    btag_sf_applied=True, extra_muon_corrected=True,
                     extra_muon_sf_in_weight=region == "zmumu", extra_electron_sf_applied=False)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     if n_sel_total:

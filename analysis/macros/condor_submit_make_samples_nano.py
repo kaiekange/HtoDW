@@ -16,7 +16,8 @@ merge still requires every piece of the group.
 
 --region (a control region, make_samples_nano.REGIONS): REUSES the SR chunk lists (never
 rewrites them, so the SR skim is untouched), deletes only that region's old chunks under
-Samples/CR/<region>/skim/, and passes --region to every worker. Needs existing friends.
+Samples/CR/<region>/skim/, and passes --region to every worker. Needs existing friends. --correct is allowed with
+--region=ttcr only (rewrites the friends first, e.g. after a new friend column; MC only).
 
 Then, once all jobs are done:  make_samples_nano.py merge <group> [--region=R]  (inside cmssw-el9).
 One cluster per group. Chunk lists under condor_logs/make_samples_nano/lists/, scheduler
@@ -41,8 +42,8 @@ dry_run = "--dry-run" in flags
 only_missing = "--only-missing" in flags
 correct = "--correct" in flags
 region = flags.get("--region") or "sr"
-if region not in msn.REGIONS or (region != "sr" and correct):
-    sys.exit(f"--region must be one of {msn.REGIONS}; --correct only with the SR skim")
+if region not in msn.REGIONS or (correct and region not in ("sr", "ttcr")):
+    sys.exit(f"--region must be one of {msn.REGIONS}; --correct only with the SR skim or ttcr")
 pieces = msn.GROUPS[group]
 if "--pieces" in flags:
     wanted = [tuple(x.split("/")) for x in (flags["--pieces"] or "").split(",") if x]

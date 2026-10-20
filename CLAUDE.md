@@ -114,7 +114,9 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 
 ## Last Session (2026-10-19 ~ 10-20)
 
-### Ds/D/DY scale factor 三步走（plan `~/.claude/plans/cr-z-mumu-w-jets-ttbar-floating-dragon.md`），Step 1-2 完成，Step 3 skim 已产
+**TODO（用户 10-20 加）**：尝试 cut `Ds_ipsig` 去除 τ 3-prong 本底（τ 来自 Z/W 的 prompt 顶点、3-prong 自身有位移；先查信号和 τ 的 Ds_ipsig 分布、信号损失和 Ds_mass sculpting）。
+
+### Ds/D/DY scale factor 三步走（plan `~/.claude/plans/cr-z-mumu-w-jets-ttbar-floating-dragon.md`），Step 1-2 完成，Step 3 的 ttcr 补了 b-tag SF、merge、出图，r12/r34 测法待定
 
 **Step 1 BR 修正**：`common.BR_FACTORS`/`br_reweight()`，按 (cand_gen_mode, |hf|) 不看质量，带 π⁰ 道跟同类（用户定）。PDG 2024/Pythia 306：
 mode1 Ds→φπ 1.027、mode2 Ds KKπ incl 0.908、mode3 D⁺→φπ 0.785、mode4 D⁺ KKπ incl 0.895；D⁰ 与其他 mode =1。只动 D± 窗（ε90 data/MC 0.68→0.75）。
@@ -128,14 +130,51 @@ mode1 Ds→φπ 1.027、mode2 Ds KKπ incl 0.908、mode3 D⁺→φπ 0.785、mod
 **`_corr` 修正链（Type-1 + Summer22 V4 + MC JER 传播）让 MC MET 变硬** → 很可能是 cut 后 MC 的 DNN 通过率偏高（SR cut 后 MC 仍高 25-35%）的原因；用户自己去查 MET。
 DY（cut 后）按 μ 来源：μ←τ 占 85-99%（`draw_dy_tau_fraction.py`）；Pythia τ→3π BR 与 PDG 一致（9.26% vs 9.02%）。
 
-**Step 3 tt̄ CR**：`--region=ttcr`（pass_mu & ~jvm & n_bjet≥1 & φ20，MC 无 b-tag SF，新列 `cand_hf_from_b`：−1/0 prompt/1 来自 b），
-488 chunk（OS+SS 全部样本）condor 全部 return 0，**还没验收/merge**。`draw_cr_ttbar.py` 已写（1l_b1/1l_b2/1l_b2j4/mumu/emu × OS/SS，OS Ds SR 默认挖掉，`--unblind` 解盲须用户同意）。
-**下一步**：验收 → `make_samples_nano.py merge <组> --region=ttcr`（OS 5 组 + SS 4 组）→ 先给用户看信号在各类别 SR 的产额/S/B、纯度、峰事例数、prompt/b 比例 → 再定 r12/r34 测法；
-SS 打分/ε cut 要 `predict.py --region ttcr`（还没做）。
+**Step 3 tt̄ CR**：`--region=ttcr`（pass_mu & ~jvm & n_bjet≥1 & φ20，新列 `cand_hf_from_b`：−1/0 prompt/1 来自 b）。
+**b-tag SF（1020 补）**：原先 MC 无 SF（`w_btag_*` 在 n_bjet>0 时按设计是 NaN）。`apply_corrections.py` 加了 `w_btag_any_{nom,up,down}`
+（方法 1a、单 WP：被 tag 的 jet 乘 SF，没 tag 的 (1−SF·ε)/(1−ε)；n_bjet==0 时逐位等于旧 `w_btag_*`，SR 不受影响），ttcr skim 权重改用 `w_btag_any_nom`，meta `btag_sf_applied=True`。
+不需要重跑 custom nano（输入都在现有 nano 里）。`condor_submit_make_samples_nano.py` 现允许 `--region=ttcr --correct`（一个 job 先重写 friend 再 skim）。
+重跑 MC 410 chunk（data 78 个不变）；验收：410 个 chunk 的 log `Wrote` 文件集 == 列表对应 friend（19602 个）、condor 读全部 friend 新列有限且 n_bjet==0 时等于旧权重，0 个有问题。
+空 chunk（选中 0 行）按设计只写 json 不写 root（DY_SS 2022EE 0J chunk16），不是失败。**9 组都已 merge**（`Samples/CR/ttcr/`）：TT 3.76M、TT_SS 3.35M、DY 82.6k、DY_SS 81.8k、W 21.1k、W_SS 18.7k、Signal 7.4k、Data_OS 265k、Data_SS 248k 行。
+**`draw_cr_ttbar.py` 已跑（condor，约 4 分钟，`--unblind`）**：图在 `ssdata_phi20_f55/figures/sf/cr_ttbar_{OS,SS}_*.png`，新增 opt-in 类别 `mumu_b2`/`emu_b2`（n_b==2，`--cats=` 指定）。
+- **信号污染可忽略**（信号在各类别 SR 的 MC 产额 ≤1e-3）；CR(n_b≥1)与 SR(n_b==0) 事例集不交，解盲不泄露 SR。OS Ds SR 的挖掉是我自己设的闸，用户指出后撤了（脚本默认仍需 `--unblind`）。
+- **data/MC（OS 总数）**：1l_b1 3.64、1l_b2 2.07、1l_b2j4 1.42、mumu 1.82、emu 0.875；SS 相近。1l 的偏离随 N_jet/m_T/MET 变化（低端~2，高端~1），MC 里没有 single top 和 QCD（未验证是不是原因）。
+  **emu 偏低 12%（N_jet 高处到 0.6），其余偏高，方向不一致，一个全局 tt̄ 因子修不了。** 我曾说「emu 说明 tt̄ 归一化在 12% 内」，用户指出 CR 里 data/MC 都差很多，已收回。
+- **mumu 比 emu 多出的东西**：同样 87-99% tt̄ 2L2Nu，data/MC 1.82 对 0.875；集中在低 M(μμ)（12-75 GeV 约 1.4-1.5，>100 GeV 约 1，读图未算）；DY MC 的 MLL>50，覆盖不到 <50。OS≈SS → 无电荷关联，不像 charm。
+- **MC 真 Ds 在 SR、prompt/b 比例**：1l_b2 214 个（prompt 81%）；mumu/emu 74/113 个（b 95%）；1l_b1 1792（b 67%）。SS 1l_b2 b 占 68%（OS 19%）。D± ±30 MeV：1l_b2 72 个。OS 1l_b2 data 能看到 Ds 峰（1.95-1.99 两个 bin 约 940-950 对邻 bin 790-850，目测，未拟合）。
+- **n_b==2 双轻子样本太小**：data 552/440，MC 真 Ds 在 SR 只有 2.7/4.2 个，**不能用来测 r12/r34**；mumu/emu data/MC 仍 1.52/0.84。n_b==2 只占 mumu 的 12%：b-tag 效率单独解释不了（约 0.48），
+  推断是 `n_bjet` 排除了 Ds 候选 dR<0.4 内的 jet，Ds 所在 b jet 被吃掉（**未验证**；验证要不排除 Ds 邻近 jet 重算，要重跑 friend）。
+**10-20 晚：tt̄ CR 的 ε90 + Z→μμ CR 里的 Ds 峰 + cut 后 data/MC 偏低的特征排查**
+- `ssdata_phi20` 给 9 个 ttcr 样本打分（`Prediction/ttcr_*`，行数=输入）。`draw_cr_ttbar.py` 加 `--eff=`（读 Prediction、`score_dsmu>stage1_threshold`、图名 `_eff90`），
+  `mumu_b2`/`emu_b2` 改成 n_b≥2（opt-in），修了我引入的默认类别漏掉 `1l_b2` 的 bug。ε90 双轻子每类只剩 5-9 个 data（data/MC 0.88-1.05），mumu no cut 的多出被 DNN 去掉；**用户定：ε90 的 tt̄ CR 不考虑**。
+- **用户要纯的 CR**：讨论了 emu（最纯但真 Ds 少且 95% 来自 b）、1l_b2 加 m_T/MET 下限（prompt 为主，未验证）、**DY Z 窗**。
+- **Z→μμ CR 的 Ds_mass**（`draw_cr_zmumu.py` 新图 `_dsmass`，MC × BR rw × DY jet-bin SF，按 truth 堆叠；no cut 20 MeV/φ 2 MeV，`--eff` 时 40 MeV/φ 4 MeV）：
+  no cut 全部 data/MC 1.001（部分是构造的），Ds SR 窗 / D± 窗都 0.975；MC 真 Ds 676（窗内 6%）、真 D± 200（2%，测不了 r34）；目测 data Ds 峰比 MC 小，粗估 r12 0.6-0.9。
+  **ε90**：data 398 / MC 630（未乘 DY 因子时的比值 0.63；通过率比 0.76），Ds SR 里真 Ds 占 56%，data 峰清楚；按 sideband 0.63 缩放粗估 **r12≈1.0±0.15、r34≈0.9±0.3**（未拟合，与 no cut 粗估有张力）。data 峰似乎偏低质量一侧（统计弱）。
+- **phi_mass 轻度 sculpting**：非 Ds 候选 φ 中心/两侧密度比 MC 1.31→1.72、data 1.42→2.04（cut 前→ε90），data 与 MC 同幅 → DNN 偏好真 φ（特征里没有 phi_mass，可能经 K 的 IP 间接）；phi 不是拟合变量。Ds_mass 上的 sculpting 没量。
+- **τ misID 质量**（`_tau3pi` 图：M(ππ) K⁻→π、M(πππ)、M(K⁻π)、M(K⁺π)）：Z→μμ CR 里 no cut data/MC≈1、无 ρ/a1 结构（无 τ），ε90 平的 0.6-0.8 → SR 里 ρ/a1 的 data/MC 差异若存在，来自 τ 本身。
+- **mode 5 = D⁺→K⁻π⁺π⁺**：Pythia 306 inclusive 9.97%（直接 9.20% + K̄₀*(1430)π⁺ 1.15%×0.667，无 K̄*(892)π⁺ 道），PDG（pdgLive，2025 RPP）9.38±0.16% → 0.941；**用户：差别不大，不加**。mode 5 在 SR W+jets 89% 是 D⁺、11% D⁰。
+  → MC 里 D⁺ 偏多（r34≈0.5、mode 5 ×2）不是 BR 问题，更可能是 D⁺ 产生/碎裂（推断）。
+- **cut 后 data/MC 偏低不是 MET**：Z 窗 ε90 通过率 data/MC 0.763，按 met_pt_corr / met_pt / W_tmass_corr 分 bin 每个 bin 都 0.7-0.85，MC 重加权到 data 的 MET 只到 0.787（我之前说「头号嫌疑 MET 修正链」被否定）。
+- **55 特征一维重加权扫描**（no cut 下把 MC 重加权到 data，看 ε90 通过率比 0.763 能补多少）：第一 **`mu_IsoR04_sumNeutralHadronEt`**（+0.094 → 0.857，no cut 形状差 0.195，远超其他）；其后 Ds_pt +0.04、Ds NH iso +0.02~0.03、MET +0.02。
+- **全部 55 个特征 data vs MC + SR 信号形状**（新 `draw_zmumu_feature.py --all`，图在 `ssdata_phi20_f55/figures/sf/zmumu_features/<var>.png`，no cut + ε90）：
+  - `mu_IsoR04_sumNeutralHadronEt`：data 为 0 的比例 29.9% vs MC 43.6%，均值 2.26 vs 1.33；**SR 信号形状和 MC DY 一样** → μ 周围中性强子的 MC 建模问题，**信号 MC 也受影响**（ε_sig 的 data/MC 系统误差）。
+  - **位移 significance 的尾巴 MC 偏长**：ε90 后 Ds_FDsig 均值 data 7.5 vs MC 9.9、Kp/Km_ipsig 3.7 vs 4.6；no cut 时 FDsig>20 data/MC 0.8-0.9，ε90 FDsig>5 只有 0.5-0.8。
+    一维扫描排它低是因为只在 no cut 重加权、对尾部差别不敏感。可能是 MC 的误差估计偏小（推断）。
+- **zmumu Prediction 过时**：10-19 12:20 打分早于 17:04 的 zmumu skim 重跑（第二个 μ 加 MuonScaRe+SF 乘进 weight），Prediction 里拷贝的 weight 缺 SF、MC 高 4%。
+  10-20 重新打分（行数与旧版相同，只有权重变）。**受影响要重做**：zmumu 的三张 ε90 图、MET 分 bin、一维扫描（数字是旧权重，结论大概率不变）。分数本身不受影响（特征不含第二个 μ），本可以按行拼 score 不重新打分。
+
+**下一步（用户未定）**：① 用新权重重做 ε90 zmumu 图 + MET/特征扫描（扫描加 ε90 附近的版本，抓尾部）；② Z 窗模板拟合 r12（no cut 与 ε90 共用 r12，combinatorial 归一化各 cut 浮动）；
+③ μ NH iso / 位移尾巴的来源与处理（SR sideband 里是否同样失配）；④ 1l_b2 扫 m_T/MET 下限；⑤ Z→μμ SS（241 skim chunk，未交，等用户）；⑥ electron SF/能量修正（emu 用，用户：先不修）；⑦ TODO：Ds_ipsig cut 去 τ。
+旧的过时图 `figures/sf/zmumu_feature_mu_IsoR04_sumNeutralHadronEt.png` 未删（等用户）。
 
 ### 我犯的错
 1. 两次 `pkill -f` 杀了自己的 shell（以后用具体 PID）。2. 提交命令用 `| tail` 截输出（违反 feedback）。
 3. 对「分 N_jet 类拟合简并」说得过头（只分了 0/1/2/≥3 四类）。4. 窗口表按 bin 中心划窗（见上）。5. 画图一度用 log y 轴、多余的 data−ΣMC 栏，被纠正。
+6. **验收脚本在本地逐个读 19602 个 friend（30+ 分钟）**，用户：跑得久的都用 condor（已写进 memory）；而且那个检查多余（log 里 `Wrote` 行数核对就够）。
+7. 画图（约 4 分钟）又不加判断直接交 condor，用户问「画图需要吗」——轻量画图先本地、超过几分钟再 condor。8. 自设的 OS Ds SR blind 在 CR（n_b≥1）里没必要。
+9. 没发现 zmumu Prediction 早于 skim 重跑，拿过时权重画了半天 ε90 图和扫描。10. 重新打分时照抄旧样本列表，多给 zmumu 信号打分（用户：信号只用 SR）。
+11. 把 mode 5 只当 misID 用 r5 回答，没想到它是 D⁺→K⁻π⁺π⁺ 衰变道可做 BR 修正。12. 没测就把 MET 说成头号嫌疑。13. 用户要改 τ3π 图的 bin，我改成了 dsmass 图。
 
 ## 上一 Session (2026-10-16 下午 ~ 10-19)
 
