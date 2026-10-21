@@ -117,6 +117,26 @@ if bad:
 MC_SR_EXCL = "--mc-sr-excl" in sys.argv
 BR_RW = "--br-rw" in sys.argv
 DY_SF = "--dy-sf" in sys.argv
+# --ss (2026-10-21): same-sign files (Data/WtoLNu2Jets/TT/DY _SS_merged), not blinded, and ODD
+# events only in every sample -- the ssdata models trained on the even half of SS data.
+SS = "--ss" in sys.argv
+# --mt=lo,hi (2026-10-21): extra m_T window [lo, hi) on every sample (W_tmass_corr: corrected
+# muon + nano MET since the no-JME friends); figure names get _mt<lo>to<hi>.
+_mt = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--mt=")), None)
+MT = tuple(float(x) for x in _mt.split(",")) if _mt else None
+# --met=lo,hi: extra window [lo, hi) on met_pt (nano MET), names get _met<lo>to<hi>.
+_met = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--met=")), None)
+MET = tuple(float(x) for x in _met.split(",")) if _met else None
+
+
+def _win_tag(name, w):   # file-name piece, open upper edge written as Inf
+    return f"_{name}{w[0]:g}to" + ("Inf" if w[1] >= 1e8 else f"{w[1]:g}")
+
+
+def _win_txt(lab, w):   # title piece
+    return f" -- {lab} >= {w[0]:g} GeV" if w[1] >= 1e8 else f" -- {w[0]:g} <= {lab} < {w[1]:g} GeV"
+if SS and MC_SR_EXCL:
+    sys.exit("--mc-sr-excl matches the blinded OS data; SS data is not blinded")
 BR_COLS = ["cand_gen_mode", "cand_gen_common_hf_pdgId"] if BR_RW else []
 if DY_SF and "DY" not in ADD:
     sys.exit("--dy-sf needs --add DY")
@@ -181,7 +201,7 @@ def phi_clip(x):
 
 
 VARS = [   # (branch, xlabel, edges(eff), blind half-width or None, ref line or None)
-    ("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]", ds_edges, SR_HALF, None),
+    ("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]", ds_edges, None if SS else SR_HALF, None),
     ("phi_mass", r"$M(K^+K^-)$ [GeV]", phi_edges, None, M_PHI),
 ]
 
@@ -198,12 +218,18 @@ def ossel(a):
     m = common.selection_mask(a) & (a["score_dsmu"] > -1)
     if PHI_WIN is not None:
         m &= np.abs(a["phi_mass"] - M_PHI) < PHI_WIN
+    if SS:
+        m &= (a["event"] % 2) == 1
+    if MT:
+        m &= (a["W_tmass_corr"] >= MT[0]) & (a["W_tmass_corr"] < MT[1])
+    if MET:
+        m &= (a["met_pt"] >= MET[0]) & (a["met_pt"] < MET[1])
     return m
 
 
 def rd(name, extra):
     return uproot.open(f"{PRED}/{name}.root")["Events"].arrays(
-        ["Ds_mass", "phi_mass", "score_dsmu"] + SEL + extra, library="np")
+        ["Ds_mass", "phi_mass", "score_dsmu", "event", "W_tmass_corr", "met_pt"] + SEL + extra, library="np")
 
 
 # ---- stage-1 thresholds: same recipe as stage-2's training population ----
@@ -215,13 +241,13 @@ for eff, _lbl in CUTS:
     THR[eff] = thr
 
 # ---- W+jets GenTag: base selection (OS + b-veto + score>-1), full mass range ----
-w = rd("WtoLNu2Jets_merged", list(dict.fromkeys(["cand_gen_mode", "weight"] + BR_COLS)))
+w = rd("WtoLNu2Jets_SS_merged" if SS else "WtoLNu2Jets_merged", list(dict.fromkeys(["cand_gen_mode", "weight"] + BR_COLS)))
 if BR_RW:
     w["weight"] = w["weight"] * common.br_reweight(w)
 wk = ossel(w)
 if MC_SR_EXCL:
     wk &= np.abs(w["Ds_mass"] - M_DS) >= SR_HALF
-print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after OS+b-veto+score>-1"
+print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after b-veto+score>-1" + ("+odd events" if SS else "")
       + ("+Ds-SR-excluded" if MC_SR_EXCL else ""))
 w_ds, w_phi = w["Ds_mass"][wk], phi_clip(w["phi_mass"][wk])
 w_mode, w_score, w_w = w["cand_gen_mode"][wk], w["score_dsmu"][wk], w["weight"][wk].astype(float)
@@ -250,6 +276,8 @@ assert covered.all(), (
 EXTRA = {}
 for key in ADD:
     fname, _lab, _col = EXTRA_DEF[key]
+    if SS:
+        fname = fname.replace("_merged", "_SS_merged")
     x = rd(fname, ["weight"] + BR_COLS + (["jet_bin"] if DY_SF and key == "DY" else []))
     if BR_RW:
         x["weight"] = x["weight"] * common.br_reweight(x)
@@ -258,16 +286,17 @@ for key in ADD:
     xk = ossel(x)
     if MC_SR_EXCL:
         xk &= np.abs(x["Ds_mass"] - M_DS) >= SR_HALF
-    print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after OS+b-veto+score>-1")
+    print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after b-veto+score>-1" + ("+odd events" if SS else ""))
     EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=phi_clip(x["phi_mass"][xk]),
                       score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float))
     EXTRA[key]["not_sr"] = np.abs(EXTRA[key]["Ds_mass"] - M_DS) >= SR_HALF
 
 # ---- OS data: base selection, Ds-mass SR excluded ONCE for both panels (point 2) ----
-d = rd("Data_OS_merged", [])
-dk = ossel(d) & (np.abs(d["Ds_mass"] - M_DS) >= SR_HALF)
-print(f"OS data: {len(d['Ds_mass']):,} rows -> {dk.sum():,} after OS+b-veto+score>-1"
-      f"+Ds-SR-excluded")
+d = rd("Data_SS_merged" if SS else "Data_OS_merged", [])
+dk = ossel(d) & (SS | (np.abs(d["Ds_mass"] - M_DS) >= SR_HALF))
+common.check_charge_config(d, SS, "data")   # exits if the file is not the charge asked for
+print(f"{'SS' if SS else 'OS'} data: {len(d['Ds_mass']):,} rows -> {dk.sum():,} after b-veto+score>-1"
+      + ("+odd events" if SS else "+Ds-SR-excluded"))
 d_ds, d_phi, d_score = d["Ds_mass"][dk], phi_clip(d["phi_mass"][dk]), d["score_dsmu"][dk]
 
 for branch, vals in (("Ds_mass", d_ds), ("phi_mass", d_phi)):
@@ -344,7 +373,7 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
 
         # ---- ratio denominator: SR-excluded W+jets total, phi_mass panel only
         # (point 3) -- Ds_mass panel reuses `tot`, read only at vis bins ----
-        if blind_half is None:
+        if blind_half is None and not SS:   # SS data is not SR-excluded: plain total
             m_ratio = cutmask & w_not_sr
             tot_ratio, _ = hist(w_vals[m_ratio], w_w[m_ratio], bins)
             for key, X in EXTRA.items():
@@ -362,7 +391,7 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
         ax.errorbar(bc, dh_m, yerr=(np.sqrt(np.where(vis, dh, 0)) if blind_half
                                     else np.sqrt(dh)) * scale,
                     fmt="o", ms=4, color="black", elinewidth=1.2,
-                    label=f"OS data (Ds-SR excl.)  N={dh.sum():,.0f}")
+                    label=f"{'SS data (odd events)' if SS else 'OS data (Ds-SR excl.)'}  N={dh.sum():,.0f}")
 
         if blind_half:
             ax.axvspan(M_DS - blind_half, M_DS + blind_half, color="grey", alpha=0.15, zorder=0)
@@ -400,7 +429,7 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
 
         print(f"{branch} col={lbl!r}: W+jets N={tot_wj.sum():,.1f} (n={cutmask.sum():,})  "
               + "".join(f"{k} N={h.sum():,.1f}  " for k, h in h_extra.items())
-              + f"OS data N={dh.sum():,.0f} (n={dcutmask.sum():,})")
+              + f"{'SS' if SS else 'OS'} data N={dh.sum():,.0f} (n={dcutmask.sum():,})")
         if branch == "Ds_mass" and EXTRA:
             # Counted on the unbinned Ds_mass, NOT from the histograms: the drawn bin width
             # changes with the cut and its edges do not fall on 1.830 / 1.910 (until
@@ -426,8 +455,13 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
                       f"  data/allMC {rr:.3f}+-{rr*np.hypot(1/np.sqrt(max(nd,1)), ew/nall):.3f}")
 
     var_tex = r"$M(K^+K^-\pi^\pm)$" if branch == "Ds_mass" else r"$M(K^+K^-)$"
-    fig.suptitle(f"Stage-1 (ssdata DNN) score cut scan -- {var_tex}"
-                 + ("".join(f" + {k}" for k in EXTRA) and " -- W+jets" + "".join(f" + {k}" for k in EXTRA)),
+    fig.suptitle(f"Stage-1 ({MODEL_KEY} DNN) score cut scan -- {var_tex}"
+                 + " -- MC: skim weight" + (" x BR rw" if BR_RW else "")
+                 + (" x DY jet-bin SF" if DY_SF else "")
+                 + ("".join(f" + {k}" for k in EXTRA) and " -- W+jets" + "".join(f" + {k}" for k in EXTRA))
+                 + (" -- SS, odd events" if SS else "")
+                 + (_win_txt("m$_T$", MT) if MT else "")
+                 + (_win_txt(r"$p_T^{miss}$", MET) if MET else ""),
                  fontsize=15)
 
     out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut"
@@ -435,6 +469,8 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
                           + ("_mcsrexcl" if MC_SR_EXCL else "")
                           + ("_brrw" if BR_RW else "")
                           + ("_dysf" if DY_SF else "")
+                          + ("_ss" if SS else "")
+                          + (_win_tag("mt", MT) if MT else "") + (_win_tag("met", MET) if MET else "")
                           + ".png", key=MODEL_KEY)
     plt.savefig(out, dpi=120, bbox_inches="tight")
     plt.close(fig)

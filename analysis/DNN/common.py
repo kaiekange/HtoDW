@@ -575,6 +575,64 @@ FEATURE_SETS = {
         derived=DERIVED),
 }
 
+# f45 (2026-10-21, user decision): f55 without the JME correction chain and without every
+# neutral-hadron isolation input. Motivation: in the Z->mumu CR (no cut) the JME-corrected
+# MET is harder in MC than in data while the raw MET agrees, and mu_IsoR04_sumNeutralHadronEt
+# is the worst data/MC shape mismatch (max|dCDF| 0.196, data harder; signal MC shaped like DY MC).
+#   - JME-free: met_pt / met_phi / num_jets_pt30 / jet_leadpt are the nano values (MiniAOD
+#     slimmedMETsPuppi and updatedJetsPuppiWithUserData, i.e. the production-era JEC), not
+#     the apply_corrections.py _corr columns. The muon correction (MuonScaRe) is kept.
+#   - W_tmass_rawmet: corrected muon + raw MET, same formula as apply_corrections.py's
+#     W_tmass. Not the nano W_tmass, which uses the uncorrected muon pt.
+#   - dphi_rawmet_*: as dphi_met_* but with the raw met_phi. NEW NAMES on purpose: the model
+#     guard checks feature names only, so redefining dphi_met_* in place would let the f55
+#     models silently score with different inputs.
+#   - Dropped (10): met_sumEt; the three sumNeutralHadronEt; mu/Ds PFIso and RelIso (all five
+#     contain the neutral-hadron sum).
+# Cuts and weights (b-veto n_bjet_corr, jet veto map, w_btag at corrected jet pt) are NOT
+# changed -- this set only changes the DNN inputs.
+F45_DROP = {
+    "met_sumEt",
+    "mu_IsoR04_sumNeutralHadronEt", "Ds_IsoR03_sumNeutralHadronEt", "Ds_IsoR04_sumNeutralHadronEt",
+    "mu_IsoR04_PFIso", "mu_IsoR04_RelIso",
+    "Ds_IsoR03_PFIso", "Ds_IsoR03_RelIso", "Ds_IsoR04_PFIso", "Ds_IsoR04_RelIso",
+}
+F45_RENAME = {
+    "met_pt_corr": "met_pt",
+    "num_jets_pt30_corr": "num_jets_pt30",
+    "jet_leadpt_corr": "jet_leadpt",
+    "W_tmass_corr": "W_tmass_rawmet",
+    "dphi_met_mu": "dphi_rawmet_mu",
+    "dphi_met_Ds": "dphi_rawmet_Ds",
+    "dphi_met_Dsmu": "dphi_rawmet_Dsmu",
+}
+FEATURE_NAMES_F45 = [F45_RENAME.get(f, f) for f in FEATURE_NAMES if f not in F45_DROP]
+assert len(FEATURE_NAMES_F45) == 45, len(FEATURE_NAMES_F45)
+
+
+def _mt(pt1, phi1, pt2, phi2):
+    """Transverse mass sqrt(2 pt1 pt2 (1 - cos dphi))."""
+    pt1 = np.asarray(pt1, dtype=np.float64)
+    pt2 = np.asarray(pt2, dtype=np.float64)
+    return np.sqrt(np.maximum(2.0 * pt1 * pt2 * (1.0 - np.cos(_dphi(phi1, phi2))), 0.0))
+
+
+DERIVED_F45 = {
+    "W_tmass_rawmet":   (lambda a: _mt(a["mu_pt_corr"], a["mu_phi"], a["met_pt"], a["met_phi"]),
+                         ("mu_pt_corr", "mu_phi", "met_pt", "met_phi")),
+    "dphi_rawmet_mu":   (lambda a: _dphi(a["met_phi"], a["mu_phi"]), ("met_phi", "mu_phi")),
+    "dphi_rawmet_Ds":   (lambda a: _dphi(a["met_phi"], a["Ds_phi"]), ("met_phi", "Ds_phi")),
+    "dphi_rawmet_Dsmu": (lambda a: _dphi(a["met_phi"], a["Dsmu_phi_corr"]),
+                         ("met_phi", "Dsmu_phi_corr")),
+}
+FEATURE_SETS["f45"] = FeatureSpec(
+    FEATURE_NAMES_F45,
+    log=[f for f in LOG_FEATURES if f in FEATURE_NAMES_F45],
+    # raw jet_leadpt: -777 (no tight jet) is its only negative value -> zero pt, as f55
+    sentinel={"Ds_nearestjet_bscore": -0.1, "Ds_nearestjet_dR": 5.0, "jet_leadpt": 0.0},
+    dira="dira",
+    derived=DERIVED_F45)
+
 # Back-compat shims: the stage-1 macros import these names directly and must keep
 # working untouched. They are the f41 spec's attributes, by identity for `names`.
 STAGE1 = FEATURE_SETS["f55"]
@@ -857,6 +915,17 @@ for _base in ("ssdata", "osdata"):
         out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f55",
     )
 
+# ssdata with the f45 feature set (no JME, no neutral-hadron isolation), 2026-10-21.
+# The phi window is the analysis default from now on (user 2026-10-21: "only phi20"), so the
+# key and directory no longer carry a _phi20 tag; phi_win is kept explicit in the config.
+TRAININGS["ssdata_f45"] = dict(
+    TRAININGS["ssdata_phi20"],
+    feature_set="f45",
+    label=f"{TRAININGS['ssdata']['label']}, f45 (no JME, no NH iso)",
+    out_name="dsw_dsstw_ssdata_f45",
+    out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f45",
+)
+
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
 
@@ -1129,7 +1198,10 @@ BR_FACTORS = {
 # SF (w_xmu) since 2026-10-19 (was 0.773/0.726/1.106 without them). Stat errors
 # 0.007 / 0.015 / 0.026; chi2/ndf 135/13, the residual being the lowest pT(mumu) bins.
 # MET and m_T stay mismodelled after it.
-DY_JETBIN_SF = {0: 0.801, 1: 0.763, 2: 1.151}
+# 2026-10-21 refit on the no-JME friends/skims (b-veto, jet veto map, w_btag on nano jet pt)
+# with MC x br_reweight: 0.8022 / 0.7649 / 1.1550 (+-0.0071/0.0150/0.0265, chi2/ndf 134.9/13;
+# was 0.801/0.763/1.151 -- unchanged within 0.004).
+DY_JETBIN_SF = {0: 0.802, 1: 0.765, 2: 1.155}
 
 
 def dy_jetbin_sf(a):

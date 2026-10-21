@@ -8,7 +8,7 @@ window keeps ~400 data events, too few -- user 2026-10-19).
 Why pT(mumu): the three DY samples share one M(mumu) shape (the Z peak), so M(mumu) cannot
 tell them apart; their pT(mumu) spectra differ (pT<5: 96% 0J, pT>130: ~80% 2J). One fit over
 the whole pT(mumu) range, no categories (user 2026-10-19). ttbar and W+jets are fixed MC
-(<0.6% of the window). Chi2 with data Poisson + MC-template stat errors, least squares;
+(<0.6% of the window). MC x common.br_reweight (2026-10-21). Chi2 with data Poisson + MC-template stat errors, least squares;
 the single-factor fit is printed for comparison.
 
 Panels: pT(mumu) pre-fit and post-fit (fitted), then post-fit M(mumu), pT(mu1), pT(mu2),
@@ -52,9 +52,10 @@ DY_COL = {0: "#9ecae1", 1: "#4a90c2", 2: "#1f4e79"}
 OTHER_COL = "#7f5fbf"
 
 
-def read(g, extra=()):
+def read(g, extra=(), mc=True):
+    br = ["cand_gen_mode", "cand_gen_common_hf_pdgId"] if mc else []
     with uproot.open(f"{CR_DIR}/{g}.root")["Events"] as t:
-        a = t.arrays(COLS + list(extra), library="np")
+        a = t.arrays(COLS + list(extra) + br, library="np")
     z = ((a["m_mumu"] > ZLO) & (a["m_mumu"] < ZHI)
          & (np.abs(a["phi_mass"] - M_PHI) < 0.020))
     a = {k: v[z] for k, v in a.items()}
@@ -62,10 +63,12 @@ def read(g, extra=()):
     py = a["mu_pt_corr"] * np.sin(a["mu_phi"]) + a["xmu_pt"] * np.sin(a["xmu_phi"])
     a["ptll"] = np.hypot(px, py)
     a["weight"] = a["weight"].astype(float)
+    if mc:   # BR reweighting (2026-10-21): the same MC weight chain as every plot that uses the factors
+        a["weight"] = a["weight"] * common.br_reweight(a)
     return a
 
 
-data = read("Data_OS_merged")
+data = read("Data_OS_merged", mc=False)
 data["weight"] = np.ones(len(data["m_mumu"]))
 dy = read("DY_merged", ["jet_bin"])
 other = [read("TT_merged"), read("WtoLNu2Jets_merged")]
@@ -158,7 +161,7 @@ for i, (title, (var, xlab, bins, per_gev), k) in enumerate(PANELS):
         hep.cms.label(ax=ax, data=True, text="Preliminary", lumi=f"{LUMI_FB:.1f}",
                       com=13.6, fontsize=14)
 
-sel_txt = r"$|M_{KK}-M_\phi|$<20 MeV, "
+sel_txt = r"$|M_{KK}-M_\phi|$<20 MeV, MC x BR rw, "
 fig.suptitle(rf"Z$\to\mu\mu$ CR, 76<M($\mu\mu$)<106, {sel_txt}no DNN cut: DY 0J/1J/2J fitted on "
              rf"$p_T(\mu\mu)$ -- k$_{{0J}}$={K[0]:.3f}$\pm${EK[0]:.3f}, "
              rf"k$_{{1J}}$={K[1]:.3f}$\pm${EK[1]:.3f}, k$_{{2J}}$={K[2]:.3f}$\pm${EK[2]:.3f}, "

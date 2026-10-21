@@ -530,7 +530,10 @@ def worker(list_path, out_path, correct=False, region="sr"):
                 n_rows_total=n_total, n_rows_selected=n_sel_total, n_rows_blinded=n_blinded,
                 weight_sum=wsum,
                 norm=norm, xsec_pb=xsec_pb, lumi_pb=lumi_pb, phi_win=PHI_WIN,
-                branches_sha1=None, root_written=False)
+                branches_sha1=None, root_written=False,
+                # 2026-10-21: apply_corrections.py no longer applies JME -- the *_corr jet/MET
+                # columns hold nano values; f55-era models must not score these samples.
+                jme_applied=False)
     if region != "sr":   # SR .json stays exactly as before
         meta.update(region=region, phi_win=None if region == "zmumu" else PHI_WIN,
                     btag_sf_applied=True, extra_muon_corrected=True,
@@ -606,7 +609,7 @@ def merge(group, region="sr"):
             for key in ("n_files", "n_rows_total", "n_rows_selected", "n_rows_blinded",
                         "weight_sum"):
                 agg[key] += m[key]
-            for key in ("norm", "xsec_pb", "lumi_pb", "phi_win"):
+            for key in ("norm", "xsec_pb", "lumi_pb", "phi_win", "jme_applied"):
                 agg[key] = m.get(key)
         on_disk = [os.path.basename(p) for p in piece_nano_files(era, sample)]
         if sorted(listed) != sorted(on_disk) or len(set(listed)) != len(listed):

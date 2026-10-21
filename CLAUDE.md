@@ -112,7 +112,53 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-19 ~ 10-20)
+## Last Session (2026-10-21)
+
+### f45 特征集 + 去掉 JME + 从 apply_corrections 起整链重跑（旧图、旧模型全删）
+
+**f45**（`common.FEATURE_SETS["f45"]`，训练 key **`ssdata_f45`**，目录 `MVA/DNN/dsw_dsstw_ssdata_f45`；**用户：只有 φ20，名字不再带 phi20**）：
+f55 去掉 `met_sumEt`、3 个 `sumNeutralHadronEt`、μ/Ds 的 `PFIso`+`RelIso`（共 10 个），jet/MET 用 nano 原始量（`met_pt`、`num_jets_pt30`、`jet_leadpt`；
+`W_tmass_rawmet` = 修正 μ + 原始 MET；`dphi_rawmet_*` 用新名字，防止旧模型用同名不同义的输入）。
+动机：Z→μμ CR 里 μ 的 NH iso 是最大 data/MC 形状差（max|ΔCDF| 0.196），JME 修正后 MC 的 MET 变硬。
+旧样本上的效果：Z→μμ ε90 通过率 data/MC **0.763 → 1.092±0.058**；SR 本底在同 ε 下 +20-25%；OS 和 SS 的通过率都 ×1.3，OS/SS 比 0.76 不变。
+机制：训练是 MC 信号 vs data 本底，任何 data/MC 失配特征都会让 MC 本底更像信号 → cut 后 MC 偏多。
+
+**去 JME**（Corrections 仓库）：`apply_corrections.py` 用 nano `Jet_pt`/MET（列名不变，删 jes/jer 列；jet veto map 保留、用 nano pt；
+`W_tmass` = 修正 μ + nano MET）；`build_btag_efficiency_map.py` 改 nano pt。`make_samples_nano.py` 的 meta 加 `jme_applied=False`。
+**新样本里 `*_corr` 的 jet/MET 列 = nano 值，旧 f55 类模型不能给它们打分。**
+用户选「直接覆盖」不备份：36 组效率图、全部 friend + SR skim（488 job）、CR skim（zmumu OS/SS + ttcr，976 job）全部重做并验收（return 0、merge 核对）。
+SR 行数新/旧 0.993-0.9998（TT 最多 −0.7%）。**删了全部 MVA 图和全部 DNN/BDT 模型**（memory `project_cleanup_20261021`）。
+`ssdata_f45` 重训：epoch 118，val/test AUC 0.9969/0.9970；9 个 SR 样本打分验收完。
+**DY jet-bin 因子重拟合**（`fit_dy_jetbin_zmumu.py` 现在 MC × BR rw）：**0.802/0.765/1.155**（旧 0.801/0.763/1.151，不变），已写进 `common.DY_JETBIN_SF`。
+
+**新样本 + f45 的 SR 结果**（MC × BR rw × DY SF）：
+- OS ε90 low/D±/high **1.017/0.997/0.890**（high 偏低 = 已知 mode 5 高估）；ε70/50 low 0.96/0.92，D±/high 继续往下（r34、r5）。
+- SS ε90 1.17/**1.62**/1.34：多出来的在 Ds/D± 峰里 → SS（非 W+c、电荷不关联）的真 charm data 比 MC 多；OS 反过来 MC 的真 D/misID 偏多 → 一个 charm 因子修不了。
+- **no cut 时 data 多出的 ~15% 是 MC 缺的 QCD 重味**：75%（OS）/67%（SS）在 m_T<30；全部在 MET<50（MET≥50 no cut 闭合 0.95-1.01）；
+  Δφ(μ,MET)<0.8 时 1.8；OS=SS；QCD 类区域 data/MC 随 `mu_ipsig` 1.3→4.6、随 `mu_IsoR04_RelIso` 1.3→7.3 上升（W 类区域平缓）→ 非 prompt、不孤立的 μ。
+  DNN 能去掉大部分；SS 里它带真 Ds/D。
+- φ_mass SS ε90：峰左边 bin 1.5、右边 1.3，data 的 φ 可能略偏低/更宽（推测）。
+- Z→μμ CR no cut（新样本）：残余 k_DY 1.001（OS）/1.003（SS）；MET 60-90 GeV 处 data/MC ~0.8（原始 MET 也这样）。tt̄ CR no cut 和以前一样（1l_b1 3.6、emu 0.87）。
+
+**脚本**：`draw_stage1_mass_by_score_cut.py` 加 `--ss`（SS 文件、odd 事例、不 blind、电荷检查）、`--mt=lo,hi`、`--met=lo,hi`，标题写模型 key 和 MC 权重；
+`draw_cr_zmumu.py` 加 `--ss`，**第一张图默认也 × BR rw × DY SF**（`--bare` = 原始权重），删了过时的「2nd μ raw pT, no SF」标题；
+`draw_zmumu_feature.py` 加 `--nocut`、`--raw-vs-corr`，派生特征按模型取。
+
+**进行中 / 待定**：
+① CR 打分（zmumu 8 组 + ttcr 9 组 condor，zmumu Signal 本地已打）→ 画 Z→μμ OS/SS、tt̄ CR 的 ε90 图 + 通过率；
+② 用户未定：放宽 μ iso 重新 skim、用 anti-isolated μ 做 data-driven QCD（ABCD）；
+③ 用户未定：f55 / osdata / stage-2（wjetsres）要不要在新样本上重训；
+④ mode 5 的 r5 一直没定（旧测量：MC 高估约 2 倍，拟合 0.16-0.5 依模型）；
+⑤ `common.py` 里旧的 `*_phi20` 和无 φ 窗 key 配置还在（模型都删了）；
+⑥ **三个仓库都没 commit**（15_0_5：common.py、几个 macro；Corrections：apply_corrections、build_btag_efficiency_map）。
+
+### 我犯的错
+1. Z→μμ 第一张图一直用原始权重（没 BR rw、没 DY SF），标题还写着过时的「no SF」——用户为此要求删全部图重做。
+2. `draw_cr_zmumu --ss` 的文件名映射把 Data_OS 映射成 `Data_OS_SS_merged`；还写过一行无效代码（`... if False else None`）。
+3. 用 shell 变量拼 `rm -rf` 路径被安全检查拦下（以后删除写字面路径）。
+4. 对 OS SR 结果先说得太悲观（ε90 其实已闭合）；上限写 1e9 让文件名/标题变成 `1e+09`。
+
+## 上一 Session (2026-10-19 ~ 10-20)
 
 **TODO（用户 10-20 加）**：尝试 cut `Ds_ipsig` 去除 τ 3-prong 本底（τ 来自 Z/W 的 prompt 顶点、3-prong 自身有位移；先查信号和 τ 的 Ds_ipsig 分布、信号损失和 Ds_mass sculpting）。
 

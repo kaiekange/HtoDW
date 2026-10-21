@@ -9,20 +9,19 @@ One figure per version, panels = M(mumu), pt(mu1), pt(mu2), pt(mumu), reco Njet,
 (all inside 76 < M(mumu) < 106, where k_DY is defined), each
 data vs stack {DY, W+jets, ttbar 2L2Nu, ttbar LNu2Q} + signal line, with data/MC below.
 mu1 = the best muon (corrected pt; it is the leading one by construction), mu2 = the extra
-muon (raw pt):
+muon (MuonScaRe-corrected pt, ID x loose-iso SF in the skim weight since the 2026-10-19 skim):
     phi20       |phi_mass - M_phi| < 20 MeV, the analysis selection (the zmumu skim has no
                 phi cut, so it is applied here; the no-phi version was dropped 2026-10-19)
 No DNN cut: at eps90 the window keeps ~400 data events, too few (user 2026-10-19).
-Printed per version: yield of every process in 76 < M(mumu) < 106 and the single overall
-k_DY = (N_data - N_nonDY) / N_DY there. The per-jet-bin DY factors are fitted by
-fit_dy_jetbin_zmumu.py.
-
-The second muon carries no ID/iso SF and uses raw pt (first pass); the factor therefore also
-contains the data/MC of "a KKpi candidate was found" (custom nano keeps only such events).
+MC weight (2026-10-21): skim weight x common.br_reweight x common.dy_jetbin_sf (DY), as in the
+mass figures below, so the printed k_DY = (N_data - N_nonDY) / N_DY is the RESIDUAL factor
+after those corrections. --bare: skim weight only (the input the per-jet-bin DY factors were
+fitted on by fit_dy_jetbin_zmumu.py); figure name gets _bare.
+k_DY also contains the data/MC of "a KKpi candidate was found" (custom nano keeps only such
+events).
 
 Second figure cr_zmumu{TAG}_phi20_dsmass.png: Ds_mass and phi_mass in the Z window (phi20),
-MC x common.br_reweight x common.dy_jetbin_sf (the factors fitted here and in Step 1; the
-first figure stays on the bare skim weight it was fitted on), stacked by GenTag truth
+MC x common.br_reweight x common.dy_jetbin_sf (the factors fitted here and in Step 1), stacked by GenTag truth
 (no prompt/from-b split: the zmumu skim has no cand_hf_from_b). Not blinded (CR).
 
 --eff=0.90: stage-1 score cut (score_dsmu > common.stage1_threshold at that signal efficiency of
@@ -33,7 +32,9 @@ draw_tau3pi_masses_by_cut.py (track 4-vectors, mass hypothesis in brackets): M(p
 (rho0), M(K+[pi] K-[pi] pi[pi]) (a1, <= m_tau), M(K-[K] pi) (K*0), M(K+[K] pi); same selection,
 weights and truth stack as the Ds_mass figure; 20 MeV bins (80 MeV with --eff).
 
-    python3 draw_cr_zmumu.py [--dir=<CR dir>] [--key=ssdata_phi20] [--eff=0.90]
+    python3 draw_cr_zmumu.py [--dir=<CR dir>] [--key=ssdata_phi20] [--eff=0.90] [--ss]
+--ss (2026-10-21): the same-sign files (Data/WtoLNu2Jets/TT/DY _SS_merged); there is no SS
+signal file in this CR, so the signal line is empty. Figure names get _ss.
 """
 import os
 import sys
@@ -60,6 +61,10 @@ if EFF is not None:
     PRED_DIR = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
     TAG = f"{TAG}_eff{round(100 * EFF)}"
     print(f"stage-1 {MODEL_KEY}: eff_sig {EFF} -> score_dsmu > {THR:.6f}")
+SS = "--ss" in sys.argv
+BARE = "--bare" in sys.argv   # first figure only: skim weight without BR rw / DY jet-bin SF
+if SS:
+    TAG = f"{TAG}_ss"
 M_PHI, ZLO, ZHI = 1.019460, 76.0, 106.0
 LUMI_FB = (common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]) / 1000.0
 
@@ -88,15 +93,19 @@ TRUTH_COLS = ["cand_gen_mode", "cand_gen_common_hf_pdgId", "jet_bin"]
 
 
 def read(group):
-    path = f"{CR_DIR}/{group}.root" if EFF is None else f"{PRED_DIR}/zmumu_{group}.root"
+    fname = group
+    if SS and group != "Signal_merged":
+        fname = "Data_SS_merged" if group == "Data_OS_merged" else group.replace("_merged", "_SS_merged")
+    path = f"{CR_DIR}/{fname}.root" if EFF is None else f"{PRED_DIR}/zmumu_{fname}.root"
     if not os.path.exists(path):
         sys.exit(f"missing {path}")
     with uproot.open(path)["Events"] as t:
         keys = set(t.keys())
-        want = [c for c in COLS + ["tt_decay"] + TRUTH_COLS if c in keys]
+        want = [c for c in COLS + ["tt_decay", "mu_charge", "pi_charge"] + TRUTH_COLS if c in keys]
         if EFF is not None:
             want.append("score_dsmu")
         a = t.arrays(want, library="np")
+    common.check_charge_config(a, SS and group != "Signal_merged", fname)   # exits on an OS/SS mix-up
     if EFF is not None:
         keep = a["score_dsmu"] > THR
         a = {k: v[keep] for k, v in a.items()}
@@ -131,8 +140,18 @@ def hist(x, w, bins):
     return h, e2
 
 
+def mc_weight(g, a):
+    """skim weight x BR rw x DY jet-bin SF (DY), or the bare skim weight with --bare."""
+    w = a["weight"].astype(float)
+    if BARE:
+        return w
+    w = w * common.br_reweight(a)
+    return w * common.dy_jetbin_sf(a) if g == "DY_merged" else w
+
+
 def draw(S, vname, sel):
     d = S["Data_OS_merged"]
+    W = {g: mc_weight(g, S[g]) for _l, g, _e, _c in BKG}
     zw = lambda a, m: m & (a["m_mumu"] > ZLO) & (a["m_mumu"] < ZHI)
     print(f"\n== version {vname}: yields in {ZLO:.0f} < M(mumu) < {ZHI:.0f}")
     nd = zw(d, sel["Data_OS_merged"]).sum()
@@ -140,7 +159,7 @@ def draw(S, vname, sel):
     for lab, g, extra, _c in BKG:
         a = S[g]
         m = zw(a, sel[g]) & (extra(a) if extra else True)
-        yields[lab] = (a["weight"][m].sum(), (a["weight"][m] ** 2).sum())
+        yields[lab] = (W[g][m].sum(), (W[g][m] ** 2).sum())
     s = S["Signal_merged"]
     ysig = s["weight"][zw(s, sel["Signal_merged"])].sum()
     ntot = sum(v for v, _ in yields.values())
@@ -173,7 +192,7 @@ def draw(S, vname, sel):
         for lab, g, extra, colr in BKG:
             a = S[g]
             m = vs[g] & (extra(a) if extra else True)
-            h, e2 = hist(a[var][m], a["weight"][m].astype(float), bins)
+            h, e2 = hist(a[var][m], W[g][m], bins)
             ax.bar(bc, h, width=wd, bottom=bottom, color=colr, edgecolor="none",
                    label=f"{lab}  N={h.sum():,.0f}")
             bottom += h; tot += h; tot_e2 += e2
@@ -184,7 +203,7 @@ def draw(S, vname, sel):
         hep.histplot(hs, bins, ax=ax, color="red", lw=2, label=f"signal  N={hs.sum():.2f}")
         dh, _ = np.histogram(d[var][vs["Data_OS_merged"]], bins)
         ax.errorbar(bc, dh, yerr=np.sqrt(dh), fmt="o", ms=4, color="black",
-                    label=f"OS data  N={dh.sum():,}")
+                    label=f"{'SS' if SS else 'OS'} data  N={dh.sum():,}")
         ax.set_xlim(bins[0], bins[-1])
         ax.set_ylim(0, 1.45 * max(tot.max(), dh.max(), 1))
         ax.legend(fontsize=9, loc="upper right")
@@ -205,9 +224,12 @@ def draw(S, vname, sel):
         if col == 0:
             hep.cms.label(ax=ax, data=True, text="Preliminary", lumi=f"{LUMI_FB:.1f}",
                           com=13.6, fontsize=14)
-    fig.suptitle(f"Z$\\to\\mu\\mu$ CR ({vname}): k_DY = {k:.3f} $\\pm$ {ek:.3f} (stat)   "
-                 f"[2nd $\\mu$: raw $p_T$, no SF]", fontsize=15, y=0.975)
-    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}.png", key=MODEL_KEY)
+    fig.suptitle(f"Z$\\to\\mu\\mu$ CR ({vname}): "
+                 + ("MC = skim weight only, " if BARE else "MC x BR rw x DY jet-bin SF, residual ")
+                 + f"k_DY = {k:.3f} $\\pm$ {ek:.3f} (stat)   "
+                 + f"[{'no DNN cut' if EFF is None else f'stage-1 eff {round(100 * EFF)}%'}]",
+                 fontsize=15, y=0.975)
+    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}{'_bare' if BARE else ''}.png", key=MODEL_KEY)
     plt.savefig(out, dpi=100, bbox_inches="tight")
     plt.close(fig)
     print(f"   Saved {out}")
@@ -280,7 +302,7 @@ def draw_mass(S, vname, sel, panels=MASS, suffix="dsmass"):
                edgecolor="0.35", linewidth=0.0, label="MC stat")
         dh, _ = np.histogram(d[var][dm], bins)
         ax.errorbar(bc, dh, yerr=np.sqrt(dh), fmt="o", ms=4, color="black",
-                    label=f"OS data  N={dh.sum():,}")
+                    label=f"{'SS' if SS else 'OS'} data  N={dh.sum():,}")
         ax.set_xlim(bins[0], bins[-1])
         ax.set_ylim(0, 1.45 * max(tot.max(), dh.max(), 1))
         ax.legend(fontsize=9, loc="upper right")
@@ -312,6 +334,8 @@ def draw_mass(S, vname, sel, panels=MASS, suffix="dsmass"):
 
 S = {g: read(g) for g in ("Data_OS_merged", "Signal_merged", "WtoLNu2Jets_merged",
                          "TT_merged", "DY_merged")}
+if SS:   # no SS signal file: keep the columns, drop every row (empty signal line)
+    S["Signal_merged"] = {k: v[:0] for k, v in S["Signal_merged"].items()}
 for vname, sel in versions(S):
     draw(S, vname, sel)
     draw_mass(S, vname, sel)
