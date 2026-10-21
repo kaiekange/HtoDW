@@ -150,7 +150,7 @@ SR 行数新/旧 0.993-0.9998（TT 最多 −0.7%）。**删了全部 MVA 图和
 ③ 用户未定：f55 / osdata / stage-2（wjetsres）要不要在新样本上重训；
 ④ mode 5 的 r5 一直没定（旧测量：MC 高估约 2 倍，拟合 0.16-0.5 依模型）；
 ⑤ `common.py` 里旧的 `*_phi20` 和无 φ 窗 key 配置还在（模型都删了）；
-⑥ **三个仓库都没 commit**（15_0_5：common.py、几个 macro；Corrections：apply_corrections、build_btag_efficiency_map）。
+⑥ 已 commit + push：15_0_5 `30693e3`（combined_channel）、Corrections `c0f4270`（corrections）；13_0_13 无改动。
 
 ### 我犯的错
 1. Z→μμ 第一张图一直用原始权重（没 BR rw、没 DY SF），标题还写着过时的「no SF」——用户为此要求删全部图重做。
