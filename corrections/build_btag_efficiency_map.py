@@ -19,9 +19,10 @@ gets eps=0, i.e. a factor (1-SF*0)/(1-0) = 1 (no correction), as in the official
 
 WHICH JETS. Exactly the population the b-veto examines, so eps is measured on the
 same jets the weight is applied to:
-  tight jet ID, |eta| < 2.5, dR(Ds, jet) > 0.4, and CORRECTED pt >= 20.
-- corrected pt: JEC+JER nominal via jme_corrections.py (nano Jet_pt carries the GT's
-  stale JEC and no JER smearing). An earlier version binned on nano Jet_pt.
+  tight jet ID, |eta| < 2.5, dR(Ds, jet) > 0.4, and nano Jet_pt >= 20.
+- nano Jet_pt (2026-10-21): the JME correction was removed from apply_corrections.py, so
+  the veto and its weight use nano Jet_pt and this map must be binned on the same pt.
+  (The 2026-09 version binned on JEC+JER corrected pt; see git history.)
 - pt >= 20: BTV SFs are measured only for 20 <= pt < 1000, and outside that range
   particleNet_comb/light do NOT raise -- they silently return a flow constant (measured
   at |eta|=1, T WP: comb 0.837 at pt 19.9 vs 1.011 at pt 20). The veto is therefore
@@ -97,7 +98,7 @@ BRANCHES = sorted(set(jme.JET_BRANCHES + [
 
 
 def veto_jet_mask(a, pt_corr):
-    """The jets the b-veto examines: tight ID, |eta|<2.5, dR(Ds,jet)>0.4, corrected pt>=20."""
+    """The jets the b-veto examines: tight ID, |eta|<2.5, dR(Ds,jet)>0.4, nano pt>=20."""
     dphi = abs(a["Jet_phi"] - a["Ds_phi"])
     dphi = ak.where(dphi > np.pi, 2 * np.pi - dphi, dphi)
     dR = np.sqrt((a["Jet_eta"] - a["Ds_eta"]) ** 2 + dphi ** 2)
@@ -105,7 +106,7 @@ def veto_jet_mask(a, pt_corr):
             & (pt_corr >= JET_PT_MIN))
 
 
-def accumulate(files, refs, wp_tight):
+def accumulate(files, wp_tight):
     """Per-flavour (total, pass) counts on the (abseta, pt) grid, summed over files."""
     shape = (len(_ABSETA_EDGES) - 1, len(_PT_EDGES) - 1)
     total = {f: np.zeros(shape) for f in _FLAVORS}
@@ -116,7 +117,7 @@ def accumulate(files, refs, wp_tight):
         if len(a) == 0:
             continue
         n_events += len(a)
-        pt_corr = jme.corrected_jet_pt(a, refs, "nominal")
+        pt_corr = a["Jet_pt"]   # nano pt, no JME correction (2026-10-21)
         m = veto_jet_mask(a, pt_corr)
         pt = ak.to_numpy(ak.flatten(pt_corr[m]))
         abseta = np.abs(ak.to_numpy(ak.flatten(a["Jet_eta"][m])))
@@ -188,8 +189,7 @@ def main():
     files = sum([sorted(glob.glob(f"{d}/output_*.root")) for d in dirs], [])
     print(f"{group}: {len(files)} files")
 
-    refs = jme.JmeRefs(year=ERAS[era]["jme_year"], is_data=False)
-    total, passed, n_events = accumulate(files, refs, ERAS[era]["wp_tight"])
+    total, passed, n_events = accumulate(files, ERAS[era]["wp_tight"])
     print(f"events: {n_events}, veto-population jets:"
           f" {int(sum(t.sum() for t in total.values()))}")
 
