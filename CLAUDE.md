@@ -112,7 +112,26 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-21)
+## Last Session (2026-10-22)
+
+### Ds 顶点位置 / flight distance 图（只画图，无物理结论）
+
+两个新 macro，图都在 `MVA/figures/features/`，模型 `ssdata_f45`，cut = no cut + ε90/70/50（`common.stage1_threshold`，
+阈值 0.9596/0.9966/0.9986），基础选择 `selection_mask & score_dsmu>-1`，读 f45 的 `Prediction/`。用 `ds_dnn` 的 python 跑，各 ~20 s。
+- `draw_ds_vertex_xy.py [--rel-pv]`：`Ds_vx`/`Ds_vy` 的 2D colz（±2 cm，0.02 cm bin，log z），Signal / Data OS / W+jets（× BR rw）三列；
+  `--rel-pv` 画减去 `primvtx_vx/vy`。图 `ds_vertex_xy[_relpv]_{nocut,eff90,eff70,eff50}.png`。
+  data 束流点 (0.17,−0.18) cm、MC (0.10,−0.02) cm，所以绝对坐标 data/MC 不能直接比；减 PV 后都在原点。
+  **2D 图里 W+jets 没挖 Ds SR**（OS data 挖了），没改。ε50 信号在原点有凹陷（DNN 去掉零位移）。
+  旧图 `ds_vertex_xy.png`、`ds_vertex_xy_relpv.png`（含 SS data、无 cut 分档）还在，没删。
+- `draw_ds_fd_1d.py`：`Ds_FDxy`/`Ds_FDxysig`/`Ds_FD`/`Ds_FDsig`，每个变量一张 1×4（cut）。data marker 绝对、W+jets 填充绝对
+  （× BR rw，**挖掉 Ds SR 与 data 同相空间**，MC stat 斜线）、信号线归一到 data（只看形状），线性 y，0 到 98% 分位、末 bin=overflow。
+  MC 只有 W+jets（没加 DY/tt̄）。目测：cut 越紧 data 越像信号形状；FDsig ε70/50 低端（~0-10）data 多于 W+jets。
+
+### 我犯的错
+1. 第一次画 2D 图时标题和 CMS label 重叠，改成图内文字。
+2. 脚本 exit 137 一度怀疑内存，实为 VS Code 会话重启（峰值 <1 GB）。
+
+## 上一 Session (2026-10-21)
 
 ### f45 特征集 + 去掉 JME + 从 apply_corrections 起整链重跑（旧图、旧模型全删）
 
