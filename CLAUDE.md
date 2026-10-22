@@ -112,7 +112,36 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-22)
+## Last Session (2026-10-22 下午)
+
+### JME 不用 tutorial、直接 correctionlib 重做 + Z→μμ CR 各变体 data/MC（用户之后还要再讨论这个）
+
+**custom nano 本身**：NanoAODv12 配方（13_0_13、`--era Run3`、GT 与官方 Run3Summer22NanoAODv12 相同）。jet = GT 的 JEC（L1L2L3+Res，`Jet_rawFactor` 可还原 raw），
+MET = MiniAOD 的 Type-1 PuppiMET；MC 无 JER smearing；μ（无 Rochester/ScaRe）、e（Run3 不做 scale/smear）都没修。以前的 JME（tutorial）是先用 rawFactor 还原 raw 再修、
+MET 从 `RawPuppiMET` 重建，没有重复修正。
+
+**新代码（Corrections `jme_direct.py`）**：correctionlib 直调，JSON 钉 `JME/Run3-22{CD,EFG}Sep23-Summer22{,EE}-NanoAODv12/2026-06-05`、`JER-Smearing/2026-09-18`（v2）；
+data residual 按事例 run；`jet_id_v12_fix` = JetID13p6TeV twiki 的 NanoV12 recipe（2.7-3.0 补 neHEF<0.99、>3.0 补 neEmEF<0.4，用户从 twiki 贴的原文；13_0_13 的 RUN3WINTER22PUPPI 这两处正好太松）。
+**Step 0**：tutorial 模式下与 `jme_corrections.py` 逐位相同（4 个文件，MC/data × 两 era）；tutorial 的 `latest/` 与 2026-06-05 逐字节相同 → payload 没变。
+- **tutorial 的 bug**：2022EE data `L2L3Residual` 分 E/F/G 三个 run bin，tutorial 一律用 run 359022（E）；F 与 E 差到 10%，Run F 文件 jet pt 平均 −5%。**但不是 MET data/MC 不符的原因**（我先这么猜过，已收回）。
+- jer_smear v1 让 0.3-0.6% 的 MC jet smear 成负 pt（v2 截到 0.01 GeV）。
+
+**Z→μμ CR**（`analysis/macros/jme_zmumu_study.py`：事例集不变，211 个 condor job 输出行对齐 friend `Samples/CR/zmumu_jme/{Data_OS,TT,WtoLNu2Jets,DY}_merged.root`，
+每 job 断言 join 一一对应 + nano `num_jets_pt30` 逐行等于 skim；`draw_zmumu_jme.py [--era=]`，图 `MVA/figures/sf/cr_zmumu_jme_{met,mt,metphi,njet,leadpt,ht,ratios}[_2022|_2022EE].png`；
+phi20、Z 窗、MC × BR rw × DY SF、无 DNN cut）：
+- **MET 传 JER（=以前 tutorial 做法）→ MC MET 变硬**：data/MC 低端 1.22 → 60 GeV 0.5，m_T 高端 0.8；2022EE 比 2022 强。**不传 JER ≈ nano**（低端 1.08，40-80 GeV ~0.8 的老失配不变）。
+  只是观察，不等于 noJER 是正确 recipe；机制没查（猜：2022EE 前向低 pt JER SF 到 1.71，<15 GeV 的 CorrT1 jet 随机 smear 后越过 Type-1 阈值）。
+- MET xy：|MET| 不变，φ 调制 ±8% → 几个 %。
+- jet「JME」= JES+JER 捆绑，N_jet/H_T data/MC 比 nano 差（H_T 1.18→0.77 vs nano 1.04→0.85）；**JES/JER 没拆开**。idfix 看不出变化（对 jet veto map 没测）。
+
+**待定（用户要再讨论）**：① 加 JES-only jet 列拆 JES/JER（重跑 211 job ~5 分钟）；② 本地拆 JER→MET 的来源（CorrT1 vs AK4、gen 匹配 vs 随机、越阈值）；
+③ 最终要不要上 JME、MET 传不传 JER（问 JME / 对 CMSSW smeared MET）；④ Z→μμ SS 没跑。
+
+### 我犯的错
+1. 两批 condor 只隔约 1 分钟（规定 10 分钟）。
+2. 先把 F/G residual bug 说成可能是 MET 不符的原因，图否定后收回。
+
+## 上一 Session (2026-10-22 上午)
 
 ### Ds 顶点位置 / flight distance 图（只画图，无物理结论）
 
