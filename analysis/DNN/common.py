@@ -633,6 +633,22 @@ FEATURE_SETS["f45"] = FeatureSpec(
     dira="dira",
     derived=DERIVED_F45)
 
+# prodtopo_v2 (2026-10-22, user decision): stage-2 prodtopo_v1 with the same rules as f45.
+#   - Dropped (3): Ds_IsoR03/R04_sumNeutralHadronEt, met_sumEt (PF scalar sum, contains
+#     the neutral hadrons too).
+#   - dphi_met_* -> dphi_rawmet_* (raw nano met_phi). In the post-2026-10-21 samples
+#     met_phi_corr == met_phi bitwise anyway; the new names keep the model guard honest.
+# Uses the f45 dphi definitions (same lambdas), so there is one copy of the formulas.
+PRODTOPO_V2_DROP = {"Ds_IsoR04_sumNeutralHadronEt", "Ds_IsoR03_sumNeutralHadronEt", "met_sumEt"}
+PRODTOPO_V2 = [F45_RENAME.get(f, f) for f in PRODTOPO_V1 if f not in PRODTOPO_V2_DROP]
+assert len(PRODTOPO_V2) == 21, len(PRODTOPO_V2)
+FEATURE_SETS["prodtopo_v2"] = FeatureSpec(
+    PRODTOPO_V2,
+    log=[f for f in FEATURE_SETS["prodtopo_v1"].log if f in PRODTOPO_V2],
+    sentinel={"Ds_nearestjet_dR": 5.0},
+    dira="dira",
+    derived={k: DERIVED_F45[k] for k in ("dphi_rawmet_mu", "dphi_rawmet_Ds", "dphi_rawmet_Dsmu")})
+
 # Back-compat shims: the stage-1 macros import these names directly and must keep
 # working untouched. They are the f41 spec's attributes, by identity for `names`.
 STAGE1 = FEATURE_SETS["f55"]
@@ -662,6 +678,8 @@ BDT_PARAMS = {
                         subsample=0.7, colsample_bytree=0.9, min_child_weight=40,
                         reg_lambda=5.0),
 }
+# Same problem size as prodtopo_v1 (3 fewer features): no re-tune.
+BDT_PARAMS["prodtopo_v2"] = BDT_PARAMS["prodtopo_v1"]
 
 # ========= 训练配置 =========
 # The one seed the canonical models were trained with. Lives here rather than in
@@ -924,6 +942,26 @@ TRAININGS["ssdata_f45"] = dict(
     label=f"{TRAININGS['ssdata']['label']}, f45 (no JME, no NH iso)",
     out_name="dsw_dsstw_ssdata_f45",
     out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f45",
+)
+
+# Stage-2 with the tau 3-prong backgrounds (2026-10-22, user decision). After stage-1 eps90
+# DY is 93% mode 0 with the muon from a tau in 85.5% (Z->tautau, other tau -> 3 prongs), and
+# ttbar is a mix of mode 0 (40%) and true charm mostly from b. Background = W+jets modes 1-5
+# + DY with Muon_genPartFlav == 15 (all modes). TT dropped (user): at the physical mixture it
+# is only 2.6% of sum|w| (W+jets 78%, DY 19.5%), so the BDT would barely see it.
+# `samples` values are per-sample specs (BDT.py): gen_mode_filter / mu_flav / dy_sf.
+# mc_weight_chain: background weight x br_reweight (x dy_jetbin_sf where dy_sf).
+TRAININGS["resdy"] = dict(
+    TRAININGS["wjetsres"],
+    samples={"WtoLNu2Jets_merged": dict(gen_mode_filter=(1, 2, 3, 4, 5)),
+             "DY_merged": dict(mu_flav=15, dy_sf=True)},
+    gen_mode_filter=None,
+    mc_weight_chain=True,
+    stage1_cut=dict(key="ssdata_f45", tool="DNN", seed=42, eff_sig=0.90),
+    feature_set="prodtopo_v2",
+    label="W+jets res. + DY (mu from tau) (post stage-1 90%)",
+    out_name="dsw_dsstw_resdy_f21_wp90",
+    out_dir=f"{MVA_DIR}/dsw_dsstw_resdy_f21_wp90",
 )
 
 for _k, _c in TRAININGS.items():

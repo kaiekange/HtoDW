@@ -51,7 +51,8 @@ ALL_SAMPLES = common.ALL_SAMPLES
 argv = sys.argv[1:]
 SAMPLES = ALL_SAMPLES
 # --region R scores the control-region skim Samples/CR/<R>/<name>.root (make_samples_nano.py
-# --region) into Prediction/<R>_<name>.root, beside the SR files. Stage-1 keys only.
+# --region) into Prediction/<R>_<name>.root, beside the SR files. A stage-2 key reads the
+# stage-1 model's Prediction/<R>_<name>.root instead (stage-1 must have scored that region).
 REGION = None
 if "--region" in argv:
     i = argv.index("--region")
@@ -88,10 +89,12 @@ os.makedirs(OUT_DIR, exist_ok=True)
 s1 = cfg.get("stage1_cut")
 IN_DIR = (f"{common.out_dir_for(s1['key'], s1.get('tool', 'DNN'), s1.get('seed'))}/Prediction"
           if s1 else SAMPLES_DIR)
+IN_PREFIX = ""
 if REGION is not None:
     if s1:
-        sys.exit("--region: control-region scoring is for stage-1 keys only")
-    IN_DIR = f"{SAMPLES_DIR}/CR/{REGION}"
+        IN_PREFIX = f"{REGION}_"
+    else:
+        IN_DIR = f"{SAMPLES_DIR}/CR/{REGION}"
 OUT_PREFIX = f"{REGION}_" if REGION else ""
 SCORE_BRANCH = cfg["score_branch"]
 
@@ -111,11 +114,12 @@ scaler_mean = np.load(f"{MODEL_DIR}/scaler_mean.npy")
 scaler_scale = np.load(f"{MODEL_DIR}/scaler_scale.npy")
 
 for name in SAMPLES:
-    path = f"{IN_DIR}/{name}.root"
+    path = f"{IN_DIR}/{IN_PREFIX}{name}.root"
     if not os.path.exists(path):
         if s1:
             sys.exit(f"  {name}: {path} missing -- stage-1 must score {name} first "
-                     f"(predict.py {s1['key']} --samples ...,{name})")
+                     f"(predict.py {s1['key']} --samples ...,{name}"
+                     f"{' --region ' + REGION if REGION else ''})")
         print(f"  {name:24s} MISSING -- skipped")
         continue
 

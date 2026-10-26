@@ -112,7 +112,39 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-22 下午)
+## Last Session (2026-10-22 晚 ~ 10-26)
+
+### stage-2 重训：`resdy`（W+jets mode 1-5 + DY μ←τ），特征 `prodtopo_v2`（21 个）
+
+- **MC 缺 data/MC 失配特征**：去掉 `Ds_Iso{R03,R04}_sumNeutralHadronEt`、`met_sumEt`（共 3 个），`dphi_met_*` → `dphi_rawmet_*`（f45 的 DERIVED_F45）；
+  `num_jets_pt30_corr` 被 f45 改名表顺带换成 `num_jets_pt30`（两者最多差 1 个 jet，用户未答要不要改回，**待定**）。`common.FEATURE_SETS["prodtopo_v2"]`，旧 `prodtopo_v1` 不动。
+- **mode 0 = `n_hf==0`**（三条 track 都没有 c/b 祖先，`HDsPhiPiMuGenTagProducer.cc:923`），不是「τ3π」标记；ε90 后 DY/TT 的 mode 0 行 `cand_gen_nmatched` 全 0。
+  ε90 后 DY：mode 0 占 93.4%，**μ genPartFlav==15 占 85.5%**（SR 窗 72.1%）；TT 里 mode 0 只占 39.5%（真 Ds 19.3%、mode 8 19.5%）→ 用户定：**DY 只取 flav 15，TT 不加**（物理比例下 TT 只占 2.6%）。
+- **`TRAININGS["resdy"]`**：`samples` 值现在可以是 per-sample spec（`gen_mode_filter`/`mu_flav`/`dy_sf`），`mc_weight_chain=True` → 权重 × br_reweight（DY 再 × `dy_jetbin_sf`）；
+  `BDT.py` 按 `DY_merged_mu_genPartFlav.npz`（10-06 缓存，key (lumi<<32)|event）取 flav，ε90 后 3/20217 行不在缓存里被丢掉（>0.1% 才报错）；修了写死 `num_jets_pt30_corr` 的检查行。
+  stage-1 预筛 `ssdata_f45` ε90（thr 0.9596）。训练 W+jets 12,044 行/N_eff 6,163，DY 15,082 行/9,036；`best_iteration` 1917（上限 3000，没顶）、test AUC **0.864**，ε_sig 90/70/50% 训练本底拒绝 2.4/6.8/16.6。
+  目录 `MVA/BDT/dsw_dsstw_resdy_f21_wp90`。9 个 SR 样本 + zmumu（Data_OS/DY/W+jets/TT）都已打分。
+- **BDT 和 DNN 对齐**：`BDT/run_train.sh`（只训练）、`BDT/condor_submit.py --train-only | --predict --samples ... [--region R]`（打分一个样本一个 job，复用 `DNN/run_predict.sh BDT ...`）；
+  `BDT/predict.py` 加 `--region`；`DNN/predict.py` 的 `--region` 也允许 stage-2 key（读 stage-1 的 `Prediction/<R>_<name>.root`）。
+
+### 结果（MC × BR rw × DY SF）
+
+- **Z→μμ CR，只用 stage-2 cut**（`draw_cr_zmumu.py --key2=resdy --eff2=X`，不带 `--eff`；Z 窗、φ20）：data/MC **no cut 1.001 → WP2 90% 1.095±0.011 → 70% 1.197±0.033 → 50% 1.321±0.075**。
+  DY MC 被这个 BDT 去掉得比 data 多、越紧越多；这里的 DY 是 prompt-μ Z→μμ，不是训练用的 μ←τ。原因没查（可以再做一次特征 data/MC 扫描）。
+- **SR，stage-1 ε90 + stage-2 WP2**（`draw_stage1_mass_by_score_cut.py --key=ssdata_f45 --key2=resdy --add DY,TT --br-rw --dy-sf`，图 `closure/stage2_mass_*_by_cut_s1eff90_...png`）：
+  data/allMC low/D±/high：ε90 only 1.017/0.997/**0.890**；+WP2 90% 1.023/1.038/1.011；70% 1.015/0.986/1.028；50% 0.947/0.946/1.029（误差 ±0.03~0.08）。
+  stage-2 把 mode 5 从 1273 砍到 94/41，所以高质量端回到 1。**两张 CR 结论不一致，SR 的闭合可能有互相抵消。**
+- **stack 顺序**（用户定）：DY/tt̄ 在最底、W+jets 在上、peak 最顶；`draw_stage1_mass_by_score_cut.py`、`draw_cr_zmumu.py` 已改，其他脚本下次用到时改。
+
+### 我犯的错
+1. 测 `condor_submit.py --predict` 的参数检查时真提交了一个打分 job（立刻 `condor_rm`，没产生输出）。
+2. 干跑时给 `common.out_dir_for` 打补丁把 stage-1 的 Prediction 路径也改走了，第一次干跑失败。
+3. 用户问「为什么还没开始训练」时我还在等他定三个选项；这类参数有默认就先按默认交。
+
+### 待定
+① `num_jets_pt30` vs `_corr`；② Z→μμ 里 BDT 通过率 data/MC 偏高的来源（特征扫描）；③ WP1/WP2 工作点、stage-2 DY 样本是否还要加 TT；④ 重建 flav 缓存（要不要，现在只丢 3 行）。
+
+## 上一 Session (2026-10-22 下午)
 
 ### JME 不用 tutorial、直接 correctionlib 重做 + Z→μμ CR 各变体 data/MC（用户之后还要再讨论这个）
 

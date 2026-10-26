@@ -66,8 +66,8 @@ and the uncommitted draw_ds_mass_signal_data_wjets.py -- do NOT all get them rig
 figures dir. If K's training config sets phi_win, the same |phi_mass - M_phi| window is
 applied to every sample here (ossel), so the plotted population is the one K was trained on.
 
---add stacks extra background MC samples (each ONE entry, its own sigma*L weight) on top
-of the W+jets GenTag groups: TT = TT_merged (TTto2L2Nu + TTtoLNu2Q), DY = DY_merged
+--add stacks extra background MC samples (each ONE entry, its own sigma*L weight) UNDER
+the W+jets GenTag groups, so the W+jets peak groups sit on top (user 2026-10-22): TT = TT_merged (TTto2L2Nu + TTtoLNu2Q), DY = DY_merged
 (DYto2L2Jets 0J/1J/2J). The ratio denominator becomes the full MC sum, and a window table
 (low <1.830 / D+- 1.83-1.91 / high >2.008) prints each sample's share and data/MC with
 W+jets alone and with everything. Output names get a _wjets_<tt_dy...> suffix so the
@@ -143,6 +143,14 @@ if DY_SF and "DY" not in ADD:
 MODEL_KEY = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key=")), "ssdata")
 PHI_WIN = common.resolve(MODEL_KEY).get("phi_win")
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
+# --key2=<stage-2 BDT key> (2026-10-22): columns become stage-1 eps90 alone, then + stage-2 WP2
+# 90/70/50% (score_dsmu_res > thr2; thr2 UNCONDITIONAL on all truth-matched signal, as in
+# draw_wp_mass.py; eps_tot of both cuts in each title). Read from that BDT's Prediction/, which
+# carries both scores; base selection also requires score_dsmu_res > -1.
+KEY2 = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key2=")), None)
+S1_EFF = 0.90
+if KEY2 is not None:
+    PRED = f"{common.out_dir_for(KEY2, tool='BDT')}/Prediction"
 M_DS, M_PHI, SR_HALF = 1.96835, 1.019460, 0.040
 LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]
 SEL = [*common.SELECTION]  # corrected muon cuts + charge branches + n_bjet_corr
@@ -216,6 +224,8 @@ def ossel(a):
     # event set than the model on the x-axis was trained and scored with -- exactly the
     # like-for-like failure point 1 of this docstring warns about, one level up.
     m = common.selection_mask(a) & (a["score_dsmu"] > -1)
+    if KEY2 is not None:
+        m &= a["score_dsmu_res"] > -1
     if PHI_WIN is not None:
         m &= np.abs(a["phi_mass"] - M_PHI) < PHI_WIN
     if SS:
@@ -229,16 +239,44 @@ def ossel(a):
 
 def rd(name, extra):
     return uproot.open(f"{PRED}/{name}.root")["Events"].arrays(
-        ["Ds_mass", "phi_mass", "score_dsmu", "event", "W_tmass_corr", "met_pt"] + SEL + extra, library="np")
+        ["Ds_mass", "phi_mass", "score_dsmu", "event", "W_tmass_corr", "met_pt"] + SEL + extra
+        + (["score_dsmu_res"] if KEY2 is not None else []), library="np")
 
 
 # ---- stage-1 thresholds: same recipe as stage-2's training population ----
 THR = {}
-for eff, _lbl in CUTS:
-    if eff is None:
-        continue
-    thr, _n = common.stage1_threshold(dict(key=MODEL_KEY, tool="DNN", seed=42, eff_sig=eff))
-    THR[eff] = thr
+if KEY2 is None:
+    for eff, _lbl in CUTS:
+        if eff is None:
+            continue
+        thr, _n = common.stage1_threshold(dict(key=MODEL_KEY, tool="DNN", seed=42, eff_sig=eff))
+        THR[eff] = thr
+else:
+    THR1, _n = common.stage1_threshold(dict(key=MODEL_KEY, tool="DNN", seed=42, eff_sig=S1_EFF))
+    _g = rd("Signal_merged", ["Ds_match", "mu_match", "weight"])
+    _gm = ossel(_g) & _g["Ds_match"].astype(bool) & _g["mu_match"].astype(bool)
+    _s1, _s2, _sw = _g["score_dsmu"][_gm], _g["score_dsmu_res"][_gm], _g["weight"][_gm]
+    THR2 = {e: float(np.quantile(_s2, 1 - e)) for e in (0.90, 0.70, 0.50)}
+    _cuts = [(None, rf"stage-1 $\varepsilon$={S1_EFF:.0%} only")]
+    for e, t2 in THR2.items():
+        eps = _sw[(_s1 > THR1) & (_s2 > t2)].sum() / _sw.sum()
+        print(f"stage-2 {KEY2}: WP2 {e} -> score_dsmu_res > {t2:.6f}, eps_tot {eps:.4f}")
+        _cuts.append((e, rf"+ {KEY2} WP2 {e:.0%} ($\varepsilon_{{tot}}$={eps:.1%})"))
+    _eps1 = _sw[_s1 > THR1].sum() / _sw.sum()
+    _cuts[0] = (None, rf"stage-1 $\varepsilon$={S1_EFF:.0%} only ($\varepsilon_{{tot}}$={_eps1:.1%})")
+    CUTS = _cuts
+
+
+def colmask(s1, s2, eff):
+    """Rows passing column `eff`'s cut (stage-1 scan, or stage-1 eps90 + stage-2 WP2 with --key2)."""
+    if KEY2 is None:
+        return np.ones(len(s1), dtype=bool) if eff is None else (s1 > THR[eff])
+    m = s1 > THR1
+    return m if eff is None else (m & (s2 > THR2[eff]))
+
+
+def bin_key(eff):   # binning per column: with --key2 the stage-1-only column uses the eps90 bins
+    return eff if KEY2 is None else (S1_EFF if eff is None else eff)
 
 # ---- W+jets GenTag: base selection (OS + b-veto + score>-1), full mass range ----
 w = rd("WtoLNu2Jets_SS_merged" if SS else "WtoLNu2Jets_merged", list(dict.fromkeys(["cand_gen_mode", "weight"] + BR_COLS)))
@@ -251,6 +289,7 @@ print(f"W+jets: {len(w['Ds_mass']):,} rows -> {wk.sum():,} after b-veto+score>-1
       + ("+Ds-SR-excluded" if MC_SR_EXCL else ""))
 w_ds, w_phi = w["Ds_mass"][wk], phi_clip(w["phi_mass"][wk])
 w_mode, w_score, w_w = w["cand_gen_mode"][wk], w["score_dsmu"][wk], w["weight"][wk].astype(float)
+w_score2 = w["score_dsmu_res"][wk] if KEY2 is not None else None
 w_not_sr = np.abs(w_ds - M_DS) >= SR_HALF
 
 for branch, vals in (("Ds_mass", w_ds), ("phi_mass", w_phi)):
@@ -288,7 +327,8 @@ for key in ADD:
         xk &= np.abs(x["Ds_mass"] - M_DS) >= SR_HALF
     print(f"{key}: {len(x['Ds_mass']):,} rows -> {xk.sum():,} after b-veto+score>-1" + ("+odd events" if SS else ""))
     EXTRA[key] = dict(Ds_mass=x["Ds_mass"][xk], phi_mass=phi_clip(x["phi_mass"][xk]),
-                      score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float))
+                      score=x["score_dsmu"][xk], w=x["weight"][xk].astype(float),
+                      score2=x["score_dsmu_res"][xk] if KEY2 is not None else None)
     EXTRA[key]["not_sr"] = np.abs(EXTRA[key]["Ds_mass"] - M_DS) >= SR_HALF
 
 # ---- OS data: base selection, Ds-mass SR excluded ONCE for both panels (point 2) ----
@@ -298,6 +338,7 @@ common.check_charge_config(d, SS, "data")   # exits if the file is not the charg
 print(f"{'SS' if SS else 'OS'} data: {len(d['Ds_mass']):,} rows -> {dk.sum():,} after b-veto+score>-1"
       + ("+odd events" if SS else "+Ds-SR-excluded"))
 d_ds, d_phi, d_score = d["Ds_mass"][dk], phi_clip(d["phi_mass"][dk]), d["score_dsmu"][dk]
+d_score2 = d["score_dsmu_res"][dk] if KEY2 is not None else None
 
 for branch, vals in (("Ds_mass", d_ds), ("phi_mass", d_phi)):
     bins = next(f for br, _l, f, _bh, _r in VARS if br == branch)(None)
@@ -325,10 +366,10 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
     outer = gridspec.GridSpec(1, ncols, figure=fig, wspace=0.30)
 
     for col, (eff, lbl) in enumerate(CUTS):
-        cutmask = np.ones(len(w_vals), dtype=bool) if eff is None else (w_score > THR[eff])
-        dcutmask = np.ones(len(d_vals), dtype=bool) if eff is None else (d_score > THR[eff])
+        cutmask = colmask(w_score, w_score2, eff)
+        dcutmask = colmask(d_score, d_score2, eff)
 
-        bins = edges_fn(eff)
+        bins = edges_fn(bin_key(eff))
         bc = 0.5 * (bins[1:] + bins[:-1])
         widths = np.diff(bins)
         width = widths[0]               # sideband bin width: the "Events / X MeV" unit
@@ -354,7 +395,7 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
         tot_wj = np.sum(hs, axis=0)
         h_extra, xcuts = {}, {}
         for key, X in EXTRA.items():
-            xcuts[key] = np.ones(len(X["w"]), dtype=bool) if eff is None else (X["score"] > THR[eff])
+            xcuts[key] = colmask(X["score"], X["score2"], eff)
             h, e = hist(X[branch][xcuts[key]], X["w"][xcuts[key]], bins)
             hs.append(h); errs.append(e); h_extra[key] = h
         tot = np.sum(hs, axis=0)
@@ -362,7 +403,10 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
 
         bottom = np.zeros(len(bc))
         stack = GROUPS + [(EXTRA_DEF[k][1], None, EXTRA_DEF[k][2]) for k in EXTRA]
-        for (lab, _ms, cl), h in zip(stack, hs):
+        # draw order bottom -> top: extra MC (DY/TT), then W+jets with its peaks on top
+        pairs = list(zip(stack, hs))
+        pairs = pairs[len(GROUPS):] + pairs[:len(GROUPS)]
+        for (lab, _ms, cl), h in pairs:
             ax.bar(bc, h * scale, width=widths, bottom=bottom, color=cl, alpha=0.9,
                    label=f"{lab}  N={h.sum():,.0f}", edgecolor="none")
             bottom = bottom + h * scale
@@ -455,7 +499,8 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
                       f"  data/allMC {rr:.3f}+-{rr*np.hypot(1/np.sqrt(max(nd,1)), ew/nall):.3f}")
 
     var_tex = r"$M(K^+K^-\pi^\pm)$" if branch == "Ds_mass" else r"$M(K^+K^-)$"
-    fig.suptitle(f"Stage-1 ({MODEL_KEY} DNN) score cut scan -- {var_tex}"
+    fig.suptitle((f"Stage-1 ({MODEL_KEY} DNN) score cut scan -- {var_tex}" if KEY2 is None else
+                  f"Stage-1 ({MODEL_KEY} DNN) eps{round(100 * S1_EFF)} + stage-2 ({KEY2} BDT) WP2 scan -- {var_tex}")
                  + " -- MC: skim weight" + (" x BR rw" if BR_RW else "")
                  + (" x DY jet-bin SF" if DY_SF else "")
                  + ("".join(f" + {k}" for k in EXTRA) and " -- W+jets" + "".join(f" + {k}" for k in EXTRA))
@@ -464,14 +509,15 @@ for branch, xlabel, edges_fn, blind_half, refline in VARS:
                  + (_win_txt(r"$p_T^{miss}$", MET) if MET else ""),
                  fontsize=15)
 
-    out = common.fig_path("closure", f"stage1_mass_{branch}_by_cut"
+    out = common.fig_path("closure", (f"stage1_mass_{branch}_by_cut" if KEY2 is None
+                                      else f"stage2_mass_{branch}_by_cut_s1eff{round(100 * S1_EFF)}")
                           + ("_wjets_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "")
                           + ("_mcsrexcl" if MC_SR_EXCL else "")
                           + ("_brrw" if BR_RW else "")
                           + ("_dysf" if DY_SF else "")
                           + ("_ss" if SS else "")
                           + (_win_tag("mt", MT) if MT else "") + (_win_tag("met", MET) if MET else "")
-                          + ".png", key=MODEL_KEY)
+                          + ".png", **(dict(key=MODEL_KEY) if KEY2 is None else dict(key=KEY2, tool="BDT")))
     plt.savefig(out, dpi=120, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved {out}")

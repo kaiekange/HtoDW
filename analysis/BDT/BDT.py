@@ -128,16 +128,69 @@ print(f"Loading background ({cfg['label']}: {'+'.join(cfg['samples'])}{parity_no
 # table (data, which carries no luminosity weight). The W+jets branch used to multiply
 # by three stale per-file constants instead -- wrong, because the amcatnloFXFX negative
 # fraction varies 3.4x across the jet bins, so no per-file constant survives a selection.
+#
+# A `samples` value is either a flat weight (old configs) or a per-sample spec dict
+# (resdytt): gen_mode_filter overrides the cfg-level one, mu_flav keeps only rows whose
+# best muon has that Muon_genPartFlav (DY only, from the draw_dy_mu_origin.py cache),
+# dy_sf multiplies common.dy_jetbin_sf. mc_weight_chain multiplies common.br_reweight.
+MU_FLAV_CACHE = f"{common.MVA_ROOT}/aux/DY_merged_mu_genPartFlav.npz"
+
+
+def mu_flav_lookup(ex, where):
+    """Muon_genPartFlav per row from the cache, keyed (lumi<<32)|event (MC run == 1).
+    Rows not in the cache get -1 (dropped by any mu_flav filter) and are printed; more than
+    0.1% missing is an error (2026-10-22: 3 of 20,217 DY rows after eps90, the cache predates
+    the no-JME skim; user chose to train without them)."""
+    assert np.all(ex["run"] == 1), f"{where}: MC run != 1, cache key ambiguous"
+    rk = (ex["luminosityBlock"].astype(np.int64) << 32) | ex["event"].astype(np.int64)
+    c = np.load(MU_FLAV_CACHE)
+    o = np.argsort(c["rowkey"])
+    ck = c["rowkey"][o]
+    assert len(np.unique(ck)) == len(ck), f"{MU_FLAV_CACHE}: duplicate keys"
+    pos = np.minimum(np.searchsorted(ck, rk), len(ck) - 1)
+    ok = ck[pos] == rk
+    if not ok.all():
+        print(f"  WARNING {where}: {(~ok).sum()} of {len(ok):,} selected rows not in "
+              f"{MU_FLAV_CACHE}, dropped (rowkeys {rk[~ok].tolist()})")
+        if (~ok).mean() > 1e-3:
+            sys.exit(f"{where}: too many rows missing from the cache -- rebuild it")
+    return np.where(ok, c["flav"][o][pos], -1)
+
+
 bkg_X, bkg_w = [], []
-for name, wgt in cfg["samples"].items():
+for name, spec in cfg["samples"].items():
+    is_spec = isinstance(spec, dict)
+    if is_spec and not cfg["weighted"]:
+        sys.exit(f"{BKG}: per-sample specs need weighted=True")
+    spec = spec if is_spec else {}
     load_kw = dict(feats=feats, ss=cfg["ss"], parity=cfg["parity"],
-                   gen_mode_filter=cfg.get("gen_mode_filter"), stage1=STAGE1_CUT)
+                   gen_mode_filter=spec.get("gen_mode_filter", cfg.get("gen_mode_filter")),
+                   stage1=STAGE1_CUT)
     if cfg["weighted"]:
-        x, ex = common.load(name, extra_branches=("weight",), **load_kw)
-        bkg_w.append(ex["weight"])
+        extra = ["weight"]
+        if cfg.get("mc_weight_chain"):
+            extra += ["cand_gen_mode", "cand_gen_common_hf_pdgId"]
+        if spec.get("dy_sf"):
+            extra += ["jet_bin"]
+        if "mu_flav" in spec:
+            extra += ["run", "luminosityBlock", "event"]
+        x, ex = common.load(name, extra_branches=tuple(dict.fromkeys(extra)), **load_kw)
+        wt = ex["weight"].astype(np.float64)
+        if cfg.get("mc_weight_chain"):
+            wt = wt * common.br_reweight(ex)
+        if spec.get("dy_sf"):
+            wt = wt * common.dy_jetbin_sf(ex)
+        if "mu_flav" in spec:
+            keep = mu_flav_lookup(ex, name) == spec["mu_flav"]
+            print(f"  {name:18s} mu_flav=={spec['mu_flav']}: {keep.sum():,} of {len(keep):,} rows")
+            x, wt = x[keep], wt[keep]
+        bkg_w.append(wt)
+        aw = np.abs(wt)
+        print(f"  {name:18s} bkg component: rows {len(wt):,}  sum w {wt.sum():.2f}  "
+              f"sum|w| {aw.sum():.2f}  N_eff {aw.sum()**2 / (aw**2).sum():,.0f}")
     else:
         x, _ = common.load(name, **load_kw)
-        bkg_w.append(np.full(len(x), wgt))
+        bkg_w.append(np.full(len(x), spec))
     bkg_X.append(x)
 X_bkg = np.vstack(bkg_X)
 w_bkg = np.concatenate(bkg_w)
@@ -159,9 +212,10 @@ print(f"After finite filter: {X.shape}")
 # physical jet-bin mixture, not the raw event-count one. Only meaningful when the
 # samples carry unequal weights -- the SS-data config is a single sample at weight 1.
 if cfg["weighted"]:
-    jet30_idx = feats.names.index("num_jets_pt30_corr")
+    jet30 = next(f for f in ("num_jets_pt30_corr", "num_jets_pt30") if f in feats.names)
+    jet30_idx = feats.names.index(jet30)
     check = np.average(X[y == 0][:, jet30_idx], weights=w[y == 0])
-    print(f"[check] weighted <num_jets_pt30_corr> for background = {check:.3f} "
+    print(f"[check] weighted <{jet30}> for background = {check:.3f} "
           f"(compare against the raw-concat mean printed above)")
 
 np.save(f"{out_dir}/X_sig.npy", X[y == 1])

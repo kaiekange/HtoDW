@@ -33,6 +33,7 @@ draw_tau3pi_masses_by_cut.py (track 4-vectors, mass hypothesis in brackets): M(p
 weights and truth stack as the Ds_mass figure; 20 MeV bins (80 MeV with --eff).
 
     python3 draw_cr_zmumu.py [--dir=<CR dir>] [--key=ssdata_phi20] [--eff=0.90] [--ss]
+                             [--key2=resdy --eff2=0.70]   (stage-2 cut on top, see KEY2 below)
 --ss (2026-10-21): the same-sign files (Data/WtoLNu2Jets/TT/DY _SS_merged); there is no SS
 signal file in this CR, so the signal line is empty. Figure names get _ss.
 """
@@ -61,6 +62,39 @@ if EFF is not None:
     PRED_DIR = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
     TAG = f"{TAG}_eff{round(100 * EFF)}"
     print(f"stage-1 {MODEL_KEY}: eff_sig {EFF} -> score_dsmu > {THR:.6f}")
+CUT_DESC = "no DNN cut" if EFF is None else f"stage-1 eff {round(100 * EFF)}%"
+# --key2=<stage-2 BDT key> --eff2=X (2026-10-22): also score_dsmu_res > thr2, read from that BDT's
+# Prediction/zmumu_<group>.root (which carries score_dsmu too). thr2 is UNCONDITIONAL, as in
+# draw_wp_mass.py: the (1-X) quantile of score_dsmu_res over all truth-matched SR signal
+# (selection_mask, both scores > -1, phi20); eps_tot (both cuts, weighted) is printed. The
+# zmumu signal is not scored by stage-2 (signal only in the SR), so the signal line is empty.
+# Without --eff (user 2026-10-22): the stage-2 cut ALONE, no stage-1 cut; eps_tot = that cut's
+# weighted signal efficiency.
+KEY2 = ARGS.get("key2")
+EFF2 = float(ARGS["eff2"]) if "eff2" in ARGS else None
+if (KEY2 is None) != (EFF2 is None):
+    sys.exit("--key2 and --eff2 go together")
+if KEY2 is not None:
+    PRED_DIR = f"{common.out_dir_for(KEY2, tool='BDT')}/Prediction"
+    with uproot.open(f"{PRED_DIR}/Signal_merged.root")["Events"] as _t:
+        _g = _t.arrays(["score_dsmu", "score_dsmu_res", "phi_mass", "Ds_match", "mu_match", "weight",
+                        *common.SELECTION], library="np")
+    _m = (common.selection_mask(_g) & (_g["score_dsmu"] > -1) & (_g["score_dsmu_res"] > -1)
+          & _g["Ds_match"].astype(bool) & _g["mu_match"].astype(bool)
+          & (np.abs(_g["phi_mass"] - 1.019460) < 0.020))
+    THR2 = float(np.quantile(_g["score_dsmu_res"][_m], 1 - EFF2))
+    _sw = _g["weight"][_m]
+    _pass = _g["score_dsmu_res"][_m] > THR2
+    if EFF is not None:
+        _pass &= _g["score_dsmu"][_m] > THR
+    EPS_TOT = float(_sw[_pass].sum() / _sw.sum())
+    TAG = f"{TAG}_{KEY2}{round(100 * EFF2)}"
+    CUT_DESC = (("" if EFF is None else CUT_DESC + " + ")
+                + f"{KEY2} WP2 {round(100 * EFF2)}% (eps_tot {100 * EPS_TOT:.1f}%)"
+                + (", no stage-1 cut" if EFF is None else ""))
+    print(f"stage-2 {KEY2}: WP2 {EFF2} (unconditional) -> score_dsmu_res > {THR2:.6f}, "
+          f"eps_tot {EPS_TOT:.4f}")
+FIG_KEY = dict(key=MODEL_KEY) if KEY2 is None else dict(key=KEY2, tool="BDT")
 SS = "--ss" in sys.argv
 BARE = "--bare" in sys.argv   # first figure only: skim weight without BR rw / DY jet-bin SF
 if SS:
@@ -69,10 +103,11 @@ M_PHI, ZLO, ZHI = 1.019460, 76.0, 106.0
 LUMI_FB = (common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]) / 1000.0
 
 BKG = [  # (label, file, extra mask on the file's arrays or None, colour); stack bottom -> top
+    # DY and ttbar under W+jets (user 2026-10-22)
+    (r"DY$\to\ell\ell$", "DY_merged", None, "#4a90c2"),
     (r"$t\bar{t}$ LNu2Q", "TT_merged", lambda a: a["tt_decay"] == 1, "#b39ddb"),
     (r"$t\bar{t}$ 2L2Nu", "TT_merged", lambda a: a["tt_decay"] == 0, "#7f5fbf"),
     ("W+jets", "WtoLNu2Jets_merged", None, "#5a9e78"),
-    (r"DY$\to\ell\ell$", "DY_merged", None, "#4a90c2"),
 ]
 VARS = [  # (column, x label, bin edges)
     ("m_mumu", r"$M(\mu\mu)$ [GeV]", np.arange(76.0, 106.0 + 1e-9, 1.0)),
@@ -96,18 +131,31 @@ def read(group):
     fname = group
     if SS and group != "Signal_merged":
         fname = "Data_SS_merged" if group == "Data_OS_merged" else group.replace("_merged", "_SS_merged")
-    path = f"{CR_DIR}/{fname}.root" if EFF is None else f"{PRED_DIR}/zmumu_{fname}.root"
+    scored = EFF is not None or KEY2 is not None
+    path = f"{PRED_DIR}/zmumu_{fname}.root" if scored else f"{CR_DIR}/{fname}.root"
+    no_s2 = KEY2 is not None and group == "Signal_merged"   # not scored by stage-2: empty line
+    if no_s2:   # read the plain skim and keep no row
+        path = f"{CR_DIR}/{fname}.root"
     if not os.path.exists(path):
         sys.exit(f"missing {path}")
     with uproot.open(path)["Events"] as t:
         keys = set(t.keys())
         want = [c for c in COLS + ["tt_decay", "mu_charge", "pi_charge"] + TRUTH_COLS if c in keys]
-        if EFF is not None:
+        if EFF is not None and not no_s2:
             want.append("score_dsmu")
+        if KEY2 is not None and not no_s2:
+            want.append("score_dsmu_res")
         a = t.arrays(want, library="np")
     common.check_charge_config(a, SS and group != "Signal_merged", fname)   # exits on an OS/SS mix-up
-    if EFF is not None:
-        keep = a["score_dsmu"] > THR
+    if scored:
+        keep = np.ones(len(a["weight"]), dtype=bool)
+        if no_s2:
+            keep[:] = False
+        else:
+            if EFF is not None:
+                keep &= a["score_dsmu"] > THR
+            if KEY2 is not None:
+                keep &= a["score_dsmu_res"] > THR2
         a = {k: v[keep] for k, v in a.items()}
     px = a["mu_pt_corr"] * np.cos(a["mu_phi"]) + a["xmu_pt"] * np.cos(a["xmu_phi"])
     py = a["mu_pt_corr"] * np.sin(a["mu_phi"]) + a["xmu_pt"] * np.sin(a["xmu_phi"])
@@ -227,9 +275,9 @@ def draw(S, vname, sel):
     fig.suptitle(f"Z$\\to\\mu\\mu$ CR ({vname}): "
                  + ("MC = skim weight only, " if BARE else "MC x BR rw x DY jet-bin SF, residual ")
                  + f"k_DY = {k:.3f} $\\pm$ {ek:.3f} (stat)   "
-                 + f"[{'no DNN cut' if EFF is None else f'stage-1 eff {round(100 * EFF)}%'}]",
+                 + f"[{CUT_DESC}]",
                  fontsize=15, y=0.975)
-    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}{'_bare' if BARE else ''}.png", key=MODEL_KEY)
+    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}{'_bare' if BARE else ''}.png", **FIG_KEY)
     plt.savefig(out, dpi=100, bbox_inches="tight")
     plt.close(fig)
     print(f"   Saved {out}")
@@ -325,8 +373,8 @@ def draw_mass(S, vname, sel, panels=MASS, suffix="dsmass"):
                           com=13.6, fontsize=14)
     fig.suptitle(f"Z$\\to\\mu\\mu$ CR ({vname}), {ZLO:.0f} < M($\\mu\\mu$) < {ZHI:.0f}: "
                  f"MC x BR rw x DY jet-bin SF, "
-                 f"{'no DNN cut' if EFF is None else f'stage-1 eff {round(100 * EFF)}%'}", fontsize=15, y=0.975)
-    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}_{suffix}.png", key=MODEL_KEY)
+                 f"{CUT_DESC}", fontsize=15, y=0.975)
+    out = common.fig_path("sf", f"cr_zmumu{TAG}_{vname}_{suffix}.png", **FIG_KEY)
     plt.savefig(out, dpi=100, bbox_inches="tight")
     plt.close(fig)
     print(f"   Saved {out}")
