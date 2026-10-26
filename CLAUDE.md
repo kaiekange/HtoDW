@@ -112,7 +112,41 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-22 晚 ~ 10-26)
+## Last Session (2026-10-26)
+
+### charm SF：r12 改用 DY 的 Z→μμ CR 测（用户定），第一次拟合 + 随 stage-1 cut 扫描
+
+**tt̄ CR 为什么不用**（`draw_cr_ttbar_decay.py`（新，只看 tt̄ MC），`draw_cr_ttbar.py` 加 opt-in 类别 `1l`/`2l`、`--nosig`、第二行按过程堆叠的 Ds_mass；
+图 `ssdata_f45/figures/sf/cr_ttbar_{OS,SS}_{1l,2l}.png`、`cr_ttbar_decay_*.png`）：
+- ==1l（无额外 e/μ）：LNu2Q 72%、2L2Nu 14%、W 12%、DY 3%，**data/MC 3.6**（OS）/3.8（SS），超出在低 m_T/MET。
+- ==2l（恰好一个异号额外 e/μ，μμ 挖 Z ±15）：2L2Nu 93.5%，data/MC 1.25（超出在 m_T、MET<60）。
+- prompt 真 Ds/D 只来自 LNu2Q 1l OS 的 W→cs（OS/SS 520/42）；from b 的 OS≈SS（~1.1-1.2）；2l 真 Ds 95% from b。
+  b 先 hadronize 成 B，B 再衰变出 D/Ds → 测的是 B 衰变 BR，不是 SR 要的 c 碎裂。
+- W+jets SR MC：OS−SS（W+c 类，电荷关联）占 OS 真 Ds/D 83-85%（no cut）→ 91-97%（ε90-50）。W+bb̄ 无电荷关联；gc→Wb 被 |Vcb|² 压低。
+- Z+c（gc→Zc）与 W+c（gs→Wc）同类、prompt、环境相近，无电荷关联 → **Z→μμ OS+SS 可合并**。
+
+**Z→μμ CR r12 拟合**（快速版：scipy χ²，binned，σ²=data+MC var，**不是 RooFit**；峰形状固定为 MC；
+`analysis/macros/fit_zmumu_r12_quick.py`、`fit_zmumu_r12_cutscan.py`；Z 窗 76-106、φ20、MC × BR rw × DY SF；r12/r34 两电荷共用，continuum = MC 非峰模板 × pol0/1/2 各电荷浮动）：
+- sideband 形状：OS+SS 常数 χ² 42/22，高端 2.22-2.26 data 多 ~7%；外推到峰下 pol0 1.009 / pol2 0.990 → no cut 时 r12 对 continuum 形状敏感。
+- **no cut**：1.67-2.27 pol0/1/2 = 0.72/0.71/0.87，1.75-2.20 = 0.78/0.77/0.85（±0.10）；OS only 0.66±0.14、SS only 0.76±0.15。
+- **随 cut**（1.75-2.20，pol0=pol1）：no cut 0.77 → ε99 1.05±0.09 → ε98 1.05 → ε97 1.07 → ε95 1.14 → ε93 1.23 → **ε90 1.26±0.14**（峰占 Ds 窗 7% → 56%）。
+  **用户：ε90 往下不考虑。** 点嵌套、误差相关。no cut→ε99 的跳变：no cut 被 continuum 拉低，或真 Ds 的 DNN 通过率 data/MC ~1.3（未分开）。
+- **r34 现在测不了**（±0.2-0.33）。Run 3（×9.4，MC 同比）：r12 误差 ~0.03、r34 ~0.06-0.08（现在 MC 统计约占误差 1/3）。
+- 图 `ssdata_f45/figures/sf/zmumu_r12_fit_{range}_pol{0,1,2}.png`、`zmumu_r12_fit_cut_{nocut,eps99..eps90}_pol1.png`、`zmumu_r12_vs_cut.png`。
+
+**custom nano 的轻子**：Muon/Electron 是完整 NanoAODv12 表；skim 里第二个 e 只有 pt/eta/phi/charge，没 SF/能量修正（改 skim 即可）。
+
+### 我犯的错
+1. 拟合先报数字没出图（违反 memory「拟合都要画图」），用户问「有图吗」才补。
+2. 「SR peak 本底主要是 W+c prompt charm」没验证就说了，用户追问后用 OS−SS 量出来才有依据。
+3. 说「MC 组合本底模板只浮动归一化不可接受」说得太绝对；查了 sideband 才知道 MC 形状在 ~1-2% 内是对的、问题只是峰太小。
+4. 说「Z→μμ SS skim 还没做」——其实 10-21 已重做，看的是 1020 的旧记录。
+
+### 待定 / 下一步
+① pass/fail 联合拟合（r12 + 真 Ds 效率比）+ 峰均值/宽度浮动，正式版 RooFit binned Poisson；② 若真 Ds 通过率 data/MC 真的 ~1.3，信号效率也要修；
+③ 电子 SF/能量修正（2l 的 eμ 行用）；④ `draw_cr_zmumu.py` 有别的会话加的 `--fail`/5 MeV bin 改动未提交；⑤ 上次的待定（`num_jets_pt30` vs `_corr` 等）仍在。
+
+## 上一 Session (2026-10-22 晚 ~ 10-26)
 
 ### stage-2 重训：`resdy`（W+jets mode 1-5 + DY μ←τ），特征 `prodtopo_v2`（21 个）
 

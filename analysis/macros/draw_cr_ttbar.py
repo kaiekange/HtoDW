@@ -12,9 +12,11 @@ Categories (cut here from the skim columns; n_xmu == 0 is exactly pass_muveto):
     mumu       n_xmu == 1 opposite-sign, |M(mumu) - 91| > 15     (MC x w_xmu)
     emu        n_xmu == 0, n_xele >= 1 opposite-sign (leading electron)
     mumu_b2 / emu_b2   the two above with n_bjet >= 2 (opt-in via --cats, not in the default list)
+    1l         n_xmu == 0, n_xele == 0 (opt-in; same rows as 1l_b1)
+    2l         n_xmu + n_xele == 1, extra lepton OS, |M(mumu) - 91| > 15 if mumu (opt-in)
 For each category and charge (OS / SS) one figure: n_bjet, Njet, m_T, MET (+ M(ll) for 2l)
-as data vs stack {ttbar 2L2Nu, ttbar LNu2Q, W+jets, DY} + signal line; then Ds_mass and
-phi_mass with MC stacked by truth: combinatorial (modes 0,6-10), D->Kpipi misID (5),
+as data vs stack {ttbar 2L2Nu, ttbar LNu2Q, W+jets, DY} + signal line (dropped with --nosig); then Ds_mass and
+phi_mass with MC stacked by truth (+ Ds_mass stacked by process): combinatorial (modes 0,6-10), D->Kpipi misID (5),
 true D (3+4) prompt / from b, true Ds (1+2) prompt / from b (origin -1 rows of modes 1-4 go
 with "prompt" and are counted in the table).
 
@@ -27,7 +29,7 @@ first show signal yield and S/B in the SR, printed here).
 --key), read from that model's Prediction/ttcr_<sample>.root (predict.py --region ttcr);
 figures get an _eff90 suffix.
 
-    python3 draw_cr_ttbar.py [--cats=1l_b2,mumu] [--unblind] [--key=ssdata_phi20] [--eff=0.90]
+    python3 draw_cr_ttbar.py [--cats=1l_b2,mumu] [--unblind] [--nosig] [--key=ssdata_phi20] [--eff=0.90]
 """
 import os
 import sys
@@ -48,6 +50,7 @@ ARGS = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and 
 CR_DIR = ARGS.get("dir", f"{common.SAMPLES_DIR}/CR/ttcr")
 MODEL_KEY = ARGS.get("key", "ssdata_phi20")
 UNBLIND = "--unblind" in sys.argv
+NOSIG = "--nosig" in sys.argv   # no signal file read: no signal line, no S/B line
 EFF = float(ARGS["eff"]) if "eff" in ARGS else None
 if EFF is not None:
     THR, _n = common.stage1_threshold(dict(key=MODEL_KEY, tool="DNN", seed=42, eff_sig=EFF))
@@ -87,9 +90,13 @@ CATS = {
                        & (np.abs(a["m_mumu"] - M_Z) > 15)),
     "emu": lambda a: (a["n_xmu"] == 0) & (a["n_xele"] >= 1) & OS_LEP(a, a["xele_charge"]),
 }
-OPT_IN = {"mumu_b2", "emu_b2"}
+OPT_IN = {"mumu_b2", "emu_b2", "1l", "2l"}
 CATS["mumu_b2"] = lambda a: CATS["mumu"](a) & (a["n_bjet_corr"] >= 2)
 CATS["emu_b2"] = lambda a: CATS["emu"](a) & (a["n_bjet_corr"] >= 2)
+CATS["1l"] = lambda a: (a["n_xmu"] == 0) & (a["n_xele"] == 0)   # == 1l_b1 (skim has n_b >= 1)
+CATS["2l"] = lambda a: (((a["n_xmu"] + a["n_xele"]) == 1)          # exactly one extra e or mu, OS
+                        & OS_LEP(a, np.where(a["n_xmu"] == 1, a["xmu_charge"], a["xele_charge"]))
+                        & ((a["n_xmu"] == 0) | (np.abs(a["m_mumu"] - M_Z) > 15)))
 SEL_CATS = [c for c in ARGS.get("cats", ",".join(c for c in CATS if c not in OPT_IN)).split(",") if c]
 CTRL = [  # (column, x label, bins)
     ("n_bjet_corr", r"$n_b$ (tight, $p_T>20$)", np.arange(0.5, 5.5, 1.0)),
@@ -178,12 +185,15 @@ def panel(ax, rax, comps, data, bins, xlab, blind=None, sig=None):
 
 
 for charge, files in GROUPS.items():
-    S = {role: read(f, role) for role, f in files.items()}
+    S = {role: read(f, role) for role, f in files.items() if not (NOSIG and role == "sig")}
     for cat in SEL_CATS:
         cf = CATS[cat]
         m = {role: cf(a) for role, a in S.items()}
         wl = {role: a["weight"] * (a["w_xmu"] if cat.startswith("mumu") and role != "data" else 1.0)
               for role, a in S.items()}
+        if cat == "2l":   # second-muon SF on the mumu rows only
+            wl = {role: (np.where(a["n_xmu"] == 1, wl[role] * a["w_xmu"], wl[role]) if role != "data"
+                         else wl[role]) for role, a in S.items()}
         mc_roles = ("TT", "W", "DY")
         blind = (M_DS - SR_HALF, M_DS + SR_HALF) if (charge == "OS" and not UNBLIND) else None
 
@@ -256,6 +266,17 @@ for charge, files in GROUPS.items():
                   blind=blind if col == "Ds_mass" else None, sig=sig)
             if blind is not None and col == "phi_mass":
                 ax.set_title("data: Ds SR events removed (MC not)", fontsize=12)
+        # Ds_mass stacked by process (ttbar 2L2Nu / LNu2Q split)
+        inner = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer[1, 2],
+                                                 height_ratios=[3, 1], hspace=0.06)
+        ax, rax = fig.add_subplot(inner[0]), fig.add_subplot(inner[1])
+        comps = []
+        for lab, role, extra, colr in PROC:
+            k = m[role] & (extra(S[role]) if extra else True)
+            comps.append((lab, S[role]["Ds_mass"][k], wl[role][k], colr))
+        sig = ((S["sig"]["Ds_mass"][m["sig"]], wl["sig"][m["sig"]]) if "sig" in S else None)
+        panel(ax, rax, comps, S["data"]["Ds_mass"][m["data"]], DS_BINS,
+              r"$M(K^+K^-\pi^\pm)$ [GeV]", blind=blind, sig=sig)
         cut_txt = "" if EFF is None else f" & stage-1 eff {round(100 * EFF)}%"
         fig.suptitle(f"ttbar CR {charge}, {cat}: pass_mu & b-tag & phi window{cut_txt} "
                      f"(MC: BR rw, DY jet-bin SF, b-tag SF)", fontsize=16, y=0.975)
