@@ -112,7 +112,34 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-26)
+## Last Session (2026-10-26 下午)
+
+### stage-2 加 DY τ 到底买到多少：无 DY 对照 `wjetsres_v2` + 2D FOM（B 改只算 SR）+ WP 0.30/0.30 的 Ds_mass
+
+**对照模型**：`TRAININGS["wjetsres_v2"]` = `resdy` 只去掉 DY（特征/stage-1 ε90 预筛/权重/seed 全同），`MVA/BDT/dsw_dsstw_wjetsres_v2_f21_wp90`，
+best_iter 927、test AUC 0.883（与 resdy 0.864 不可比，测试背景不同）；9 个 SR + 4 个 zmumu 已打分，行数与 resdy 逐个相同。
+
+**`compare_stage2_dy_vs_nody.py`**（新；matched ε_tot = resdy 的 WP2 90/70/50%，比值 resdy/对照）：
+DY μ←τ（只用 resdy 的 test split，复现划分已与 X_*.npy/y_test 核对）0.52/0.19/0.09；tt̄ 2L2Nu mode 0（都没训练过）0.93/0.78/0.67；
+data OS 低 sideband 0.87/0.73/0.61；W+jets 1-5 SR（代价）1.02/1.09/1.10；DY prompt μ 0.95/0.91/0.90；Punzi(MC SR) 1.02/1.04/1.11。
+
+**2D FOM**（`fom_map_stage2_run3.py resdy wjetsres_v2 [--lo=0.10]`；脚本迁到多 key，**MC B 用户定只算 Ds SR ±40 MeV**、W+jets+DY+tt̄ × BR rw × DY SF；
+旧全质量范围图 `fom_map_run3_mc*` 过时未删；比值图用户不要，已删，两模型各一张）：
+resdy 最大 0.0107（WP1 0.30/WP2 0.30，ε_tot 0.18，NeffB 10），对照 0.0087（0.45/0.40，NeffB 56）；同格 0.45/0.40 只差 1.02；扫到 0.10 峰仍在 0.30 附近。
+
+**WP 0.30/0.30 的 Ds_mass**（`draw_wp_mass.py 0.30 0.30 --add DY,TT --key2=K --ymax=41,61`；脚本加 `--key2`、BR rw/DY SF、stack 顺序、52/8 MeV bin、
+窗口表按未分 bin 质量、**修了 phi 栏 MC 没挖 Ds SR**）：sideband data resdy 62 / 对照 141；对照低端 MC 80% 是 DY，data/MC 1.04。
+- 形状 χ²（10 bin，只比形状）：resdy p=0.11、对照 p=0.02；松 WP 两者 p 0.4-0.9；phi 对得好是投影 + 各成分 phi 形状相同、Ds_mass 对成分敏感。
+- **高质量端 data < MC 只在 stage-1 收紧到 0.90 以下出现**（stage-1 ε90 + 任何 WP2 都 1.00-1.08；ε90 不加 stage-2 的 0.89 = mode 5，r5=0.5 → 1.006）；
+  低质量端同 WP 0.83-1.05 → 高端特有；图上的点 mode 1-5 不够解释（对照去掉全部 1-5 仍 47 vs 34）→ **非共振（W+jets 组合 + DY τ）的高质量尾巴 MC 偏多**，原因未知。
+- 用户：等产更多样本再看。待做：SS 样本（不 blind、组合为主）验证 high/low 比随 WP1 的走向；r5/r34 拟合。
+
+### 我犯的错
+1. 说「高端偏少大部分是整体归一化」，算了低端才发现是高端特有；又拿 0.35/0.50 的数说「mode 5 够解释」，在图上的 0.30/0.30 不成立（用户指出）。
+2. `compare_stage2_dy_vs_nody.py` 第一次读 Signal 的 `cand_gen_mode`（不存在）崩了；矩阵核对先用了逐位相等（condor 与本地 log 差 1e-16）。
+3. 2D FOM 先报了全质量范围的数，用户问 B 是什么时要说清哪些图是旧口径。
+
+## 上一 Session (2026-10-26 上午)
 
 ### charm SF：r12 改用 DY 的 Z→μμ CR 测（用户定），第一次拟合 + 随 stage-1 cut 扫描
 

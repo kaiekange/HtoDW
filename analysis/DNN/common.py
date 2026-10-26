@@ -964,6 +964,16 @@ TRAININGS["resdy"] = dict(
     out_dir=f"{MVA_DIR}/dsw_dsstw_resdy_f21_wp90",
 )
 
+# Control for "resdy" (1026): identical except no DY in the background, to measure what
+# adding DY mu-from-tau buys.
+TRAININGS["wjetsres_v2"] = dict(
+    TRAININGS["resdy"],
+    samples={"WtoLNu2Jets_merged": dict(gen_mode_filter=(1, 2, 3, 4, 5))},
+    label="W+jets res. (post stage-1 90%)",
+    out_name="dsw_dsstw_wjetsres_v2_f21_wp90",
+    out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_v2_f21_wp90",
+)
+
 for _k, _c in TRAININGS.items():
     assert _c["out_dir"] == f"{MVA_DIR}/{_c['out_name']}", f"{_k}: out_dir/out_name disagree"
 
