@@ -144,7 +144,7 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 
 ### 待定 / 下一步
 ① pass/fail 联合拟合（r12 + 真 Ds 效率比）+ 峰均值/宽度浮动，正式版 RooFit binned Poisson；② 若真 Ds 通过率 data/MC 真的 ~1.3，信号效率也要修；
-③ 电子 SF/能量修正（2l 的 eμ 行用）；④ `draw_cr_zmumu.py` 有别的会话加的 `--fail`/5 MeV bin 改动未提交；⑤ 上次的待定（`num_jets_pt30` vs `_corr` 等）仍在。
+③ 电子 SF/能量修正（2l 的 eμ 行用）；④ `draw_cr_zmumu.py` 的 `--fail`（没过 stage-1 cut 的那一片）/5 MeV bin 已提交（4d30661），fail 片的图已在 `figures/sf/cr_zmumu_eff90_fail_*`；⑤ 上次的待定（`num_jets_pt30` vs `_corr` 等）仍在。
 
 ## 上一 Session (2026-10-22 晚 ~ 10-26)
 
