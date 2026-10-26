@@ -63,6 +63,14 @@ if EFF is not None:
     TAG = f"{TAG}_eff{round(100 * EFF)}"
     print(f"stage-1 {MODEL_KEY}: eff_sig {EFF} -> score_dsmu > {THR:.6f}")
 CUT_DESC = "no DNN cut" if EFF is None else f"stage-1 eff {round(100 * EFF)}%"
+# --fail (2026-10-26): with --eff, keep the rows the stage-1 cut REJECTS (score_dsmu <= thr, incl.
+# the -777 rows), i.e. the complement: pass + fail = no cut. No-cut binning. Not with --key2.
+FAIL = "--fail" in sys.argv
+if FAIL:
+    if EFF is None or "key2" in ARGS:
+        sys.exit("--fail needs --eff and no --key2")
+    TAG = f"{TAG}_fail"
+    CUT_DESC = f"FAILING stage-1 eff {round(100 * EFF)}% (score_dsmu <= {THR:.4f})"
 # --key2=<stage-2 BDT key> --eff2=X (2026-10-22): also score_dsmu_res > thr2, read from that BDT's
 # Prediction/zmumu_<group>.root (which carries score_dsmu too). thr2 is UNCONDITIONAL, as in
 # draw_wp_mass.py: the (1-X) quantile of score_dsmu_res over all truth-matched SR signal
@@ -153,7 +161,7 @@ def read(group):
             keep[:] = False
         else:
             if EFF is not None:
-                keep &= a["score_dsmu"] > THR
+                keep &= (a["score_dsmu"] <= THR) if FAIL else (a["score_dsmu"] > THR)
             if KEY2 is not None:
                 keep &= a["score_dsmu_res"] > THR2
         a = {k: v[keep] for k, v in a.items()}
@@ -290,11 +298,11 @@ TRUTH = [  # (label, modes, colour) -- stack bottom -> top, as draw_cr_ttbar.py
     ("true D (3+4)", [3, 4], "#f4a582"),
     (r"true D$_s$ (1+2)", [1, 2], "#c0392b"),
 ]
-if EFF is None:   # 20 MeV Ds_mass (SR = 4 bins), 2 MeV phi_mass
-    _ds_bins = np.concatenate([np.linspace(M_DS - 0.30, M_DS - SR_HALF, 14),
-                               np.linspace(M_DS - SR_HALF, M_DS + SR_HALF, 5)[1:-1],
-                               np.linspace(M_DS + SR_HALF, M_DS + 0.30, 14)])
-    _phi_bins = np.linspace(M_PHI - 0.020, M_PHI + 0.020, 21)
+if EFF is None or FAIL:   # 5 MeV Ds_mass (SR = 16 bins), 0.5 MeV phi_mass (user 2026-10-26: stats allow it)
+    _ds_bins = np.concatenate([np.linspace(M_DS - 0.30, M_DS - SR_HALF, 53),
+                               np.linspace(M_DS - SR_HALF, M_DS + SR_HALF, 17)[1:-1],
+                               np.linspace(M_DS + SR_HALF, M_DS + 0.30, 53)])
+    _phi_bins = np.linspace(M_PHI - 0.020, M_PHI + 0.020, 81)
 else:             # with a DNN cut: 40 MeV Ds_mass (SR = 2 bins, edges on the SR), 4 MeV phi_mass
     _ds_bins = M_DS - SR_HALF + 0.040 * np.arange(-6, 9)
     _phi_bins = np.linspace(M_PHI - 0.020, M_PHI + 0.020, 11)
@@ -302,7 +310,7 @@ MASS = [("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]", _ds_bins),
         ("phi_mass", r"$M(K^+K^-)$ [GeV]", _phi_bins)]
 
 
-_bw = 0.020 if EFF is None else 0.080
+_bw = 0.020 if EFF is None or FAIL else 0.080
 TAU = [("pipi", r"$M(\pi\pi)$ of $\pi K^-$, $K^-\to\pi$ [GeV]", np.arange(0.20, 1.64 + 1e-9, _bw)),
        ("pipipi", r"$M(\pi\pi\pi)$, $K^\pm\to\pi$ [GeV]", np.arange(0.80, 2.30 + 1e-9, _bw)),
        ("Kmpi", r"$M(K^-\pi)$ (opposite sign) [GeV]", np.arange(0.60, 1.80 + 1e-9, _bw)),
