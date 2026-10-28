@@ -862,7 +862,7 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 				// post-fit Ds window (below) so it never binds the SR/CR sideband.
 				if (std::abs((Kp_p4 + Km_p4 + pi_p4).M() - Mass_Ds) > 0.5) continue;
 				// pre-fit phi window: loose upper cut on the raw KK mass (wider than the post-fit
-				// +50 MeV) to drop non-phi KK pairs before the expensive vertex fit. Pure speedup.
+				// +-20 MeV window) to drop non-phi KK pairs before the expensive vertex fit. Pure speedup.
 				if ((Kp_p4 + Km_p4).M() > Mass_phi + 0.08) continue;
 
 				reco::TransientTrack pi_tt = (*ttBuilder).build(pi_pf.bestTrack());
@@ -927,9 +927,11 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 				pi_tlv.SetXYZM(pi_mtm.x(), pi_mtm.y(), pi_mtm.z(), Mass_pi);
 				phi_tlv = Kp_tlv + Km_tlv;
 				if (phi_tlv.Pt() < 3) continue;
-				// phi window: upper cut only. The left side is physically bound by the KK
-				// threshold (2*m_K = m_phi - 32 MeV), so no lower cut is needed. Upper +50 MeV.
-				if (phi_tlv.M() > Mass_phi + 0.05) continue;
+				// phi window: |M(KK) - m_phi| < 20 MeV, the analysis phi20 cut (2026-10-26). Before,
+				// this line was an upper-only +50 MeV cut and the +-20 MeV window was applied later in
+				// the skim, on the best candidate only. Here it acts before BestPhiPiMuCandFilter, so
+				// the best candidate is chosen among phi20-passing candidates.
+				if (std::abs(phi_tlv.M() - Mass_phi) >= 0.020) continue;
 
 				//--------------------------------------------------//
 				// IP
@@ -1007,6 +1009,12 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 						ftree->gamma_uc_dM     = (Ds_tlv + g_tlv).M() - Ds_tlv.M();
 						ftree->gamma_uc_pt     = g_tlv.Pt();
 						ftree->gamma_uc_dR_Ds  = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), gpf.eta(), gpf.phi());
+					}
+					else
+					{
+						// Init() runs once per event: reset here, or a candidate without a photon in
+						// the window keeps the previous candidate's values (bug until 2026-10-26).
+						ftree->gamma_uc_dM = null; ftree->gamma_uc_pt = null; ftree->gamma_uc_dR_Ds = null;
 					}
 				}
 
