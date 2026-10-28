@@ -112,7 +112,40 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
 
-## Last Session (2026-10-26 下午)
+## Last Session (2026-10-26 ~ 10-28)
+
+### φ20 移进 custom nano producer，全部样本重跑（用户选 B：流程标准化）
+
+**代码**（13_0_13，1028 commit）：`HDsPhiPiMuProducer.cc`、`HDsPhiPiMuGenTagProducer.cc` 原 post-fit `M(KK)<Mφ+50 MeV` 改成 `|M(KK)−Mφ|<20 MeV`，
+在 `BestPhiPiMuCandFilter`（取最高 Ds_pt）之前 → best 在过 φ20 的候选里选，和旧「skim 对 best 加 φ20」不等价，所以全部样本重跑；pre-fit +0.08 不动。
+顺修 `gamma_uc_*` 串值 bug（候选窗口无光子时沿用前一个候选的值 → 置 −777；下游没用）。
+- **el8/el9**：`condor_submit.py` 没设 MY.WantOS，el8 release 在 el9 worker 原生跑；el9 原生 == condor 逐位相同，el8 容器与之差 1-2 行 1e-7（OS 数学库）。没改（与以前所有 MC 一致）。
+- 旧输出一律改名 `*_pre_phi20nano`（signal 4 个、本底 40 个 nano 目录 + 40 个 scheduler log、data 2022 C/D OS/SS）；文件列表备份 `condor/condor_logs/filelists_before_phi20nano/`。
+- **只重跑旧目录现有的 JOBID**（OS==SS，`condor_logs/bkg_phi20nano_jobids.json`，19,302 个）→ 文件切片不变、以前删的坏输入不回来。
+  分批脚本 `condor/resubmit_bkg_batches.py`（`--samples= --years= --ss= --slot=`，状态 `condor_logs/bkg_phi20nano_state.txt`，可续跑）。
+
+**signal**：300 个 job 全部成功；genEventCount 新=旧；所有行在 φ20 内；新事例 ⊆ 旧；找回 161/308/157/351 行（~0.1%）；
+丢 1 个事例在 φ20 边界（|dM| 19.99994 MeV，double vs float32 舍入），可忽略。**skim/merge 没做**（会覆盖现用的 Signal_merged）。
+
+**data 2022 preEE**：CRAB task 261026_134558（C OS）/134609（D OS）/134617（C SS）/134624（D SS），10-26 卡在 NEW，之后没再查；旧 crab 目录已删、EOS 旧输出留着。
+2022C 的 SingleMuon PD（runs 355862-356386）一直没跑过（待定）。2023-2026 data 列表见 memory `project_data_datasets_2022_2026`（2024+ 要移植 producer）。
+
+**本底（condor，2022 preEE）**：
+- W+jets OS/SS 全部跑完；1J JOBID 10（OS 8 h 超时）、43（OS/SS xrootd 失败）用户让两边都删（`condor_logs/WJ_phi20nano_bad_jobs_dropped_20261027.txt`）。
+- TT OS 537：cluster 19197647/650/654/658；TT SS 537：19203251-54（lxplus805）。
+- DY OS 687：19213633（0J）/645（1J）/654（2J）（lxplus805，1027 14:27）；DY SS 687：19214698/699/700（lxplus805，1027 16:20）。
+- 1028 全部排空：W+jets/TT 全 rc0；DY 37 个失败（8 h 墙钟 / FileOpenError）、32 个 JOBID，用户定任一边失败两边都删，名单 `condor_logs/DY_phi20nano_bad_jobs_dropped_20261028.txt`，DY 现在 OS/SS 各 217/208/230。data D SS（261026_134624）卡在 no status info。
+- **2022EE**：TT OS 1,756 个 1028 已交（lxplus802，cluster 19267540/541/543/544/545，用户「不要分批」→ `--slot=10000`）；TT SS、W+jets、DY 的 2022EE 未交；墙钟仍 workday（DY 要不要改 tomorrow 未定）。
+- **data 1028**：C OS/D OS/C SS 全部 finished；D SS 旧 task kill 后重交 261028_091640；EFG OS 旧 crab 目录已改名，但 EOS 旧输出改名报 errc=3008（空目录也失败，服务端问题）→ 用户自己修 EOS 后交（`submitData.sh OS submit Run2022{E,F,G}`）；EFG SS 的旧 9/15 crab 目录还在。
+- **2022 preEE 本底全部已跑完**；正式验收（genEventCount、φ20、⊆ 旧、OS/SS Runs 相等）未做，要交 condor 做。
+
+### 我犯的错
+1. 把 el8 容器 vs el9 原生的 1e-7 差说成「随机噪声」。
+2. 验收脚本写成 O(n²)（循环里重建 set）。
+3. pgrep 查重复 driver 时匹配到了自己的命令，导致一次没提交。
+4. memory 里写 cluster 号缩写，grep 全号没找到，追加了重复行（已删）。
+
+## 上一 Session (2026-10-26 下午)
 
 ### stage-2 加 DY τ 到底买到多少：无 DY 对照 `wjetsres_v2` + 2D FOM（B 改只算 SR）+ WP 0.30/0.30 的 Ds_mass
 
