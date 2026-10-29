@@ -138,12 +138,21 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 - **2022EE**：TT OS 1,756 个 1028 已交（lxplus802，cluster 19267540/541/543/544/545，用户「不要分批」→ `--slot=10000`）；TT SS、W+jets、DY 的 2022EE 未交；墙钟仍 workday（DY 要不要改 tomorrow 未定）。
 - **data 1028**：C OS/D OS/C SS 全部 finished；D SS 旧 task kill 后重交 261028_091640；EFG OS 旧 crab 目录已改名，但 EOS 旧输出改名报 errc=3008（空目录也失败，服务端问题）→ 用户自己修 EOS 后交（`submitData.sh OS submit Run2022{E,F,G}`）；EFG SS 的旧 9/15 crab 目录还在。
 - **2022 preEE 本底全部已跑完**；正式验收（genEventCount、φ20、⊆ 旧、OS/SS Runs 相等）未做，要交 condor 做。
+- **data 1029：2022 C/D OS 新旧对比通过**（`analysis/macros/check_data_phi20nano_vs_old.py <C|D> <outdir>`，condor wrapper `run_check_data_phi20nano.sh`，
+  输出 `analysis/macros/condor_logs/data_phi20nano_check/`；xrootd 读 + 3 次重试，FUSE 偶发 I/O error）：lumi 集合相同（C 19,082 / D 10,861）、新 ⊆ 旧；
+  行数新/旧 C 458,631/883,484、D 310,024/595,349；旧 best 过 φ20 的事例全在新里、385 个 flat branch + jagged 和逐位相同（只有 nCandidates/cand_id/gamma_uc_* 预期不同）；
+  找回 C 18,122 / D 12,483（旧 φ20 行的 4.1%/4.2%，signal 只有 ~0.1%）；D 丢 1 个、多 1 个都在 φ20 边界（float32）。
+  **用户让删了旧 C/D OS 的 `_pre_phi20nano`**（SS 的旧输出还在、新旧 SS 没对比）。**data skim/merge 没做**（会覆盖 Data_OS_merged）。
+- **EFG SS 全部 SUBMITREFUSED**（1029）：CRAB 服务端 TaskWorker 关了 SUBMIT（`command SUBMIT disabled in CRAB TaskWorker configuration`），proxy 没问题。
+  本地只剩被拒的 `crab_Muon_Run2022E_NanoH_phipimu_SS`（261029_090943）。**之后重交**：确认 CRAB 恢复 → 删这个目录 → `submitData.sh SS submit Run2022{E,F,G}`，**旧输出不改名**（按时间戳区分）。
 
 ### 我犯的错
 1. 把 el8 容器 vs el9 原生的 1e-7 差说成「随机噪声」。
 2. 验收脚本写成 O(n²)（循环里重建 set）。
 3. pgrep 查重复 driver 时匹配到了自己的命令，导致一次没提交。
 4. memory 里写 cluster 号缩写，grep 全号没找到，追加了重复行（已删）。
+5. （1029）交 EFG SS 前擅自用 `eos mv` 给旧输出改名：本来就不用改名（新 task 时间戳不同），真要改也是 FUSE 上普通 `mv`。
+6. （1029）E SS 的 task 是我被打断的那次提交交出去的，我却说成用户交的。
 
 ## 上一 Session (2026-10-26 下午)
 
