@@ -54,7 +54,9 @@ KEY2 = next((a.split("=", 1)[1] for a in _argv if a.startswith("--key2=")), "res
 # --ymax=DS,PHI: fixed y-axis tops for the two panels (to compare models side by side)
 YMAX = next((tuple(float(x) for x in a.split("=", 1)[1].split(",")) for a in _argv
              if a.startswith("--ymax=")), None)
-_argv = [a for a in _argv if not a.startswith(("--key2=", "--ymax="))]
+# --ds-only: draw only the Ds_mass panel (output name gets _dsonly)
+DS_ONLY = "--ds-only" in _argv
+_argv = [a for a in _argv if not a.startswith(("--key2=", "--ymax=", "--ds-only"))]
 ADD = []
 if "--add" in _argv:
     i = _argv.index("--add")
@@ -92,6 +94,8 @@ VARS = [   # (branch, label, bin edges, blind half-width or None, ref line or No
     ("Ds_mass", r"$M(K^+K^-\pi^\pm)$ [GeV]", DS_EDGES, SR_HALF, None),
     ("phi_mass", r"$M(K^+K^-)$ [GeV]", PHI_EDGES, None, M_PHI),
 ]
+if DS_ONLY:
+    VARS = VARS[:1]
 
 
 def phi_clip(x):
@@ -160,8 +164,8 @@ d_ds, d_phi = d["Ds_mass"][dk], phi_clip(d["phi_mass"][dk])
 print(f"W+jets rows passing cut: {gk.sum():,}   OS data rows passing cut "
       f"(Ds SR blinded): {dk.sum():,}")
 
-fig = plt.figure(figsize=(15.0, 7.5))
-outer = gridspec.GridSpec(1, 2, figure=fig, wspace=0.26)
+fig = plt.figure(figsize=(7.5 * len(VARS), 7.5))
+outer = gridspec.GridSpec(1, len(VARS), figure=fig, wspace=0.26)
 
 for col, (branch, xlabel, bins, blind_half, refline) in enumerate(VARS):
     # phi panel: MC drops Ds-SR rows too, like the blinded data (was data-only before 1026)
@@ -273,7 +277,8 @@ fig.suptitle(f"stage-1 {S1_KEY} + stage-2 {KEY2}: "
 
 out = common.fig_path("comparisons", (f"wp_mass_wp1_{WP1:.3f}_stage1only.png" if STAGE1_ONLY else
                         f"wp_mass_wp1_{WP1:.2f}_wp2_{WP2:.2f}")
-                      .replace(".png", "") + ("_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "") + ".png",
+                      .replace(".png", "") + ("_" + "_".join(k.lower() for k in EXTRA) if EXTRA else "")
+                      + ("_dsonly" if DS_ONLY else "") + ".png",
                       key=KEY2, tool="BDT")
 plt.savefig(out, dpi=120, bbox_inches="tight")
 plt.close(fig)

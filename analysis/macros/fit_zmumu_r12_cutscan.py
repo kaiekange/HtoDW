@@ -1,7 +1,7 @@
 # Quick (scipy chi2, not RooFit) r12 vs stage-1 cut, 2026-10-26. Run with the ds_dnn python from analysis/macros/.
 # Postfit: zmumu_r12_fit_cut_<cut>_pol1.png; summary: zmumu_r12_vs_cut.png (under ssdata_f45/figures/sf/).
 # Z->mumu CR (76<M(mumu)<106, phi20): r12 vs stage-1 ssdata_f45 cut (score_dsmu > thr(eps_sig)).
-# Same OS+SS joint chi2 fit as fit_zmumu_r12_quick.py: per charge n_c * MC_cont * (1 + a1 x) + r12 * Ds + r34 * D,
+# OS+SS joint chi2 fit: per charge n_c * MC_cont * (1 + a1 x) + r12 * Ds + r34 * D,
 # range 1.75-2.20, peak shapes fixed to MC. Reads Prediction/zmumu_*.root (rows = skim rows + score).
 import sys
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")

@@ -101,8 +101,18 @@ W+jets 文件列表 `filelist_{0,1,2}J_{2022,2022EE}.txt` 移到 `condor/das/`�
 留着的进行中工作：`check_{data,mc}_phi20nano_vs_old`（MC 版未提交）、`jme_zmumu_study`/`draw_zmumu_jme`、`fit_zmumu_r12_*`、`draw_zmumu_feature`、
 `check_dsmunu_mass`+`compare_dsmunu_signal_gentag`（m(Dsμν) 进不进 MVA 未定）、`compare_stage2_dy_vs_nody`。用户未提交的 `draw_wp_mass.py --ds-only` 没带进 commit。
 
+**下午追加（用户批准「φ20 之前用到的全删」）**：EOS `Samples/*_merged_prephi20*`、`skim_prephi20/`、`MC/2022/btag_efficiency_prephi20/`（~34 GB）删；
+EOS postEE 11 个 `*_pre_phi20nano` 本底目录（63 GB，`eos rm -r`，在 EOS 回收站）删 → **新旧 nano 对比再也做不了**，
+postEE WJ0/WJ1/DY2J/DY1J SS 新 nano 补齐前没有完整 postEE nano（现有 `*_merged.root` 仍含旧数据）。
+13_0_13 `condor_logs/` 的 40 个 `*_pre_phi20nano.log`、`filelists_before_phi20nano/` 删；15_0_5 `macros/condor_logs/` 只剩 `make_samples_nano/lists/`（merge 要读）。
+删 `check_data_phi20nano_vs_old.py`、`run_check_data_phi20nano.sh`、`fit_zmumu_r12_quick.py`（留 `fit_zmumu_r12_cutscan.py`）。
+`check_mc_phi20nano_vs_old.py` + `run_check_mc_phi20nano.sh` 被我一并删了（未跟踪），用户要提交，从 AFS 备份卷 `work.kakang.backup`（11-02 18:23 快照）恢复后提交；
+它们读的 `_pre_phi20nano` 已删，**现在跑不了**，只作记录。`draw_wp_mass.py --ds-only`（只画 Ds_mass panel）一并提交。
+
 ### 我犯的错
 1. 每删一组就 commit + push（一天 7 个小 commit），用户恼火 → memory `feedback_batch_commits`。
+2. 删了用户未提交的两个脚本（虽在批准的选项里），用户随后要提交 → 从 AFS 备份卷恢复。
+3. 又用 shell 变量拼 `rm` 路径被安全检查拦；删除一律写字面路径。
 
 ## 上一 Session (2026-10-26 ~ 10-28)
 
