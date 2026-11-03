@@ -84,6 +84,7 @@ keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTa
 W+jets 文件列表 `filelist_{0,1,2}J_{2022,2022EE}.txt` 移到 `condor/das/`（`condor_submit.py` 的 `WJ_FILELIST_DIR`），
 `data_2022.txt` 移到 `crab/DatasetList/`（`submitData.sh`），逐字节相同、仍被 `*.txt` gitignore；2023/2024 golden JSON 拷进 `crab/JSON/`。
 `test/SIG_H_phipimu.py`、`WtoLNu2Jets_H_phipimu.py`、`plugins/H_phipimu*.cc` 是死代码（import 不存在的 JMEcorr），**还没删**。
+未跟踪的 `plugins/_fillcand_body.txt`（09-10 草稿）、根目录 `BKG_datasets.txt` 已删。删 `H_phipimu*.cc` 要 el8 `scram b` 重编译，等 condor job 排空再做；`H_phipimu*_Tree` 类不能删（producer 拿它当 scratch struct）。
 
 **15_0_5**：删 `Tuples/`（含未进 git 的 condor_logs）、`GenCount/`（被 Corrections/gencount 取代）、`BKGsets/`（未进 git）、
 `EDAnalyzers/`（旧 `H_phipimu` + JMEcorr；删后 el9 容器里 cmsenv + correctionlib 2.6.4 正常）。
