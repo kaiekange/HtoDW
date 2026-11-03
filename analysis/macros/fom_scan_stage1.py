@@ -57,7 +57,7 @@ import eras
 
 plt.style.use(hep.style.CMS)
 
-MODEL = "ssdata"
+MODEL = "ssdata_f45"
 PRED = f"{common.out_dir_for(MODEL, tool='DNN')}/Prediction"
 MC_SAMPLE = "WtoLNu2Jets_merged"
 DATA_SAMPLE = "Data_OS_merged"

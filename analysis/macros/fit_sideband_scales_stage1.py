@@ -34,7 +34,7 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-MODEL_KEY = "ssdata"
+MODEL_KEY = "ssdata_f45"
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 M_DS, M_DP, SR_HALF = 1.96835, 1.8696, 0.040
 LUMI = common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]

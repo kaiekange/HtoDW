@@ -39,7 +39,7 @@ import uproot
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "DNN"))
 import common  # noqa: E402
 
-KEY = "ssdata"
+KEY = "ssdata_f45"
 PHI_WIN = next((float(x.split("=", 1)[1]) for x in sys.argv[1:] if x.startswith("--phi-win=")), None)
 TAG = "" if PHI_WIN is None else f"_phi{1e3 * PHI_WIN:.0f}"
 CUTS = [(None, "no cut"), (0.90, r"$\varepsilon_{sig}$=90%"), (0.70, r"$\varepsilon_{sig}$=70%"),

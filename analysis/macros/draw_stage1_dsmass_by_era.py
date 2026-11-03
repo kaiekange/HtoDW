@@ -31,7 +31,7 @@ plt.style.use(hep.style.CMS)
 sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DNN")
 import common
 
-MODEL_KEY = "ssdata"
+MODEL_KEY = "ssdata_f45"
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 M_DS, SR_HALF = 1.96835, 0.040
 BINS = np.arange(M_DS - 0.3, M_DS + 0.3 + 1e-9, 0.010)
