@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Submit the 2022 Muon data listed in ../../../../CMSSW_15_0_5/src/Tuples/Data/DatasetList/data_2022.txt
-# (shared with the old H_phipimu-tree workflow -- it's a pure dataset/GlobalTag/Year table,
+# Submit the 2022 Muon data listed in DatasetList/data_2022.txt
+# (moved from the old CMSSW_15_0_5 Tuples/Data/DatasetList -- a pure dataset/GlobalTag/Year table,
 # not release-specific) through the new custom-NanoAOD pset (../test/NANO_DATA_H_phipimu.py).
 #
 #   ./submitData.sh OS                    # opposite-sign (SS=0), every active line
@@ -38,7 +38,7 @@ esac
 
 cd "$(dirname "$0")"
 
-datasetlist="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/Data/DatasetList/data_2022.txt"
+datasetlist="DatasetList/data_2022.txt"   # relative: the script cd-s to its own dir above
 configtemplate="crabConfigTemplateData.py"
 PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
 

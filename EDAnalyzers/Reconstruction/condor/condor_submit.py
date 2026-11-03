@@ -29,7 +29,7 @@ ERA = {
 }
 SIGNAL_DAS = {"DsW": "ggHtoDsW_phipi", "DsstW": "ggHtoDsstW_phipi"}
 WJ_BIN = {"WJ0": "0J", "WJ1": "1J", "WJ2": "2J"}
-WJ_FILELIST_DIR = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/Tuples/WtoLNu2Jets"
+WJ_FILELIST_DIR = f"{HERE}/das"  # static DAS dumps, filelist_<bin>_<year>.txt
 # Central-MC sub-dominant backgrounds (ttbar, DY), GenTag tuplizer only (OS and SS).
 # sample key -> (output dir base, {year: DAS dataset}). The file list is dumped from DAS
 # ONCE into das/<sample>_<year>.txt and reused, so a resubmission slices the same list.

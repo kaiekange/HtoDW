@@ -18,8 +18,8 @@ config.General.transferLogs = True
 config.section_('JobType')
 config.JobType.psetName = '__PSETNAME__'
 config.JobType.pluginName = 'Analysis'
-# Per-dataset GlobalTag, from Tuples/Data/DatasetList/data_2022.txt (shared with the old
-# workflow -- it's a pure DAS/GT table, not release-specific). SS selects the OS/SS
+# Per-dataset GlobalTag, from crab/DatasetList/data_2022.txt (a pure DAS/GT table,
+# not release-specific). SS selects the OS/SS
 # tuplizer variant. The pset has no default for GLOBALTAG and raises at parse time if
 # it's missing.
 # YEAR (2022Pre/2022Post, the Year column) selects the era ParticleNet WPs; required by the pset.

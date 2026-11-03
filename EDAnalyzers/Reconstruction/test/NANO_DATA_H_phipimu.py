@@ -8,7 +8,7 @@ Local smoke test:
         inputFiles=root://cms-xrd-global.cern.ch//store/data/Run2022C/Muon/MINIAOD/22Sep2023-v1/...
 
 Knobs (VarParsing 'analysis'):
-  GLOBALTAG  required, no default -- per-dataset, from Tuples/Data/DatasetList/data_2022.txt
+  GLOBALTAG  required, no default -- per-dataset, from crab/DatasetList/data_2022.txt
              (C/D/E: 130X_dataRun3_v2; F/G: 130X_dataRun3_PromptAnalysis_v1 -- GT and the
              preEE/postEE output split are independent axes, see that file's header comment)
   OUTFILE    output file (file:...)
@@ -36,7 +36,7 @@ options.register('YEAR', '', VarParsing.multiplicity.singleton, VarParsing.varTy
 options.parseArguments()
 
 if not options.GLOBALTAG:
-    sys.exit("GLOBALTAG is required (see Tuples/Data/DatasetList/data_2022.txt)")
+    sys.exit("GLOBALTAG is required (see crab/DatasetList/data_2022.txt)")
 _YEAR_TO_ERA = {"2022Pre": "2022", "2022Post": "2022EE"}
 if options.YEAR not in _YEAR_TO_ERA:
     sys.exit("YEAR=%r must be one of %s (Year column of data_2022.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
