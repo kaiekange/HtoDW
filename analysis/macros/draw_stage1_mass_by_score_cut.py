@@ -60,9 +60,9 @@ and the uncommitted draw_ds_mass_signal_data_wjets.py -- do NOT all get them rig
 
     source /afs/cern.ch/work/k/kakang/miniconda3/etc/profile.d/conda.sh
     conda activate ds_dnn
-    python3 draw_stage1_mass_by_score_cut.py [--add TT,DY] [--key=ssdata_phi20]
+    python3 draw_stage1_mass_by_score_cut.py [--add TT,DY] [--key=ssdata_f45]
 
---key=K picks the stage-1 model (default ssdata): its Prediction/ dir, its thresholds and its
+--key=K picks the stage-1 model (default ssdata_f45): its Prediction/ dir, its thresholds and its
 figures dir. If K's training config sets phi_win, the same |phi_mass - M_phi| window is
 applied to every sample here (ossel), so the plotted population is the one K was trained on.
 
@@ -140,7 +140,7 @@ if SS and MC_SR_EXCL:
 BR_COLS = ["cand_gen_mode", "cand_gen_common_hf_pdgId"] if BR_RW else []
 if DY_SF and "DY" not in ADD:
     sys.exit("--dy-sf needs --add DY")
-MODEL_KEY = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key=")), "ssdata")
+MODEL_KEY = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--key=")), "ssdata_f45")
 PHI_WIN = common.resolve(MODEL_KEY).get("phi_win")
 PRED = f"{common.out_dir_for(MODEL_KEY)}/Prediction"
 # --key2=<stage-2 BDT key> (2026-10-22): columns become stage-1 eps90 alone, then + stage-2 WP2

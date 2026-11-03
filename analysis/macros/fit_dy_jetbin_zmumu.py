@@ -14,7 +14,7 @@ the single-factor fit is printed for comparison.
 Panels: pT(mumu) pre-fit and post-fit (fitted), then post-fit M(mumu), pT(mu1), pT(mu2),
 reco Njet, MET and m_T -- NOT fitted, they show whether the three factors describe them.
 
-    python3 fit_dy_jetbin_zmumu.py [--dir=<CR dir>] [--key=ssdata_phi20]
+    python3 fit_dy_jetbin_zmumu.py [--dir=<CR dir>] [--key=ssdata_f45]
 """
 import sys
 
@@ -33,7 +33,7 @@ import common
 
 ARGS = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
 CR_DIR = ARGS.get("dir", f"{common.SAMPLES_DIR}/CR/zmumu")
-MODEL_KEY = ARGS.get("key", "ssdata_phi20")
+MODEL_KEY = ARGS.get("key", "ssdata_f45")
 M_PHI, ZLO, ZHI = 1.019460, 76.0, 106.0
 LUMI_FB = (common.ERAS[1]["lumi_pb"] + common.ERAS[2]["lumi_pb"]) / 1000.0
 PTLL_BINS = np.array([0, 5, 10, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100, 120, 150, 200.])

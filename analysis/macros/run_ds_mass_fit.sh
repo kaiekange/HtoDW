@@ -1,5 +1,5 @@
 #!/bin/bash
-#   run_ds_mass_fit.sh --key=ssdata_phi20 --cuts=0.70,0.60,0.50 --joint=slices|nested --float=r34,r5,k [--tag=T]
+#   run_ds_mass_fit.sh --key=ssdata_f45 --cuts=0.70,0.60,0.50 --joint=slices|nested --float=r34,r5,k [--tag=T]
 #
 # Ds-mass sideband fit, all three steps, so no fit is ever left without its figures:
 #   1. ds_mass_fit_io.py inputs   (conda ds_dnn: needs common.py -> torch)

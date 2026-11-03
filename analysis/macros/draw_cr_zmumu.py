@@ -32,7 +32,7 @@ draw_tau3pi_masses_by_cut.py (track 4-vectors, mass hypothesis in brackets): M(p
 (rho0), M(K+[pi] K-[pi] pi[pi]) (a1, <= m_tau), M(K-[K] pi) (K*0), M(K+[K] pi); same selection,
 weights and truth stack as the Ds_mass figure; 20 MeV bins (80 MeV with --eff).
 
-    python3 draw_cr_zmumu.py [--dir=<CR dir>] [--key=ssdata_phi20] [--eff=0.90] [--ss]
+    python3 draw_cr_zmumu.py [--dir=<CR dir>] [--key=ssdata_f45] [--eff=0.90] [--ss]
                              [--key2=resdy --eff2=0.70]   (stage-2 cut on top, see KEY2 below)
 --ss (2026-10-21): the same-sign files (Data/WtoLNu2Jets/TT/DY _SS_merged); there is no SS
 signal file in this CR, so the signal line is empty. Figure names get _ss.
@@ -54,7 +54,7 @@ import common
 
 ARGS = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
 CR_DIR = ARGS.get("dir", f"{common.SAMPLES_DIR}/CR/zmumu")
-MODEL_KEY = ARGS.get("key", "ssdata_phi20")
+MODEL_KEY = ARGS.get("key", "ssdata_f45")
 TAG = ARGS.get("tag", "")
 EFF = float(ARGS["eff"]) if "eff" in ARGS else None
 if EFF is not None:

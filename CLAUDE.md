@@ -6,53 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 At the end of each session, update the "Last Session" section below.
 
-## Environment Setup
+## Environment Setup / Repository Layout
 
-This is a CMSSW 15.0.5 package at CERN. Before any build or run command, the CMSSW environment must be active:
+As of 2026-11-03 this checkout holds **only Python analysis code** (`analysis/`); there is no
+C++ package to build here any more (the old private tuplizer `EDAnalyzers/`, `Tuples/`,
+`GenCount/` were deleted, recover from git history if needed).
+
+- **NanoAOD production** (C++ producers, cmsRun psets, condor/CRAB submission) lives in
+  `/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/`
+  (el8 release): `plugins/HDsPhiPiMu{,GenTag}Producer.cc` + `BestPhiPiMuCandFilter.cc`,
+  `python/nano_phipimu_cff.py`, `test/NANO_{,DATA_}H_phipimu.py`, `condor/condor_submit.py`
+  (MC), `crab/submitData.sh` (data).
+- **Corrections** (friend trees, b-tag efficiency maps, normalization, signal gencount) live in
+  `/afs/cern.ch/work/k/kakang/H2DW/Corrections/`. It uses this CMSSW_15_0_5 release only as the
+  el9 Python stack (correctionlib/uproot), inside `cmssw-el9`:
 
 ```bash
+cmssw-el9   # on an el8 node
 source /cvmfs/cms.cern.ch/cmsset_default.sh
-cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/
-cmsenv
+cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/ && cmsenv
 ```
 
-## Build
-
-```bash
-scram b -j8
-```
-
-To clean and rebuild a single package:
-```bash
-scram b -j8 EDAnalyzers/Reconstruction
-```
-
-## Running Analyzers Locally
-
-```bash
-cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py        # DsW signal
-cmsRun EDAnalyzers/Reconstruction/test/SIG_DsstW_H_phipimu.py  # DsstW signal
-cmsRun EDAnalyzers/Reconstruction/test/BKG_H_phipimu.py        # background (doTruth=False)
-```
-
-Config files accept `JOBID`, `GROUPSIZE`, and `OUTFILE` arguments:
-```bash
-cmsRun EDAnalyzers/Reconstruction/test/SIG_H_phipimu.py JOBID=0 GROUPSIZE=1 OUTFILE=file:output.root
-```
-
-## HTCondor Submission
-
-Each subdirectory under `Tuples/` corresponds to one sample. To submit:
-```bash
-cd Tuples/HtoDsW/
-python3 condor_submit.py
-```
-
-The `run.sh` in each `Tuples/` subdirectory is the HTCondor executable. It sources `cmsenv`, runs `cmsRun`, and writes output to `/eos/home-k/kakang/H2DW/Analysis/MC/2022/<JobType>/`.
-
-## Post-processing ROOT Macros
-
-Analysis macros in `Tuples/<JobType>/` (e.g., `bestcand.cc`, `compare.cc`, `PrepareSB.cc`) and `analysis/macros/` are standalone ROOT scripts run with `root -l -q macro.cc`.
+- **`analysis/`** here: `macros/make_samples_nano.py` (merged skims -> `NanoMVA/Samples/`),
+  `DNN/` + `BDT/` (training/scoring, single source of truth `DNN/common.py`; run under conda
+  `ds_dnn`, submit with `condor_submit.py`), and the plotting/fit macros in `analysis/macros/`
+  (matplotlib + mplhep, figures via `common.fig_path`).
 
 ## Architecture
 
@@ -73,22 +51,15 @@ So on disk, only prompt W→μ and W→τ→μ events ever produce rows; W→e a
 pass the gen filter (and increment `nEventsGen_`/`nEventsLepton_`) but never reach `Fill()`.
 This was a deliberate 2026-07-22 decision — gen truth generalized, reco untouched.
 
-### EDAnalyzers Package Structure
+### Candidate Producer Data Flow (13_0_13 `HDsPhiPiMuProducer`, copied from the old `H_phipimu`)
 
-**`EDAnalyzers/JMEcorr/`** — jet/MET energy correction producers (must run before the main analyzer):
-- `JecAppliedJetProducer`: applies JEC to slimmedJetsPuppi → `CorrectedAK4`
-- `JecAppliedMetProducer`: applies JEC-propagated MET → `CorrectedMet`
-- `JvmAppliedEventFilter`: jet veto map filter
-- `tightJetId`: produces `ValueMap<Int_t>` tight jet ID
+Differences from the old tuplizer described below: jets come from the standard-NANO
+`updatedJetsPuppiWithUserData` (no JMEcorr chain, no pT threshold in the producer loop); the
+muon pre-cut is 24 GeV on the uncorrected pT (the analysis cut, corrected pT>26, is applied
+offline); the post-fit φ cut is `|M(KK)−Mφ|<20 MeV` (since 2026-10-26); `BestPhiPiMuCandFilter`
+keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTag variant:
+`HDsPhiPiMuGenTagProducer` (background truth tags `cand_gen_*`).
 
-The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmAppliedEventFilter * tightJetId * <MainAnalyzer>`
-
-**`EDAnalyzers/Reconstruction/`** — the analyzer:
-- `H_phipimu`: the only analyzer. Handles both channels via `channel = "DsW" | "DsstW"`,
-  and both signal and background via `doTruth`. Full reconstruction including the
-  kinematic vertex fit.
-
-### Analyzer Data Flow (H_phipimu)
 
 1. **Gen filter** (`doTruth` only): require exactly 1H + 1Ds(*) + 1W + 1 hard-process W-daughter lepton (e/μ/τ, any flavor — `Gen_W_lep_pdgId`), then find the status-1 gen K+, K−, π with the full φ ancestry chain (`TwoBodyDecay(gp, 333, 321, -321)` etc.). Returns early if not found. DsstW additionally requires the Ds* to go via γ **or** π0(→γγ) (`Gen_Dsst_mode`: 0=γ, 1=π0), both ancestry-checked the same way. If the W-lepton is a τ, a second pass over `isDirectHardProcessTauDecayProductFinalState()` particles classifies `Gen_tau_decay_mode` (0=hadronic, 1=e, 2=μ) and — only for τ→μ — supplies the muon used below. **The tree stores no gen-level kinematics** (no Gen_H/Ds/Dsst/W/Kp/Km/pi/mu/gamma/pi0/tau 4-vectors, no PV/SV, no Gen MET, no gen dR family) — only the categorical tags (`Gen_W_lep_pdgId`, `Gen_tau_decay_mode`, `Gen_Dsst_mode`) and the match booleans below. This was a deliberate 2026-07-22 simplification; the local `reco::GenParticle` objects needed for matching still exist in `analyze()`, just aren't written out.
 2. **Gen matching**: match PF candidates via `packedPFCandidateToGenAssociation` + ΔR<0.05 + Δpt/pt<0.3 (ancestry checks accept either Ds* submode). The γ (DsstW, γ-mode) is matched geometrically instead — ΔR<0.02, Δpt/pt<0.5 — because it has no association; in π0-mode the two π0 daughter photons are matched the same way, producing `Gen_pi0gamma1_match`/`Gen_pi0gamma2_match`. Muon via `muon.genParticle()`; for a τ→μ event the ancestry check uses `isDirectHardProcessTauDecayProductFinalState()` instead of the direct W→μν chain.
@@ -99,20 +70,40 @@ The cmsRun path is always: `jecAppliedJetProducer * jecAppliedMetProducer * jvmA
 7. **Ds* (DsstW only)**: photon pool is |pdgId|=22, pT>0.5; (Ds*+μ) mass<125. Mass window unchanged (±0.15) — not yet revisited pending a DsstW rerun to look at its resolution.
 8. **Output**: the tree is row-per-candidate (flat ntuple), not one row per event — `tree->Fill()` is called once per Ds×gamma combination (or once per Ds if no gamma passes), so an event with N candidates writes N rows. Event-level fields (gen info, PV, MET, `jet_ht`/`jet_leadpt`/`jet_maxbscore`, triggers, muon, electron/muon os/ss lepton counts) are set once before the candidate loop and repeat identically across that event's rows. `Ds_nearestjet_dR`/`bscore` and `n_b_jets_{loose,medium,tight}{,_pt20}_dR{03,04}` (b-tagged central jets excluding jets within dR03/dR04 of the Ds, added 2026-07-23) are genuinely per-candidate: recomputed inside the loop from each row's own `Ds_mtm`. `nCandidates` = number of rows passing all cuts.
 
-### Tree Structure Convention
-- `interface/<Name>_Tree.h` declares all branches as public members
-- `src/<Name>_Tree.cc` implements `CreateBranches()` and `Init()` (reset to defaults)
-- `null` sentinel = `-777` (defined as `#define null -777` in each tree header)
-- Per-candidate quantities are `std::vector<T>`, indexed by candidate number
-- Per-event quantities are scalars
-
 ### Key Constants
 - GlobalTag (2022 MC): `130X_mcRun3_2022_realistic_v5`
 - Ds mass: 1.96835 GeV, φ mass: 1.019460 GeV, K: 0.493677 GeV, π: 0.13957039 GeV, μ: 0.1056583755 GeV
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
-- Output ntuples: `/eos/home-k/kakang/H2DW/Analysis/MC/2022/`
+- Nano outputs: `/eos/home-k/kakang/H2DW/Analysis/NanoMVA/{MC,Data}/`; merged skims: `NanoMVA/Samples/`
 
-## Last Session (2026-10-26 ~ 10-28)
+## Last Session (2026-11-03)
+
+### 仓库清理：15_0_5 只剩 `analysis/`（旧 tuplizer 全删），13_0_13 不再依赖 15_0_5
+
+**13_0_13**（`7a29ec3`、`58b6a31`）：删 `test/nano_base_preEE.py`（cmsDriver 骨架，无人引用）；
+W+jets 文件列表 `filelist_{0,1,2}J_{2022,2022EE}.txt` 移到 `condor/das/`（`condor_submit.py` 的 `WJ_FILELIST_DIR`），
+`data_2022.txt` 移到 `crab/DatasetList/`（`submitData.sh`），逐字节相同、仍被 `*.txt` gitignore；2023/2024 golden JSON 拷进 `crab/JSON/`。
+`test/SIG_H_phipimu.py`、`WtoLNu2Jets_H_phipimu.py`、`plugins/H_phipimu*.cc` 是死代码（import 不存在的 JMEcorr），**还没删**。
+
+**15_0_5**：删 `Tuples/`（含未进 git 的 condor_logs）、`GenCount/`（被 Corrections/gencount 取代）、`BKGsets/`（未进 git）、
+`EDAnalyzers/`（旧 `H_phipimu` + JMEcorr；删后 el9 容器里 cmsenv + correctionlib 2.6.4 正常）。
+`analysis/`：删 corrections pilot 旧副本 10 个（都在 Corrections 仓库，`make_samples_nano.py` 本来就 import 那边的）、
+只能配合已删模型（osdata/oswjets、wjetsres f24/nostage1、ssdata f55）或旧列名（`Lumi_reweight`/`event_id`）的脚本、
+已结束的一次性研究（09-25 系列、tt̄ CR、OS−SS、BR/DY τ 分数、FD/顶点图、MET raw vs corr 等）、`functions/`（ROOT C++ 风格，无人用）、
+`DNN/score_only.sh`、DNN/BDT 全部 scheduler log、`macros/condor_logs/` 里旧 apply_corrections/btag log。
+**`common.TRAININGS` 删了 wjets/oswjets/osdata/osdata_phi20/wjetsres_nostage1/wjetsres_s1seed***；
+`ssdata`、`ssdata_phi20`、`wjetsres` 模型已删但**保留**，因为 `ssdata_f45`、`resdy`、`wjetsres_v2` 由它们派生。
+**所有默认 key 改成 `ssdata_f45`**（原 `ssdata` / `ssdata_phi20`，`phi_win` 由 f45 继承、行为不变）：
+`draw_stage1_mass_by_score_cut`、`draw_cr_zmumu`、`draw_zmumu_feature`、`ds_mass_fit_io`、`run_ds_mass_fit.sh`、`fit_dy_jetbin_zmumu`、
+`fom_scan_stage1`、`fit_sideband_scales_stage1`、`draw_stage1_dy_mass_by_cut`、`draw_tau3pi_masses_by_cut`、`draw_stage1_dsmass_by_era`。
+验收：全部 `.py` py_compile、`.sh` bash -n、ds_dnn 下 `import common` + 三个现存模型目录存在 + `stage1_threshold(ssdata_f45, 0.90)=0.9596`；**脚本没有逐个实跑**。
+留着的进行中工作：`check_{data,mc}_phi20nano_vs_old`（MC 版未提交）、`jme_zmumu_study`/`draw_zmumu_jme`、`fit_zmumu_r12_*`、`draw_zmumu_feature`、
+`check_dsmunu_mass`+`compare_dsmunu_signal_gentag`（m(Dsμν) 进不进 MVA 未定）、`compare_stage2_dy_vs_nody`。用户未提交的 `draw_wp_mass.py --ds-only` 没带进 commit。
+
+### 我犯的错
+1. 每删一组就 commit + push（一天 7 个小 commit），用户恼火 → memory `feedback_batch_commits`。
+
+## 上一 Session (2026-10-26 ~ 10-28)
 
 ### φ20 移进 custom nano producer，全部样本重跑（用户选 B：流程标准化）
 

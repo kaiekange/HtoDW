@@ -1,9 +1,9 @@
 """Ds_mass template fit of MC scale factors, I/O half (conda ds_dnn): build inputs, draw postfit.
 
     conda activate ds_dnn
-    python3 ds_mass_fit_io.py inputs --key=ssdata_phi20 --cuts=0.70,0.60,0.50 --joint=slices --float=r34,r5,k
+    python3 ds_mass_fit_io.py inputs --key=ssdata_f45 --cuts=0.70,0.60,0.50 --joint=slices --float=r34,r5,k
     (cmsenv) python3 fit_ds_mass_roofit.py <fit dir printed above>
-    python3 ds_mass_fit_io.py draw   --key=ssdata_phi20 --cuts=0.70,0.60,0.50 --joint=slices --float=r34,r5,k
+    python3 ds_mass_fit_io.py draw   --key=ssdata_f45 --cuts=0.70,0.60,0.50 --joint=slices --float=r34,r5,k
 or all three at once: run_ds_mass_fit.sh <same arguments>
 
 The fit itself (RooFit/HistFactory) is fit_ds_mass_roofit.py, run under cmsenv: ds_dnn has no
@@ -46,7 +46,7 @@ import common  # noqa: E402
 ARG = {a.split("=", 1)[0]: a.split("=", 1)[1] for a in sys.argv[2:] if "=" in a}
 MODE = sys.argv[1] if len(sys.argv) > 1 else ""
 assert MODE in ("inputs", "draw"), "usage: ds_mass_fit_io.py inputs|draw --key=K --cuts=e1,e2 --joint=slices|nested --float=p1,p2"
-KEY = ARG.get("--key", "ssdata_phi20")
+KEY = ARG.get("--key", "ssdata_f45")
 EFFS = [float(x) for x in ARG.get("--cuts", "0.70,0.60,0.50").split(",")]
 assert EFFS == sorted(EFFS, reverse=True), "--cuts must be descending eps_sig"
 JOINT = ARG.get("--joint", "slices")

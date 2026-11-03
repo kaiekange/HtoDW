@@ -773,48 +773,6 @@ TRAININGS = {
         out_name="dsw_dsstw_ssdata_f55",
         out_dir=f"{MVA_DIR}/dsw_dsstw_ssdata_f55",
     ),
-    "wjets": dict(
-        # One file, both eras and all three jet bins inside (WtoLNu2Jets_merged, was
-        # WtoLNu2Jets pre-migration). `weighted=True` reads the per-event `weight`
-        # column (was `Lumi_reweight`) -- sigma*L/sum(w), carrying the amcatnloFXFX
-        # sign. The value here is unused when weighted=True; it stays 1.0 for shape.
-        samples={"WtoLNu2Jets_merged": 1.0},
-        ss=False,
-        parity=None,
-        weighted=True,
-        label="W+jets MC",
-        is_data=False,
-        out_name="dsw_dsstw_wjets_f55",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjets_f55",
-    ),
-    # Mirror test of ssdata (2026-10-06): ssdata is trained against SS data and keeps the
-    # OS configuration of charge-symmetric combinatorial ~2.3x more than SS (W+jets GenTag
-    # mode 0, measured). Train against an OS background instead and check whether the
-    # preference flips (SS kept more than OS). Both use parity=0 for training so the
-    # odd half of the OS background is out-of-sample for the OS-vs-SS comparison --
-    # without it the OS side would be scored in-sample and the comparison biased.
-    "oswjets": dict(
-        samples={"WtoLNu2Jets_merged": 1.0},
-        ss=False,
-        parity=0,
-        weighted=True,
-        label="W+jets MC OS (even events)",
-        is_data=False,
-        out_name="dsw_dsstw_oswjets_f55",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_oswjets_f55",
-    ),
-    "osdata": dict(
-        # Data_OS_merged is blinded at skim time (Ds window rows dropped), so this is the
-        # OS sideband only.
-        samples={"Data_OS_merged": 1.0},
-        ss=False,
-        parity=0,
-        weighted=False,
-        label="Data OS sideband (even events)",
-        is_data=True,
-        out_name="dsw_dsstw_osdata_f55",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_osdata_f55",
-    ),
     "wjetsres": dict(
         # Stage 2 of the two-stage MVA: signal MC vs W+jets RESONANT background (real
         # D/Ds), which the stage-1 f41 classifier cannot remove -- in the f41 feature
@@ -858,72 +816,17 @@ TRAININGS = {
         out_name="dsw_dsstw_wjetsres_f24_wp90",
         out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_f24_wp90",
     ),
-    "wjetsres_nostage1": dict(
-        # Comparison arm for Step 4 of the NanoMVA migration plan: same background
-        # population (WtoLNu2Jets_merged, cand_gen_mode in {1,2,3,4,5}) and the same
-        # prodtopo_v1 feature set as "wjetsres" above, but stage1_cut=None -- trains
-        # on ALL of modes 1-5, not just the 20% that survives stage-1 at eff_sig=0.90.
-        # Tests whether pre-filtering on stage-1 helps stage-2 learn the production-
-        # topology problem, or whether it just throws away training statistics stage-2
-        # could have used.
-        #
-        # stage1_cut=None means common.load()/predict.py read WtoLNu2Jets_merged
-        # straight from SAMPLES_DIR, with NO dependency on any stage-1 model existing
-        # or having been scored -- this config can train and be scored independently
-        # of "ssdata"/stage-1, in parallel. The cost: its own Prediction/ files carry
-        # score_dsmu_res but NOT score_dsmu (stage-1's score never enters this path),
-        # so the joint stage-1 x stage-2 rejection has to be recovered later by
-        # joining this config's Prediction/WtoLNu2Jets_merged.root against stage-1's
-        # own Prediction/WtoLNu2Jets_merged.root on (run, luminosityBlock, event) --
-        # not by reading through stage-1's directory the way "wjetsres" does.
-        samples={"WtoLNu2Jets_merged": 1.0},   # unused when weighted=True
-        ss=False,
-        parity=None,
-        weighted=True,
-        gen_mode_filter=(1, 2, 3, 4, 5),
-        stage1_cut=None,
-        feature_set="prodtopo_v1",
-        score_branch="score_dsmu_res",
-        label="W+jets resonant (GenTag 1-5, no stage-1 pre-filter)",
-        is_data=False,
-        out_name="dsw_dsstw_wjetsres_nostage1_f24",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_wjetsres_nostage1_f24",
-    ),
 }
-
-# Stage-2 seed-coupling check (2026-09-16): "wjetsres" above always conditions on
-# stage-1 SEED 42's WP1=90% threshold, regardless of what seed stage-2 itself trains
-# with -- so a stage-2 seed-spread study run behind it only measures stage-2's own
-# training noise, not the fact that a different stage-1 seed passes a ~25%-different
-# set of events at the same nominal WP1=90% (Jaccard 0.75, vs 1.09% on the aggregate
-# yield -- membership, not yield, is what defines stage-2's training population).
-# These three entries are identical to "wjetsres" except stage1_cut points at a
-# different stage-1 seed's own Prediction/ dir and threshold; train stage-2 behind
-# each (itself at seed=42, so only the stage-1 side varies) and compare the resulting
-# rejection spread to the fixed-stage-1 spread already measured from wjetsres seeds
-# 101/102/103. Requires dsw_dsstw_ssdata_f55_seed{101,102,103} to exist first -- the
-# pre-migration f43 seed models this study originally measured were deleted with the
-# rest of the pre-NanoMVA model directories (2026-09-17), so this needs re-running,
-# not just re-pointing.
-for _s1seed in (101, 102, 103):
-    _name = f"wjetsres_s1seed{_s1seed}"
-    TRAININGS[_name] = dict(
-        TRAININGS["wjetsres"],
-        stage1_cut=dict(key="ssdata", tool="DNN", seed=_s1seed, eff_sig=0.90),
-        label=f"W+jets resonant (GenTag 1-5, post stage-1 seed{_s1seed} 90%)",
-        out_name=f"dsw_dsstw_{_name}_f24_wp90",
-        out_dir=f"{MVA_DIR}/dsw_dsstw_{_name}_f24_wp90",
-    )
 
 # phi window +-20 MeV (2026-10-16): |phi_mass - M_PHI| < 0.020 on top of the producer's
 # M(KK) < M_PHI + 50 MeV, applied to signal AND background at training time (load(phi_win=)).
 # Measured on the f55 models: keeps 0.949 of truth-matched signal, ~0.50 of every
 # non-resonant background (OS data CR, DY, tt 2L2Nu, W+jets mode 0, mode 5 misID), 0.88-0.96
-# of true Ds/D. Otherwise identical to ssdata / osdata. NOT yet in selection_mask(): before
+# of true Ds/D. Otherwise identical to ssdata. NOT yet in selection_mask(): before
 # these models are scored or used as a stage-2 pre-filter, stage1_threshold() and the
 # plotting macros must apply the same window, or the WP thresholds are derived on a
 # different signal population than the one trained on.
-for _base in ("ssdata", "osdata"):
+for _base in ("ssdata",):
     _name = f"{_base}_phi20"
     TRAININGS[_name] = dict(
         TRAININGS[_base],

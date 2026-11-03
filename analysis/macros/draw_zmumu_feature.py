@@ -3,7 +3,7 @@ SR signal shape as a reference.
 
 Z window 76 < M(mumu) < 106, |phi_mass - M_phi| < 20 MeV, OS data, MC = DY + ttbar + W+jets
 x common.br_reweight x common.dy_jetbin_sf (as draw_cr_zmumu.py's mass figures), read from
-the ssdata_phi20 Prediction/zmumu_<group>.root files (score_dsmu needed for the eps90 panel).
+the ssdata_f45 Prediction/zmumu_<group>.root files (score_dsmu needed for the eps90 panel).
 Signal = the SR Signal_merged (Prediction/Signal_merged.root), selected as in
 common.stage1_threshold (selection_mask, Ds/mu truth match, score > -1, phi window), drawn as
 a line normalised to the data in each panel -- a shape reference only, it is not in this CR.
@@ -13,7 +13,7 @@ their fractions printed. Integer-valued features get unit bins; the rest 40 bins
 Written 2026-10-20 after the feature-by-feature reweighting scan ranked
 mu_IsoR04_sumNeutralHadronEt first.
 
-    python3 draw_zmumu_feature.py [--var=mu_IsoR04_sumNeutralHadronEt | --all] [--key=ssdata_phi20] [--nocut]
+    python3 draw_zmumu_feature.py [--var=mu_IsoR04_sumNeutralHadronEt | --all] [--key=ssdata_f45] [--nocut]
 Output: <model>/figures/sf/zmumu_features/<var>.png
 --nocut: only the no-cut panel, written to <model>/figures/sf/zmumu_features_nocut/<var>.png
 --raw-vs-corr: every corrected feature (the *_corr ones and the three dphi_met_*), no cut,
@@ -36,7 +36,7 @@ sys.path.insert(0, "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/analysis/DN
 import common
 
 ARGS = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
-MODEL_KEY = ARGS.get("key", "ssdata_phi20")
+MODEL_KEY = ARGS.get("key", "ssdata_f45")
 MODEL_DIR = common.out_dir_for(MODEL_KEY)
 PRED = f"{MODEL_DIR}/Prediction"
 FEATS = [l.strip() for l in open(f"{MODEL_DIR}/feature_names.txt") if l.strip()]
