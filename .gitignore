@@ -9,3 +9,4 @@
 **/kakang.cc
 **/condor_logs/*.ref
 **/condor_logs/*.pid
+*.npz

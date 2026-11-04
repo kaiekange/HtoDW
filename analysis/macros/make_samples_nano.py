@@ -260,18 +260,17 @@ def parse_nano_path(path):
 # ---------------------------------------------------------------- worker
 def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
     """EXTRA_LEP_DOC columns for every row of one nano file, in nano row order. The best
-    muon is re-identified with apply_corrections.locate_selected_muon (same code the friend
+    muon is re-identified with muo.locate_selected_muon (same code the friend
     used; it exits if mu_pt/eta/charge are not reproduced). Extra muons get the corrected
-    pt of apply_corrections.prompt_muon_veto -- the same MuonScaRe calls in the same order
+    pt of muo.prompt_muon_veto -- the same MuonScaRe calls in the same order
     (scale; + resolution smearing on MC) -- so n_xmu >= 1 must equal ~pass_muveto row by
     row; the caller asserts it."""
     import awkward as ak
-    import correctionlib
     import numpy as np
     import uproot
     sys.path.insert(0, os.path.dirname(APPLY_CORRECTIONS))
     import apply_corrections as acorr
-    muo = acorr.muo
+    import muo
 
     with uproot.open(nano_path) as fn:
         a = fn["Events"].arrays(
@@ -279,16 +278,15 @@ def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
              "Muon_eta", "Muon_phi", "Muon_charge", "Muon_tightId", "Muon_pfIsoId",
              "Muon_nTrackerLayers", "Electron_pt", "Electron_eta", "Electron_phi",
              "Electron_charge", "Electron_cutBased"])
-    # Same correction files as apply_corrections.main() (keep the date in sync with it).
-    mdir = f"{acorr.POG_DIR}/MUO/{acorr.CAMPAIGN[era]}/2026-06-18"
-    cset_ss = correctionlib.CorrectionSet.from_file(f"{mdir}/muon_scalesmearing.json.gz")
-    cset_z = correctionlib.CorrectionSet.from_file(f"{mdir}/muon_Z.json.gz")
-    idx = acorr.locate_selected_muon(a)
+    # Same correction files and MuonScaRe.cc as apply_corrections.main() (both via muo.py).
+    muo.load_scalesmearing(acorr.CAMPAIGN[era])
+    cset_z = muo.sf_set(acorr.CAMPAIGN[era])
+    idx = muo.locate_selected_muon(a)
     null = acorr.NULL
     n_ev = len(a)
 
     # ---- extra muons: candidates as in prompt_muon_veto, corrected pt, >= 15 ----
-    cand = ((a["Muon_tightId"] == 1) & (abs(a["Muon_eta"]) < acorr.MU_ETA_MAX)
+    cand = ((a["Muon_tightId"] == 1) & (abs(a["Muon_eta"]) < muo.MU_ETA_MAX)
             & (a["Muon_pfIsoId"] >= 2) & (ak.local_index(a["Muon_pt"]) != idx))
     evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
     ev_of = np.repeat(np.arange(n_ev), ak.to_numpy(ak.num(a["Muon_pt"], axis=1)))
@@ -298,14 +296,9 @@ def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
     pt_corr = np.full(len(cflat), -1.0)
     for j in np.where(cflat)[0]:
         i = ev_of[j]
-        eta_j = float(np.clip(flat["eta"][j], -2.399, 2.399))
-        p = muo.muo_pt_scale(cset_ss, is_data, float(flat["pt"][j]), eta_j, float(flat["phi"][j]),
-                             int(flat["charge"][j]))
-        if not is_data:
-            p = muo.muo_pt_resol(cset_ss, p, eta_j, float(flat["phi"][j]),
-                                 float(flat["nTrackerLayers"][j]), evt[i], lumi[i])
-        pt_corr[j] = p
-    xsel = cflat & (pt_corr >= acorr.VETO_MU_PT_MIN)
+        pt_corr[j] = muo.pt_corrected(is_data, flat["pt"][j], flat["eta"][j], flat["phi"][j],
+                                      flat["charge"][j], flat["nTrackerLayers"][j], evt[i], lumi[i])
+    xsel = cflat & (pt_corr >= muo.VETO_MU_PT_MIN)
     n_xmu = np.bincount(ev_of[xsel], minlength=n_ev).astype(np.int32)
     lead = np.full(n_ev, -1)
     order = np.argsort(np.where(xsel, -pt_corr, np.inf), kind="stable")   # highest corrected pt first
@@ -324,7 +317,7 @@ def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
     if not is_data and has.any():
         e_, p_ = out["xmu_eta"][has], out["xmu_pt"][has]
         w[has] = (cset_z[muo.MUO_ID_KEY].evaluate(e_, p_, "nominal")
-                  * cset_z["NUM_LoosePFIso_DEN_TightID"].evaluate(e_, p_, "nominal"))
+                  * cset_z[muo.MUO_LOOSE_ISO_KEY].evaluate(e_, p_, "nominal"))
     out["w_xmu"] = w
 
     # ---- extra electrons: raw (no electron corrections/SF yet) ----
