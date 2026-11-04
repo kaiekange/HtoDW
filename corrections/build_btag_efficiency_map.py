@@ -119,7 +119,9 @@ def accumulate(files, wp_tight):
         n_events += len(a)
         pt_corr = a["Jet_pt"]   # nano pt, no JME correction (2026-10-21)
         m = veto_jet_mask(a, pt_corr)
-        pt = ak.to_numpy(ak.flatten(pt_corr[m]))
+        # pt >= 1000 goes into the last bin: the map's flow=clamp evaluates such jets there,
+        # so they must be counted there too (otherwise that bin can be eps=0/1 for them).
+        pt = np.minimum(ak.to_numpy(ak.flatten(pt_corr[m])), _PT_EDGES[-1])
         abseta = np.abs(ak.to_numpy(ak.flatten(a["Jet_eta"][m])))
         flav = ak.to_numpy(ak.flatten(a["Jet_hadronFlavour"][m]))
         tagged = ak.to_numpy(ak.flatten(a["Jet_btagPNetB"][m])) > wp_tight
