@@ -15,8 +15,13 @@ run / luminosityBlock / event are copied in so that every reader can -- and shou
 assert they match before using a column.
 
 Physics choices are the ones settled for this analysis (memory
-project_corrections_pilot_implementation). The MuonScaRe port lives in
-muo_scalesmearing.py.
+project_corrections_pilot_implementation). One module per POG, each calling the POG's own
+example code where there is one (external/, unmodified):
+  lum.py  pileup weights
+  muo.py  muonscarekit MuonScaRe.cc (via ROOT) + muon SFs, selected muon, prompt-muon veto
+  btv.py  b-jet count + btag_weight.cc (C++ port of BTV examples compute_btag_event_weight_multi_wp)
+  jme.py  jet veto map + nano jet/MET columns
+This file reads the nano, calls them, runs the closures and writes the friend.
 
 NO JME CORRECTION (2026-10-21, user decision). In the Z->mumu CR the Type-1 + Summer22 V4
 JEC + MC JER chain made the MC MET harder than data while the nano MET agreed. Jets and MET
@@ -55,7 +60,7 @@ NOT WRITTEN: met_sig and met_sumEt (use the nano values). jet_ht and num_jets ca
 rebuilt (nano stores jets with pt > 15 only); jet_ht_pt20 replaces jet_ht.
 The producer's candidate choice and its Dsmu_mass < 125 cut used the uncorrected muon.
 
-Runs inside cmssw-el9 + CMSSW_15_0_5 (correctionlib 2.6.4).
+Runs inside cmssw-el9 + CMSSW_15_0_5 (correctionlib 2.6.4, ROOT for MuonScaRe.cc).
 """
 import os
 import shutil
@@ -63,23 +68,19 @@ import sys
 import tempfile
 
 import awkward as ak
-import correctionlib
 import numpy as np
 import uproot
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_btag_efficiency_map as bem  # noqa: E402  (ERAS: jme_year, wp_tight; OUT_DIR)
-import muo_scalesmearing as muo  # noqa: E402  (MuonScaRe port, MUO keys)
-import jme_corrections as jme  # noqa: E402
+import btv  # noqa: E402
+import jme  # noqa: E402
+import lum  # noqa: E402
+import muo  # noqa: E402
 
-POG_DIR = "/cvmfs/cms-griddata.cern.ch/cat/metadata"
 CAMPAIGN = {
     "2022": "Run3-22CDSep23-Summer22-NanoAODv12",
     "2022EE": "Run3-22EFGSep23-Summer22EE-NanoAODv12",
-}
-PU_KEY = {
-    "2022": "Collisions2022_355100_357900_eraBCD_GoldenJson",
-    "2022EE": "Collisions2022_359022_362760_eraEFG_GoldenJson",
 }
 # sample directory -> efficiency-map group (build_btag_efficiency_map.GROUPS minus era).
 # Every sample uses its OWN map. The three W+jets jet bins are separate samples: measured
@@ -112,11 +113,6 @@ EFF_GROUP = {
     "DYto2L2Jets_2J_H_phipimu_GenTag_SS": "DYto2L2Jets_2J_SS",
 }
 
-MU_PRECUT = 24.0       # HDsPhiPiMuProducer: best muon = highest-pt tight muon, pt >= 24
-MU_PT_MIN = 26.0       # trigger-SF floor, on corrected pt
-MU_ETA_MAX = 2.4
-VETO_MU_PT_MIN = 15.0  # ID-SF floor
-BTAG_JET_PT_MIN = 20.0
 MASS_MU = 0.1056583755
 NULL = -777.0
 
@@ -126,10 +122,7 @@ NULL = -777.0
 # factors, no b-tag weight). The selection flags are computed exactly as for MC, because the
 # same cuts are applied to data. Jets/MET are the nano values for data as for MC.
 
-MU_VARS = ("nom", "muScaleUp", "muScaleDown", "muResUp", "muResDown")
-
-MC_ONLY_BRANCHES = {"Pileup_nTrueInt", "Jet_hadronFlavour", "Jet_genJetIdx",
-                    "GenJet_pt", "GenJet_eta", "GenJet_phi"}
+MC_ONLY_BRANCHES = {"Pileup_nTrueInt"} | set(btv.MC_BRANCHES)
 
 BRANCHES = sorted(set([
     "run", "luminosityBlock", "event", "Pileup_nTrueInt",
@@ -140,8 +133,7 @@ BRANCHES = sorted(set([
     "Dsmu_px", "Dsmu_py", "Dsmu_pz", "Dsmu_mass", "Dsmu_pt", "Dsmu_eta", "Dsmu_phi", "Dsmu_Ht",
     "Dsstmu_px", "Dsstmu_py", "Dsstmu_pz", "Dsstmu_mass", "Dsstmu_pt", "Dsstmu_eta", "Dsstmu_phi",
     "Dsstmu_Ht",
-    "Ds_eta", "Ds_phi", "Jet_jetId", "Jet_btagPNetB", "Jet_hadronFlavour",
-] + jme.JET_BRANCHES + jme.JVM_BRANCHES))
+] + btv.BRANCHES + btv.MC_BRANCHES + jme.BRANCHES))
 
 
 def parse_path(path):
@@ -167,72 +159,6 @@ def parse_path(path):
 
 def np_(a, b, dtype=float):
     return ak.to_numpy(a[b]).astype(dtype)
-
-
-def locate_selected_muon(a):
-    """Index in Muon_* of the producer's best muon; asserts it reproduces mu_pt/eta/charge."""
-    sel = (a["Muon_pt"] >= MU_PRECUT) & a["Muon_tightId"]
-    idx = ak.argmax(ak.where(sel, a["Muon_pt"], -1.0), axis=1, keepdims=True)
-    pt, eta, ch = (ak.to_numpy(ak.flatten(a[b][idx])) for b in ("Muon_pt", "Muon_eta", "Muon_charge"))
-    ok = ((np.abs(pt - np_(a, "mu_pt")) < 1e-3) & (np.abs(eta - np_(a, "mu_eta")) < 1e-3)
-          & (ch == np_(a, "mu_charge", int)))
-    if not ok.all():
-        sys.exit(f"selected-muon re-id FAILED on {int((~ok).sum())}/{len(ok)} rows")
-    return ak.to_numpy(ak.flatten(idx))
-
-
-def muon_momenta(a, idx, cset, is_data=False):
-    """Corrected pt of the selected muon for every MU_VARS entry (official MuonScaRe port,
-    same calling convention as the corrections pilot)."""
-    n = len(a)
-    out = {v: np.empty(n) for v in MU_VARS}
-    pt_raw = np_(a, "mu_pt")
-    eta = np.clip(np_(a, "mu_eta"), -2.399, 2.399)
-    phi = np_(a, "mu_phi")
-    ch = np_(a, "mu_charge", int)
-    nL = ak.to_numpy(ak.flatten(a["Muon_nTrackerLayers"][idx[:, None]])).astype(float)
-    evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
-    for i in range(n):
-        p_scale = muo.muo_pt_scale(cset, is_data, pt_raw[i], eta[i], phi[i], ch[i])
-        if is_data:
-            out["nom"][i] = p_scale          # no resolution smearing on data
-            continue
-        p = muo.muo_pt_resol(cset, p_scale, eta[i], phi[i], nL[i], evt[i], lumi[i])
-        out["nom"][i] = p
-        try:
-            out["muScaleUp"][i] = muo.muo_pt_scale_var(cset, p, eta[i], phi[i], ch[i], "up")
-            out["muScaleDown"][i] = muo.muo_pt_scale_var(cset, p, eta[i], phi[i], ch[i], "dn")
-        except (ZeroDivisionError, ValueError, OverflowError):
-            out["muScaleUp"][i] = out["muScaleDown"][i] = p
-        try:
-            out["muResUp"][i] = muo.muo_pt_resol_var(cset, p_scale, p, eta[i], "up")
-            out["muResDown"][i] = muo.muo_pt_resol_var(cset, p_scale, p, eta[i], "dn")
-        except (ZeroDivisionError, ValueError, OverflowError):
-            out["muResUp"][i] = out["muResDown"][i] = p
-    return out
-
-
-def prompt_muon_veto(a, idx, cset, is_data=False):
-    """True = passes (no other prompt-like muon). Nominal muon correction."""
-    n = len(a)
-    passed = np.ones(n, dtype=bool)
-    evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
-    cand = ((a["Muon_tightId"] == 1) & (abs(a["Muon_eta"]) < MU_ETA_MAX)
-            & (a["Muon_pfIsoId"] >= 2) & (a["Muon_pt"] >= VETO_MU_PT_MIN)
-            & (ak.local_index(a["Muon_pt"]) != idx))
-    for i in np.where(ak.to_numpy(ak.any(cand, axis=1)))[0]:
-        for j in np.where(ak.to_numpy(cand[i]))[0]:
-            eta_j = float(np.clip(a["Muon_eta"][i][j], -2.399, 2.399))
-            phi_j = float(a["Muon_phi"][i][j])
-            pt_j = muo.muo_pt_scale(cset, is_data, float(a["Muon_pt"][i][j]), eta_j, phi_j,
-                                    int(a["Muon_charge"][i][j]))
-            if not is_data:
-                pt_j = muo.muo_pt_resol(cset, pt_j, eta_j, phi_j,
-                                        float(a["Muon_nTrackerLayers"][i][j]), evt[i], lumi[i])
-            if pt_j >= VETO_MU_PT_MIN:
-                passed[i] = False
-                break
-    return passed
 
 
 def rescale_muon_in_sum(a, prefix, k):
@@ -277,7 +203,7 @@ def main():
     campaign = CAMPAIGN[era]
     wp_tight = bem.ERAS[era]["wp_tight"]
     jme_year = bem.ERAS[era]["jme_year"]
-    mu_vars = ("nom",) if is_data else MU_VARS
+    mu_vars = ("nom",) if is_data else muo.MU_VARS
     eff_json = None if is_data else f"{bem.OUT_DIR}/{EFF_GROUP[sample]}_{era}.json"
     print(f"input {in_path}\n {'data' if is_data else 'MC'} era={era} sample={sample}"
           f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json}\n output {out_path}")
@@ -299,38 +225,27 @@ def main():
     if bad.any():
         sys.exit(f"W_tmass closure FAILED on {int(bad.sum())}/{n} rows")
 
-    # ---- LUM (JSON flow=clamp, nTrueInt passed as is). MC only. ----
+    # ---- LUM (MC only) ----
     if not is_data:
-        pu = correctionlib.CorrectionSet.from_file(
-            f"{POG_DIR}/LUM/{campaign}/2024-01-31/puWeights.json.gz")[PU_KEY[era]]
-        nti = np_(a, "Pileup_nTrueInt")
-        for suffix, v in (("nom", "nominal"), ("up", "up"), ("down", "down")):
-            cols[f"w_pu_{suffix}"] = pu.evaluate(nti, v)
+        for suffix, w in lum.pu_weights(campaign, era, np_(a, "Pileup_nTrueInt")).items():
+            cols[f"w_pu_{suffix}"] = w
 
     # ---- MUO ----
-    cset_ss = correctionlib.CorrectionSet.from_file(
-        f"{POG_DIR}/MUO/{campaign}/2026-06-18/muon_scalesmearing.json.gz")
-    cset_z = correctionlib.CorrectionSet.from_file(f"{POG_DIR}/MUO/{campaign}/2026-06-18/muon_Z.json.gz")
-    idx = locate_selected_muon(a)
-    mu_pt = muon_momenta(a, idx, cset_ss, is_data)
-    mu_eta = np_(a, "mu_eta")  # SIGNED: the trigger SF is asymmetric in eta
+    muo.load_scalesmearing(campaign)
+    cset_z = muo.sf_set(campaign)
+    idx = muo.locate_selected_muon(a)
+    mu_pt = muo.muon_momenta(a, idx, is_data)
+    mu_eta = np_(a, "mu_eta")  # SIGNED, as in the MUO example
     iso_tight = ak.to_numpy(ak.flatten(a["Muon_pfIsoId"][idx[:, None]])) >= 4
     pt_raw = np_(a, "mu_pt")
-
-    def mu_sf(key, pt, var, sel):
-        # flow="error" keys: evaluated only on selected rows, no clamping
-        w = np.full(n, np.nan)
-        w[sel] = cset_z[key].evaluate(mu_eta[sel], pt[sel], var)
-        return w
-
     for v in mu_vars:
-        sel = (np.abs(mu_eta) < MU_ETA_MAX) & (mu_pt[v] > MU_PT_MIN) & iso_tight
+        sel = (np.abs(mu_eta) < muo.MU_ETA_MAX) & (mu_pt[v] > muo.MU_PT_MIN) & iso_tight
         cols[f"mu_pt_{v}"] = mu_pt[v]
         cols[f"pass_mu_{v}"] = sel
         if not is_data:
-            cols[f"w_mu_{v}"] = (mu_sf(muo.MUO_ID_KEY, mu_pt[v], "nominal", sel)
-                                 * mu_sf(muo.MUO_ISO_KEY, mu_pt[v], "nominal", sel)
-                                 * mu_sf(muo.MUO_TRIG_KEY, mu_pt[v], "nominal", sel))
+            cols[f"w_mu_{v}"] = (muo.sf(cset_z, muo.MUO_ID_KEY, mu_eta, mu_pt[v], "nominal", sel)
+                                 * muo.sf(cset_z, muo.MUO_ISO_KEY, mu_eta, mu_pt[v], "nominal", sel)
+                                 * muo.sf(cset_z, muo.MUO_TRIG_KEY, mu_eta, mu_pt[v], "nominal", sel))
         k = mu_pt[v] / pt_raw
         for prefix in ("Dsmu", "Dsstmu"):
             (cols[f"{prefix}_pt_{v}"], cols[f"{prefix}_eta_{v}"], cols[f"{prefix}_phi_{v}"],
@@ -340,8 +255,8 @@ def main():
         for label, key in (("muid", muo.MUO_ID_KEY), ("muiso", muo.MUO_ISO_KEY),
                            ("mutrig", muo.MUO_TRIG_KEY)):
             for suffix, v in (("nom", "nominal"), ("up", "systup"), ("down", "systdown")):
-                cols[f"w_{label}_{suffix}"] = mu_sf(key, mu_pt["nom"], v, sel_nom)
-    cols["pass_muveto"] = prompt_muon_veto(a, idx, cset_ss, is_data)
+                cols[f"w_{label}_{suffix}"] = muo.sf(cset_z, key, mu_eta, mu_pt["nom"], v, sel_nom)
+    cols["pass_muveto"] = muo.prompt_muon_veto(a, idx, is_data)
 
     # closure of the rescaling at k = 1, against every stored quantity it reproduces
     for prefix in ("Dsmu", "Dsstmu"):
@@ -356,65 +271,17 @@ def main():
             if (d > 1e-3).any():
                 sys.exit(f"{prefix} k=1 closure FAILED on {q}: max |d| {d.max():.3g}")
 
-    # ---- jets / MET (nano values, no JME correction) + BTV ----
-    btv = correctionlib.CorrectionSet.from_file(f"{POG_DIR}/BTV/{campaign}/2025-08-20/btagging.json.gz")
-    wp_json = btv["particleNet_wp_values"].evaluate("T")
-    if abs(wp_json - wp_tight) > 1e-6:
-        sys.exit(f"tight WP mismatch: JSON {wp_json} vs {wp_tight}")
-    if not is_data:
-        c_comb, c_light = btv["particleNet_comb"], btv["particleNet_light"]
-        eff_map = correctionlib.CorrectionSet.from_file(eff_json)["particleNet_efficiency"]
+    # ---- JME (jet veto map, nano jets/MET) ----
+    cols.update(jme.columns(a, jme_year, NULL))
 
-    tight = (a["Jet_jetId"] & 2) == 2
-    dphi = abs(a["Jet_phi"] - a["Ds_phi"])
-    dphi = ak.where(dphi > np.pi, 2 * np.pi - dphi, dphi)
-    dR = np.sqrt((a["Jet_eta"] - a["Ds_eta"]) ** 2 + dphi ** 2)
-    examined = (abs(a["Jet_eta"]) < 2.5) & (a["Jet_jetId"] >= 2) & (dR > 0.4)
-    tagged = examined & (a["Jet_btagPNetB"] > wp_tight)
-
-    def w_btag(pt_j, veto_pass, systs, any_nb=False):
-        """Pi (1-SF*eps)/(1-eps) over the examined pt>=20 jets (all untagged in veto-passing
-        events); SF and eps at the nano jet pt.
-        any_nb=True: valid at any n_bjet (method 1a, one WP) -- tagged jets contribute SF,
-        untagged (1-SF*eps)/(1-eps); no NaN mask. Equals the default at n_bjet == 0."""
-        scored = examined & (pt_j >= BTAG_JET_PT_MIN)
-        counts = ak.to_numpy(ak.num(pt_j[scored], axis=1))
-        pt_s = ak.to_numpy(ak.flatten(pt_j[scored])).astype(float)
-        abseta = np.abs(ak.to_numpy(ak.flatten(a["Jet_eta"][scored]))).astype(float)
-        flav = ak.to_numpy(ak.flatten(a["Jet_hadronFlavour"][scored])).astype(int)
-        tag_s = ak.to_numpy(ak.flatten(tagged[scored])).astype(bool)
-        eps = eff_map.evaluate("T", flav, abseta, pt_s)
-        heavy = (flav == 4) | (flav == 5)
-        out = {}
-        for s in systs:
-            sf = np.empty_like(pt_s)
-            sf[heavy] = c_comb.evaluate(s, "T", flav[heavy], abseta[heavy], pt_s[heavy])
-            sf[~heavy] = c_light.evaluate(s, "T", flav[~heavy], abseta[~heavy], pt_s[~heavy])
-            per_jet = np.where(eps < 1.0, (1.0 - sf * eps) / (1.0 - eps), 1.0)
-            if any_nb:
-                per_jet = np.where(tag_s, sf, per_jet)
-            w = ak.to_numpy(ak.prod(ak.unflatten(per_jet, counts), axis=1))
-            out[s] = w if any_nb else np.where(veto_pass, w, np.nan)
-        return out
-
-    pt_j = a["Jet_pt"]
-    met_pt, met_phi = np_(a, "met_pt"), np_(a, "met_phi")
-    cols["jvm_veto_nom"] = ak.to_numpy(jme.jet_veto_flag(a, pt_j, year=jme_year))
-    cols["jet_ht_pt20_nom"] = ak.to_numpy(ak.sum(ak.where(tight & (pt_j > 20), pt_j, 0.0), axis=1))
-    cols["num_jets_pt30_nom"] = ak.to_numpy(ak.sum(tight & (pt_j > 30), axis=1))
-    cols["jet_leadpt_nom"] = ak.to_numpy(ak.fill_none(ak.max(pt_j[tight], axis=1), NULL))
-    cols["met_pt_nom"], cols["met_phi_nom"] = met_pt, met_phi
-    nb = ak.to_numpy(ak.sum(tagged & (pt_j >= BTAG_JET_PT_MIN), axis=1))
+    # ---- BTV ----
+    btv_set = btv.sf_set(campaign, wp_tight)
+    nb = btv.n_bjet(a, wp_tight)
     cols["n_bjet_nom"] = nb
     if not is_data:
-        wb = w_btag(pt_j, nb == 0, ("central", "up", "down"))
-        cols["w_btag_nom"], cols["w_btag_up"], cols["w_btag_down"] = wb["central"], wb["up"], wb["down"]
-        # valid at any n_bjet (ttcr); = w_btag_* where n_bjet == 0
-        wa = w_btag(pt_j, nb == 0, ("central", "up", "down"), any_nb=True)
-        cols["w_btag_any_nom"], cols["w_btag_any_up"], cols["w_btag_any_down"] = (
-            wa["central"], wa["up"], wa["down"])
+        cols.update(btv.weights(a, campaign, btv_set, eff_json, nb))
     for v in mu_vars:
-        cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, met_pt, met_phi)
+        cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, cols["met_pt_nom"], cols["met_phi_nom"])
 
     # ---- summary ----
     print(" summary (unweighted; finite values only):")

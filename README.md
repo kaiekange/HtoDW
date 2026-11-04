@@ -2,7 +2,7 @@
 
 POG corrections (MUO, BTV, LUM, JME jet veto map) for the custom H→Ds(*)W NanoAOD, written as one
 friend tree per nano output file. No CMSSW code is used: the scripts only need Python with
-correctionlib ≥ 2.6, uproot, awkward, numpy, scipy and ROOT (for `TRandom3` in MuonScaRe).
+correctionlib ≥ 2.6, uproot, awkward, numpy, scipy and ROOT (compiles muonscarekit `MuonScaRe.cc`).
 
 The nano itself is produced separately (branch `CMSSW_13_0_13`, el8). This branch holds
 only the correction step.
@@ -11,14 +11,21 @@ only the correction step.
 
 | path | content |
 |---|---|
-| `corrections/apply_corrections.py` | per-file friend tree: muon scale/resolution + ID×ISO×trigger SF, prompt muon veto, PU weights, jet veto map, b-veto + fixed-WP b-tag SF. Jets/MET are the nano values: no JEC/JER/Type-1 re-correction since 2026-10-21 (the `*_corr` jet/MET columns equal the nano ones) |
+| `corrections/apply_corrections.py` | per-file friend tree: reads the nano, calls the four POG modules below, runs the closures, writes the friend. Jets/MET are the nano values: no JEC/JER/Type-1 re-correction since 2026-10-21 (the `*_corr` jet/MET columns equal the nano ones) |
+| `corrections/lum.py` | pileup weights |
+| `corrections/muo.py` | muon scale/resolution (muonscarekit `MuonScaRe.cc` via ROOT) + ID×ISO×trigger SF, selected muon, prompt muon veto |
+| `corrections/btv.py` | b-veto count + fixed-WP b-tag event weight via `btag_weight.cc` (C++ port of BTV examples `lib/btag_sf.py::compute_btag_event_weight_multi_wp`, commit in its header; compiled through ROOT) |
+| `corrections/jme.py` | jet veto map + nano jet/MET columns |
 | `corrections/build_btag_efficiency_map.py` | MC b-tag efficiency map per sample and era (input to the b-tag SF) |
 | `corrections/jme_corrections.py` | wrapper around the official JERC application tutorial; only its jet veto map is used by `apply_corrections.py` now |
 | `corrections/jme_direct.py` | JEC/JER straight from the JME correctionlib JSONs (no tutorial), used by the Z→μμ JME study in CMSSW_15_0_5 `analysis/macros/jme_zmumu_study.py` |
 | `corrections/normalization.py` | per-sample normalisation (σ·L / Σw; signal: gen-level acceptance from `gencount/`) |
 | `gencount/` | signal generator-level counts on MiniAOD (FWLite), input to `normalization.py` |
-| `corrections/muo_scalesmearing.py` | port of the official MuonScaRe recipe |
 | `external/jerc-application-tutorial/` | unmodified subset of the official tutorial; upstream commit in `UPSTREAM` |
+| `external/muonscarekit/` | unmodified `MuonScaRe.cc` from cms-muonPOG/muonscarekit; commit in `UPSTREAM` |
+| `external/btv_examples/` | unmodified `lib/btag_sf.py` from BTV/examples, reference only (not imported) for `btag_weight.cc`; commit in `UPSTREAM` |
+| `external/POG_EXAMPLES.txt` | URLs and commits of the six POG example repos compared against on 2026-11-04 |
+| `checks/validate_btag_weight_cc.py` | `btag_weight.cc` vs the official Python function, event by event |
 | `condor/` | HTCondor submission (one job per nano file / per efficiency-map group) |
 | `checks/compare_{wjets,ss_os}_btag_maps.py` | is pooling the W+jets jet bins / sharing the OS map with SS justified (cell-by-cell efficiency comparison) |
 

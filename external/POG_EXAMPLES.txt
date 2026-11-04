@@ -1,0 +1,10 @@
+POG example repositories looked at on 2026-11-04 (copies were in ~/work/tmp, since deleted).
+Only muonscarekit/MuonScaRe.cc is used by the code; btv_examples/lib/btag_sf.py is kept as the
+reference of corrections/btag_weight.cc. Re-clone the others at these commits if needed.
+
+BTV           9b42445d9fb2a14eb36486f5c32fbe5d6c8c1ec4  https://gitlab.cern.ch/cms-analysis-corrections/BTV/examples
+EGM           b55dfd1f4d32c15f3428ac177c5a0de7c42d43dc  https://gitlab.cern.ch/cms-analysis-corrections/EGM/examples
+JME           666c0254d32035048ea4ef69e453b461628d1832  https://gitlab.cern.ch/cms-analysis-corrections/JME/examples
+LUM           f0a5e6f44d355b8b2b88648e3371371ba86e2c4f  https://gitlab.cern.ch/cms-analysis-corrections/LUM/examples
+MUO           a65015fbfddc423ec6f30964afd29eeb8fae322b  https://gitlab.cern.ch/cms-analysis-corrections/MUO/examples
+muonscarekit  1c7426b5e1d808110e8f4fbfef27e71071ea3c26  https://gitlab.cern.ch/cms-muonPOG/muonscarekit

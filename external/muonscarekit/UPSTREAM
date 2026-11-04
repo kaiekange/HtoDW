@@ -1,0 +1,9 @@
+Source : https://gitlab.cern.ch/cms-muonPOG/muonscarekit
+Commit : 1c7426b5e1d808110e8f4fbfef27e71071ea3c26
+Copied : 2026-11-04  (unmodified)
+Files  : scripts/MuonScaRe.cc
+Used by: corrections/muo.py, compiled through ROOT (gInterpreter) after a global
+         `auto cset = correction::CorrectionSet::from_file(...)`, as in the repo's
+         scripts/apply_corrections_rdf.py. The .cc is used rather than scripts/MuonScaRe.py
+         because the two differ (user choice 2026-11-04): the .py keeps the raw pt above
+         200 GeV in pt_scale and uses k_mc instead of sqrt(k_data^2-k_mc^2) in pt_resol_var.

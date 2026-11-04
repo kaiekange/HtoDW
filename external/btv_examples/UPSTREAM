@@ -1,0 +1,7 @@
+Source : https://gitlab.cern.ch/cms-analysis-corrections/BTV/examples
+Commit : 9b42445d9fb2a14eb36486f5c32fbe5d6c8c1ec4
+Copied : 2026-11-04  (unmodified)
+Files  : lib/btag_sf.py
+Role   : REFERENCE ONLY, not imported (it needs Python >= 3.10; CMSSW_15_0_5 has 3.9).
+         corrections/btag_weight.cc is a line-by-line C++ port of its
+         compute_btag_event_weight_multi_wp; checks/validate_btag_weight_cc.py compares the two.
