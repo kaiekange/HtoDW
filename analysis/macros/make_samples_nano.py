@@ -94,20 +94,24 @@ APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/app
 # SR chunk lists (same files, same chunking). CR rows are never blinded and carry extra-lepton
 # columns (EXTRA_LEP_DOC). Selections, all on top of pass_mu_nom & ~jvm_veto_nom:
 #   zmumu: ~pass_muveto & n_bjet_nom == 0 & exactly one extra muon, opposite charge to the
-#          best muon; NO phi window (applied, if wanted, at plot time). b-veto removes ttbar
+#          best muon and passing tight PF iso like it (xmu_pfIsoId >= 4, 2026-11-04; the
+#          count itself stays the loose-iso veto definition); NO phi window (applied, if wanted, at plot time). b-veto removes ttbar
 #          and keeps it disjoint from the ttbar mumu category; ~pass_muveto keeps it disjoint
 #          from the SR. MC weight as in the SR (w_btag valid at n_bjet == 0).
 #   ttcr:  n_bjet_nom >= 1 & phi window; categories (1l / mumu / emu) are cut downstream from
 #          the lepton columns. MC weight x w_btag_any_nom (friend column valid at n_bjet >= 1;
 #          the first pass 2026-10-19 had no b-tag SF, meta btag_sf_applied was False).
 # Extra muons: corrected pt (MuonScaRe, as prompt_muon_veto) + ID x loose-iso SF (w_xmu,
-# multiplied into the zmumu weight; stored for ttcr). Extra electrons: raw, no SF yet.
+# stored for ttcr) and ID x tight-iso SF (w_xmu_tight, multiplied into the zmumu weight).
+# Extra electrons: raw, no SF yet.
 REGIONS = ("sr", "zmumu", "ttcr")
 HF_MATCH_DR = 0.3   # ttcr charm-origin match, reco Ds direction vs GenPart c hadron (see hf_origin_cols)
 EXTRA_LEP_DOC = """n_xmu, xmu_{pt,eta,phi,charge}: muons other than the best one with tightId,
 |eta|<2.4, pfIsoId>=2 (loose PF iso), CORRECTED pt>=15 -- exactly the pass_muveto definition
 (n_xmu>=1 == ~pass_muveto, asserted); leading one (by corrected pt) stored, xmu_pt is the
-corrected pt, xmu_pt_raw the nano one; w_xmu = its ID x loose-iso SF (MC, else 1). n_xele, xele_*: Electron_cutBased>=4 (tight, iso included), pt>15,
+corrected pt, xmu_pt_raw the nano one, xmu_pfIsoId its Muon_pfIsoId; w_xmu = its ID x
+loose-iso SF, w_xmu_tight = its ID x tight-iso SF (MC, else 1; meaningful only if
+xmu_pfIsoId >= 4). n_xele, xele_*: Electron_cutBased>=4 (tight, iso included), pt>15,
 |eta|<2.5. m_mumu / m_emu: best muon (corrected pt) + leading extra muon / electron.
 -777 where absent."""
 
@@ -291,7 +295,7 @@ def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
     evt, lumi = ak.to_numpy(a["event"]), ak.to_numpy(a["luminosityBlock"])
     ev_of = np.repeat(np.arange(n_ev), ak.to_numpy(ak.num(a["Muon_pt"], axis=1)))
     flat = {f: ak.to_numpy(ak.flatten(a[f"Muon_{f}"])) for f in
-            ("pt", "eta", "phi", "charge", "nTrackerLayers")}
+            ("pt", "eta", "phi", "charge", "nTrackerLayers", "pfIsoId")}
     cflat = ak.to_numpy(ak.flatten(cand))
     pt_corr = np.full(len(cflat), -1.0)
     for j in np.where(cflat)[0]:
@@ -311,14 +315,17 @@ def extra_lepton_cols(nano_path, mu_pt_corr, era, is_data):
     out["xmu_eta"] = np.where(has, flat["eta"][lead], null)
     out["xmu_phi"] = np.where(has, flat["phi"][lead], null)
     out["xmu_charge"] = np.where(has, flat["charge"][lead], int(null)).astype(np.int32)
-    # ID x loose-iso SF of the leading extra muon (MC; 1 elsewhere). Domain |eta|<2.4, pt>=15:
-    # exactly the extra-muon selection, so no clamping is needed.
-    w = np.ones(n_ev)
+    out["xmu_pfIsoId"] = np.where(has, flat["pfIsoId"][lead], int(null)).astype(np.int32)
+    # ID x loose-iso / tight-iso SF of the leading extra muon (MC; 1 elsewhere). Domain
+    # |eta|<2.4, pt>=15 for both iso keys: exactly the extra-muon selection, no clamping needed.
+    w, w_tight = np.ones(n_ev), np.ones(n_ev)
     if not is_data and has.any():
         e_, p_ = out["xmu_eta"][has], out["xmu_pt"][has]
-        w[has] = (cset_z[muo.MUO_ID_KEY].evaluate(e_, p_, "nominal")
-                  * cset_z[muo.MUO_LOOSE_ISO_KEY].evaluate(e_, p_, "nominal"))
+        w_id = cset_z[muo.MUO_ID_KEY].evaluate(e_, p_, "nominal")
+        w[has] = w_id * cset_z[muo.MUO_LOOSE_ISO_KEY].evaluate(e_, p_, "nominal")
+        w_tight[has] = w_id * cset_z[muo.MUO_ISO_KEY].evaluate(e_, p_, "nominal")
     out["w_xmu"] = w
+    out["w_xmu_tight"] = w_tight
 
     # ---- extra electrons: raw (no electron corrections/SF yet) ----
     xele = ((a["Electron_cutBased"] >= 4) & (a["Electron_pt"] > 15.0)
@@ -472,7 +479,7 @@ def worker(list_path, out_path, correct=False, region="sr"):
             sel = fr["pass_mu_nom"] & ~fr["jvm_veto_nom"]
             if region == "zmumu":
                 sel = (sel & ~fr["pass_muveto"] & (fr["n_bjet_nom"] == 0) & (lep["n_xmu"] == 1)
-                       & (lep["xmu_charge"] == -nano["mu_charge"]))
+                       & (lep["xmu_charge"] == -nano["mu_charge"]) & (lep["xmu_pfIsoId"] >= 4))
             else:  # ttcr
                 sel = (sel & (fr["n_bjet_nom"] >= 1)
                        & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
@@ -496,8 +503,8 @@ def worker(list_path, out_path, correct=False, region="sr"):
             w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel]
             # w_btag_nom is NaN by design at n_bjet > 0; ttcr uses the any-n_bjet column
             w = w * fr["w_btag_any_nom" if region == "ttcr" else "w_btag_nom"][sel]
-            if region == "zmumu":  # every zmumu row has exactly one extra muon
-                w = w * lep["w_xmu"][sel]
+            if region == "zmumu":  # every zmumu row has exactly one extra muon, tight iso
+                w = w * lep["w_xmu_tight"][sel]
             if not np.all(np.isfinite(w)):
                 sys.exit(f"non-finite weight in {nano_path} after selection")
         out = {b: nano[b][sel] for b in branches}
@@ -530,7 +537,8 @@ def worker(list_path, out_path, correct=False, region="sr"):
     if region != "sr":   # SR .json stays exactly as before
         meta.update(region=region, phi_win=None if region == "zmumu" else PHI_WIN,
                     btag_sf_applied=True, extra_muon_corrected=True,
-                    extra_muon_sf_in_weight=region == "zmumu", extra_electron_sf_applied=False)
+                    extra_muon_sf_in_weight=region == "zmumu", extra_electron_sf_applied=False,
+                    zmumu_xmu_iso="tight" if region == "zmumu" else None)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     if n_sel_total:
         cols = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
