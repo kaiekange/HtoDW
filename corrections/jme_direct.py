@@ -35,6 +35,14 @@ TUTORIAL_RUN = {"2022": 355065.0, "2022EE": 359022.0}
 
 JER_MATCH_DR = 0.2  # AK4: R/2
 
+# JES uncertainty: the Reduced (Regrouped) set, the JERC default (2026-11-04 user decision).
+# Source list = JecConfigAK4.json JesUncertaintySetReduced of the jerc-application-tutorial
+# (external/, commit 60281d1). "{era}" sources are uncorrelated across eras; in column names
+# they become "_year" so 2022 and 2022EE share one column (split by era downstream).
+JES_REDUCED = ["FlavorQCD", "RelativeBal", "HF", "BBEC1", "EC2", "Absolute",
+               "BBEC1_{era}", "RelativeSample_{era}", "EC2_{era}", "HF_{era}", "Absolute_{era}"]
+# JER uncertainty: one NP per era (JERC default treatment), uncorrelated across eras.
+
 
 def _flat_eval(corr, *args):
     """Evaluate a correction on jagged arrays of identical structure; returns jagged."""
@@ -57,6 +65,10 @@ class Jme:
             self.reso = cs[f"{TAG[era]}_JRV2_MC_PtResolution_AK4PFPuppi"]
             self.sf = cs[f"{TAG[era]}_JRV2_MC_ScaleFactor_AK4PFPuppi"]
             self.smear = correctionlib.CorrectionSet.from_file(smear_json)["JERSmear"]
+            self.sf_unc = cs[f"{TAG[era]}_JRV2_MC_SFUncertainty_AK4PFPuppi"]
+            self.jes_unc = {s.replace("_{era}", "_year"):
+                            cs[f"{TAG[era]}_V4_MC_Regrouped_{s.format(era=era)}_AK4PFPuppi"]
+                            for s in JES_REDUCED}
         self.metxy = correctionlib.CorrectionSet.from_file(
             f"{JSON_DIR[era]}/met_xyCorrections_2022_{era}.json.gz")["met_xy_corrections"]
 
@@ -78,11 +90,15 @@ class Jme:
         return pt_l1, pt
 
     # ---------------- JER ----------------
-    def jer(self, pt, eta, phi, rho, event, gen_idx, gen_pt, gen_eta, gen_phi):
-        """MC only: hybrid JER smearing (gen-matched scaling, else stochastic)."""
+    def jer(self, pt, eta, phi, rho, event, gen_idx, gen_pt, gen_eta, gen_phi, sf_var="nom"):
+        """MC only: hybrid JER smearing (gen-matched scaling, else stochastic).
+        sf_var "up"/"down": SF * (1 +- SFUncertainty), as the tutorial's _jer_sf."""
         rho_j = ak.broadcast_arrays(rho, eta)[0]
         reso = _flat_eval(self.reso, eta, pt, rho_j)
         sf = _flat_eval(self.sf, eta, pt)
+        if sf_var != "nom":
+            sign = {"up": 1.0, "down": -1.0}[sf_var]
+            sf = sf * (1.0 + sign * _flat_eval(self.sf_unc, eta, pt))
         valid = (gen_idx >= 0) & (gen_idx < ak.num(gen_pt))
         safe = ak.where(valid, gen_idx, 0)
         # events without GenJets: pad one dummy so indexing is defined (never used: valid=False)
@@ -151,6 +167,77 @@ class Jme:
         phi = self.metxy.evaluate("phi", "PuppiMET", self.era, dtmc, "nom", met_pt, met_phi, npv)
         return pt, phi
 
+    # ---------------- nominal + systematic variations (2026-11-04) ----------------
+    def variations(self, a):
+        """{name: (jet_pt, met_pt, met_phi)}. jet_pt: AK4 Jet pt after JES (+ MC JER smear);
+        MET: Type-1 PuppiMET rebuilt as met(propagate_jer=True), then the MET xy correction.
+        name "nom"; MC also "jes<source>Up/Down" (JES_REDUCED), "jerUp/Down", and
+        "unclUp/Down" (jet_pt None: jets unchanged; MET shifted by nano's PuppiMET
+        unclustered-energy variation, PuppiMET_*Unclustered* minus PuppiMET, before xy).
+        Order as the tutorial's get_corrected_met: full JES -> JES uncertainty shift
+        pt*(1 +- s(eta, pt_JES)) -> JER smear (MC; jerUp/Down: SF*(1 +- SFUncertainty)).
+        Type-1: the L1 term stays nominal, the 15 GeV threshold uses the varied pt.
+        Known effect of this order (kept, user decision 2026-11-04): the JERSmear hashprng seed
+        includes JetPt, so a JES-shifted unmatched jet gets a new random number; per event the
+        JES-varied MET carries re-smearing noise (DY 2J test: mean shift 0.6 GeV, rms 9 GeV)."""
+        rho, run, ev = a["Rho_fixedGridRhoFastjetAll"], a["run"], a["event"]
+        eta_j, phi_j = a["Jet_eta"], a["Jet_phi"]
+        _, jpt_jes = self.jes(a["Jet_pt"] * (1.0 - a["Jet_rawFactor"]), a["Jet_area"], eta_j, rho, run)
+        # MET jets: CorrT1METJet + AK4 Jet, muon-subtracted (as met())
+        raw = ak.concatenate([a["CorrT1METJet_rawPt"], a["Jet_pt"] * (1.0 - a["Jet_rawFactor"])], axis=1)
+        musub = ak.concatenate([a["CorrT1METJet_muonSubtrFactor"], a["Jet_muonSubtrFactor"]], axis=1)
+        eta = ak.concatenate([a["CorrT1METJet_eta"], eta_j], axis=1)
+        phi = ak.concatenate([a["CorrT1METJet_phi"], phi_j], axis=1)
+        area = ak.concatenate([a["CorrT1METJet_area"], a["Jet_area"]], axis=1)
+        em = ak.concatenate([ak.zeros_like(a["CorrT1METJet_eta"]), a["Jet_chEmEF"] + a["Jet_neEmEF"]],
+                            axis=1)
+        pt_l1, mpt_jes = self.jes(raw * (1.0 - musub), area, eta, rho, run)
+        if not self.is_data:
+            ge, gp = a["GenJet_eta"], a["GenJet_phi"]
+            ce, cp = a["CorrT1METJet_eta"], a["CorrT1METJet_phi"]
+            dph = np.arctan2(np.sin(cp[:, :, None] - gp[:, None, :]), np.cos(cp[:, :, None] - gp[:, None, :]))
+            dr2 = (ce[:, :, None] - ge[:, None, :]) ** 2 + dph ** 2
+            amin = ak.fill_none(ak.argmin(dr2, axis=2), -1)
+            mind = ak.fill_none(ak.min(dr2, axis=2), 1e9)
+            ct1_idx = ak.values_astype(ak.where(mind < JER_MATCH_DR ** 2, amin, -1), np.int64)
+            gidx = ak.concatenate([ct1_idx, ak.values_astype(a["Jet_genJetIdx"], np.int64)], axis=1)
+            gen = (a["GenJet_pt"], a["GenJet_eta"], a["GenJet_phi"])
+        raw_px = a["RawPuppiMET_pt"] * np.cos(a["RawPuppiMET_phi"])
+        raw_py = a["RawPuppiMET_pt"] * np.sin(a["RawPuppiMET_phi"])
+        npv = ak.to_numpy(a["PV_npvsGood"])
+
+        def one(shift_j, shift_m, sf_var):
+            jp, mp = jpt_jes * shift_j, mpt_jes * shift_m
+            if not self.is_data:
+                jp = self.jer(jp, eta_j, phi_j, rho, ev, a["Jet_genJetIdx"], *gen, sf_var=sf_var)
+                mp = self.jer(mp, eta, phi, rho, ev, gidx, *gen, sf_var=sf_var)
+            dpt = ak.where((mp > 15.0) & (abs(eta) < 5.2) & (em < 0.9), mp - pt_l1, 0.0)
+            px = ak.to_numpy(raw_px - ak.sum(dpt * np.cos(phi), axis=1))
+            py = ak.to_numpy(raw_py - ak.sum(dpt * np.sin(phi), axis=1))
+            return jp, px, py
+
+        def xy(px, py):
+            return self.met_xy(np.hypot(px, py), np.arctan2(py, px), npv)
+
+        jp, px0, py0 = one(1.0, 1.0, "nom")
+        out = {"nom": (jp, *xy(px0, py0))}
+        if self.is_data:
+            return out
+        for name, c in self.jes_unc.items():
+            uj, um = _flat_eval(c, eta_j, jpt_jes), _flat_eval(c, eta, mpt_jes)
+            for var, sgn in (("Up", 1.0), ("Down", -1.0)):
+                jp, px, py = one(1.0 + sgn * uj, 1.0 + sgn * um, "nom")
+                out[f"jes{name}{var}"] = (jp, *xy(px, py))
+        for var in ("up", "down"):
+            jp, px, py = one(1.0, 1.0, var)
+            out[f"jer{var.capitalize()}"] = (jp, *xy(px, py))
+        nx = ak.to_numpy(a["PuppiMET_pt"] * np.cos(a["PuppiMET_phi"]))
+        ny = ak.to_numpy(a["PuppiMET_pt"] * np.sin(a["PuppiMET_phi"]))
+        for var in ("Up", "Down"):
+            upt, uphi = ak.to_numpy(a[f"PuppiMET_ptUnclustered{var}"]), ak.to_numpy(a[f"PuppiMET_phiUnclustered{var}"])
+            out[f"uncl{var}"] = (None, *xy(px0 + upt * np.cos(uphi) - nx, py0 + upt * np.sin(uphi) - ny))
+        return out
+
 
 def jet_id_v12_fix(a):
     """(tight, tightLepVeto) per jet: JME JetID13p6TeV bugfix recipe for NanoAODv12."""
@@ -171,3 +258,6 @@ BRANCHES = [
     "CorrT1METJet_muonSubtrFactor", "RawPuppiMET_pt", "RawPuppiMET_phi",
 ]
 MC_BRANCHES = ["Jet_genJetIdx", "GenJet_pt", "GenJet_eta", "GenJet_phi"]
+# variations() also needs these (MC: unclustered-energy shift)
+UNCL_BRANCHES = ["PuppiMET_pt", "PuppiMET_phi", "PuppiMET_ptUnclusteredUp", "PuppiMET_phiUnclusteredUp",
+                 "PuppiMET_ptUnclusteredDown", "PuppiMET_phiUnclusteredDown"]

@@ -23,7 +23,10 @@ example code where there is one (external/, unmodified):
   jme.py  jet veto map + nano jet/MET columns
 This file reads the nano, calls them, runs the closures and writes the friend.
 
-NO JME CORRECTION (2026-10-21, user decision). In the Z->mumu CR the Type-1 + Summer22 V4
+JME (2026-11-04): the jme_* columns (jme.full_columns) carry JME-corrected jets/MET and the
+JES/JER/unclustered variations; they are the analysis default from now on. The columns below
+without the jme_ prefix are unchanged.
+NO JME CORRECTION in the unprefixed columns (2026-10-21, user decision). In the Z->mumu CR the Type-1 + Summer22 V4
 JEC + MC JER chain made the MC MET harder than data while the nano MET agreed. Jets and MET
 are therefore the nano values: Jet_pt (MiniAOD updatedJetsPuppi, i.e. the production GT's
 JEC, no JER smearing in MC) and met_pt/met_phi (slimmedMETsPuppi). The column NAMES are
@@ -122,7 +125,7 @@ NULL = -777.0
 # factors, no b-tag weight). The selection flags are computed exactly as for MC, because the
 # same cuts are applied to data. Jets/MET are the nano values for data as for MC.
 
-MC_ONLY_BRANCHES = {"Pileup_nTrueInt"} | set(btv.MC_BRANCHES)
+MC_ONLY_BRANCHES = {"Pileup_nTrueInt"} | set(btv.MC_BRANCHES) | set(jme.FULL_MC_BRANCHES)
 
 BRANCHES = sorted(set([
     "run", "luminosityBlock", "event", "Pileup_nTrueInt",
@@ -133,7 +136,7 @@ BRANCHES = sorted(set([
     "Dsmu_px", "Dsmu_py", "Dsmu_pz", "Dsmu_mass", "Dsmu_pt", "Dsmu_eta", "Dsmu_phi", "Dsmu_Ht",
     "Dsstmu_px", "Dsstmu_py", "Dsstmu_pz", "Dsstmu_mass", "Dsstmu_pt", "Dsstmu_eta", "Dsstmu_phi",
     "Dsstmu_Ht",
-] + btv.BRANCHES + btv.MC_BRANCHES + jme.BRANCHES))
+] + btv.BRANCHES + btv.MC_BRANCHES + jme.BRANCHES + jme.FULL_BRANCHES + jme.FULL_MC_BRANCHES))
 
 
 def parse_path(path):
@@ -209,6 +212,9 @@ def main():
           f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json}\n output {out_path}")
     if eff_json and not os.path.exists(eff_json):
         sys.exit(f"missing efficiency map {eff_json}")
+    eff_json_jme = None if is_data else f"{bem.OUT_DIR_JME}/{EFF_GROUP[sample]}_{era}.json"
+    if eff_json_jme and not os.path.exists(eff_json_jme):
+        sys.exit(f"missing JME efficiency map {eff_json_jme}")
 
     branches = [b for b in BRANCHES if not (is_data and b in MC_ONLY_BRANCHES)]
     a = uproot.open(in_path)["Events"].arrays(branches)
@@ -282,6 +288,10 @@ def main():
         cols.update(btv.weights(a, campaign, btv_set, eff_json, nb))
     for v in mu_vars:
         cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, cols["met_pt_nom"], cols["met_phi_nom"])
+
+    # ---- JME-corrected jets/MET + JES/JER/unclustered variations (jme_*; jme.full_columns) ----
+    cols.update(jme.full_columns(a, era, is_data, jme_year, wp_tight, campaign, btv_set, eff_json_jme,
+                                 mu_pt["nom"], mu_phi, NULL))
 
     # ---- summary ----
     print(" summary (unweighted; finite values only):")

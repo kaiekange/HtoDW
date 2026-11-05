@@ -59,28 +59,33 @@ def sf_set(campaign, wp_tight):
     return btv
 
 
-def scored_jets(a):
-    """Mask of the jets the b-veto examines (jet pt = nano Jet_pt)."""
+def scored_jets(a, pt=None):
+    """Mask of the jets the b-veto examines (jet pt = nano Jet_pt, or `pt` if given)."""
+    pt = a["Jet_pt"] if pt is None else pt
     dphi = abs(a["Jet_phi"] - a["Ds_phi"])
     dphi = ak.where(dphi > np.pi, 2 * np.pi - dphi, dphi)
     dR = np.sqrt((a["Jet_eta"] - a["Ds_eta"]) ** 2 + dphi ** 2)
     return ((abs(a["Jet_eta"]) < 2.5) & (a["Jet_jetId"] >= 2) & (dR > 0.4)
-            & (a["Jet_pt"] >= JET_PT_MIN))
+            & (pt >= JET_PT_MIN))
 
 
-def n_bjet(a, wp_tight):
-    m = scored_jets(a)
+def n_bjet(a, wp_tight, pt=None):
+    m = scored_jets(a, pt)
     return ak.to_numpy(ak.sum(m & (a["Jet_btagPNetB"] > wp_tight), axis=1))
 
 
-def weights(a, campaign, btv, eff_json, nb):
-    """{"w_btag_nom", ..., "w_btag_any_down"} for MC."""
-    m = scored_jets(a)
-    pt = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_pt"][m])), dtype=np.float64)
+def weights(a, campaign, btv, eff_json, nb, pt=None, sf_vars=("nom", "up", "down"), stale="exit"):
+    """{"w_btag_nom", ..., "w_btag_any_down"} for MC. pt: jet pt (default nano Jet_pt).
+    sf_vars: subset of nom/up/down to compute. stale="count": do not exit on jets in eps=0/1
+    bins (JME variations: jets move across pt bins of the nominal map; the official function
+    then sets that event's weight to 1); the count is returned as cols["n_stale"]."""
+    jpt = a["Jet_pt"] if pt is None else pt
+    m = scored_jets(a, jpt)
+    pt = np.ascontiguousarray(ak.to_numpy(ak.flatten(jpt[m])), dtype=np.float64)
     eta = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_eta"][m])), dtype=np.float64)
     flav = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_hadronFlavour"][m])), dtype=np.int32)
     disc = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_btagPNetB"][m])), dtype=np.float64)
-    counts = np.ascontiguousarray(ak.to_numpy(ak.num(a["Jet_pt"][m], axis=1)), dtype=np.int32)
+    counts = np.ascontiguousarray(ak.to_numpy(ak.num(jpt[m], axis=1)), dtype=np.int32)
 
     # A map built on this sample's own jets has no untagged jet in an eps=1 bin and no tagged
     # jet in an eps=0 bin. Either one means the map is stale (nano changed after the map was
@@ -88,7 +93,7 @@ def weights(a, campaign, btv, eff_json, nb):
     eps = correctionlib.CorrectionSet.from_file(eff_json)[EFF_KEY].evaluate(WP, flav, np.abs(eta), pt)
     tag = disc > btv[f"{ALGO_KEY}_wp_values"].evaluate(WP)
     n_bad = int(((eps >= 1.0) & ~tag).sum() + ((eps <= 0.0) & tag).sum())
-    if n_bad:
+    if n_bad and stale == "exit":
         sys.exit(f"{n_bad} jets in eps=0/1 bins of {eff_json}: efficiency map stale, rebuild it")
 
     R = _load_root()
@@ -96,8 +101,10 @@ def weights(a, campaign, btv, eff_json, nb):
     wps.push_back(WP)
     bw = R.BtagWeight(sf_path(campaign), eff_json, ALGO_KEY, EFF_KEY, wps)
     rv = R.VecOps.AsRVec
-    cols = {}
+    cols = {} if stale == "exit" else {"n_stale": n_bad}
     for suffix, s in (("nom", "central"), ("up", "up"), ("down", "down")):
+        if suffix not in sf_vars:
+            continue
         w = np.array(bw.weights(rv(pt), rv(eta), rv(flav), rv(disc), rv(counts), s, s, s != "central"),
                      dtype=float)
         if len(w) != len(nb):

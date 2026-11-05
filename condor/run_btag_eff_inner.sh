@@ -8,4 +8,4 @@ REPO=/afs/cern.ch/work/k/kakang/H2DW/Corrections
 source /cvmfs/cms.cern.ch/cmsset_default.sh
 cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src
 eval `scramv1 runtime -sh`
-python3 "${REPO}/corrections/build_btag_efficiency_map.py" "${GROUP}"
+python3 "${REPO}/corrections/build_btag_efficiency_map.py" "${GROUP}" ${2:-}

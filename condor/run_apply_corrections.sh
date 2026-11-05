@@ -17,7 +17,18 @@ else
 fi
 STEM=$(basename "${INFILE}" .root)
 LOGDIR="${REPO}/condor/condor_logs/apply_corrections"
+LOG="${LOGDIR}/${ERA}_${SAMPLE}_${STEM}.log"
 mkdir -p "${LOGDIR}"
 
+# The log is kept only for a failed job (2026-11-04: ~2e4 per-job logs filled the AFS
+# directory, new files failed with "File too large"). It is written on the node's scratch
+# disk and copied to LOGDIR on failure; on success any older log of this file is removed.
+LOCAL_LOG="${_CONDOR_SCRATCH_DIR:-${TMPDIR:-/tmp}}/${ERA}_${SAMPLE}_${STEM}.log"
+rc=0
 /cvmfs/cms.cern.ch/common/cmssw-el9 -- "${REPO}/condor/run_apply_corrections_inner.sh" "${INFILE}" \
-    &> "${LOGDIR}/${ERA}_${SAMPLE}_${STEM}.log"
+    &> "${LOCAL_LOG}" || rc=$?
+if [[ ${rc} -ne 0 ]]; then
+    cp "${LOCAL_LOG}" "${LOG}"
+    exit "${rc}"
+fi
+rm -f "${LOG}" "${LOCAL_LOG}"

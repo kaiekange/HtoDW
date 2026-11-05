@@ -55,6 +55,7 @@ import uproot
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import jme_corrections as jme  # noqa: E402
+import jme_direct  # noqa: E402
 
 NANO = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC"
 # Era -> JME year key of the jerc-application-tutorial config, and the ParticleNet tight WP
@@ -87,6 +88,10 @@ for _era in ERAS:
     for _jb in (0, 1, 2):
         GROUPS[f"WtoLNu2Jets_{_jb}J_SS_{_era}"] = (_era, [f"{NANO}/{_era}/WtoLNu2Jets_{_jb}J_H_phipimu_GenTag_SS"])
 OUT_DIR = f"{NANO}/2022/btag_efficiency"
+# --jme (2026-11-04): map binned on the JME-corrected jet pt, jme_direct.Jme.jet_pt (JES + JER
+# smear; equals Jme.variations()["nom"] jet pt, checked in apply_corrections), the pt the JME
+# b-veto and its weight use. Own directory; OUT_DIR untouched.
+OUT_DIR_JME = f"{NANO}/2022/btag_efficiency_jme"
 
 JET_PT_MIN = 20.0  # BTV SF validity floor, see docstring
 _ABSETA_EDGES = [0, 1.305, 2.5]
@@ -106,18 +111,21 @@ def veto_jet_mask(a, pt_corr):
             & (pt_corr >= JET_PT_MIN))
 
 
-def accumulate(files, wp_tight):
+def accumulate(files, wp_tight, jme_era=None):
     """Per-flavour (total, pass) counts on the (abseta, pt) grid, summed over files."""
     shape = (len(_ABSETA_EDGES) - 1, len(_PT_EDGES) - 1)
     total = {f: np.zeros(shape) for f in _FLAVORS}
     passed = {f: np.zeros(shape) for f in _FLAVORS}
     n_events = 0
+    J = jme_direct.Jme(jme_era, False) if jme_era else None
+    br = BRANCHES if J is None else sorted(set(BRANCHES + jme_direct.BRANCHES + jme_direct.MC_BRANCHES))
     for i, fn in enumerate(files):
-        a = uproot.open(fn)["Events"].arrays(BRANCHES)
+        a = uproot.open(fn)["Events"].arrays(br)
         if len(a) == 0:
             continue
         n_events += len(a)
-        pt_corr = a["Jet_pt"]   # nano pt, no JME correction (2026-10-21)
+        # nano pt (no JME correction, 2026-10-21), or with --jme the JME nominal pt
+        pt_corr = a["Jet_pt"] if J is None else J.jet_pt(a)
         m = veto_jet_mask(a, pt_corr)
         # pt >= 1000 goes into the last bin: the map's flow=clamp evaluates such jets there,
         # so they must be counted there too (otherwise that bin can be eps=0/1 for them).
@@ -184,26 +192,29 @@ def build_correction_set(total, passed, group):
 
 
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in GROUPS:
-        sys.exit(f"usage: {sys.argv[0]} <{'|'.join(GROUPS)}>")
-    group = sys.argv[1]
+    use_jme = "--jme" in sys.argv[1:]
+    args = [x for x in sys.argv[1:] if x != "--jme"]
+    if len(args) != 1 or args[0] not in GROUPS:
+        sys.exit(f"usage: {sys.argv[0]} <{'|'.join(GROUPS)}> [--jme]")
+    group = args[0]
+    out_dir = OUT_DIR_JME if use_jme else OUT_DIR
     era, dirs = GROUPS[group]
     files = sum([sorted(glob.glob(f"{d}/output_*.root")) for d in dirs], [])
     print(f"{group}: {len(files)} files")
 
-    total, passed, n_events = accumulate(files, ERAS[era]["wp_tight"])
+    total, passed, n_events = accumulate(files, ERAS[era]["wp_tight"], era if use_jme else None)
     print(f"events: {n_events}, veto-population jets:"
           f" {int(sum(t.sum() for t in total.values()))}")
 
     cset_model = build_correction_set(total, passed, group)
-    os.makedirs(OUT_DIR, exist_ok=True)
-    out_json = f"{OUT_DIR}/{group}.json"
+    os.makedirs(out_dir, exist_ok=True)
+    out_json = f"{out_dir}/{group}.json"
     with open(out_json, "w") as f:
         f.write(cset_model.model_dump_json(exclude_unset=True))
     print(f"Wrote {out_json}")
     # raw jet counts per (flavour, abseta, pt) bin, so maps can be compared with binomial
     # errors (e.g. per-jet-bin W+jets maps against the pooled one)
-    out_counts = f"{OUT_DIR}/{group}_counts.json"
+    out_counts = f"{out_dir}/{group}_counts.json"
     with open(out_counts, "w") as f:
         json.dump(dict(group=group, abseta_edges=_ABSETA_EDGES, pt_edges=_PT_EDGES, n_events=n_events,
                        total={str(fl): total[fl].tolist() for fl in _FLAVORS},
