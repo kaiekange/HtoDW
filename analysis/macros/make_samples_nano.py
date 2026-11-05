@@ -23,20 +23,27 @@ Two modes, driven by condor_submit_make_samples_nano.py:
       share one branch list, hadds them in list order, writes <group>_meta.json (per
       piece sums) and asserts merged entries == sum of selected rows.
 
-SELECTION (friend columns, same combination as every corrections validator), plus the phi window:
-    pass_mu_nom & pass_muveto & ~jvm_veto_nom & (n_bjet_nom == 0) & (|phi_mass - M_PHI| < PHI_WIN)
+SELECTION (friend columns), plus the phi window:
+    pass_mu_nom & pass_muveto & ~jme_jvm_veto & (jme_n_bjet == 0) & (|phi_mass - M_PHI| < PHI_WIN)
+2026-11-04: jet veto map and b-veto on the JME jets (jme.full_columns; before: nano jets,
+jvm_veto_nom / n_bjet_nom). MC rows that fail the nominal b-veto but pass it in at least one
+of the 24 JME jet variations (jme_n_bjet_<v> == 0) go to a second tree EventsSyst (same
+branches; `weight` is NaN there), so a variation can move events in as well as out. The jet
+veto map is nominal only (no per-variation column). Data has no EventsSyst.
 The phi window (|M(KK) - m_phi| < 20 MeV on the post-fit phi_mass branch, on top of the
 producer's M(KK) < m_phi + 50 MeV) was added 2026-10-16 (user: keeps 0.949 of signal and
 ~0.5 of every non-resonant background). The b-tag efficiency maps are measured inside the
 same window. Its value is written into every chunk .json and the merged <group>_meta.json.
 
 WEIGHT (background, i.e. W+jets, ttbar and DY):
-    weight = genWeight * norm * w_pu_nom * w_mu_nom * w_btag_nom
+    weight = genWeight * norm * w_pu_nom * w_mu_nom * jme_w_btag_nom
+weight_nobtag (MC) = the same without the b-tag factor; a JME variation's weight is
+weight_nobtag * jme_w_btag_<v> (Events and EventsSyst alike).
 `norm` is the piece's normalization.json value (xsec*L / (sum genWeight * acceptance
 correction), Corrections repo normalization.py).
 
 WEIGHT (signal) -- changed 2026-09-17, genWeight dropped:
-    weight = norm * w_pu_nom * w_mu_nom * w_btag_nom
+    weight = norm * w_pu_nom * w_mu_nom * jme_w_btag_nom
 Found 7/869,385 post-selection signal rows (49/1.6M pre-selection) with genWeight =
 -23.1645 instead of +23.1645 -- a technical two-valued weight with no cross-section
 meaning for this LO-ish EvtGen+Pythia generation (unlike the real amcatnloFXFX NLO
@@ -60,9 +67,13 @@ ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 ca
 
 CARRIED: every custom analyzer branch (everything not in a stock NanoAOD collection this
 analysis never reads, see _STD_PREFIXES) + run/luminosityBlock/event/genWeight/nTrueInt;
-from the friend: w_pu_nom/w_mu_nom/w_btag_nom, `norm`, and the corrected nominal
-kinematics renamed *_corr (FRIEND_CORR_KIN). The raw nano versions are kept too.
-NOT CARRIED: the up/down systematic columns -- not asked for; they stay in the friends.
+from the friend: w_pu_nom/w_mu_nom/jme_w_btag_nom, `norm`, and the corrected nominal
+kinematics renamed *_corr (FRIEND_CORR_KIN; jet/MET ones are JME, their nano-jet friend
+versions are *_nano). The raw nano branches are kept too. MC: the JME variation columns
+jme_{num_jets_pt30,jet_leadpt,n_bjet,w_btag,met_pt,met_phi}_<v> (uncl: met only).
+NOT CARRIED: the other up/down systematic columns (PU, muon, b-tag SF); they stay in the friends.
+
+ttcr: refused since 2026-11-04 (not migrated to the JME columns).
 
 Runs inside cmssw-el9 + CMSSW_15_0_5 (uproot, awkward, hadd).
 """
@@ -89,11 +100,12 @@ FILES_PER_JOB = 50
 M_PHI, PHI_WIN = 1.019460, 0.020  # GeV, phi window of the selection (see docstring)
 APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/apply_corrections.py"
 
-# Control regions (2026-10-19, plan cr-z-mumu-w-jets-ttbar). "sr" is the analysis skim above
-# and stays byte-for-byte what it was; a CR writes under OUT_DIR/CR/<region>/ and reuses the
+# Control regions (2026-10-19, plan cr-z-mumu-w-jets-ttbar). A CR writes under
+# OUT_DIR/CR/<region>/ and reuses the
 # SR chunk lists (same files, same chunking). CR rows are never blinded and carry extra-lepton
-# columns (EXTRA_LEP_DOC). Selections, all on top of pass_mu_nom & ~jvm_veto_nom:
-#   zmumu: ~pass_muveto & n_bjet_nom == 0 & exactly one extra muon, opposite charge to the
+# columns (EXTRA_LEP_DOC). Selections, all on top of pass_mu_nom & ~jme_jvm_veto
+# (2026-11-04: JME jets, b-veto union -> EventsSyst as in the SR):
+#   zmumu: ~pass_muveto & jme_n_bjet == 0 & exactly one extra muon, opposite charge to the
 #          best muon and passing tight PF iso like it (xmu_pfIsoId >= 4, 2026-11-04; the
 #          count itself stays the loose-iso veto definition); NO phi window (applied, if wanted, at plot time). b-veto removes ttbar
 #          and keeps it disjoint from the ttbar mumu category; ~pass_muveto keeps it disjoint
@@ -101,6 +113,7 @@ APPLY_CORRECTIONS = "/afs/cern.ch/work/k/kakang/H2DW/Corrections/corrections/app
 #   ttcr:  n_bjet_nom >= 1 & phi window; categories (1l / mumu / emu) are cut downstream from
 #          the lepton columns. MC weight x w_btag_any_nom (friend column valid at n_bjet >= 1;
 #          the first pass 2026-10-19 had no b-tag SF, meta btag_sf_applied was False).
+#          REFUSED since 2026-11-04 (nano-jet columns; not migrated to JME).
 # Extra muons: corrected pt (MuonScaRe, as prompt_muon_veto) + ID x loose-iso SF (w_xmu,
 # stored for ttcr) and ID x tight-iso SF (w_xmu_tight, multiplied into the zmumu weight).
 # Extra electrons: raw, no SF yet.
@@ -189,17 +202,26 @@ _STD_PREFIXES = (
 _ALWAYS = ("run", "luminosityBlock", "event", "genWeight", "nTrueInt")
 
 FRIEND_JOIN_COLS = ["run", "luminosityBlock", "event"]
-FRIEND_WEIGHT_COLS = ["w_pu_nom", "w_mu_nom", "w_btag_nom"]
-FRIEND_CUT_COLS = ["pass_mu_nom", "pass_muveto", "jvm_veto_nom", "n_bjet_nom"]
+FRIEND_WEIGHT_COLS = ["w_pu_nom", "w_mu_nom", "jme_w_btag_nom"]
+FRIEND_CUT_COLS = ["pass_mu_nom", "pass_muveto", "jme_jvm_veto", "jme_n_bjet"]
+# 2026-11-04: jet/MET *_corr are the JME columns (jme.full_columns); the friend's nano-jet
+# versions (*_nom) are kept as *_nano.
 FRIEND_CORR_KIN = {
     "mu_pt_nom": "mu_pt_corr",
-    "jet_ht_pt20_nom": "jet_ht_pt20_corr",
-    "jet_leadpt_nom": "jet_leadpt_corr",
-    "met_pt_nom": "met_pt_corr",
-    "met_phi_nom": "met_phi_corr",
-    "num_jets_pt30_nom": "num_jets_pt30_corr",
-    "W_tmass_nom": "W_tmass_corr",
-    "n_bjet_nom": "n_bjet_corr",
+    "jme_jet_ht_pt20": "jet_ht_pt20_corr",
+    "jme_jet_leadpt": "jet_leadpt_corr",
+    "jme_met_pt": "met_pt_corr",
+    "jme_met_phi": "met_phi_corr",
+    "jme_num_jets_pt30": "num_jets_pt30_corr",
+    "jme_W_tmass": "W_tmass_corr",
+    "jme_n_bjet": "n_bjet_corr",
+    "jet_ht_pt20_nom": "jet_ht_pt20_nano",
+    "jet_leadpt_nom": "jet_leadpt_nano",
+    "met_pt_nom": "met_pt_nano",
+    "met_phi_nom": "met_phi_nano",
+    "num_jets_pt30_nom": "num_jets_pt30_nano",
+    "W_tmass_nom": "W_tmass_nano",
+    "n_bjet_nom": "n_bjet_nano",
     "Dsmu_pt_nom": "Dsmu_pt_corr", "Dsmu_eta_nom": "Dsmu_eta_corr",
     "Dsmu_phi_nom": "Dsmu_phi_corr", "Dsmu_mass_nom": "Dsmu_mass_corr",
     "Dsmu_Ht_nom": "Dsmu_Ht_corr",
@@ -207,6 +229,11 @@ FRIEND_CORR_KIN = {
     "Dsstmu_phi_nom": "Dsstmu_phi_corr", "Dsstmu_mass_nom": "Dsstmu_mass_corr",
     "Dsstmu_Ht_nom": "Dsstmu_Ht_corr",
 }
+# JME systematic variation columns (MC), carried under their friend names jme_<x>_<v>.
+# Jet variations have all of JME_VAR_JET + JME_VAR_MET, uncl{Up,Down} only JME_VAR_MET.
+JME_VAR_JET = ("num_jets_pt30", "jet_leadpt", "n_bjet", "w_btag")
+JME_VAR_MET = ("met_pt", "met_phi")
+N_JME_VARIATIONS = 26   # 11 JES sources x 2 + JER x 2 + uncl x 2
 
 _IDX_RE = re.compile(r"(?:output|nano)_(\d+)\.root$")
 
@@ -416,6 +443,9 @@ def worker(list_path, out_path, correct=False, region="sr"):
 
     if region not in REGIONS:
         sys.exit(f"unknown region {region!r}, choose from {REGIONS}")
+    if region == "ttcr":
+        sys.exit("ttcr is not migrated to the JME columns (2026-11-04): its n_bjet >= 1 "
+                 "selection has no per-variation b-tag weight in the friend")
     tags = {"era": TAG_TO_ERA[era]}
     if is_data:
         norm = xsec_pb = lumi_pb = None
@@ -428,8 +458,6 @@ def worker(list_path, out_path, correct=False, region="sr"):
         blind = False
         friend_cols = (FRIEND_JOIN_COLS + FRIEND_WEIGHT_COLS + FRIEND_CUT_COLS
                        + list(FRIEND_CORR_KIN))
-        if region == "ttcr":   # b-tag SF valid at n_bjet >= 1 (friend column added 2026-10-20)
-            friend_cols = friend_cols + ["w_btag_any_nom"]
         if sample in SIGNAL_CHANNEL:
             tags["channel"] = SIGNAL_CHANNEL[sample]
         elif sample in TT_DECAY:
@@ -446,8 +474,9 @@ def worker(list_path, out_path, correct=False, region="sr"):
             tags["jet_bin"] = WJETS_BIN[sample]
 
     branches = None
-    parts = []
-    n_total = n_sel_total = n_blinded = 0
+    jme_vars = jet_vars = var_cols = None   # MC: fixed by the first friend, required identical after
+    parts, nom_masks = [], []
+    n_total = n_sel_total = n_syst_total = n_blinded = 0
     wsum = 0.0
     for nano_path in nano_files:
         friend_path = parse_nano_path(nano_path)[2]
@@ -459,7 +488,23 @@ def worker(list_path, out_path, correct=False, region="sr"):
                 branches = nano_branch_list(tn.keys())
             nano = tn.arrays(branches, library="np")
         with uproot.open(friend_path) as ff:
-            fr = ff["Events"].arrays(friend_cols, library="np")
+            tf = ff["Events"]
+            if not is_data:
+                keys = set(tf.keys())
+                v_here = sorted(m.group(1) for k in keys
+                                for m in [re.match(r"jme_met_pt_(.+)$", k)] if m)
+                if jme_vars is None:
+                    jme_vars = v_here
+                    jet_vars = [v for v in jme_vars if f"jme_n_bjet_{v}" in keys]
+                    var_cols = [f"jme_{x}_{v}" for v in jme_vars
+                                for x in (JME_VAR_JET if v in jet_vars else ()) + JME_VAR_MET]
+                    if len(jme_vars) != N_JME_VARIATIONS or len(jet_vars) != N_JME_VARIATIONS - 2:
+                        sys.exit(f"{friend_path}: {len(jme_vars)} JME variations "
+                                 f"({len(jet_vars)} with jets), expected {N_JME_VARIATIONS} "
+                                 f"({N_JME_VARIATIONS - 2})")
+                elif v_here != jme_vars:
+                    sys.exit(f"{friend_path}: JME variation set differs from the chunk's first friend")
+            fr = tf.arrays(friend_cols + (var_cols or []), library="np")
         n = len(nano["event"])
         n_total += n
         if len(fr["event"]) != n:
@@ -468,100 +513,119 @@ def worker(list_path, out_path, correct=False, region="sr"):
             if not np.array_equal(nano[c], fr[c]):
                 sys.exit(f"join mismatch on {c}: {nano_path} vs {friend_path}")
 
+        # everything but the b-veto; the b-veto decides Events (nominal) vs EventsSyst
         if region == "sr":
-            sel = (fr["pass_mu_nom"] & fr["pass_muveto"] & ~fr["jvm_veto_nom"]
-                   & (fr["n_bjet_nom"] == 0) & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
-        else:
+            base = (fr["pass_mu_nom"] & fr["pass_muveto"] & ~fr["jme_jvm_veto"]
+                    & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
+        else:  # zmumu
             lep = extra_lepton_cols(nano_path, fr["mu_pt_nom"], era, is_data)
             if not np.array_equal(lep["n_xmu"] >= 1, ~fr["pass_muveto"]):
                 sys.exit(f"{nano_path}: extra-muon count disagrees with pass_muveto on "
                          f"{int(((lep['n_xmu'] >= 1) != ~fr['pass_muveto']).sum())} rows")
-            sel = fr["pass_mu_nom"] & ~fr["jvm_veto_nom"]
-            if region == "zmumu":
-                sel = (sel & ~fr["pass_muveto"] & (fr["n_bjet_nom"] == 0) & (lep["n_xmu"] == 1)
-                       & (lep["xmu_charge"] == -nano["mu_charge"]) & (lep["xmu_pfIsoId"] >= 4))
-            else:  # ttcr
-                sel = (sel & (fr["n_bjet_nom"] >= 1)
-                       & (np.abs(nano["phi_mass"] - M_PHI) < PHI_WIN))
-        if blind:
+            base = (fr["pass_mu_nom"] & ~fr["jme_jvm_veto"] & ~fr["pass_muveto"]
+                    & (lep["n_xmu"] == 1) & (lep["xmu_charge"] == -nano["mu_charge"])
+                    & (lep["xmu_pfIsoId"] >= 4))
+        bveto = fr["jme_n_bjet"] == 0
+        any_bveto = bveto.copy()
+        for v in jet_vars or []:   # MC: keep the union over the JME jet variations
+            any_bveto |= fr[f"jme_n_bjet_{v}"] == 0
+        sel = base & any_bveto
+        if blind:   # data only, where sel == base & bveto
             in_sr = sel & (np.abs(nano["Ds_mass"] - M_DS) < SR_HALF_WIDTH)
             n_blinded += int(in_sr.sum())
             sel &= ~in_sr
-        n_sel = int(sel.sum())
-        if n_sel == 0:
+        n_keep = int(sel.sum())
+        if n_keep == 0:
             continue
+        is_nom = bveto[sel]
         if is_data:
-            w = np.ones(n_sel, dtype=np.float64)
+            w = np.ones(n_keep, dtype=np.float64)
         else:
             # Signal drops genWeight (see module docstring, WEIGHT (signal)): the
             # ~23.1645-magnitude technical weight isn't a real cross-section factor for
             # this generation, and a rare sign flip (7/869,385 post-selection) crashes
             # torch's WeightedRandomSampler downstream. normalization.py's `norm` for
             # signal is computed to match (genEventCount denominator, not sum(genWeight)).
-            gw = (np.ones(n_sel, dtype=np.float64) if sample in SIGNAL_CHANNEL
+            gw = (np.ones(n_keep, dtype=np.float64) if sample in SIGNAL_CHANNEL
                   else nano["genWeight"][sel].astype(np.float64))
-            w = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel]
-            # w_btag_nom is NaN by design at n_bjet > 0; ttcr uses the any-n_bjet column
-            w = w * fr["w_btag_any_nom" if region == "ttcr" else "w_btag_nom"][sel]
+            w_nob = gw * norm * fr["w_pu_nom"][sel] * fr["w_mu_nom"][sel]
             if region == "zmumu":  # every zmumu row has exactly one extra muon, tight iso
-                w = w * lep["w_xmu_tight"][sel]
-            if not np.all(np.isfinite(w)):
+                w_nob = w_nob * lep["w_xmu_tight"][sel]
+            if not np.all(np.isfinite(w_nob)):
+                sys.exit(f"non-finite weight_nobtag in {nano_path} after selection")
+            # jme_w_btag_nom is NaN by design at jme_n_bjet > 0, i.e. on every EventsSyst row
+            w = w_nob * fr["jme_w_btag_nom"][sel]
+            if not np.all(np.isfinite(w[is_nom])):
                 sys.exit(f"non-finite weight in {nano_path} after selection")
         out = {b: nano[b][sel] for b in branches}
         out["weight"] = w
         if not is_data:
-            out["norm"] = np.full(n_sel, norm, dtype=np.float64)
+            out["weight_nobtag"] = w_nob
+            out["norm"] = np.full(n_keep, norm, dtype=np.float64)
+            for c in var_cols:
+                out[c] = fr[c][sel]
         for fcol, ocol in FRIEND_CORR_KIN.items():
             out[ocol] = fr[fcol][sel]
         for k, v in tags.items():
-            out[k] = np.full(n_sel, v, dtype=np.int32)
+            out[k] = np.full(n_keep, v, dtype=np.int32)
         if region != "sr":
             for k, v in lep.items():
                 out[k] = v[sel]
-        if region == "ttcr":
-            for k, v in hf_origin_cols(nano_path, is_data).items():
-                out[k] = v[sel]
         parts.append(out)
-        n_sel_total += n_sel
-        wsum += float(w.sum())
+        nom_masks.append(is_nom)
+        n_sel_total += int(is_nom.sum())
+        n_syst_total += n_keep - int(is_nom.sum())
+        wsum += float(w[is_nom].sum())
 
     meta = dict(era=era, sample=sample, list=os.path.basename(list_path),
                 files=[os.path.basename(p) for p in nano_files], n_files=len(nano_files),
-                n_rows_total=n_total, n_rows_selected=n_sel_total, n_rows_blinded=n_blinded,
+                n_rows_total=n_total, n_rows_selected=n_sel_total,
+                n_rows_selected_syst=n_syst_total, n_rows_blinded=n_blinded,
                 weight_sum=wsum,
                 norm=norm, xsec_pb=xsec_pb, lumi_pb=lumi_pb, phi_win=PHI_WIN,
                 branches_sha1=None, root_written=False,
-                # 2026-10-21: apply_corrections.py no longer applies JME -- the *_corr jet/MET
-                # columns hold nano values; f55-era models must not score these samples.
-                jme_applied=False)
-    if region != "sr":   # SR .json stays exactly as before
-        meta.update(region=region, phi_win=None if region == "zmumu" else PHI_WIN,
+                # 2026-11-04: jet/MET *_corr, the jet veto map, n_bjet and w_btag are the JME
+                # columns of the friend (jme.full_columns); models trained before must not
+                # score these samples.
+                jme_applied=True, jme_variations=jme_vars)
+    if region != "sr":
+        meta.update(region=region, phi_win=None,
                     btag_sf_applied=True, extra_muon_corrected=True,
-                    extra_muon_sf_in_weight=region == "zmumu", extra_electron_sf_applied=False,
-                    zmumu_xmu_iso="tight" if region == "zmumu" else None)
+                    extra_muon_sf_in_weight=True, extra_electron_sf_applied=False,
+                    zmumu_xmu_iso="tight")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    if n_sel_total:
+    if parts:
         cols = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
+        nom = np.concatenate(nom_masks)
+        trees = {"Events": {k: v[nom] for k, v in cols.items()}}
+        if not is_data:   # MC: rows passing the b-veto only in some JME variation
+            trees["EventsSyst"] = {k: v[~nom] for k, v in cols.items()}
         meta["branches_sha1"] = hashlib.sha1("\n".join(sorted(cols)).encode()).hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
             local = os.path.join(tmp, "chunk.root")
             with uproot.recreate(local) as f:
-                f["Events"] = cols
+                for name, tc in trees.items():
+                    f[name] = tc
             shutil.copyfile(local, out_path)
         with uproot.open(out_path) as f:
-            t = f["Events"]
-            back = t.arrays(["event", "weight"], library="np")
-            if (t.num_entries != n_sel_total or not np.array_equal(back["event"], cols["event"])
-                    or not np.array_equal(back["weight"], cols["weight"])):
-                sys.exit(f"read-back of {out_path} does not match")
+            for name, n_exp in (("Events", n_sel_total), ("EventsSyst", n_syst_total)):
+                if name not in trees:
+                    continue
+                t = f[name]
+                back = t.arrays(["event", "weight"], library="np")
+                if (t.num_entries != n_exp
+                        or not np.array_equal(back["event"], trees[name]["event"])
+                        or not np.array_equal(back["weight"], trees[name]["weight"],
+                                              equal_nan=True)):
+                    sys.exit(f"read-back of {out_path}:{name} does not match")
         meta["root_written"] = True
     elif os.path.exists(out_path):
         os.remove(out_path)
     with open(out_path[:-len(".root")] + ".json", "w") as f:
         json.dump(meta, f, indent=1)
     print(f"{era}/{sample} {os.path.basename(list_path)}: files={len(nano_files)} "
-          f"rows={n_total} sel={n_sel_total} blinded={n_blinded} weight_sum={wsum:.6g}"
-          f" -> {out_path}")
+          f"rows={n_total} sel={n_sel_total} sel_syst={n_syst_total} blinded={n_blinded} "
+          f"weight_sum={wsum:.6g} -> {out_path}")
 
 
 # ---------------------------------------------------------------- merge
@@ -581,7 +645,7 @@ def merge(group, region="sr"):
             continue
         listed = []
         agg = dict(era=era, sample=sample, n_chunks=len(lists), n_files=0, n_rows_total=0,
-                   n_rows_selected=0, n_rows_blinded=0, weight_sum=0.0,
+                   n_rows_selected=0, n_rows_selected_syst=0, n_rows_blinded=0, weight_sum=0.0,
                    norm=None, xsec_pb=None, lumi_pb=None)
         ks = [int(re.search(r"_chunk(\d+)\.txt$", lp).group(1)) for lp in lists]
         if ks != list(range(len(lists))):
@@ -601,14 +665,17 @@ def merge(group, region="sr"):
             if m["files"] != names:
                 problems.append(f"{jp}: file list differs from {lp}")
                 continue
+            if not m.get("jme_applied") or "n_rows_selected_syst" not in m:
+                problems.append(f"{jp}: written before the 2026-11-04 JME skim, re-run it")
+                continue
             if m["root_written"]:
                 if not os.path.exists(rp):
                     problems.append(f"missing {rp}")
                     continue
                 roots.append(rp)
                 shas.add(m["branches_sha1"])
-            for key in ("n_files", "n_rows_total", "n_rows_selected", "n_rows_blinded",
-                        "weight_sum"):
+            for key in ("n_files", "n_rows_total", "n_rows_selected", "n_rows_selected_syst",
+                        "n_rows_blinded", "weight_sum"):
                 agg[key] += m[key]
             for key in ("norm", "xsec_pb", "lumi_pb", "phi_win", "jme_applied"):
                 agg[key] = m.get(key)
@@ -628,18 +695,26 @@ def merge(group, region="sr"):
         subprocess.run(["hadd", "-f", local] + roots, check=True)
         shutil.copyfile(local, target)
     n_expect = sum(p["n_rows_selected"] for p in piece_meta)
+    n_expect_syst = sum(p["n_rows_selected_syst"] for p in piece_meta)
+    is_data_group = group.startswith("Data_")
     with uproot.open(target) as f:
         n_got = f["Events"].num_entries
+        has_syst = "EventsSyst" in f
+        n_got_syst = f["EventsSyst"].num_entries if has_syst else 0
     if n_got != n_expect:
         sys.exit(f"{target}: {n_got} entries, chunk JSONs sum to {n_expect}")
+    if has_syst == is_data_group or n_got_syst != n_expect_syst:
+        sys.exit(f"{target}: EventsSyst present={has_syst} with {n_got_syst} entries, "
+                 f"expected {'none' if is_data_group else n_expect_syst}")
     with open(f"{region_dir(region)}/{group}_meta.json", "w") as f:
         json.dump(piece_meta, f, indent=1)
     for p in piece_meta:
         xl = "" if p["xsec_pb"] is None else f" xsec*L={p['xsec_pb'] * p['lumi_pb']:.6g}"
         print(f"  {p['era']}/{p['sample']}: chunks={p['n_chunks']} files={p['n_files']} "
               f"rows={p['n_rows_total']} sel={p['n_rows_selected']} "
+              f"sel_syst={p['n_rows_selected_syst']} "
               f"blinded={p['n_rows_blinded']} weight_sum={p['weight_sum']:.6g}{xl}")
-    print(f"wrote {target} ({n_got} entries from {len(roots)} chunks)")
+    print(f"wrote {target} ({n_got} entries, EventsSyst {n_got_syst}, from {len(roots)} chunks)")
 
 
 def main():

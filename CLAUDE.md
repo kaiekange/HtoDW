@@ -77,7 +77,34 @@ keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTa
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Nano outputs: `/eos/home-k/kakang/H2DW/Analysis/NanoMVA/{MC,Data}/`; merged skims: `NanoMVA/Samples/`
 
-## Last Session (2026-11-04)
+## Last Session (2026-11-04 晚 ~ 11-05)
+
+### JME 完整链进 friend 并成为分析默认；全样本 friend / skim / merge 重做
+
+**方案（用户定）**：JES（data residual 按 run）+ MC JER smear，Type-1 PuppiMET 传 JER + MET xy；μ 修正不传 MET；nano 原值保留。
+系统误差（MC）26 个：Reduced JES 11 源（`_year` 源跨 era 不相关）×2、JER×2、unclustered×2（只动 MET）；JES shift 在 JER smear 前（tutorial 顺序）。
+- Corrections：`jme_direct.Jme.variations()`、`jme.full_columns()`（`jme_*` 列，闭合到 10-22 验证过的 `jet_pt`/`met`+`met_xy`）、`btv` 接受 jet pt、
+  效率图 `--jme`（JME-pt，`btag_efficiency_jme/` 36 组，旧图保留）。friend 222→261 列，约 2 倍大。
+- `make_samples_nano.py`：7 个 jet/MET `*_corr` = JME，nano 版改名 `*_nano`；cut 用 `jme_jvm_veto`/`jme_n_bjet`，权重 `jme_w_btag_nom`；
+  只在某个 JME 变化下过 b-veto 的 MC 行进 `EventsSyst`（`weight`=NaN，`weight_nobtag` × `jme_w_btag_<v>` = 变化权重）；ttcr 拒绝运行；merge 拒收旧 chunk。
+  jet veto map 只有 nominal。
+- 结果：data+MC friend、SR+zmumu skim、18 个 merge 全部重做并验收；事例数比旧版多 0.1–0.9%（JME jet 的 jet veto map veto 更少，data 3.68%→3.31%）。
+
+**Z→μμ（JME 样本）**：DY jet-bin SF 0.807/0.763/1.168（≈ nano 版；`common.DY_JETBIN_SF` 未改，仍 0.802/0.765/1.155）。
+**MET data/MC 变差**：nano 1.07→0.80，JME 1.23→0.43（MC 均值 +2.4 GeV）；N_jet≥4、m_T 高端也变差。= 10-22 已知的「MET 传 JER 变硬」。
+**待定**：MET 传不传 JER（选项：保持 / `propagate_jer=False` 全部重跑 / 先本地拆原因——我推荐）；DY SF 是否更新；JES/JER 对 N_jet 的影响未拆。
+旧 DNN/BDT 模型与 Prediction 不匹配新样本（MVA 暂停）；`draw_zmumu_jme.py`/`jme_zmumu_study.py` 的 nano-vs-JME 对比因改名失效。
+
+**其他**：删孤儿 friend 105 个（MC 104 + data Run2022G `nano_52`）。apply_corrections 的 per-job log 目录满（AFS 单目录 ~2.2 万文件，"File too large"）
+→ 2022EE W+jets 1J_SS 583 次失败、用户让 `condor_rm` 全部；`run_apply_corrections.sh` 改为只留失败 job 的 log，旧 log 全删。hadd/merge 改回由我做（用户撤销旧规定）。
+
+### 我犯的错
+1. 定 JME 方案时没翻出 10-22 的「MET 传 JER 变硬」提醒用户，全样本跑完才在 Z→μμ 看到。
+2. 设计变化列时没追到 skim 的 b-veto（并集问题），advisor 指出、用户问「为什么之前没想过」。
+3. 没查 log 目录文件数就交几千 job；还把未扫描的 per-job log 一起删了，只好另交 condor 补查。
+4. 例行用 `eos ls` 核对、回复用了英文，用户不满。
+
+## 上一 Session (2026-11-04)
 
 ### POG 修正逐类对照官方例子 + Corrections 按 POG 拆模块（MUO 用 muonscarekit .cc、BTV 改 C++）
 
@@ -103,41 +130,3 @@ keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTa
 1. 用户问「是按这个来的吗」我反问「这个是什么」，没自己去找参考对比（memory `feedback_compare_to_reference_code`）。
 2. 只要代码对比时我去跑数值验证，被打断。
 3. `btag_weight.cc` 文件头的 BTV commit 号先凭记忆写错，核对后改正。
-
-## 上一 Session (2026-11-03)
-
-### 仓库清理：15_0_5 只剩 `analysis/`（旧 tuplizer 全删），13_0_13 不再依赖 15_0_5
-
-**13_0_13**（`7a29ec3`、`58b6a31`）：删 `test/nano_base_preEE.py`（cmsDriver 骨架，无人引用）；
-W+jets 文件列表 `filelist_{0,1,2}J_{2022,2022EE}.txt` 移到 `condor/das/`（`condor_submit.py` 的 `WJ_FILELIST_DIR`），
-`data_2022.txt` 移到 `crab/DatasetList/`（`submitData.sh`），逐字节相同、仍被 `*.txt` gitignore；2023/2024 golden JSON 拷进 `crab/JSON/`。
-`test/SIG_H_phipimu.py`、`WtoLNu2Jets_H_phipimu.py`、`plugins/H_phipimu*.cc` 是死代码（import 不存在的 JMEcorr），**还没删**。
-未跟踪的 `plugins/_fillcand_body.txt`（09-10 草稿）、根目录 `BKG_datasets.txt` 已删。删 `H_phipimu*.cc` 要 el8 `scram b` 重编译，等 condor job 排空再做；`H_phipimu*_Tree` 类不能删（producer 拿它当 scratch struct）。
-
-**15_0_5**：删 `Tuples/`（含未进 git 的 condor_logs）、`GenCount/`（被 Corrections/gencount 取代）、`BKGsets/`（未进 git）、
-`EDAnalyzers/`（旧 `H_phipimu` + JMEcorr；删后 el9 容器里 cmsenv + correctionlib 2.6.4 正常）。
-`analysis/`：删 corrections pilot 旧副本 10 个（都在 Corrections 仓库，`make_samples_nano.py` 本来就 import 那边的）、
-只能配合已删模型（osdata/oswjets、wjetsres f24/nostage1、ssdata f55）或旧列名（`Lumi_reweight`/`event_id`）的脚本、
-已结束的一次性研究（09-25 系列、tt̄ CR、OS−SS、BR/DY τ 分数、FD/顶点图、MET raw vs corr 等）、`functions/`（ROOT C++ 风格，无人用）、
-`DNN/score_only.sh`、DNN/BDT 全部 scheduler log、`macros/condor_logs/` 里旧 apply_corrections/btag log。
-**`common.TRAININGS` 删了 wjets/oswjets/osdata/osdata_phi20/wjetsres_nostage1/wjetsres_s1seed***；
-`ssdata`、`ssdata_phi20`、`wjetsres` 模型已删但**保留**，因为 `ssdata_f45`、`resdy`、`wjetsres_v2` 由它们派生。
-**所有默认 key 改成 `ssdata_f45`**（原 `ssdata` / `ssdata_phi20`，`phi_win` 由 f45 继承、行为不变）：
-`draw_stage1_mass_by_score_cut`、`draw_cr_zmumu`、`draw_zmumu_feature`、`ds_mass_fit_io`、`run_ds_mass_fit.sh`、`fit_dy_jetbin_zmumu`、
-`fom_scan_stage1`、`fit_sideband_scales_stage1`、`draw_stage1_dy_mass_by_cut`、`draw_tau3pi_masses_by_cut`、`draw_stage1_dsmass_by_era`。
-验收：全部 `.py` py_compile、`.sh` bash -n、ds_dnn 下 `import common` + 三个现存模型目录存在 + `stage1_threshold(ssdata_f45, 0.90)=0.9596`；**脚本没有逐个实跑**。
-留着的进行中工作：`check_{data,mc}_phi20nano_vs_old`（MC 版未提交）、`jme_zmumu_study`/`draw_zmumu_jme`、`fit_zmumu_r12_*`、`draw_zmumu_feature`、
-`check_dsmunu_mass`+`compare_dsmunu_signal_gentag`（m(Dsμν) 进不进 MVA 未定）、`compare_stage2_dy_vs_nody`。用户未提交的 `draw_wp_mass.py --ds-only` 没带进 commit。
-
-**下午追加（用户批准「φ20 之前用到的全删」）**：EOS `Samples/*_merged_prephi20*`、`skim_prephi20/`、`MC/2022/btag_efficiency_prephi20/`（~34 GB）删；
-EOS postEE 11 个 `*_pre_phi20nano` 本底目录（63 GB，`eos rm -r`，在 EOS 回收站）删 → **新旧 nano 对比再也做不了**，
-postEE WJ0/WJ1/DY2J/DY1J SS 新 nano 补齐前没有完整 postEE nano（现有 `*_merged.root` 仍含旧数据）。
-13_0_13 `condor_logs/` 的 40 个 `*_pre_phi20nano.log`、`filelists_before_phi20nano/` 删；15_0_5 `macros/condor_logs/` 只剩 `make_samples_nano/lists/`（merge 要读）。
-删 `check_data_phi20nano_vs_old.py`、`run_check_data_phi20nano.sh`、`fit_zmumu_r12_quick.py`（留 `fit_zmumu_r12_cutscan.py`）。
-`check_mc_phi20nano_vs_old.py` + `run_check_mc_phi20nano.sh` 被我一并删了（未跟踪），用户要提交，从 AFS 备份卷 `work.kakang.backup`（11-02 18:23 快照）恢复后提交；
-它们读的 `_pre_phi20nano` 已删，**现在跑不了**，只作记录。`draw_wp_mass.py --ds-only`（只画 Ds_mass panel）一并提交。
-
-### 我犯的错
-1. 每删一组就 commit + push（一天 7 个小 commit），用户恼火 → memory `feedback_batch_commits`。
-2. 删了用户未提交的两个脚本（虽在批准的选项里），用户随后要提交 → 从 AFS 备份卷恢复。
-3. 又用 shell 变量拼 `rm` 路径被安全检查拦；删除一律写字面路径。

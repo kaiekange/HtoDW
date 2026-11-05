@@ -1,6 +1,44 @@
 # Session log（新的在上）
 
-从 CLAUDE.md 移出的旧 session 记录（2026-11-04），原文未改。CLAUDE.md 只保留最近两次。
+从 CLAUDE.md 移出的旧 session 记录，原文未改。CLAUDE.md 只保留最近两次。
+
+## 上一 Session (2026-11-03)
+
+### 仓库清理：15_0_5 只剩 `analysis/`（旧 tuplizer 全删），13_0_13 不再依赖 15_0_5
+
+**13_0_13**（`7a29ec3`、`58b6a31`）：删 `test/nano_base_preEE.py`（cmsDriver 骨架，无人引用）；
+W+jets 文件列表 `filelist_{0,1,2}J_{2022,2022EE}.txt` 移到 `condor/das/`（`condor_submit.py` 的 `WJ_FILELIST_DIR`），
+`data_2022.txt` 移到 `crab/DatasetList/`（`submitData.sh`），逐字节相同、仍被 `*.txt` gitignore；2023/2024 golden JSON 拷进 `crab/JSON/`。
+`test/SIG_H_phipimu.py`、`WtoLNu2Jets_H_phipimu.py`、`plugins/H_phipimu*.cc` 是死代码（import 不存在的 JMEcorr），**还没删**。
+未跟踪的 `plugins/_fillcand_body.txt`（09-10 草稿）、根目录 `BKG_datasets.txt` 已删。删 `H_phipimu*.cc` 要 el8 `scram b` 重编译，等 condor job 排空再做；`H_phipimu*_Tree` 类不能删（producer 拿它当 scratch struct）。
+
+**15_0_5**：删 `Tuples/`（含未进 git 的 condor_logs）、`GenCount/`（被 Corrections/gencount 取代）、`BKGsets/`（未进 git）、
+`EDAnalyzers/`（旧 `H_phipimu` + JMEcorr；删后 el9 容器里 cmsenv + correctionlib 2.6.4 正常）。
+`analysis/`：删 corrections pilot 旧副本 10 个（都在 Corrections 仓库，`make_samples_nano.py` 本来就 import 那边的）、
+只能配合已删模型（osdata/oswjets、wjetsres f24/nostage1、ssdata f55）或旧列名（`Lumi_reweight`/`event_id`）的脚本、
+已结束的一次性研究（09-25 系列、tt̄ CR、OS−SS、BR/DY τ 分数、FD/顶点图、MET raw vs corr 等）、`functions/`（ROOT C++ 风格，无人用）、
+`DNN/score_only.sh`、DNN/BDT 全部 scheduler log、`macros/condor_logs/` 里旧 apply_corrections/btag log。
+**`common.TRAININGS` 删了 wjets/oswjets/osdata/osdata_phi20/wjetsres_nostage1/wjetsres_s1seed***；
+`ssdata`、`ssdata_phi20`、`wjetsres` 模型已删但**保留**，因为 `ssdata_f45`、`resdy`、`wjetsres_v2` 由它们派生。
+**所有默认 key 改成 `ssdata_f45`**（原 `ssdata` / `ssdata_phi20`，`phi_win` 由 f45 继承、行为不变）：
+`draw_stage1_mass_by_score_cut`、`draw_cr_zmumu`、`draw_zmumu_feature`、`ds_mass_fit_io`、`run_ds_mass_fit.sh`、`fit_dy_jetbin_zmumu`、
+`fom_scan_stage1`、`fit_sideband_scales_stage1`、`draw_stage1_dy_mass_by_cut`、`draw_tau3pi_masses_by_cut`、`draw_stage1_dsmass_by_era`。
+验收：全部 `.py` py_compile、`.sh` bash -n、ds_dnn 下 `import common` + 三个现存模型目录存在 + `stage1_threshold(ssdata_f45, 0.90)=0.9596`；**脚本没有逐个实跑**。
+留着的进行中工作：`check_{data,mc}_phi20nano_vs_old`（MC 版未提交）、`jme_zmumu_study`/`draw_zmumu_jme`、`fit_zmumu_r12_*`、`draw_zmumu_feature`、
+`check_dsmunu_mass`+`compare_dsmunu_signal_gentag`（m(Dsμν) 进不进 MVA 未定）、`compare_stage2_dy_vs_nody`。用户未提交的 `draw_wp_mass.py --ds-only` 没带进 commit。
+
+**下午追加（用户批准「φ20 之前用到的全删」）**：EOS `Samples/*_merged_prephi20*`、`skim_prephi20/`、`MC/2022/btag_efficiency_prephi20/`（~34 GB）删；
+EOS postEE 11 个 `*_pre_phi20nano` 本底目录（63 GB，`eos rm -r`，在 EOS 回收站）删 → **新旧 nano 对比再也做不了**，
+postEE WJ0/WJ1/DY2J/DY1J SS 新 nano 补齐前没有完整 postEE nano（现有 `*_merged.root` 仍含旧数据）。
+13_0_13 `condor_logs/` 的 40 个 `*_pre_phi20nano.log`、`filelists_before_phi20nano/` 删；15_0_5 `macros/condor_logs/` 只剩 `make_samples_nano/lists/`（merge 要读）。
+删 `check_data_phi20nano_vs_old.py`、`run_check_data_phi20nano.sh`、`fit_zmumu_r12_quick.py`（留 `fit_zmumu_r12_cutscan.py`）。
+`check_mc_phi20nano_vs_old.py` + `run_check_mc_phi20nano.sh` 被我一并删了（未跟踪），用户要提交，从 AFS 备份卷 `work.kakang.backup`（11-02 18:23 快照）恢复后提交；
+它们读的 `_pre_phi20nano` 已删，**现在跑不了**，只作记录。`draw_wp_mass.py --ds-only`（只画 Ds_mass panel）一并提交。
+
+### 我犯的错
+1. 每删一组就 commit + push（一天 7 个小 commit），用户恼火 → memory `feedback_batch_commits`。
+2. 删了用户未提交的两个脚本（虽在批准的选项里），用户随后要提交 → 从 AFS 备份卷恢复。
+3. 又用 shell 变量拼 `rm` 路径被安全检查拦；删除一律写字面路径。
 
 ## 上一 Session (2026-10-26 ~ 10-28)
 
