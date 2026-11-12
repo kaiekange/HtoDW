@@ -1,24 +1,31 @@
-"""JME study on the Z->mumu CR (2026-10-22): JME-corrected jet/MET columns as a row-aligned
-friend of the existing zmumu skim. The event set is NOT changed -- selection (b-veto, jet
-veto map, ...) stays on nano jets exactly as in the skim; only the plotted jet/MET quantities
-are recomputed.
+"""JME step-by-step study on the Z->mumu CR (2026-11-06): which JME step makes the MC MET harder.
+Output is a row-aligned friend of the current zmumu skim. The event set is the skim's (selection
+on jme_jvm_veto / jme_n_bjet) and is the same for every step; only jet/MET quantities change.
 
     python3 jme_zmumu_study.py submit <group> [--dry-run]        (lxplus, one job per zmumu chunk)
     python3 jme_zmumu_study.py worker <chunk list.txt> <out.root>  (inside cmssw-el9 / CMSSW_15_0_5)
     python3 jme_zmumu_study.py merge <group>                       (inside cmssw-el9 / CMSSW_15_0_5)
-    <group>: Data_OS_merged | TT_merged | WtoLNu2Jets_merged | DY_merged
+    <group>: Data_OS_merged | DY_merged | TT_merged   (W+jets < 1% of the CR in every MET bin)
 
-Corrections: Corrections/corrections/jme_direct.py (JME POG JSONs 2026-06-05, JER-Smearing
-2026-09-18; data residual at the event's own run). Variants (column suffix):
-  _jer       JES + JER (MC) jets; Type-1 PuppiMET with JER propagated (MC)
-  _nojer     same jets; Type-1 PuppiMET with JES only (data: identical to _jer)
-  _jer_xy, _nojer_xy   the above + MET xy correction (PuppiMET, nom)
-  jets: jme_{num_jets_pt30, jet_leadpt, jet_ht_pt20} with the nano tight-ID bit (as
-  apply_corrections.py: tight ID, no eta cut), and *_idfix with the NanoAODv12 jet-ID bugfix
-  recipe (JetID13p6TeV). MET does not depend on jet ID.
-W_tmass = corrected best muon (skim mu_pt_corr, nano mu_phi) + that MET.
-Fail-loud checks per chunk: every skim row matched exactly once by (run, lumi, event), and
-num_jets_pt30 rebuilt from nano Jet_pt/Jet_jetId equals the skim's num_jets_pt30_corr row by row.
+Steps, built from Corrections/corrections/jme_direct.py pieces (JES L1L2L3, data L2L3Residual at
+the event's run; JER = Jme.jer, the official v2 smearing):
+  jets  j0 nano Jet_pt | j1 re-JES | j2 j1 + MC JER smear (= the analysis default *_corr)
+        columns j<s>_{num_jets_pt30, jet_leadpt, jet_ht_pt20}, nano tight-ID bit.
+  MET   (Type-1 PuppiMET from RawPuppiMET; MET jets = CorrT1METJet + AK4 Jet, muon-subtracted,
+        kept if pt>15, |eta|<5.2, EM fraction<0.9; columns m<s>_{pt,phi})
+        m0      nano PuppiMET                 m0xy  m0 + MET xy
+        m1      Type-1 with re-JES (also the MET of step j2: JER on jets only)
+        m3      m1 + JER on the AK4 Jet entries only
+        m4      m1 + JER on all MET jets (AK4 + CorrT1)   m5  m4 + MET xy (= analysis default)
+        diagnostics of m4: m4match (JER only on gen-matched jets, stochastic ones at JES pt),
+        m4nocross (15 GeV threshold decided on the JES pt), m4jf (AK4 entries smeared with the
+        jet-collection factor pt_j2/pt_j1 instead of re-evaluating on the muon-subtracted pt);
+        counts ncross_{up,dn}_{ct1,ak4}: MET jets that cross 15 GeV only after / before smearing.
+  npv = PV_npvsGood (input of the MET xy correction).
+  data: no JER, so j2 = j1 and m3 = m4 = m4* = m1, m5 = m1 + xy (data parameters).
+Fail-loud checks per chunk: every skim row matched once by (run, lumi, event); j0 == skim *_nano,
+j2 == skim *_corr, m0 == skim met_*_nano, m5 == skim met_*_corr; for gen-unmatched jets the JER
+factor does not depend on the gen jet (checks the replicated match condition).
 """
 import glob
 import json
@@ -30,10 +37,10 @@ import tempfile
 
 import make_samples_nano as msn
 
-STUDY_DIR = f"{msn.OUT_DIR}/CR/zmumu_jme"
-GROUPS = ("Data_OS_merged", "TT_merged", "WtoLNu2Jets_merged", "DY_merged")
+STUDY_DIR = f"{msn.OUT_DIR}/CR/zmumu_jme_steps"
+GROUPS = ("Data_OS_merged", "DY_merged", "TT_merged")
 NULL = -777.0
-VARIANTS = ("jer", "nojer", "jer_xy", "nojer_xy")
+MET_STEPS = ("m0", "m0xy", "m1", "m3", "m4", "m4match", "m4nocross", "m4jf", "m5")
 LOGDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "condor_logs", "jme_zmumu_study")
 
 
@@ -66,6 +73,113 @@ def jet_cols(pt, tight, prefix):
             f"{prefix}jet_ht_pt20": ak.to_numpy(ak.sum(ak.where(tight & (pt > 20), pt, 0.0), axis=1))}
 
 
+def gen_match(jd, J, pt, eta, phi, rho, gen_idx, gen_pt, gen_eta, gen_phi):
+    """The gen-match condition of Jme.jer, replicated (checked against Jme.jer in step_columns)."""
+    import awkward as ak
+    import numpy as np
+    rho_j = ak.broadcast_arrays(rho, eta)[0]
+    reso = jd._flat_eval(J.reso, eta, pt, rho_j)
+    valid = (gen_idx >= 0) & (gen_idx < ak.num(gen_pt))
+    safe = ak.where(valid, gen_idx, 0)
+
+    def pad(x, v):
+        return ak.fill_none(ak.pad_none(x, 1, axis=1), v)
+    gpt, geta, gphi = pad(gen_pt, 0.0)[safe], pad(gen_eta, 999.0)[safe], pad(gen_phi, 0.0)[safe]
+    dphi = np.arctan2(np.sin(phi - gphi), np.cos(phi - gphi))
+    dr = np.sqrt((eta - geta) ** 2 + dphi ** 2)
+    return valid & (dr < jd.JER_MATCH_DR) & (abs(pt - gpt) < 3.0 * reso * pt)
+
+
+def step_columns(jd, J, a, is_data):
+    """{column: numpy array} for every jet/MET step (see the module docstring)."""
+    import awkward as ak
+    import numpy as np
+    rho, run, ev = a["Rho_fixedGridRhoFastjetAll"], a["run"], a["event"]
+    tight = (a["Jet_jetId"] & 2) > 0
+    c = {}
+    # ---- jets ----
+    _, j1 = J.jes(a["Jet_pt"] * (1.0 - a["Jet_rawFactor"]), a["Jet_area"], a["Jet_eta"], rho, run)
+    j2 = j1 if is_data else J.jer(j1, a["Jet_eta"], a["Jet_phi"], rho, ev, a["Jet_genJetIdx"],
+                                   a["GenJet_pt"], a["GenJet_eta"], a["GenJet_phi"])
+    for s, pt in (("j0", a["Jet_pt"]), ("j1", j1), ("j2", j2)):
+        c.update(jet_cols(pt, tight, f"{s}_"))
+    # ---- MET jets, per collection: (raw, musub, eta, phi, area, em) ----
+    coll = {"ct1": (a["CorrT1METJet_rawPt"], a["CorrT1METJet_muonSubtrFactor"], a["CorrT1METJet_eta"],
+                    a["CorrT1METJet_phi"], a["CorrT1METJet_area"], ak.zeros_like(a["CorrT1METJet_eta"])),
+            "ak4": (a["Jet_pt"] * (1.0 - a["Jet_rawFactor"]), a["Jet_muonSubtrFactor"], a["Jet_eta"],
+                    a["Jet_phi"], a["Jet_area"], a["Jet_chEmEF"] + a["Jet_neEmEF"])}
+    if not is_data:
+        gen = (a["GenJet_pt"], a["GenJet_eta"], a["GenJet_phi"])
+        ge, gp = a["GenJet_eta"], a["GenJet_phi"]   # CorrT1: closest GenJet within dR<0.2 (as jme_direct)
+        ce, cp = a["CorrT1METJet_eta"], a["CorrT1METJet_phi"]
+        dph = np.arctan2(np.sin(cp[:, :, None] - gp[:, None, :]), np.cos(cp[:, :, None] - gp[:, None, :]))
+        dr2 = (ce[:, :, None] - ge[:, None, :]) ** 2 + dph ** 2
+        amin = ak.fill_none(ak.argmin(dr2, axis=2), -1)
+        mind = ak.fill_none(ak.min(dr2, axis=2), 1e9)
+        gidx = {"ct1": ak.values_astype(ak.where(mind < jd.JER_MATCH_DR ** 2, amin, -1), np.int64),
+                "ak4": ak.values_astype(a["Jet_genJetIdx"], np.int64)}
+    M = {}
+    for name, (raw, musub, eta, phi, area, em) in coll.items():
+        l1, jes = J.jes(raw * (1.0 - musub), area, eta, rho, run)
+        m = dict(l1=l1, jes=jes, eta=eta, phi=phi, ok=(abs(eta) < 5.2) & (em < 0.9))
+        if is_data:
+            m.update(jer=jes, match=ak.zeros_like(jes, dtype=bool), jf=jes)
+        else:
+            m["jer"] = J.jer(jes, eta, phi, rho, ev, gidx[name], *gen)
+            m["match"] = gen_match(jd, J, jes, eta, phi, rho, gidx[name], *gen)
+            nogen = J.jer(jes, eta, phi, rho, ev, ak.full_like(gidx[name], -1), *gen)
+            if not ak.all(ak.flatten(ak.where(m["match"], True, m["jer"] == nogen))):
+                sys.exit(f"replicated gen match disagrees with Jme.jer ({name})")
+            if name == "ak4":
+                if not ak.all(ak.flatten(ak.where(musub == 0, (jes == j1) & (m["jer"] == j2), True))):
+                    sys.exit("MET AK4 entries without muon != jet collection pt")
+                m["jf"] = jes * (j2 / j1)
+            else:
+                m["jf"] = m["jer"]
+        M[name] = m
+        c[f"ncross_up_{name}"] = ak.to_numpy(ak.sum(m["ok"] & (jes <= 15.0) & (m["jer"] > 15.0), axis=1)).astype(np.int16)
+        c[f"ncross_dn_{name}"] = ak.to_numpy(ak.sum(m["ok"] & (jes > 15.0) & (m["jer"] <= 15.0), axis=1)).astype(np.int16)
+
+    def cat(key):
+        return ak.concatenate([M["ct1"][key], M["ak4"][key]], axis=1)
+    l1, jes, jer, ok, phi = cat("l1"), cat("jes"), cat("jer"), cat("ok"), cat("phi")
+    raw_px = a["RawPuppiMET_pt"] * np.cos(a["RawPuppiMET_phi"])
+    raw_py = a["RawPuppiMET_pt"] * np.sin(a["RawPuppiMET_phi"])
+
+    def type1(pt_after, pt_thr):
+        dpt = ak.where(ok & (pt_thr > 15.0), pt_after - l1, 0.0)
+        px = ak.to_numpy(raw_px - ak.sum(dpt * np.cos(phi), axis=1))
+        py = ak.to_numpy(raw_py - ak.sum(dpt * np.sin(phi), axis=1))
+        return np.hypot(px, py), np.arctan2(py, px)
+    npv = ak.to_numpy(a["PV_npvsGood"])
+    c["npv"] = npv.astype(np.int32)
+    met = {"m0": (ak.to_numpy(a["PuppiMET_pt"]).astype(np.float64), ak.to_numpy(a["PuppiMET_phi"]).astype(np.float64))}
+    met["m0xy"] = J.met_xy(*met["m0"], npv)
+    met["m1"] = type1(jes, jes)
+    met["m3"] = type1(ak.concatenate([M["ct1"]["jes"], M["ak4"]["jer"]], axis=1),
+                      ak.concatenate([M["ct1"]["jes"], M["ak4"]["jer"]], axis=1))
+    met["m4"] = type1(jer, jer)
+    sm = ak.where(cat("match"), jer, jes)
+    met["m4match"] = type1(sm, sm)
+    met["m4nocross"] = type1(jer, jes)
+    jf = cat("jf")
+    met["m4jf"] = type1(jf, jf)
+    met["m5"] = J.met_xy(*met["m4"], npv)
+    for s, (pt, ph) in met.items():
+        c[f"{s}_pt"], c[f"{s}_phi"] = np.asarray(pt, dtype=np.float64), np.asarray(ph, dtype=np.float64)
+    return c
+
+
+def close(name, x, ref, rtol, phi=False):
+    """Fail loud unless x == ref within rtol (phi: wrapped absolute difference < rtol)."""
+    import numpy as np
+    d = np.abs(np.arctan2(np.sin(x - ref), np.cos(x - ref))) if phi else \
+        np.abs(x - ref) / np.maximum(np.abs(ref), 1.0)
+    bad = d > rtol
+    if bad.any():
+        sys.exit(f"closure FAILED {name}: {int(bad.sum())}/{len(x)} rows, max diff {d.max():.3g}")
+
+
 def worker(list_path, out):
     import awkward as ak
     import numpy as np
@@ -78,9 +192,12 @@ def worker(list_path, out):
     era, sample, _, is_data = msn.parse_nano_path(nano_files[0])
     k = int(list_path.rsplit("_chunk", 1)[1][:-len(".txt")])
     sp = msn.skim_path(era, sample, k, "zmumu")
+    ref_cols = {"j0_num_jets_pt30": "num_jets_pt30_nano", "j0_jet_leadpt": "jet_leadpt_nano",
+                "j0_jet_ht_pt20": "jet_ht_pt20_nano", "j2_num_jets_pt30": "num_jets_pt30_corr",
+                "j2_jet_leadpt": "jet_leadpt_corr", "j2_jet_ht_pt20": "jet_ht_pt20_corr",
+                "m0_pt": "met_pt_nano", "m0_phi": "met_phi_nano", "m5_pt": "met_pt_corr", "m5_phi": "met_phi_corr"}
     with uproot.open(sp) as f:
-        sk = f["Events"].arrays(["run", "luminosityBlock", "event", "mu_pt_corr", "mu_phi",
-                                 "num_jets_pt30_corr"], library="np")
+        sk = f["Events"].arrays(["run", "luminosityBlock", "event"] + list(ref_cols.values()), library="np")
     n_sk = len(sk["event"])
     keys = list(zip(sk["run"].tolist(), sk["luminosityBlock"].tolist(), sk["event"].tolist()))
     row_of = {key: i for i, key in enumerate(keys)}
@@ -90,7 +207,7 @@ def worker(list_path, out):
     J = jd.Jme(era, is_data)
     cols = {}
     filled = np.zeros(n_sk, dtype=np.int32)
-    br = jd.BRANCHES + ["luminosityBlock"] + ([] if is_data else jd.MC_BRANCHES)
+    br = jd.BRANCHES + ["luminosityBlock", "PuppiMET_pt", "PuppiMET_phi"] + ([] if is_data else jd.MC_BRANCHES)
     for nano_path in nano_files:
         with uproot.open(nano_path) as fn:
             t = fn["Events"]
@@ -103,19 +220,7 @@ def worker(list_path, out):
         rows = np.array([row_of[(int(r), int(l), int(e))] for r, l, e in
                          zip(ak.to_numpy(a.run), ak.to_numpy(a.luminosityBlock), ak.to_numpy(a.event))])
         filled[rows] += 1
-        c = {}
-        tight_nano = (a.Jet_jetId & 2) > 0
-        c["chk_num_jets_pt30_nano"] = jet_cols(a.Jet_pt, tight_nano, "chk_")["chk_num_jets_pt30"]
-        pt = J.jet_pt(a)
-        c.update(jet_cols(pt, tight_nano, "jme_"))
-        tight_fix, _ = jd.jet_id_v12_fix(a)
-        c.update({f"{key}_idfix": v for key, v in jet_cols(pt, tight_fix, "jme_").items()})
-        npv = ak.to_numpy(a.PV_npvsGood)
-        for prop, name in ((True, "jer"), (False, "nojer")):
-            m, p = J.met(a, propagate_jer=prop)
-            c[f"jme_met_pt_{name}"], c[f"jme_met_phi_{name}"] = m, p
-            mx, px = J.met_xy(m, p, npv)
-            c[f"jme_met_pt_{name}_xy"], c[f"jme_met_phi_{name}_xy"] = mx, px
+        c = step_columns(jd, J, a, is_data)
         if not cols:
             for key, v in c.items():
                 cols[key] = np.full(n_sk, NULL, dtype=v.dtype)
@@ -125,13 +230,16 @@ def worker(list_path, out):
     if not np.all(filled == 1):
         sys.exit(f"{sp}: {int((filled == 0).sum())} skim rows unmatched, "
                  f"{int((filled > 1).sum())} matched more than once")
-    bad = cols["chk_num_jets_pt30_nano"] != sk["num_jets_pt30_corr"]
-    if bad.any():
-        sys.exit(f"{sp}: nano num_jets_pt30 rebuilt != skim on {int(bad.sum())}/{n_sk} rows")
-    del cols["chk_num_jets_pt30_nano"]
-    for v in VARIANTS:
-        cols[f"jme_W_tmass_{v}"] = np.sqrt(2.0 * sk["mu_pt_corr"] * cols[f"jme_met_pt_{v}"]
-                                           * (1.0 - np.cos(sk["mu_phi"] - cols[f"jme_met_phi_{v}"])))
+    for mine, theirs in ref_cols.items():
+        if mine.endswith("num_jets_pt30"):
+            if not np.array_equal(cols[mine], sk[theirs]):
+                sys.exit(f"{sp}: closure FAILED {mine} != skim {theirs}")
+        else:   # m0 vs the producer's MET: 1e-3 as jme.full_columns; the rest is the same code
+            close(f"{sp}: {mine} vs skim {theirs}", cols[mine], sk[theirs].astype(np.float64),
+                  1e-3 if mine.startswith("m0") else 1e-6, phi=mine.endswith("_phi"))
+    for key in list(cols):
+        if cols[key].dtype == np.float64:
+            cols[key] = cols[key].astype(np.float32)
     for key in ("run", "luminosityBlock", "event"):
         cols[key] = sk[key]
     for key, v in cols.items():
