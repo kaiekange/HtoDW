@@ -37,7 +37,7 @@ def _jet_cols(pt, tight, null):
             ak.to_numpy(ak.fill_none(ak.max(pt[tight], axis=1), null)))
 
 
-def full_columns(a, era, is_data, jme_year, wp_tight, campaign, btv_set, eff_json_jme,
+def full_columns(a, era, is_data, jme_year, tagger, wp_tight, campaign, btv_set, eff_json_jme,
                  mu_pt, mu_phi, null):
     J = jme_direct.Jme(era, is_data)
     var = J.variations(a)
@@ -56,22 +56,22 @@ def full_columns(a, era, is_data, jme_year, wp_tight, campaign, btv_set, eff_jso
 
     c = {}
     nj, ht, lead = _jet_cols(pt, tight, null)
-    nb = btv.n_bjet(a, wp_tight, pt)
+    nb = btv.n_bjet(a, wp_tight, tagger, pt)
     c.update({"jme_jvm_veto": ak.to_numpy(jme_corrections.jet_veto_flag(a, pt, year=jme_year)),
               "jme_num_jets_pt30": nj, "jme_jet_ht_pt20": ht, "jme_jet_leadpt": lead,
               "jme_n_bjet": nb, "jme_met_pt": met, "jme_met_phi": mphi,
               "jme_W_tmass": np.sqrt(2.0 * mu_pt * met * (1.0 - np.cos(mu_phi - mphi)))})
     if is_data:
         return c
-    c.update({f"jme_{k}": x for k, x in btv.weights(a, campaign, btv_set, eff_json_jme, nb, pt=pt).items()})
+    c.update({f"jme_{k}": x for k, x in btv.weights(a, campaign, btv_set, eff_json_jme, nb, tagger, pt=pt).items()})
     n_stale = 0
     for v, (vpt, vmet, vphi) in var.items():
         if v == "nom":
             continue
         if vpt is not None:
             nj, _, lead = _jet_cols(vpt, tight, null)
-            nbv = btv.n_bjet(a, wp_tight, vpt)
-            w = btv.weights(a, campaign, btv_set, eff_json_jme, nbv, pt=vpt, sf_vars=("nom",), stale="count")
+            nbv = btv.n_bjet(a, wp_tight, tagger, vpt)
+            w = btv.weights(a, campaign, btv_set, eff_json_jme, nbv, tagger, pt=vpt, sf_vars=("nom",), stale="count")
             n_stale += w["n_stale"]
             c[f"jme_num_jets_pt30_{v}"] = nj.astype(np.int8)
             c[f"jme_jet_leadpt_{v}"] = lead.astype(np.float32)

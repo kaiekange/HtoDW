@@ -3,6 +3,10 @@
 Inputs (pinned, not `latest`):
   jet_jerc / met_xyCorrections : JME/Run3-22CDSep23-Summer22-NanoAODv12/2026-06-05   (2022)
                                  JME/Run3-22EFGSep23-Summer22EE-NanoAODv12/2026-06-05 (2022EE)
+                                 JME/Run3-23CSep23-Summer23-NanoAODv12/2026-06-05     (2023)
+                                 JME/Run3-23DSep23-Summer23BPix-NanoAODv12/2026-06-05 (2023BPix)
+  (2023: data only so far; the 2023 MC JER tags are split by run, RunCv123/RunCv4/RunCv1234,
+   and are not wired in -- Jme(era, is_data=False) raises a KeyError)
   JER smearing formula         : JME/JER-Smearing/2026-09-18 (v2: smeared pt floored at 0.01 GeV)
 
 Chain (AK4 Puppi):
@@ -27,9 +31,12 @@ JME_BASE = "/cvmfs/cms-griddata.cern.ch/cat/metadata/JME"
 JSON_DIR = {
     "2022": f"{JME_BASE}/Run3-22CDSep23-Summer22-NanoAODv12/2026-06-05",
     "2022EE": f"{JME_BASE}/Run3-22EFGSep23-Summer22EE-NanoAODv12/2026-06-05",
+    "2023": f"{JME_BASE}/Run3-23CSep23-Summer23-NanoAODv12/2026-06-05",
+    "2023BPix": f"{JME_BASE}/Run3-23DSep23-Summer23BPix-NanoAODv12/2026-06-05",
 }
 JER_SMEAR_JSON = f"{JME_BASE}/JER-Smearing/2026-09-18/jer_smear.json.gz"
-TAG = {"2022": "Summer22_22Sep2023", "2022EE": "Summer22EE_22Sep2023"}
+TAG = {"2022": "Summer22_22Sep2023", "2022EE": "Summer22EE_22Sep2023",
+       "2023": "Summer23Prompt23", "2023BPix": "Summer23BPixPrompt23"}
 # tutorial's representative runs, only for closure against jme_corrections.py
 TUTORIAL_RUN = {"2022": 355065.0, "2022EE": 359022.0}
 
@@ -61,6 +68,11 @@ class Jme:
         self.l2 = cs[f"{p}_L2Relative_AK4PFPuppi"]
         self.l3 = cs[f"{p}_L3Absolute_AK4PFPuppi"]
         self.res = cs[f"{p}_L2L3Residual_AK4PFPuppi"] if is_data else None
+        # 2023BPix (and the tutorial's has_phi_dependent_L2 years): L2Relative also takes JetPhi
+        l2_in = [i.name for i in self.l2.inputs]
+        if l2_in not in (["JetEta", "JetPt"], ["JetEta", "JetPhi", "JetPt"]):
+            raise ValueError(f"{p}_L2Relative: unexpected inputs {l2_in}")
+        self.l2_phi = "JetPhi" in l2_in
         if not is_data:
             self.reso = cs[f"{TAG[era]}_JRV2_MC_PtResolution_AK4PFPuppi"]
             self.sf = cs[f"{TAG[era]}_JRV2_MC_ScaleFactor_AK4PFPuppi"]
@@ -70,14 +82,15 @@ class Jme:
                             cs[f"{TAG[era]}_V4_MC_Regrouped_{s.format(era=era)}_AK4PFPuppi"]
                             for s in JES_REDUCED}
         self.metxy = correctionlib.CorrectionSet.from_file(
-            f"{JSON_DIR[era]}/met_xyCorrections_2022_{era}.json.gz")["met_xy_corrections"]
+            f"{JSON_DIR[era]}/met_xyCorrections_{era[:4]}_{era}.json.gz")["met_xy_corrections"]
 
     # ---------------- JES ----------------
-    def jes(self, pt_raw, area, eta, rho, run, residual_run="event"):
-        """Return (pt_after_L1, pt_after_full_JES). rho, run are per event."""
+    def jes(self, pt_raw, area, eta, phi, rho, run, residual_run="event"):
+        """Return (pt_after_L1, pt_after_full_JES). rho, run are per event; phi is used only
+        where L2Relative is phi-dependent (2023BPix)."""
         rho_j = ak.broadcast_arrays(rho, eta)[0]
         pt_l1 = pt_raw * _flat_eval(self.l1, area, eta, pt_raw, rho_j)
-        pt = pt_l1 * _flat_eval(self.l2, eta, pt_l1)
+        pt = pt_l1 * (_flat_eval(self.l2, eta, phi, pt_l1) if self.l2_phi else _flat_eval(self.l2, eta, pt_l1))
         pt = pt * _flat_eval(self.l3, eta, pt)
         if self.is_data:
             if residual_run == "event":
@@ -119,7 +132,7 @@ class Jme:
     # ---------------- jets ----------------
     def jet_pt(self, a, residual_run="event"):
         pt_raw = a["Jet_pt"] * (1.0 - a["Jet_rawFactor"])
-        _, pt = self.jes(pt_raw, a["Jet_area"], a["Jet_eta"], a["Rho_fixedGridRhoFastjetAll"],
+        _, pt = self.jes(pt_raw, a["Jet_area"], a["Jet_eta"], a["Jet_phi"], a["Rho_fixedGridRhoFastjetAll"],
                          a["run"], residual_run)
         if self.is_data:
             return pt
@@ -140,7 +153,7 @@ class Jme:
                             axis=1)
         pt_mu = raw * (1.0 - musub)
         rho = a["Rho_fixedGridRhoFastjetAll"]
-        pt_l1, pt = self.jes(pt_mu, area, eta, rho, a["run"], residual_run)
+        pt_l1, pt = self.jes(pt_mu, area, eta, phi, rho, a["run"], residual_run)
         if not self.is_data and propagate_jer:
             # CorrT1 jets: closest GenJet within dR<0.2; AK4 jets: nano genJetIdx
             ge, gp = a["GenJet_eta"], a["GenJet_phi"]
@@ -182,7 +195,7 @@ class Jme:
         JES-varied MET carries re-smearing noise (DY 2J test: mean shift 0.6 GeV, rms 9 GeV)."""
         rho, run, ev = a["Rho_fixedGridRhoFastjetAll"], a["run"], a["event"]
         eta_j, phi_j = a["Jet_eta"], a["Jet_phi"]
-        _, jpt_jes = self.jes(a["Jet_pt"] * (1.0 - a["Jet_rawFactor"]), a["Jet_area"], eta_j, rho, run)
+        _, jpt_jes = self.jes(a["Jet_pt"] * (1.0 - a["Jet_rawFactor"]), a["Jet_area"], eta_j, phi_j, rho, run)
         # MET jets: CorrT1METJet + AK4 Jet, muon-subtracted (as met())
         raw = ak.concatenate([a["CorrT1METJet_rawPt"], a["Jet_pt"] * (1.0 - a["Jet_rawFactor"])], axis=1)
         musub = ak.concatenate([a["CorrT1METJet_muonSubtrFactor"], a["Jet_muonSubtrFactor"]], axis=1)
@@ -191,7 +204,7 @@ class Jme:
         area = ak.concatenate([a["CorrT1METJet_area"], a["Jet_area"]], axis=1)
         em = ak.concatenate([ak.zeros_like(a["CorrT1METJet_eta"]), a["Jet_chEmEF"] + a["Jet_neEmEF"]],
                             axis=1)
-        pt_l1, mpt_jes = self.jes(raw * (1.0 - musub), area, eta, rho, run)
+        pt_l1, mpt_jes = self.jes(raw * (1.0 - musub), area, eta, phi, rho, run)
         if not self.is_data:
             ge, gp = a["GenJet_eta"], a["GenJet_phi"]
             ce, cp = a["CorrT1METJet_eta"], a["CorrT1METJet_phi"]

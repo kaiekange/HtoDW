@@ -58,11 +58,14 @@ import jme_corrections as jme  # noqa: E402
 import jme_direct  # noqa: E402
 
 NANO = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC"
-# Era -> JME year key of the jerc-application-tutorial config, and the ParticleNet tight WP
-# (BTV btagging.json particleNet_wp_values, 2025-08-20; must match nano_phipimu_cff.PNET_WP).
+# Era -> JME year key of the jerc-application-tutorial config, the b tagger (btv.TAGGERS) and its
+# tight WP (BTV btagging.json <algo>_wp_values, 2025-08-20; must match nano_phipimu_cff.PNET_WP /
+# PART_WP). 2023 (user, 2026-10-30): RobustParT only. This map builder is PNet-only (2022 MC).
 ERAS = {
-    "2022":   dict(jme_year="2022Pre",  wp_tight=0.6734),
-    "2022EE": dict(jme_year="2022Post", wp_tight=0.6915),
+    "2022":     dict(jme_year="2022Pre",  tagger="PNet", wp_tight=0.6734),
+    "2022EE":   dict(jme_year="2022Post", tagger="PNet", wp_tight=0.6915),
+    "2023":     dict(jme_year="2023Pre",  tagger="ParT", wp_tight=0.7969),
+    "2023BPix": dict(jme_year="2023Post", tagger="ParT", wp_tight=0.7994),
 }
 # Group -> (era, input directories). One map per sample per era.
 GROUPS = {}
@@ -199,6 +202,8 @@ def main():
     group = args[0]
     out_dir = OUT_DIR_JME if use_jme else OUT_DIR
     era, dirs = GROUPS[group]
+    if ERAS[era]["tagger"] != "PNet":
+        sys.exit(f"{era}: tagger {ERAS[era]['tagger']}, but this map builder counts Jet_btagPNetB only")
     files = sum([sorted(glob.glob(f"{d}/output_*.root")) for d in dirs], [])
     print(f"{group}: {len(files)} files")
 

@@ -75,6 +75,8 @@ import muo  # noqa: E402
 CAMPAIGN = {
     "2022": "Run3-22CDSep23-Summer22-NanoAODv12",
     "2022EE": "Run3-22EFGSep23-Summer22EE-NanoAODv12",
+    "2023": "Run3-23CSep23-Summer23-NanoAODv12",          # data only so far (no 2023 MC)
+    "2023BPix": "Run3-23DSep23-Summer23BPix-NanoAODv12",
 }
 # sample directory -> efficiency-map group (build_btag_efficiency_map.GROUPS minus era).
 # Every sample uses its OWN map. The three W+jets jet bins are separate samples: measured
@@ -197,10 +199,11 @@ def main():
     campaign = CAMPAIGN[era]
     wp_tight = bem.ERAS[era]["wp_tight"]
     jme_year = bem.ERAS[era]["jme_year"]
+    tagger = bem.ERAS[era]["tagger"]
     mu_vars = ("nom",) if is_data else muo.MU_VARS
     eff_json_jme = None if is_data else f"{bem.OUT_DIR_JME}/{EFF_GROUP[sample]}_{era}.json"
     print(f"input {in_path}\n {'data' if is_data else 'MC'} era={era} sample={sample}"
-          f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json_jme}\n output {out_path}")
+          f" JME year={jme_year} tagger={tagger} WP_T={wp_tight}\n eff map {eff_json_jme}\n output {out_path}")
     if eff_json_jme and not os.path.exists(eff_json_jme):
         sys.exit(f"missing JME efficiency map {eff_json_jme}")
 
@@ -267,8 +270,8 @@ def main():
 
     # ---- JME-corrected jets/MET + JES/JER/unclustered variations, b-veto and b-tag weight on the
     # JME jets (jme_*; jme.full_columns). The nano-jet columns were removed 2026-11-12. ----
-    btv_set = btv.sf_set(campaign, wp_tight)
-    cols.update(jme.full_columns(a, era, is_data, jme_year, wp_tight, campaign, btv_set, eff_json_jme,
+    btv_set = btv.sf_set(campaign, wp_tight, tagger)
+    cols.update(jme.full_columns(a, era, is_data, jme_year, tagger, wp_tight, campaign, btv_set, eff_json_jme,
                                  mu_pt["nom"], mu_phi, NULL))
     for v in mu_vars:
         cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, cols["jme_met_pt"], cols["jme_met_phi"])

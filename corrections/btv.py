@@ -2,7 +2,8 @@
 
 The weight is btag_weight.cc, a C++ port of compute_btag_event_weight_multi_wp from
 BTV/examples lib/btag_sf.py (BTV has no C++ version; the Python one needs Python >= 3.10),
-compiled through ROOT. One WP ("T"), PNet B. For one WP it is
+compiled through ROOT. One WP ("T"); tagger per era (TAGGERS: 2022 PNet B, 2023 RobustParT B,
+via build_btag_efficiency_map.ERAS). For one WP it is
 Pi_tagged SF * Pi_untagged (1-SF*eps)/(1-eps). Heavy and light jets are varied together
 (variation_heavy = variation_light), as before. up/down are evaluated with
 ignore_warnings=True, as in the official scripts/validate_btag_sf.py.
@@ -23,12 +24,16 @@ BTAG_WEIGHT_CC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "btag_
 
 POG_DIR = "/cvmfs/cms-griddata.cern.ch/cat/metadata"
 BTV_VERSION = "2025-08-20"
-ALGO_KEY = "particleNet"          # correctionlib key of btagPNetB
-EFF_KEY = "particleNet_efficiency"
+# tagger -> nano discriminant branch and its BTV correctionlib key prefix
+TAGGERS = {
+    "PNet": dict(branch="Jet_btagPNetB", algo="particleNet"),
+    "ParT": dict(branch="Jet_btagRobustParTAK4B", algo="robustParticleTransformer"),
+}
+EFF_KEY = "particleNet_efficiency"   # our MC map (build_btag_efficiency_map.py, PNet only)
 WP = "T"
 JET_PT_MIN = 20.0
 
-BRANCHES = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_jetId", "Jet_btagPNetB", "Ds_eta", "Ds_phi"]
+BRANCHES = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_jetId", "Ds_eta", "Ds_phi"] + [t["branch"] for t in TAGGERS.values()]
 MC_BRANCHES = ["Jet_hadronFlavour"]
 
 _ROOT = None
@@ -50,10 +55,10 @@ def sf_path(campaign):
     return f"{POG_DIR}/BTV/{campaign}/{BTV_VERSION}/btagging.json.gz"
 
 
-def sf_set(campaign, wp_tight):
+def sf_set(campaign, wp_tight, tagger):
     """BTV CorrectionSet; asserts its tight WP equals the one used to count b jets."""
     btv = correctionlib.CorrectionSet.from_file(sf_path(campaign))
-    wp_json = btv[f"{ALGO_KEY}_wp_values"].evaluate(WP)
+    wp_json = btv[f"{TAGGERS[tagger]['algo']}_wp_values"].evaluate(WP)
     if abs(wp_json - wp_tight) > 1e-6:
         sys.exit(f"tight WP mismatch: JSON {wp_json} vs {wp_tight}")
     return btv
@@ -69,29 +74,32 @@ def scored_jets(a, pt=None):
             & (pt >= JET_PT_MIN))
 
 
-def n_bjet(a, wp_tight, pt=None):
+def n_bjet(a, wp_tight, tagger, pt=None):
     m = scored_jets(a, pt)
-    return ak.to_numpy(ak.sum(m & (a["Jet_btagPNetB"] > wp_tight), axis=1))
+    return ak.to_numpy(ak.sum(m & (a[TAGGERS[tagger]["branch"]] > wp_tight), axis=1))
 
 
-def weights(a, campaign, btv, eff_json, nb, pt=None, sf_vars=("nom", "up", "down"), stale="exit"):
+def weights(a, campaign, btv, eff_json, nb, tagger, pt=None, sf_vars=("nom", "up", "down"), stale="exit"):
     """{"w_btag_nom", ..., "w_btag_any_down"} for MC. pt: jet pt (default nano Jet_pt).
     sf_vars: subset of nom/up/down to compute. stale="count": do not exit on jets in eps=0/1
     bins (JME variations: jets move across pt bins of the nominal map; the official function
     then sets that event's weight to 1); the count is returned as cols["n_stale"]."""
+    if tagger != "PNet":
+        sys.exit(f"b-tag weight: the MC efficiency map is PNet only, tagger {tagger} not implemented")
+    algo = TAGGERS[tagger]["algo"]
     jpt = a["Jet_pt"] if pt is None else pt
     m = scored_jets(a, jpt)
     pt = np.ascontiguousarray(ak.to_numpy(ak.flatten(jpt[m])), dtype=np.float64)
     eta = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_eta"][m])), dtype=np.float64)
     flav = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_hadronFlavour"][m])), dtype=np.int32)
-    disc = np.ascontiguousarray(ak.to_numpy(ak.flatten(a["Jet_btagPNetB"][m])), dtype=np.float64)
+    disc = np.ascontiguousarray(ak.to_numpy(ak.flatten(a[TAGGERS[tagger]["branch"]][m])), dtype=np.float64)
     counts = np.ascontiguousarray(ak.to_numpy(ak.num(jpt[m], axis=1)), dtype=np.int32)
 
     # A map built on this sample's own jets has no untagged jet in an eps=1 bin and no tagged
     # jet in an eps=0 bin. Either one means the map is stale (nano changed after the map was
     # built); the BTV function would then return 1 for the whole event or fail its check.
     eps = correctionlib.CorrectionSet.from_file(eff_json)[EFF_KEY].evaluate(WP, flav, np.abs(eta), pt)
-    tag = disc > btv[f"{ALGO_KEY}_wp_values"].evaluate(WP)
+    tag = disc > btv[f"{algo}_wp_values"].evaluate(WP)
     n_bad = int(((eps >= 1.0) & ~tag).sum() + ((eps <= 0.0) & tag).sum())
     if n_bad and stale == "exit":
         sys.exit(f"{n_bad} jets in eps=0/1 bins of {eff_json}: efficiency map stale, rebuild it")
@@ -99,7 +107,7 @@ def weights(a, campaign, btv, eff_json, nb, pt=None, sf_vars=("nom", "up", "down
     R = _load_root()
     wps = R.std.vector["std::string"]()
     wps.push_back(WP)
-    bw = R.BtagWeight(sf_path(campaign), eff_json, ALGO_KEY, EFF_KEY, wps)
+    bw = R.BtagWeight(sf_path(campaign), eff_json, algo, EFF_KEY, wps)
     rv = R.VecOps.AsRVec
     cols = {} if stale == "exit" else {"n_stale": n_bad}
     for suffix, s in (("nom", "central"), ("up", "up"), ("down", "down")):
