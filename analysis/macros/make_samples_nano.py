@@ -68,10 +68,18 @@ ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 ca
 CARRIED: every custom analyzer branch (everything not in a stock NanoAOD collection this
 analysis never reads, see _STD_PREFIXES) + run/luminosityBlock/event/genWeight/nTrueInt;
 from the friend: w_pu_nom/w_mu_nom/jme_w_btag_nom, `norm`, and the corrected nominal
-kinematics renamed *_corr (FRIEND_CORR_KIN; jet/MET ones are JME, their nano-jet friend
-versions are *_nano). The raw nano branches are kept too. MC: the JME variation columns
-jme_{num_jets_pt30,jet_leadpt,n_bjet,w_btag,met_pt,met_phi}_<v> (uncl: met only).
+kinematics renamed *_corr (FRIEND_CORR_KIN; jet/MET ones are JME). The raw nano branches are
+kept too. MC: the JME variation columns jme_{num_jets_pt30,jet_leadpt,n_bjet,w_btag}_<v> and
+jme_met_{pt,phi}_<v>_prerecoil (uncl: met only).
 NOT CARRIED: the other up/down systematic columns (PU, muon, b-tag SF); they stay in the friends.
+
+RECOIL (2026-11-12): met_{pt,phi}_corr and W_tmass_corr = the full MET chain (Type-1 JES+JER, xy,
+hadronic-recoil calibration) for DY / W+jets / signal (OS and SS; reference boson Z / W / H,
+make_samples_nano.gen_boson_cols), = the pre-recoil values for tt and data. The pre-recoil ones are
+kept as met_{pt,phi}_corr_prerecoil / W_tmass_corr_prerecoil (input of recoil_zmumu.py), and the
+corrected samples carry gen_V_{px,py} / gen_Vvis_{px,py}. Maps: CR/zmumu_recoil/recoil_<era>.npz
+(sha1 in the chunk/merge meta). The JME variation MET columns are NOT recoil-corrected yet.
+2026-11-12: the nano-jet *_nano columns are gone (user).
 
 ttcr: refused since 2026-11-04 (not migrated to the JME columns).
 
@@ -204,24 +212,19 @@ _ALWAYS = ("run", "luminosityBlock", "event", "genWeight", "nTrueInt")
 FRIEND_JOIN_COLS = ["run", "luminosityBlock", "event"]
 FRIEND_WEIGHT_COLS = ["w_pu_nom", "w_mu_nom", "jme_w_btag_nom"]
 FRIEND_CUT_COLS = ["pass_mu_nom", "pass_muveto", "jme_jvm_veto", "jme_n_bjet"]
-# 2026-11-04: jet/MET *_corr are the JME columns (jme.full_columns); the friend's nano-jet
-# versions (*_nom) are kept as *_nano.
+# 2026-11-04: jet/MET *_corr are the JME columns (jme.full_columns). 2026-11-12: the nano-jet
+# *_nano columns are gone; the friend's MET (jme_met_*, jme_W_tmass) is the input of the recoil
+# calibration and is carried as met_{pt,phi}_corr_prerecoil / W_tmass_corr_prerecoil, while
+# met_{pt,phi}_corr / W_tmass_corr are recoil-corrected for the RECOIL samples (see worker).
 FRIEND_CORR_KIN = {
     "mu_pt_nom": "mu_pt_corr",
     "jme_jet_ht_pt20": "jet_ht_pt20_corr",
     "jme_jet_leadpt": "jet_leadpt_corr",
-    "jme_met_pt": "met_pt_corr",
-    "jme_met_phi": "met_phi_corr",
+    "jme_met_pt": "met_pt_corr_prerecoil",
+    "jme_met_phi": "met_phi_corr_prerecoil",
     "jme_num_jets_pt30": "num_jets_pt30_corr",
-    "jme_W_tmass": "W_tmass_corr",
+    "jme_W_tmass": "W_tmass_corr_prerecoil",
     "jme_n_bjet": "n_bjet_corr",
-    "jet_ht_pt20_nom": "jet_ht_pt20_nano",
-    "jet_leadpt_nom": "jet_leadpt_nano",
-    "met_pt_nom": "met_pt_nano",
-    "met_phi_nom": "met_phi_nano",
-    "num_jets_pt30_nom": "num_jets_pt30_nano",
-    "W_tmass_nom": "W_tmass_nano",
-    "n_bjet_nom": "n_bjet_nano",
     "Dsmu_pt_nom": "Dsmu_pt_corr", "Dsmu_eta_nom": "Dsmu_eta_corr",
     "Dsmu_phi_nom": "Dsmu_phi_corr", "Dsmu_mass_nom": "Dsmu_mass_corr",
     "Dsmu_Ht_nom": "Dsmu_Ht_corr",
@@ -234,6 +237,13 @@ FRIEND_CORR_KIN = {
 JME_VAR_JET = ("num_jets_pt30", "jet_leadpt", "n_bjet", "w_btag")
 JME_VAR_MET = ("met_pt", "met_phi")
 N_JME_VARIATIONS = 26   # 11 JES sources x 2 + JER x 2 + uncl x 2
+# Hadronic-recoil calibration (2026-11-12, recoil_zmumu.py): applied to the nominal MET of the
+# samples with a reference boson (gen_boson_kind != 0: DY, W+jets, signal; OS and SS); not to tt
+# or data. The JME variation MET columns are written WITHOUT recoil, renamed
+# jme_met_{pt,phi}_<v>_prerecoil: per-variation maps come later (JME POG: repeat the derivation
+# under the JEC/unclustered variations), so they are NOT comparable with the nominal met_*_corr.
+RECOIL_DIR = f"{OUT_DIR}/CR/zmumu_recoil"
+GEN_V_COLS = ("gen_V_px", "gen_V_py", "gen_Vvis_px", "gen_Vvis_py")
 
 _IDX_RE = re.compile(r"(?:output|nano)_(\d+)\.root$")
 
@@ -426,6 +436,114 @@ def hf_origin_cols(nano_path, is_data):
     return {"cand_hf_from_b": origin, "cand_hf_dR": dr_out}
 
 
+# Gen boson for the hadronic-recoil calibration (2026-11-12, recoil_zmumu.py). Reference boson per
+# sample (gen_boson_kind): DY = Z, W+jets = W, signal = H (user decision: the Ds is an H decay
+# product, not recoil); other samples (tt) are not recoil-corrected.
+#   V     DY/W+jets: sum of the hard-process leptons = status-1 e/mu/nu with fromHardProcess + the
+#         last-copy tau with fromHardProcess (no Z/W entry needed: missing in ~1-4% of the events);
+#         signal: the last-copy H.
+#   V_vis V minus the hard-process neutrinos (status 1, |pdgId| 12/14/16, fromHardProcess or
+#         isHardProcessTauDecayProduct).
+# Recoil u = -(MET + V_vis), projected on the V direction.
+GEN_BOSON_BRANCHES = ["GenPart_pdgId", "GenPart_status", "GenPart_statusFlags", "GenPart_pt", "GenPart_phi"]
+
+
+def gen_boson_kind(sample):
+    """23 / 24 / 25 for the samples the recoil calibration corrects (DY / W+jets / signal), else 0."""
+    for prefix, kind in (("DYto2L", 23), ("WtoLNu", 24), ("Signal_", 25)):
+        if sample.startswith(prefix):
+            return kind
+    return 0
+
+
+def gen_boson_cols(a, kind):
+    """{gen_V_px, gen_V_py, gen_Vvis_px, gen_Vvis_py} (float64) from the GenPart branches of `a`.
+    Fails loud if an event does not have the expected hard-process content
+    (Z: 2 charged leptons/taus, no direct nu; W: 1 + 1 direct nu; H: exactly one last-copy H)."""
+    import awkward as ak
+    import numpy as np
+
+    pid, st, fl = abs(a["GenPart_pdgId"]), a["GenPart_status"], a["GenPart_statusFlags"]
+    hp, hp_tau, last = ((fl >> 8) & 1) == 1, ((fl >> 9) & 1) == 1, ((fl >> 13) & 1) == 1
+    is_nu = (st == 1) & ((pid == 12) | (pid == 14) | (pid == 16))
+    px = a["GenPart_pt"] * np.cos(a["GenPart_phi"])
+    py = a["GenPart_pt"] * np.sin(a["GenPart_phi"])
+
+    def vsum(m):
+        return (ak.to_numpy(ak.sum(ak.where(m, px, 0.0), axis=1)).astype(np.float64),
+                ak.to_numpy(ak.sum(ak.where(m, py, 0.0), axis=1)).astype(np.float64))
+
+    def count(m):
+        return ak.to_numpy(ak.sum(m, axis=1))
+
+    if kind == 25:
+        v = (pid == 25) & last
+        bad = count(v) != 1
+    elif kind in (23, 24):
+        charged = ((st == 1) & ((pid == 11) | (pid == 13)) & hp) | ((pid == 15) & last & hp)
+        nu_direct = is_nu & hp
+        v = charged | nu_direct
+        n_ch, n_nu = count(charged), count(nu_direct)
+        bad = ((n_ch != 2) | (n_nu != 0)) if kind == 23 else ((n_ch != 1) | (n_nu != 1))
+    else:
+        sys.exit(f"gen_boson_cols: no reference boson for kind {kind}")
+    if bad.any():
+        sys.exit(f"gen_boson_cols (kind {kind}): {int(bad.sum())}/{len(bad)} events without the expected "
+                 f"hard-process content, first index {int(np.where(bad)[0][0])}")
+    vx, vy = vsum(v)
+    nx, ny = vsum(is_nu & (hp | hp_tau))
+    return {"gen_V_px": vx, "gen_V_py": vy, "gen_Vvis_px": vx - nx, "gen_Vvis_py": vy - ny}
+
+
+def recoil_project(qx, qy, vx, vy, met_px, met_py):
+    """(q_T, x_par, u_perp): u = -(MET + V_vis) projected on q_hat; x_par = u_par + q_T."""
+    import numpy as np
+    qt = np.hypot(qx, qy)
+    if not np.all(qt > 0):
+        sys.exit("recoil_project: q_T = 0")
+    hx, hy = qx / qt, qy / qt
+    ux, uy = -(met_px + vx), -(met_py + vy)
+    return qt, ux * hx + uy * hy + qt, -ux * hy + uy * hx
+
+
+def recoil_load(path):
+    import numpy as np
+    with np.load(path) as f:
+        return {k: f[k] for k in f.files}
+
+
+def recoil_correct(P, njet, qx, qy, vx, vy, met_px, met_py):
+    """MET (px, py) after the recoil calibration of recoil_zmumu.py (CDF quantile mapping, nominal only).
+    P = recoil_load(recoil_<era>.npz): per cell (N_jet class, q_T bin) the CDF of the simulation (src) and of
+    data - tt (tgt) on u_edges, for x_par = u_par + q_T and for u_perp. x' = CDF_tgt^-1(CDF_src(x));
+    values outside u_edges are left unchanged. MET' = -(u' + V_vis)."""
+    import numpy as np
+    qt, xpar, uperp = recoil_project(qx, qy, vx, vy, met_px, met_py)
+    hx, hy = qx / qt, qy / qt
+    cls = np.full(len(qt), -1)
+    for k, (lo, hi) in enumerate(zip(P["nj_lo"], P["nj_hi"])):
+        cls[(njet >= lo) & (njet <= hi)] = k
+    if (cls < 0).any():
+        sys.exit(f"recoil_correct: {int((cls < 0).sum())} rows outside the N_jet classes")
+    edges, ub = P["qt_edges"], P["u_edges"]
+    iq = np.clip(np.digitize(qt, edges) - 1, 0, len(edges) - 2)
+    out = {}
+    for c, x in (("xpar", xpar), ("uperp", uperp)):
+        y = x.copy()
+        inside = (x > ub[0]) & (x < ub[-1])
+        for k in range(len(P["nj_lo"])):
+            for i in range(len(edges) - 1):
+                s = (cls == k) & (iq == i) & inside
+                cs, ct = P[f"src_{c}"][k, i], P[f"tgt_{c}"][k, i]
+                keep = np.concatenate([[True], np.diff(ct) > 0])
+                y[s] = np.interp(np.interp(x[s], ub, cs), ct[keep], ub[keep])
+        out[c] = y
+    upar = out["xpar"] - qt
+    ux = upar * hx - out["uperp"] * hy
+    uy = upar * hy + out["uperp"] * hx
+    return -(ux + vx), -(uy + vy)
+
+
 def worker(list_path, out_path, correct=False, region="sr"):
     # numpy/uproot only here and in merge(): the submit script imports this module from
     # lxplus's native python, which has neither.
@@ -472,6 +590,15 @@ def worker(list_path, out_path, correct=False, region="sr"):
             tags["jet_bin"] = WJETS_SS_BIN[sample]
         else:
             tags["jet_bin"] = WJETS_BIN[sample]
+    kind = 0 if is_data else gen_boson_kind(sample)
+    recoil_path = recoil_sha1 = recoil_P = None
+    if kind:
+        recoil_path = f"{RECOIL_DIR}/recoil_{era}.npz"
+        if not os.path.exists(recoil_path):
+            sys.exit(f"missing recoil map {recoil_path}")
+        with open(recoil_path, "rb") as f:
+            recoil_sha1 = hashlib.sha1(f.read()).hexdigest()
+        recoil_P = recoil_load(recoil_path)
 
     branches = None
     jme_vars = jet_vars = var_cols = None   # MC: fixed by the first friend, required identical after
@@ -487,6 +614,7 @@ def worker(list_path, out_path, correct=False, region="sr"):
             if branches is None:
                 branches = nano_branch_list(tn.keys())
             nano = tn.arrays(branches, library="np")
+            gen = tn.arrays(GEN_BOSON_BRANCHES) if kind else None
         with uproot.open(friend_path) as ff:
             tf = ff["Events"]
             if not is_data:
@@ -562,10 +690,33 @@ def worker(list_path, out_path, correct=False, region="sr"):
         if not is_data:
             out["weight_nobtag"] = w_nob
             out["norm"] = np.full(n_keep, norm, dtype=np.float64)
-            for c in var_cols:
-                out[c] = fr[c][sel]
+            for c in var_cols:   # JME variation MET: no recoil yet (see RECOIL_DIR comment)
+                out[f"{c}_prerecoil" if c.startswith("jme_met_") else c] = fr[c][sel]
         for fcol, ocol in FRIEND_CORR_KIN.items():
             out[ocol] = fr[fcol][sel]
+        # recoil calibration of the nominal MET; W_tmass rebuilt with the friend's formula (closure)
+        mu_pt_c, mu_phi = out["mu_pt_corr"].astype(np.float64), nano["mu_phi"][sel].astype(np.float64)
+
+        def w_tmass(pt, phi):
+            return np.sqrt(2.0 * mu_pt_c * pt * (1.0 - np.cos(mu_phi - phi)))
+        mpt0 = out["met_pt_corr_prerecoil"].astype(np.float64)
+        mphi0 = out["met_phi_corr_prerecoil"].astype(np.float64)
+        ref = out["W_tmass_corr_prerecoil"]
+        if (np.abs(w_tmass(mpt0, mphi0) - ref) > 1e-6 * np.maximum(ref, 1.0)).any():
+            sys.exit(f"{nano_path}: W_tmass formula does not reproduce the friend's jme_W_tmass")
+        if kind:
+            g = gen_boson_cols(gen[sel], kind)
+            px, py = recoil_correct(recoil_P, out["num_jets_pt30_corr"], g["gen_V_px"], g["gen_V_py"],
+                                    g["gen_Vvis_px"], g["gen_Vvis_py"], mpt0 * np.cos(mphi0), mpt0 * np.sin(mphi0))
+            mpt, mphi = np.hypot(px, py), np.arctan2(py, px)
+            for c in GEN_V_COLS:
+                out[c] = g[c].astype(np.float32)
+        else:
+            mpt, mphi = mpt0, mphi0
+        out["met_pt_corr"], out["met_phi_corr"], out["W_tmass_corr"] = mpt, mphi, w_tmass(mpt, mphi)
+        for c in ("met_pt_corr", "met_phi_corr", "W_tmass_corr"):
+            if not np.all(np.isfinite(out[c])):
+                sys.exit(f"{nano_path}: non-finite {c} after the recoil step")
         for k, v in tags.items():
             out[k] = np.full(n_keep, v, dtype=np.int32)
         if region != "sr":
@@ -587,7 +738,9 @@ def worker(list_path, out_path, correct=False, region="sr"):
                 # 2026-11-04: jet/MET *_corr, the jet veto map, n_bjet and w_btag are the JME
                 # columns of the friend (jme.full_columns); models trained before must not
                 # score these samples.
-                jme_applied=True, jme_variations=jme_vars)
+                jme_applied=True, jme_variations=jme_vars,
+                # 2026-11-12: recoil calibration of the nominal MET (None = sample not corrected)
+                recoil_kind=kind, recoil_map=recoil_path, recoil_map_sha1=recoil_sha1)
     if region != "sr":
         meta.update(region=region, phi_win=None,
                     btag_sf_applied=True, extra_muon_corrected=True,
@@ -638,6 +791,7 @@ def merge(group, region="sr"):
     if group not in GROUPS:
         sys.exit(f"unknown group {group!r}, choose from {sorted(GROUPS)}")
     roots, piece_meta, shas, problems = [], [], set(), []
+    recoil_shas = {}   # era -> recoil map sha1s used by the chunks (must be one)
     for era, sample in GROUPS[group]:
         lists = piece_chunks(era, sample)
         if not lists:
@@ -668,6 +822,10 @@ def merge(group, region="sr"):
             if not m.get("jme_applied") or "n_rows_selected_syst" not in m:
                 problems.append(f"{jp}: written before the 2026-11-04 JME skim, re-run it")
                 continue
+            if "recoil_map_sha1" not in m:
+                problems.append(f"{jp}: written before the 2026-11-12 recoil skim, re-run it")
+                continue
+            recoil_shas.setdefault(era, set()).add(m["recoil_map_sha1"])
             if m["root_written"]:
                 if not os.path.exists(rp):
                     problems.append(f"missing {rp}")
@@ -677,7 +835,7 @@ def merge(group, region="sr"):
             for key in ("n_files", "n_rows_total", "n_rows_selected", "n_rows_selected_syst",
                         "n_rows_blinded", "weight_sum"):
                 agg[key] += m[key]
-            for key in ("norm", "xsec_pb", "lumi_pb", "phi_win", "jme_applied"):
+            for key in ("norm", "xsec_pb", "lumi_pb", "phi_win", "jme_applied", "recoil_map_sha1"):
                 agg[key] = m.get(key)
         on_disk = [os.path.basename(p) for p in piece_nano_files(era, sample)]
         if sorted(listed) != sorted(on_disk) or len(set(listed)) != len(listed):
@@ -686,6 +844,9 @@ def merge(group, region="sr"):
         piece_meta.append(agg)
     if len(shas) > 1:
         problems.append(f"chunks disagree on the branch list ({len(shas)} variants)")
+    for era, s in recoil_shas.items():
+        if len(s) > 1:
+            problems.append(f"{era}: chunks used {len(s)} different recoil maps, re-run the stale ones")
     if problems:
         sys.exit("merge refused:\n  " + "\n  ".join(problems))
 

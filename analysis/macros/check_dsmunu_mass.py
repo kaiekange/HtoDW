@@ -7,12 +7,12 @@ Inputs per event, all at the NOMINAL corrections (friend trees from apply_correc
   Ds     = stored (Ds+mu) 4-vector minus the stored (uncorrected) muon -- exactly the Ds
            the producer added to the muon. For DsstW also Ds* = stored (Ds*+mu) - mu.
   mu     = stored muon direction, corrected pt (mu_pt_nom)
-  nu     = px, py from the Type-1 corrected MET (met_pt_nom, met_phi_nom);
+  nu     = px, py from the JME MET of the friend (jme_met_pt, jme_met_phi; Type-1 JES+JER + xy, no recoil);
            pz from (mu + nu)^2 = mW^2:
              a    = mW^2/2 + px_mu px_nu + py_mu py_nu
              pz   = (a pz_mu +- E_mu sqrt(a^2 - pT_mu^2 pT_nu^2)) / pT_mu^2
            complex (negative discriminant) -> real part; two real -> smaller |pz|.
-Selection: pass_mu_nom & pass_muveto & !jvm_veto_nom & n_bjet_nom == 0.
+Selection: pass_mu_nom & pass_muveto & !jme_jvm_veto & jme_n_bjet == 0 (2026-11-12: the nano-jet columns are gone).
 
 Gen cross-checks (W->mu events only, |Gen_W_lep_pdgId| == 13): the status-1 nu_mu
 fromHardProcess gives the true pz, so we report
@@ -47,8 +47,8 @@ NANO_BR = ["run", "luminosityBlock", "event", "mu_px", "mu_py", "mu_pz", "mu_pt"
            "Ds_match", "Dsst_match", "Gen_W_lep_pdgId",
            "GenPart_pdgId", "GenPart_status", "GenPart_statusFlags",
            "GenPart_pt", "GenPart_eta", "GenPart_phi"]
-FRIEND_BR = ["run", "luminosityBlock", "event", "mu_pt_nom", "met_pt_nom", "met_phi_nom",
-             "pass_mu_nom", "pass_muveto", "jvm_veto_nom", "n_bjet_nom"]
+FRIEND_BR = ["run", "luminosityBlock", "event", "mu_pt_nom", "jme_met_pt", "jme_met_phi",
+             "pass_mu_nom", "pass_muveto", "jme_jvm_veto", "jme_n_bjet"]
 
 
 def four(px, py, pz, m):
@@ -105,15 +105,15 @@ def main():
     for era in eras:
         for sample in ("Signal_DsW_H_phipimu", "Signal_DsstW_H_phipimu"):
             c = load(era, sample)
-            sel = c["pass_mu_nom"] & c["pass_muveto"] & ~c["jvm_veto_nom"] & (c["n_bjet_nom"] == 0)
+            sel = c["pass_mu_nom"] & c["pass_muveto"] & ~c["jme_jvm_veto"] & (c["jme_n_bjet"] == 0)
             f64 = {k: v.astype(float) for k, v in c.items() if v.dtype.kind == "f"}
             mu_raw = four(f64["mu_px"], f64["mu_py"], f64["mu_pz"], M_MU)
             k = f64["mu_pt_nom"] / f64["mu_pt"]
             mu = four(k * f64["mu_px"], k * f64["mu_py"], k * f64["mu_pz"], M_MU)
             dsmu = four(f64["Dsmu_px"], f64["Dsmu_py"], f64["Dsmu_pz"], f64["Dsmu_mass"])
             ds = dsmu - mu_raw
-            nux = f64["met_pt_nom"] * np.cos(f64["met_phi_nom"])
-            nuy = f64["met_pt_nom"] * np.sin(f64["met_phi_nom"])
+            nux = f64["jme_met_pt"] * np.cos(f64["jme_met_phi"])
+            nuy = f64["jme_met_pt"] * np.sin(f64["jme_met_phi"])
             pz1, pz2, cplx = nu_pz(mu, nux, nuy)
             pz = np.where(np.abs(pz1) < np.abs(pz2), pz1, pz2)
             nu = four(nux, nuy, pz, 0.0)
