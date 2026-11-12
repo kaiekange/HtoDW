@@ -27,7 +27,10 @@ Samples/, so a value here can never be reused for a different era. Append only.
 ERAS = {
     1: dict(tag="2022",   label="2022 (preEE)",    lumi_pb=7990.0,  lumi_fb="7.99"),
     2: dict(tag="2022EE", label="2022EE (postEE)", lumi_pb=26680.0, lumi_fb="26.68"),
-    # 3: 2023, 4: 2023BPix, 5: 2024 -- append here, never renumber.
+    # 2023 C / D golden luminosity (user, 2026-11-12: 17.981 / 9.516 fb^-1, shown to 2 decimals)
+    3: dict(tag="2023",     label="2023 (preBPix)",  lumi_pb=17981.0, lumi_fb="17.98"),
+    4: dict(tag="2023BPix", label="2023BPix (postBPix)", lumi_pb=9516.0, lumi_fb="9.52"),
+    # 5: 2024 -- append here, never renumber.
 }
 
 TAG_TO_ERA = {v["tag"]: k for k, v in ERAS.items()}

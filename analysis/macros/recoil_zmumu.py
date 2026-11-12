@@ -17,7 +17,7 @@ cumulative forced monotonic because DY has negative weights). A cell with < MIN_
 N_jet-inclusive CDFs (data and DY) of its q_T bin. Applied by make_samples_nano.recoil_correct (values outside
 [-300, 300] unchanged). Only DY is corrected here. Nominal only: uncertainties and per-JME-variation maps later
 (the skim keeps the pre-recoil inputs).
-Deployed maps: all DY events -> Samples/CR/zmumu_recoil/recoil_<era>.npz. Closure figures: maps from DY even
+Deployed maps: all DY events -> Samples/2022/CR/zmumu_recoil/recoil_<era>.npz. Closure figures: maps from DY even
 events, DY shown = odd events x 2; per-cell closure binned on reco quantities for every sample (like for like).
 Selection and weights: zmumu skim, phi20, 76 < M(mumu) < 106, OS data; MC = skim weight x BR rw (DY also x
 DY jet-bin SF, common values; only the 0J/1J/2J mixture inside a cell matters).
@@ -34,7 +34,7 @@ import uproot
 
 import make_samples_nano as msn
 
-SAMPLES = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
+SAMPLES = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples/2022"
 CR = f"{SAMPLES}/CR/zmumu"
 OUT = f"{SAMPLES}/CR/zmumu_recoil"
 GROUPS = ("Data_OS_merged", "TT_merged", "DY_merged")

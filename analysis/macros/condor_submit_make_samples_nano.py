@@ -4,6 +4,8 @@
     python3 condor_submit_make_samples_nano.py <group> [--pieces=...] [--correct] --only-missing
     python3 condor_submit_make_samples_nano.py <group> --region=<zmumu|ttcr> [--pieces=...] [--only-missing]
     <group>: Signal_merged | WtoLNu2Jets_merged | WtoLNu2Jets_SS_merged | TT_merged | TT_SS_merged | DY_merged | DY_SS_merged | Data_OS_merged | Data_SS_merged
+    --year=2023 (default 2022): the 2023 groups (Data_OS_merged, Data_SS_merged; output under
+    Samples/2023/, scheduler log / job table tagged 2023_<group>)
 
 Default: for every piece of the group, rewrite the chunk lists (numeric order of
 output_N, FILES_PER_JOB per chunk), delete that piece's old skim chunks, submit every chunk.
@@ -33,9 +35,9 @@ import make_samples_nano as msn
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 flags = {a.split("=", 1)[0]: a.split("=", 1)[1] if "=" in a else None
          for a in sys.argv[1:] if a.startswith("--")}
-if len(args) != 1 or args[0] not in msn.GROUPS or set(flags) - {"--dry-run", "--only-missing",
-                                                                 "--pieces", "--correct",
-                                                                 "--region"}:
+year = flags.get("--year") or "2022"
+if (len(args) != 1 or year not in msn.GROUPS_BY_YEAR or args[0] not in msn.GROUPS_BY_YEAR[year]
+        or set(flags) - {"--dry-run", "--only-missing", "--pieces", "--correct", "--region", "--year"}):
     sys.exit(__doc__)
 group = args[0]
 dry_run = "--dry-run" in flags
@@ -44,7 +46,7 @@ correct = "--correct" in flags
 region = flags.get("--region") or "sr"
 if region not in msn.REGIONS or (correct and region not in ("sr", "ttcr")):
     sys.exit(f"--region must be one of {msn.REGIONS}; --correct only with the SR skim or ttcr")
-pieces = msn.GROUPS[group]
+pieces = msn.GROUPS_BY_YEAR[year][group]
 if "--pieces" in flags:
     wanted = [tuple(x.split("/")) for x in (flags["--pieces"] or "").split(",") if x]
     unknown = [w for w in wanted if w not in pieces]
@@ -73,7 +75,7 @@ for era, sample in pieces:
         print(f"{era}/{sample}: {len(lists)} chunks (region {region})")
         if dry_run:
             continue
-        for old in glob.glob(f"{msn.region_dir(region)}/skim/{era}/{sample}/chunk_*"):
+        for old in glob.glob(f"{msn.region_dir(region, year)}/skim/{era}/{sample}/chunk_*"):
             os.remove(old)
         for lp in lists:
             k = int(lp.rsplit("_chunk", 1)[1][:-len(".txt")])
@@ -97,7 +99,7 @@ for era, sample in pieces:
         continue
     for old in glob.glob(f"{msn.LIST_DIR}/{era}_{sample}_chunk*.txt"):
         os.remove(old)
-    for old in glob.glob(f"{msn.SKIM_DIR}/{era}/{sample}/chunk_*"):
+    for old in glob.glob(f"{msn.region_dir('sr', year)}/skim/{era}/{sample}/chunk_*"):
         os.remove(old)
     for k, chunk in enumerate(chunks):
         lp = f"{msn.LIST_DIR}/{msn.chunk_name(era, sample, k)}.txt"
@@ -112,6 +114,8 @@ if not jobs:
 
 os.makedirs("condor_logs/make_samples_nano", exist_ok=True)
 tag = group if "--pieces" not in flags else f"{group}_" + "_".join(s for _, s in pieces)
+if year != "2022":
+    tag = f"{year}_{tag}"
 if region != "sr":
     tag = f"{region}_{tag}"
 job_table = f"condor_logs/make_samples_nano/{tag}_jobs.txt"

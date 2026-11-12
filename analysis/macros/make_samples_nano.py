@@ -22,6 +22,10 @@ Two modes, driven by condor_submit_make_samples_nano.py:
       chunk's .root+.json, checks that the chunks cover exactly the files on disk and
       share one branch list, hadds them in list order, writes <group>_meta.json (per
       piece sums) and asserts merged entries == sum of selected rows.
+      Run with plain python3 on lxplus (no cmsenv: system hadd + user-site uproot), e.g.
+      python3 make_samples_nano.py merge DY_merged --region=zmumu
+      --year=2023 (default 2022): the 2023 groups (Data_OS_merged, Data_SS_merged), written to
+      Samples/2023/ (Samples/<year>/ since 2026-11-12; workers derive the year from the era).
 
 SELECTION (friend columns), plus the phi window:
     pass_mu_nom & pass_muveto & ~jme_jvm_veto & (jme_n_bjet == 0) & (|phi_mass - M_PHI| < PHI_WIN)
@@ -61,7 +65,7 @@ the same way), no `norm`. OS data is BLINDED here: rows with |Ds_mass - M_DS| <
 SR_HALF_WIDTH (eras.py, 1.96835 +- 0.04) are dropped after the selection, the same
 definition as highest_pt_dedup.apply_row_cuts(blind=True). SS data is not blinded.
 
-PROVENANCE BRANCHES: era (eras.py wire format, 1=2022, 2=2022EE, data too); signal file: channel (0=DsW, 1=DsstW);
+PROVENANCE BRANCHES: era (eras.py wire format, 1=2022, 2=2022EE, 3=2023, 4=2023BPix, data too); signal file: channel (0=DsW, 1=DsstW);
 W+jets files (OS and SS): jet_bin (0/1/2);
 ttbar files (OS and SS): tt_decay (0=TTto2L2Nu, 1=TTtoLNu2Q; nominal and ext1 carry the same tag); DY files (OS and SS): jet_bin (0/1/2). Data has no extra tag -- `run` identifies the run period.
 
@@ -100,8 +104,12 @@ from eras import M_DS, SR_HALF_WIDTH, TAG_TO_ERA  # noqa: E402
 
 MC_BASE = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/MC"
 DATA_BASE = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Data"
-OUT_DIR = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
-SKIM_DIR = f"{OUT_DIR}/skim"
+# 2026-11-12 (user): one directory per data-taking year, Samples/<year>/, group and file names
+# unchanged inside (2022 = 2022 + 2022EE, 2023 = 2023 + 2023BPix). Default year 2022.
+SAMPLES_BASE = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
+ERA_YEAR = {"2022": "2022", "2022EE": "2022", "2023": "2023", "2023BPix": "2023"}
+YEARS = ("2022", "2023")
+OUT_DIR = f"{SAMPLES_BASE}/2022"   # the default year's directory
 LIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "condor_logs", "make_samples_nano", "lists")
 FILES_PER_JOB = 50
@@ -137,8 +145,9 @@ xmu_pfIsoId >= 4). n_xele, xele_*: Electron_cutBased>=4 (tight, iso included), p
 -777 where absent."""
 
 
-def region_dir(region):
-    return OUT_DIR if region == "sr" else f"{OUT_DIR}/CR/{region}"
+def region_dir(region, year="2022"):
+    base = f"{SAMPLES_BASE}/{year}"
+    return base if region == "sr" else f"{base}/CR/{region}"
 
 SIGNAL_CHANNEL = {"Signal_DsW_H_phipimu": 0, "Signal_DsstW_H_phipimu": 1}
 WJETS_BIN = {
@@ -165,19 +174,31 @@ DY_BIN = {
 }
 # same-sign-pi DY, same jet_bin tag
 DY_SS_BIN = {f"{s}_SS": b for s, b in DY_BIN.items()}
-DATA_RUNS = {"2022": ("C", "D"), "2022EE": ("E", "F", "G")}
+# era -> OS data CRAB tasks (the SS task appends _SS), in merge order. 2023: two primary datasets
+# (Muon0/Muon1) x the 22Sep2023_v1..v4 (C) / v1..v2 (D) datasets, task names with _vN.
+DATA_TASKS = {
+    "2022": [f"Muon_Run2022{r}_NanoH_phipimu" for r in "CD"],
+    "2022EE": [f"Muon_Run2022{r}_NanoH_phipimu" for r in "EFG"],
+    "2023": [f"Muon{pd}_Run2023C_v{v}_NanoH_phipimu" for pd in (0, 1) for v in (1, 2, 3, 4)],
+    "2023BPix": [f"Muon{pd}_Run2023D_v{v}_NanoH_phipimu" for pd in (0, 1) for v in (1, 2)],
+}
 
 
-def data_task(run, same_sign):
-    return f"Muon_Run2022{run}_NanoH_phipimu" + ("_SS" if same_sign else "")
+def data_task(task, same_sign):
+    return task + ("_SS" if same_sign else "")
+
+
+def data_pd(task):
+    """Primary-dataset directory of a data task (Data/<era>/<pd>/<task>/...): Muon, Muon0, Muon1."""
+    return task.split("_Run")[0]
 
 
 # data task -> blind? (OS only)
-DATA_TASK_BLIND = {data_task(r, ss): not ss
-                   for runs in DATA_RUNS.values() for r in runs for ss in (False, True)}
+DATA_TASK_BLIND = {data_task(t, ss): not ss
+                   for ts in DATA_TASKS.values() for t in ts for ss in (False, True)}
 
 # group -> ordered pieces (era tag, sample); this order is the row order of the merged file
-GROUPS = {
+GROUPS = {   # 2022 (the default year)
     "Signal_merged": [(e, s) for e in ("2022", "2022EE") for s in SIGNAL_CHANNEL],
     "WtoLNu2Jets_merged": [(e, s) for e in ("2022", "2022EE") for s in WJETS_BIN],
     "WtoLNu2Jets_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in WJETS_SS_BIN],
@@ -185,8 +206,15 @@ GROUPS = {
     "TT_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in TT_SS_DECAY],
     "DY_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_BIN],
     "DY_SS_merged": [(e, s) for e in ("2022", "2022EE") for s in DY_SS_BIN],
-    "Data_OS_merged": [(e, data_task(r, False)) for e, runs in DATA_RUNS.items() for r in runs],
-    "Data_SS_merged": [(e, data_task(r, True)) for e, runs in DATA_RUNS.items() for r in runs],
+    "Data_OS_merged": [(e, data_task(t, False)) for e in ("2022", "2022EE") for t in DATA_TASKS[e]],
+    "Data_SS_merged": [(e, data_task(t, True)) for e in ("2022", "2022EE") for t in DATA_TASKS[e]],
+}
+GROUPS_BY_YEAR = {
+    "2022": GROUPS,
+    "2023": {   # data only so far (no 2023 MC)
+        "Data_OS_merged": [(e, data_task(t, False)) for e in ("2023", "2023BPix") for t in DATA_TASKS[e]],
+        "Data_SS_merged": [(e, data_task(t, True)) for e in ("2023", "2023BPix") for t in DATA_TASKS[e]],
+    },
 }
 
 
@@ -242,7 +270,7 @@ N_JME_VARIATIONS = 26   # 11 JES sources x 2 + JER x 2 + uncl x 2
 # or data. The JME variation MET columns are written WITHOUT recoil, renamed
 # jme_met_{pt,phi}_<v>_prerecoil: per-variation maps come later (JME POG: repeat the derivation
 # under the JEC/unclustered variations), so they are NOT comparable with the nominal met_*_corr.
-RECOIL_DIR = f"{OUT_DIR}/CR/zmumu_recoil"
+RECOIL_DIR = {y: f"{SAMPLES_BASE}/{y}/CR/zmumu_recoil" for y in YEARS}   # maps per year
 GEN_V_COLS = ("gen_V_px", "gen_V_py", "gen_Vvis_px", "gen_Vvis_py")
 
 _IDX_RE = re.compile(r"(?:output|nano)_(\d+)\.root$")
@@ -256,7 +284,7 @@ def nano_branch_list(keys):
 def piece_nano_files(era, sample):
     if sample in DATA_TASK_BLIND:
         # CRAB layout <task>/<timestamp>/<0000|0001|...>/nano_N.root; the friend dir is flat
-        files = glob.glob(f"{DATA_BASE}/{era}/Muon/{sample}/*/*/nano_*.root")
+        files = glob.glob(f"{DATA_BASE}/{era}/{data_pd(sample)}/{sample}/*/*/nano_*.root")
         names = [os.path.basename(f) for f in files]
         if len(set(names)) != len(names):
             sys.exit(f"{era}/{sample}: duplicate nano_N basenames across CRAB subdirectories")
@@ -276,7 +304,7 @@ def piece_chunks(era, sample):
 
 
 def skim_path(era, sample, k, region="sr"):
-    return f"{region_dir(region)}/skim/{era}/{sample}/chunk_{k}.root"
+    return f"{region_dir(region, ERA_YEAR[era])}/skim/{era}/{sample}/chunk_{k}.root"
 
 
 def parse_nano_path(path):
@@ -285,7 +313,7 @@ def parse_nano_path(path):
     if "Data" in parts:
         i = len(parts) - 1 - parts[::-1].index("Data")
         era, task = parts[i + 1], parts[i + 3]
-        if (era not in TAG_TO_ERA or parts[i + 2] != "Muon" or task not in DATA_TASK_BLIND
+        if (era not in TAG_TO_ERA or task not in DATA_TASK_BLIND or parts[i + 2] != data_pd(task)
                 or len(parts) != i + 7 or not _IDX_RE.search(parts[-1])):
             sys.exit(f"not a nano data path: {path}")
         return era, task, os.sep.join(parts[:i + 2] + ["Corrections", task, parts[-1]]), True
@@ -593,7 +621,7 @@ def worker(list_path, out_path, correct=False, region="sr"):
     kind = 0 if is_data else gen_boson_kind(sample)
     recoil_path = recoil_sha1 = recoil_P = None
     if kind:
-        recoil_path = f"{RECOIL_DIR}/recoil_{era}.npz"
+        recoil_path = f"{RECOIL_DIR[ERA_YEAR[era]]}/recoil_{era}.npz"
         if not os.path.exists(recoil_path):
             sys.exit(f"missing recoil map {recoil_path}")
         with open(recoil_path, "rb") as f:
@@ -782,17 +810,18 @@ def worker(list_path, out_path, correct=False, region="sr"):
 
 
 # ---------------------------------------------------------------- merge
-def merge(group, region="sr"):
+def merge(group, region="sr", year="2022"):
     import uproot
 
     if region not in REGIONS:
         sys.exit(f"unknown region {region!r}, choose from {REGIONS}")
 
-    if group not in GROUPS:
-        sys.exit(f"unknown group {group!r}, choose from {sorted(GROUPS)}")
+    if year not in GROUPS_BY_YEAR or group not in GROUPS_BY_YEAR[year]:
+        sys.exit(f"unknown year/group {year}/{group!r}, choose from "
+                 f"{ {y: sorted(g) for y, g in GROUPS_BY_YEAR.items()} }")
     roots, piece_meta, shas, problems = [], [], set(), []
     recoil_shas = {}   # era -> recoil map sha1s used by the chunks (must be one)
-    for era, sample in GROUPS[group]:
+    for era, sample in GROUPS_BY_YEAR[year][group]:
         lists = piece_chunks(era, sample)
         if not lists:
             problems.append(f"{era}/{sample}: no chunk lists in {LIST_DIR}")
@@ -850,7 +879,7 @@ def merge(group, region="sr"):
     if problems:
         sys.exit("merge refused:\n  " + "\n  ".join(problems))
 
-    target = f"{region_dir(region)}/{group}.root"
+    target = f"{region_dir(region, year)}/{group}.root"
     with tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR")) as tmp:
         local = os.path.join(tmp, f"{group}.root")
         subprocess.run(["hadd", "-f", local] + roots, check=True)
@@ -867,7 +896,7 @@ def merge(group, region="sr"):
     if has_syst == is_data_group or n_got_syst != n_expect_syst:
         sys.exit(f"{target}: EventsSyst present={has_syst} with {n_got_syst} entries, "
                  f"expected {'none' if is_data_group else n_expect_syst}")
-    with open(f"{region_dir(region)}/{group}_meta.json", "w") as f:
+    with open(f"{region_dir(region, year)}/{group}_meta.json", "w") as f:
         json.dump(piece_meta, f, indent=1)
     for p in piece_meta:
         xl = "" if p["xsec_pb"] is None else f" xsec*L={p['xsec_pb'] * p['lumi_pb']:.6g}"
@@ -879,17 +908,19 @@ def merge(group, region="sr"):
 
 
 def main():
-    argv = [a for a in sys.argv[1:] if not a.startswith("--region=")]
+    argv = [a for a in sys.argv[1:] if not a.startswith(("--region=", "--year="))]
     regions = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--region=")]
     region = regions[-1] if regions else "sr"
+    years = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--year=")]
+    year = years[-1] if years else "2022"
     if len(argv) in (3, 4) and argv[0] == "worker" and argv[3:] in ([], ["--correct"]):
         worker(argv[1], argv[2], correct=len(argv) == 4, region=region)
     elif len(argv) == 2 and argv[0] == "merge":
-        merge(argv[1], region)
+        merge(argv[1], region, year)
     else:
         sys.exit("usage: make_samples_nano.py worker <list.txt> <out.root> [--correct] [--region=R]\n"
-                 "       make_samples_nano.py merge <" + "|".join(GROUPS) + "> [--region=R]\n"
-                 f"       R in {REGIONS}, default sr")
+                 "       make_samples_nano.py merge <" + "|".join(GROUPS) + "> [--region=R] [--year=Y]\n"
+                 f"       R in {REGIONS}, default sr; Y in {YEARS}, default 2022 (2023: Data_* only)")
 
 
 if __name__ == "__main__":

@@ -43,7 +43,7 @@ from eras import B_VETO_BRANCH, ERAS, LEPTON_BRANCHES, TAG_TO_ERA  # noqa: F401 
 # MVA/Samples/*.root files were deleted on 2026-10-16; only MVA/Samples/pileup/
 # (eras.PU_PROFILE_DIR) is left there.
 MVA_ROOT = "/eos/home-k/kakang/H2DW/Analysis/MVA"
-SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
+SAMPLES_DIR = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples/2022"   # Samples/<year>/ since 2026-11-12
 MVA_DIR = f"{MVA_ROOT}/DNN"
 TREE = "Events"
 

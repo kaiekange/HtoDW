@@ -81,7 +81,7 @@ DATA_SAMPLE = "Data_OS_merged"
 M_DS, SR_HALF = 1.96835, 0.040
 PUNZI_A = 3.0
 
-LUMI_NOW_PB = sum(e["lumi_pb"] for e in eras.ERAS.values())     # 2022 preEE+postEE
+LUMI_NOW_PB = eras.ERAS[1]["lumi_pb"] + eras.ERAS[2]["lumi_pb"]     # 2022 preEE+postEE
 LUMI_RUN3_PB = 326000.0
 SCALE = LUMI_RUN3_PB / LUMI_NOW_PB
 

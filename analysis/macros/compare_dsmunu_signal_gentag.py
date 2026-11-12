@@ -39,7 +39,7 @@ from eras import M_DS, SR_HALF_WIDTH  # noqa: E402
 
 plt.style.use(hep.style.CMS)
 
-SAMPLES = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples"
+SAMPLES = "/eos/home-k/kakang/H2DW/Analysis/NanoMVA/Samples/2022"
 COLS = ["mu_px", "mu_py", "mu_pz", "mu_pt", "mu_pt_corr", "Dsmu_px", "Dsmu_py", "Dsmu_pz",
         "Dsmu_mass", "Dsmu_mass_corr", "met_pt_corr", "met_phi_corr", "Ds_mass", "weight"]
 

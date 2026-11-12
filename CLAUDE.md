@@ -28,7 +28,7 @@ source /cvmfs/cms.cern.ch/cmsset_default.sh
 cd /afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_5/src/ && cmsenv
 ```
 
-- **`analysis/`** here: `macros/make_samples_nano.py` (merged skims -> `NanoMVA/Samples/`),
+- **`analysis/`** here: `macros/make_samples_nano.py` (merged skims -> `NanoMVA/Samples/<year>/`, `--year=2022|2023`),
   `DNN/` + `BDT/` (training/scoring, single source of truth `DNN/common.py`; run under conda
   `ds_dnn`, submit with `condor_submit.py`), and the plotting/fit macros in `analysis/macros/`
   (matplotlib + mplhep, figures via `common.fig_path`).
@@ -75,7 +75,7 @@ keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTa
 - GlobalTag (2022 MC): `130X_mcRun3_2022_realistic_v5`
 - Ds mass: 1.96835 GeV, φ mass: 1.019460 GeV, K: 0.493677 GeV, π: 0.13957039 GeV, μ: 0.1056583755 GeV
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
-- Nano outputs: `/eos/home-k/kakang/H2DW/Analysis/NanoMVA/{MC,Data}/`; merged skims: `NanoMVA/Samples/`
+- Nano outputs: `/eos/home-k/kakang/H2DW/Analysis/NanoMVA/{MC,Data}/`; merged skims: `NanoMVA/Samples/<year>/` (since 2026-11-12: `2022/` = 2022+2022EE, all groups; `2023/` = 2023+2023BPix, data only; group/file names identical, `common.SAMPLES_DIR` = `Samples/2022`)
 
 ## Last Session (2026-11-12)
 
@@ -94,16 +94,32 @@ DY jet-bin SF 推导时照乘现值。nano jet/MET 列删掉（friend 也重跑�
 - `make_samples_nano.py`：`gen_boson_cols`、`recoil_correct`；DY/W+jets/信号（OS、SS）的 `met_*_corr`、`W_tmass_corr` = recoil 后；
   新列 `*_prerecoil`、`gen_V*`；26 个变化 MET 改名 `jme_met_*_<v>_prerecoil`（**未做 recoil，和 nominal 不可比**）；`*_nano` 删；meta 记 map sha1。
 - Corrections：`apply_corrections.py`/`jme.py` 删 13 个 nano 列，μ 变化 `W_tmass_*` 改用 JME MET。`check_dsmunu_mass.py` 改读 jme_ 列。
-- 重跑：SR + friend 506 job 全 0；SR merge 9 个完成（W+jets ⟨MET⟩ 46.72→44.43）。**zmumu skim 506 job 已交，下次接着做**：
-  验收 → merge（每个样本一条命令给用户跑，不需要 cmsenv）→ 用 EOS `zmumu_recoil/old_zmumu_met/` 逐行核对 `*_prerecoil` →
-  复推 map（`recoil_zmumu.py` 遇到不同的 map 拒绝覆盖）→ 删 `zmumu_jme_steps/`、nojer npz、`genv/`、`old_zmumu_met/`、
-  诊断脚本（draw_zmumu_jme / jme_zmumu_study / jetpt_corr_ratio_eta / draw_signal_met_jme）、旧 `btag_efficiency/`。详见 memory `project_recoil_into_chain_20261112`。
+- 重跑：SR + friend 506 job 全 0；SR merge 9 个完成（W+jets ⟨MET⟩ 46.72→44.43）。
+- 晚上：zmumu skim 506 job 全 0 → merge 9 个完成 → `*_prerecoil` 与旧 zmumu MET/m_T 逐行一致（差 ≤1.6e-9，浮点舍入），
+  DY gen_V* 与 genv 逐位一致 → `recoil_zmumu.py` 复推两个 era 的 map **与 skim 所用的逐位相同**，DY met_pt_corr 与 map 差 ≤5e-4 GeV。
+  已删：`zmumu_jme_steps/`、nojer/`_jer` npz、`genv/`、`old_zmumu_met/`、旧 `MC/2022/btag_efficiency/`、`CR/zmumu_jme/`、
+  `jetpt_corr_ratio_eta.py`、`draw_signal_met_jme.py`；JME 拆解两个 .py 最终版 commit `5cf2caa` 后 `git rm`（连同 run_*.sh，已暂存）。
+  所有已验收的 condor log 删掉（15_0_5、Corrections、13_0_13；只留 `make_samples_nano/lists/` 和 13_0_13 的坏 JOBID 记录）。
+  详见 memory `project_recoil_into_chain_20261112`。
+
+### 晚上：2023 data 下游（不需要 MC）→ `Samples/2023/` SR + zmumu
+- 2023 data 生产：24 任务 23 个齐；Muon1 C v4 OS job 7（FileReadError×6）放弃，SS 保留（我误删后从 EOS recycle 恢复）；golden = 2026-02 版。
+- **用户定**：按年分目录 `Samples/<年>/`、组名不改；region SR + zmumu；lumi 2023C 17.981、2023D 9.516 fb⁻¹（显示 2 位），eras.py 加 3/4。
+- Corrections（未 commit）：2023 b-veto 用 RobustParT（`bem.ERAS[*]["tagger"]`、`btv.TAGGERS`，WP_T 0.7969/0.7994）；
+  JME 2023 payload（2026-06-05，`Summer23Prompt23`/`Summer23BPixPrompt23`），MET xy 文件名按 era；**2023BPix L2Relative 带 JetPhi**
+  （`jme_direct.jes` 加 phi）。2023 MC 的 JER（按 run 分 tag）、b-tag 权重/效率图未接，会报错。回归：同机新旧代码 2022 data/MC friend 逐位相同。
+- skim（未 commit）：`ERA_YEAR`、`GROUPS_BY_YEAR`、`DATA_TASKS`/`data_pd`（Muon0/Muon1、`_vN`）、`--year`；fom_scan_stage1/fom_map_stage2_run3
+  的总光度改为只取 era 1+2。EOS `Samples/*` 全部 mv 进 `Samples/2022/`，recoil_zmumu 复推 map 仍逐位相同。
+- condor：SR `--correct` 144 job + zmumu 144 job 全 0；merged：SR OS 1232998 / SS 1275562，zmumu OS 98220 / SS 97839；
+  era 只有 3/4，OS SR 窗口 0 行，列与 2022 相同。**每 fb⁻¹ 产额比 2022 高约 30%（SR 和 Z 窗都是）**，原因未查（b-veto PNet→ParT、pileup/组合候选？）；已排除重复事例（merged 里 (run,lumi,event) 全唯一）。
+- 下一步：2024 data 交 CRAB（用户；证书约 12-01 到期）；2023 MC 生产；之后 MVA。详见 memory `project_2023_data_downstream_port`。
 
 ### 我犯的错
 1. memory 转述 POG 时漏了 "accounts for non-Gaussian shapes"，先做了缩放法；被问"原文怎么写"才去会话记录翻原文。
 2. 让用户选方法时只给数字不解释（"我为什么要确认这个方案，你什么都没解释"）。
 3. 提出 W+jets sideband 外推检查，被问才想到 sideband MC 缺 QCD、得不出结论，撤回。
 4. 154 个 genv job 没先单 job 上 condor 测就整批交（advisor 指出）；`pkill -f` 的模式匹配到自己的 shell。
+5. 用户说"失败的不管，删了就行"，我套用 MC 的 OS/SS 两边删规则删了 2023 data SS 的好文件（已从 recycle 恢复）。
 
 ## 上一 Session (2026-11-06 ~ 11-09)
 
