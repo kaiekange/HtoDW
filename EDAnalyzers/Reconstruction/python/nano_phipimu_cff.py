@@ -697,15 +697,39 @@ PNET_WP = {
     "2022EE": (0.0499, 0.2605, 0.6915),
 }
 
+# 2023 uses RobustParT instead of ParticleNet (decided 2026-10-30). b-score = probb+probbb+problepb,
+# the same sum as nano's Jet_btagRobustParTAK4B. WPs: BTV btagging.json
+# robustParticleTransformer_wp_values (latest), campaigns
+#   2023     -> Run3-23CSep23-Summer23-NanoAODv12
+#   2023BPix -> Run3-23DSep23-Summer23BPix-NanoAODv12
+# pat::Jet::bDiscriminator returns -1000 for a missing label (no exception), so after changing
+# these names check on a test file that the b-score lands in [0,1].
+PART_DISC_NAMES = [
+    "pfParticleTransformerAK4JetTags:probb",
+    "pfParticleTransformerAK4JetTags:probbb",
+    "pfParticleTransformerAK4JetTags:problepb",
+]
+PART_WP = {
+    "2023":     (0.0681, 0.3487, 0.7969),
+    "2023BPix": (0.0683, 0.3494, 0.7994),
+}
+
 
 def set_btag_wp(process, year):
-    """Set the era's ParticleNet L/M/T WPs on every candidate producer in the process."""
-    if year not in PNET_WP:
-        raise ValueError("no ParticleNet WPs for year %r (have %s)" % (year, sorted(PNET_WP)))
-    loose, medium, tight = PNET_WP[year]
+    """Set the era's b-tagger L/M/T WPs on every candidate producer in the process.
+    2022/2022EE: ParticleNet, the producers' default bDiscNames (not touched here).
+    2023/2023BPix: RobustParT (bDiscNames overridden)."""
+    if year in PNET_WP:
+        disc_names, (loose, medium, tight) = None, PNET_WP[year]
+    elif year in PART_WP:
+        disc_names, (loose, medium, tight) = PART_DISC_NAMES, PART_WP[year]
+    else:
+        raise ValueError("no b-tag WPs for year %r (have %s)" % (year, sorted(PNET_WP) + sorted(PART_WP)))
     for name in ("phipimuCand", "phipimuCandGenTag"):
         if hasattr(process, name):
             mod = getattr(process, name)
+            if disc_names is not None:
+                mod.bDiscNames = cms.vstring(*disc_names)
             mod.bScoreWPLoose = cms.double(loose)
             mod.bScoreWPMedium = cms.double(medium)
             mod.bScoreWPTight = cms.double(tight)

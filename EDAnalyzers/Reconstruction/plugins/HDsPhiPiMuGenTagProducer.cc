@@ -1479,6 +1479,10 @@ void HDsPhiPiMuGenTagProducer::fillDescriptions(edm::ConfigurationDescriptions &
 {
 	edm::ParameterSetDescription desc;
 	desc.add<bool>("sameSignPi", false);
+	// b-tag discriminator labels summed into the b-score; default = ParticleNet (2022).
+	// Declared so the config can override it (2023: RobustParT, set by set_btag_wp).
+	desc.add<std::vector<std::string>>("bDiscNames",
+		std::vector<std::string>{"pfParticleNetFromMiniAODAK4PuppiCentralDiscriminatorsJetTags:BvsAll"});
 	desc.add<double>("bScoreWPLoose");   // required, era-dependent (no default on purpose)
 	desc.add<double>("bScoreWPMedium");
 	desc.add<double>("bScoreWPTight");

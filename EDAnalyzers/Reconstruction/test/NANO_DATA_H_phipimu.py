@@ -14,7 +14,8 @@ Knobs (VarParsing 'analysis'):
   OUTFILE    output file (file:...)
   SS         0 | 1   -- same-sign-pi control region (int, not bool: bool reads SS=0 as truthy)
   NTHREADS   cmsRun threads
-  YEAR       2022Pre | 2022Post, required -- Year column of data_2022.txt; picks the ParticleNet WPs
+  YEAR       2022Pre | 2022Post | 2023Pre | 2023Post, required -- Year column of data_202X.txt;
+             picks the b-tag WPs (2022: ParticleNet, 2023: RobustParT)
 
 doTruth is forced False and only the nominal (non-GenTag) tuplizer runs: GenTag reads
 prunedGenParticles, which doesn't exist on data. No JOBID/GROUPSIZE/FILELIST here -- CRAB
@@ -32,14 +33,14 @@ options.register('OUTFILE', 'file:nano.root', VarParsing.multiplicity.singleton,
 options.register('SS', 0, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'same-sign-pi control region (0/1)')
 options.register('NTHREADS', 1, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'cmsRun threads')
 options.register('YEAR', '', VarParsing.multiplicity.singleton, VarParsing.varType.string,
-                 '2022Pre | 2022Post (required) -- the Year column of data_2022.txt; selects the ParticleNet WPs')
+                 '2022Pre | 2022Post | 2023Pre | 2023Post (required) -- the Year column of data_202X.txt; selects the b-tag WPs')
 options.parseArguments()
 
 if not options.GLOBALTAG:
     sys.exit("GLOBALTAG is required (see crab/DatasetList/data_2022.txt)")
-_YEAR_TO_ERA = {"2022Pre": "2022", "2022Post": "2022EE"}
+_YEAR_TO_ERA = {"2022Pre": "2022", "2022Post": "2022EE", "2023Pre": "2023", "2023Post": "2023BPix"}
 if options.YEAR not in _YEAR_TO_ERA:
-    sys.exit("YEAR=%r must be one of %s (Year column of data_2022.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
+    sys.exit("YEAR=%r must be one of %s (Year column of data_202X.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
 
 process = cms.Process('NANO', Run3)
 

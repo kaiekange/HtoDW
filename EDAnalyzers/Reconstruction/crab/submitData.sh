@@ -10,6 +10,7 @@
 #   ./submitData.sh OS --print            # write generated/<requestName>.py, submit nothing
 #   ./submitData.sh OS submit Run2022C    # 4th arg: only datasets whose era contains this
 #   ./submitData.sh OS --dryrun Run2022C  # e.g. a single-era smoke test before the full table
+#   LIST=data_2023.txt ./submitData.sh OS --print   # another year's table (default data_2022.txt)
 #
 # Comment a line out in the txt (leading '#') to skip that dataset -- that is how you
 # choose what to submit, rather than editing this script. See that file's header for the
@@ -38,7 +39,7 @@ esac
 
 cd "$(dirname "$0")"
 
-datasetlist="DatasetList/data_2022.txt"   # relative: the script cd-s to its own dir above
+datasetlist="DatasetList/${LIST:-data_2022.txt}"   # relative: the script cd-s to its own dir above
 configtemplate="crabConfigTemplateData.py"
 PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
 
@@ -108,13 +109,28 @@ for i in "${!datasets[@]}"; do
     split=(${dataset//\// })
     primary="${split[0]}"
     era="${split[1]%%-*}"
+    # 2023 has several processings of one run era (Run2023C-22Sep2023_v1..v4-vN), covering
+    # different runs. Append the _vN of the processing so their request names differ:
+    # Muon0_Run2023C_v1_NanoH_phipimu. 2022 names have no _vN and stay unchanged.
+    proc="${split[1]#*-}"; proc="${proc%-*}"          # 22Sep2023_v1 (2022: 22Sep2023)
+    if [[ "${proc}" =~ _(v[0-9]+)$ ]]; then
+        era="${era}_${BASH_REMATCH[1]}"
+    fi
 
-    # Output directory era, from the Year column. Same 2022 / 2022EE names the MC tree uses.
+    # Output directory era and golden JSON, from the Year column. Same 2022 / 2022EE names
+    # the MC tree uses; 2023 / 2023BPix for Summer23 / Summer23BPix.
     case "${YEAR}" in
-        2022Pre)  ERADIR="2022"   ;;
-        2022Post) ERADIR="2022EE" ;;
+        2022Pre)  ERADIR="2022"     ;;
+        2022Post) ERADIR="2022EE"   ;;
+        2023Pre)  ERADIR="2023"     ;;
+        2023Post) ERADIR="2023BPix" ;;
         *) echo "no output directory mapped for Year='${YEAR}'" >&2; exit 1 ;;
     esac
+    case "${YEAR}" in
+        2022*) LUMIMASK="${PWD}/JSON/Cert_Collisions2022_355100_362760_Golden.json" ;;
+        2023*) LUMIMASK="${PWD}/JSON/Cert_Collisions2023_366442_370790_Golden.json" ;;
+    esac
+    [[ -f "${LUMIMASK}" ]] || { echo "missing golden JSON ${LUMIMASK}" >&2; exit 1; }
 
     # NanoH prefix (not H_phipimu) to keep crab_*/ dirs and DBS output-dataset tags from
     # colliding with the old TFileService-tree production's crab_<Muon_Run2022C_H_phipimu>/.
@@ -131,6 +147,7 @@ for i in "${!datasets[@]}"; do
         -e "s|__YEAR_VALUE__|${YEAR}|g" \
         -e "s|__INPUTDATASET__|${dataset}|g" \
         -e "s|__ERADIR__|${ERADIR}|g" \
+        -e "s|__LUMIMASK__|${LUMIMASK}|g" \
         -e "s|__OUTPUTDATASETTAG__|${OUTPUTDATASETTAG}|g" \
         "${configtemplate}" > crabConfig.py
 

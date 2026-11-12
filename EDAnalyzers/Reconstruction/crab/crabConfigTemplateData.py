@@ -38,7 +38,7 @@ config.Data.totalUnits = -1
 # 150 lumis/job (inherited from the old tuplizer) gave 3 h average and 6.4 h longest jobs on
 # Run2022D; E/F/G have more events per lumi. 50 keeps single jobs short.
 config.Data.unitsPerJob = 50
-config.Data.lumiMask = '/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/crab/JSON/Cert_Collisions2022_355100_362760_Golden.json'
+config.Data.lumiMask = '__LUMIMASK__'
 
 config.Data.publication = False
 config.Data.inputDataset = '__INPUTDATASET__'
