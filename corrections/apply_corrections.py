@@ -20,43 +20,34 @@ example code where there is one (external/, unmodified):
   lum.py  pileup weights
   muo.py  muonscarekit MuonScaRe.cc (via ROOT) + muon SFs, selected muon, prompt-muon veto
   btv.py  b-jet count + btag_weight.cc (C++ port of BTV examples compute_btag_event_weight_multi_wp)
-  jme.py  jet veto map + nano jet/MET columns
+  jme.py  JME-corrected jets/MET, jet veto map, b-veto and b-tag weight on the JME jets
 This file reads the nano, calls them, runs the closures and writes the friend.
 
 JME (2026-11-04): the jme_* columns (jme.full_columns) carry JME-corrected jets/MET and the
-JES/JER/unclustered variations; they are the analysis default from now on. The columns below
-without the jme_ prefix are unchanged.
-NO JME CORRECTION in the unprefixed columns (2026-10-21, user decision). In the Z->mumu CR the Type-1 + Summer22 V4
-JEC + MC JER chain made the MC MET harder than data while the nano MET agreed. Jets and MET
-are therefore the nano values: Jet_pt (MiniAOD updatedJetsPuppi, i.e. the production GT's
-JEC, no JER smearing in MC) and met_pt/met_phi (slimmedMETsPuppi). The column NAMES are
-unchanged (jet_ht_pt20_nom, met_pt_nom, n_bjet_nom, ...) so make_samples_nano.py reads them
-as before; their *_corr names in the merged samples now carry only the muon correction.
-The jet veto map is kept (a map, not an energy correction), evaluated on nano Jet_pt.
-The b-tag efficiency maps must be built on nano Jet_pt too (build_btag_efficiency_map.py).
-The JME version is in git history (commit ea09e9c and earlier).
+JES/JER/unclustered variations; they are the analysis default. 2026-11-12 (user): the nano-jet
+columns (jet_ht_pt20/num_jets_pt30/jet_leadpt/met_pt/met_phi/jvm_veto/n_bjet _nom, w_btag_* on
+the nano-pt efficiency map) are no longer written; the jme_* ones replace them. The hadronic-recoil
+calibration is applied downstream (make_samples_nano.py), not here.
 
-VARIATIONS. Suffixes: _nom; muon momentum _muScaleUp/_muScaleDown/_muResUp/_muResDown
-(no JES/JER variations any more). Each muon variation re-derives:
-  mu_pt, pass_mu, w_mu (id x iso x trig, nominal SFs at that pt), W_tmass (with the nano
-  MET), Dsmu_{pt,eta,phi,mass,Ht}, Dsstmu_{pt,eta,phi,mass,Ht}
+VARIATIONS. Suffixes: _nom; muon momentum _muScaleUp/_muScaleDown/_muResUp/_muResDown.
+Each muon variation re-derives:
+  mu_pt, pass_mu, w_mu (id x iso x trig, nominal SFs at that pt), W_tmass (with the nominal JME
+  MET jme_met_pt/phi), Dsmu_{pt,eta,phi,mass,Ht}, Dsstmu_{pt,eta,phi,mass,Ht}
   (mu_px/py/pz follow from the stored direction times mu_pt; mu_IsoR0x_RelIso is
   left as stored, since the POG iso WP and its SF are defined on the uncorrected pt)
-Written once (_nom, nano jets/MET): jet_ht_pt20, num_jets_pt30, jet_leadpt, met_pt, met_phi,
-jvm_veto, n_bjet, w_btag.
 SF systematics at the nominal kinematics: w_muid/w_muiso/w_mutrig _nom/_up/_down,
-w_btag_up/_down, w_btag_any_nom/_up/_down, w_pu_nom/_up/_down.
+jme_w_btag_up/_down, jme_w_btag_any_nom/_up/_down, w_pu_nom/_up/_down.
 
 COLUMN SEMANTICS
   pass_mu      selected muon: corrected pt > 26, |eta| < 2.4, PFIsoTight (Muon_pfIsoId>=4)
   pass_muveto  no other muon with tight ID, |eta|<2.4, Loose PF iso, corrected pt >= 15
                (nominal muon correction only)
-  jvm_veto     True = event VETOED by the jet veto map (official apply_jvm_flag)
-  n_bjet       jets with tight ID, |eta|<2.5, dR(Ds)>0.4, PNet B > era tight WP,
-               nano pt >= 20; the b-veto is n_bjet == 0
+  jme_jvm_veto True = event VETOED by the jet veto map (official apply_jvm_flag)
+  jme_n_bjet   jets with tight ID, |eta|<2.5, dR(Ds)>0.4, PNet B > era tight WP,
+               JME pt >= 20; the b-veto is jme_n_bjet == 0
   w_mu*        NaN where pass_mu (of that variation) is False
-  w_btag*      NaN where n_bjet (of that variation) > 0
-  w_btag_any_* (nom/up/down only) valid at any n_bjet: tagged jets give SF, untagged (1-SF*eps)/(1-eps)
+  jme_w_btag*  NaN where jme_n_bjet (of that variation) > 0
+  jme_w_btag_any_* (nom/up/down only) valid at any n_bjet: tagged jets give SF, untagged (1-SF*eps)/(1-eps)
 NaN, not 1, so a weight used without its cut poisons the sum instead of passing silently.
 
 NOT WRITTEN: met_sig and met_sumEt (use the nano values). jet_ht and num_jets cannot be
@@ -123,7 +114,7 @@ NULL = -777.0
 # not exist for data rather than by choice: the muon gets the scale correction from the data
 # branch of MuonScaRe and no resolution smearing, and no weight is defined (no PU, no scale
 # factors, no b-tag weight). The selection flags are computed exactly as for MC, because the
-# same cuts are applied to data. Jets/MET are the nano values for data as for MC.
+# same cuts are applied to data. Jets/MET get the JME chain for data as for MC (data: L2L3Residual, no JER).
 
 MC_ONLY_BRANCHES = {"Pileup_nTrueInt"} | set(btv.MC_BRANCHES) | set(jme.FULL_MC_BRANCHES)
 
@@ -136,7 +127,7 @@ BRANCHES = sorted(set([
     "Dsmu_px", "Dsmu_py", "Dsmu_pz", "Dsmu_mass", "Dsmu_pt", "Dsmu_eta", "Dsmu_phi", "Dsmu_Ht",
     "Dsstmu_px", "Dsstmu_py", "Dsstmu_pz", "Dsstmu_mass", "Dsstmu_pt", "Dsstmu_eta", "Dsstmu_phi",
     "Dsstmu_Ht",
-] + btv.BRANCHES + btv.MC_BRANCHES + jme.BRANCHES + jme.FULL_BRANCHES + jme.FULL_MC_BRANCHES))
+] + btv.BRANCHES + btv.MC_BRANCHES + jme.FULL_BRANCHES + jme.FULL_MC_BRANCHES))
 
 
 def parse_path(path):
@@ -207,12 +198,9 @@ def main():
     wp_tight = bem.ERAS[era]["wp_tight"]
     jme_year = bem.ERAS[era]["jme_year"]
     mu_vars = ("nom",) if is_data else muo.MU_VARS
-    eff_json = None if is_data else f"{bem.OUT_DIR}/{EFF_GROUP[sample]}_{era}.json"
-    print(f"input {in_path}\n {'data' if is_data else 'MC'} era={era} sample={sample}"
-          f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json}\n output {out_path}")
-    if eff_json and not os.path.exists(eff_json):
-        sys.exit(f"missing efficiency map {eff_json}")
     eff_json_jme = None if is_data else f"{bem.OUT_DIR_JME}/{EFF_GROUP[sample]}_{era}.json"
+    print(f"input {in_path}\n {'data' if is_data else 'MC'} era={era} sample={sample}"
+          f" JME year={jme_year} WP_T={wp_tight}\n eff map {eff_json_jme}\n output {out_path}")
     if eff_json_jme and not os.path.exists(eff_json_jme):
         sys.exit(f"missing JME efficiency map {eff_json_jme}")
 
@@ -277,21 +265,13 @@ def main():
             if (d > 1e-3).any():
                 sys.exit(f"{prefix} k=1 closure FAILED on {q}: max |d| {d.max():.3g}")
 
-    # ---- JME (jet veto map, nano jets/MET) ----
-    cols.update(jme.columns(a, jme_year, NULL))
-
-    # ---- BTV ----
+    # ---- JME-corrected jets/MET + JES/JER/unclustered variations, b-veto and b-tag weight on the
+    # JME jets (jme_*; jme.full_columns). The nano-jet columns were removed 2026-11-12. ----
     btv_set = btv.sf_set(campaign, wp_tight)
-    nb = btv.n_bjet(a, wp_tight)
-    cols["n_bjet_nom"] = nb
-    if not is_data:
-        cols.update(btv.weights(a, campaign, btv_set, eff_json, nb))
-    for v in mu_vars:
-        cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, cols["met_pt_nom"], cols["met_phi_nom"])
-
-    # ---- JME-corrected jets/MET + JES/JER/unclustered variations (jme_*; jme.full_columns) ----
     cols.update(jme.full_columns(a, era, is_data, jme_year, wp_tight, campaign, btv_set, eff_json_jme,
                                  mu_pt["nom"], mu_phi, NULL))
+    for v in mu_vars:
+        cols[f"W_tmass_{v}"] = w_tmass(mu_pt[v], mu_phi, cols["jme_met_pt"], cols["jme_met_phi"])
 
     # ---- summary ----
     print(" summary (unweighted; finite values only):")

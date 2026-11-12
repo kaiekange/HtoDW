@@ -11,11 +11,11 @@ only the correction step.
 
 | path | content |
 |---|---|
-| `corrections/apply_corrections.py` | per-file friend tree: reads the nano, calls the four POG modules below, runs the closures, writes the friend. Two jet/MET sets: the nano ones (`*_nom`, nano jets, kept unchanged) and, since 2026-11-04, the JME ones (`jme_*`: JES + MC JER, Type-1 PuppiMET with JER propagated + MET xy, plus 26 MC variations: Reduced JES 11×2, JER ×2, unclustered ×2). The analysis skim uses the `jme_*` set |
+| `corrections/apply_corrections.py` | per-file friend tree: reads the nano, calls the four POG modules below, runs the closures, writes the friend. Jets/MET: the JME set only (`jme_*`: JES + MC JER, Type-1 PuppiMET with JER propagated + MET xy, plus 26 MC variations: Reduced JES 11×2, JER ×2, unclustered ×2); the nano-jet `*_nom` columns were removed on 2026-11-12. The hadronic-recoil calibration is applied later, in the analysis skim (`make_samples_nano.py`) |
 | `corrections/lum.py` | pileup weights |
 | `corrections/muo.py` | muon scale/resolution (muonscarekit `MuonScaRe.cc` via ROOT) + ID×ISO×trigger SF, selected muon, prompt muon veto |
 | `corrections/btv.py` | b-veto count + fixed-WP b-tag event weight via `btag_weight.cc` (C++ port of BTV examples `lib/btag_sf.py::compute_btag_event_weight_multi_wp`, commit in its header; compiled through ROOT) |
-| `corrections/jme.py` | jet veto map + nano jet/MET columns (`columns`); JME columns and variations (`full_columns`, via `jme_direct.Jme.variations`, b-tag weight on the JME-pt efficiency map) |
+| `corrections/jme.py` | JME columns and variations (`full_columns`, via `jme_direct.Jme.variations`), jet veto map, b-veto and b-tag weight on the JME-pt efficiency map |
 | `corrections/build_btag_efficiency_map.py` | MC b-tag efficiency map per sample and era (input to the b-tag SF); `--jme`: binned on JME jet pt, written to `btag_efficiency_jme/` |
 | `corrections/jme_corrections.py` | wrapper around the official JERC application tutorial; only its jet veto map is used by `apply_corrections.py` now |
 | `corrections/jme_direct.py` | JEC/JER/Type-1 MET/MET xy straight from the JME correctionlib JSONs (no tutorial); `variations()` gives nominal + systematic jet pt and MET |

@@ -1,39 +1,21 @@
-"""JME: jet veto map and the jet/MET columns. No jet energy correction (2026-10-21, user
-decision): jets and MET are the nano values (Jet_pt with the production GT's JEC, no JER in
-MC; slimmedMETsPuppi). The jet veto map is evaluated with the jerc-application-tutorial's
-JvmApplication.apply_jvm_flag (via jme_corrections.jet_veto_flag) on nano Jet_pt.
-Jet ID is the nano Jet_jetId bit (bit 2 = tight)."""
+"""JME: jet veto map and the JME-corrected jet/MET columns. The jet veto map is evaluated with the
+jerc-application-tutorial's JvmApplication.apply_jvm_flag (via jme_corrections.jet_veto_flag) on the
+JME jet pt. Jet ID is the nano Jet_jetId bit (bit 2 = tight).
+2026-11-12 (user): the nano-jet/MET columns (*_nom: jvm_veto, jet_ht_pt20, num_jets_pt30, jet_leadpt,
+met_pt, met_phi; written since 2026-10-21) are removed; only the JME ones below remain."""
 import sys
 
 import awkward as ak
 
 import jme_corrections
 
-BRANCHES = sorted(set(["Jet_pt", "Jet_jetId", "met_pt", "met_phi"] + jme_corrections.JVM_BRANCHES))
-
-
-def columns(a, jme_year, null):
-    """{"jvm_veto_nom", "jet_ht_pt20_nom", "num_jets_pt30_nom", "jet_leadpt_nom",
-    "met_pt_nom", "met_phi_nom"}."""
-    pt = a["Jet_pt"]
-    tight = (a["Jet_jetId"] & 2) == 2
-    return {
-        "jvm_veto_nom": ak.to_numpy(jme_corrections.jet_veto_flag(a, pt, year=jme_year)),
-        "jet_ht_pt20_nom": ak.to_numpy(ak.sum(ak.where(tight & (pt > 20), pt, 0.0), axis=1)),
-        "num_jets_pt30_nom": ak.to_numpy(ak.sum(tight & (pt > 30), axis=1)),
-        "jet_leadpt_nom": ak.to_numpy(ak.fill_none(ak.max(pt[tight], axis=1), null)),
-        "met_pt_nom": ak.to_numpy(a["met_pt"]).astype(float),
-        "met_phi_nom": ak.to_numpy(a["met_phi"]).astype(float),
-    }
-
-
 # ---------------------------------------------------------------------------------------
-# JME-corrected jets/MET (2026-11-04, user decision: these are the analysis default; the
-# nano columns above are kept unchanged). jme_direct.Jme.variations(): JES (L1L2L3, data
+# JME-corrected jets/MET (2026-11-04, user decision: these are the analysis default).
+# jme_direct.Jme.variations(): JES (L1L2L3, data
 # residual at the event's run) + MC JER smear; Type-1 PuppiMET rebuilt from RawPuppiMET with
 # JER propagated, then MET xy. Systematics (MC): Reduced JES set (11 sources; "_year" sources
 # and JER are uncorrelated across eras -> split by era downstream), JER (1 per era),
-# unclustered energy (MET only). Jet ID: nano Jet_jetId bit, as above.
+# unclustered energy (MET only). Jet ID: nano Jet_jetId bit.
 #   jme_jvm_veto, jme_num_jets_pt30, jme_jet_ht_pt20, jme_jet_leadpt, jme_n_bjet,
 #   jme_met_pt, jme_met_phi, jme_W_tmass (nominal muon), MC: jme_w_btag[_any]_{nom,up,down}
 #   per variation v (MC): jme_{num_jets_pt30,jet_leadpt,n_bjet,w_btag,met_pt,met_phi}_<v>
