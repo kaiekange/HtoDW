@@ -77,7 +77,20 @@ keeps only the highest-Ds_pt candidate, so the nano has one row per event. GenTa
 - Input MiniAOD on XRootD: `root://maite.iihe.ac.be//store/user//kakang/Analysis/ggHtoDsW_phipi/` (DsstW: `ggHtoDsstW_phipi/`; `output_188` there is bad and is skipped in the config)
 - Nano outputs: `/eos/home-k/kakang/H2DW/Analysis/NanoMVA/{MC,Data}/`; merged skims: `NanoMVA/Samples/<year>/` (since 2026-11-12: `2022/` = 2022+2022EE, all groups; `2023/` = 2023+2023BPix, data only; group/file names identical, `common.SAMPLES_DIR` = `Samples/2022`)
 
-## Last Session (2026-11-12)
+## Last Session (2026-11-13)
+
+### 2024 data CRAB 查状态 + 一次 resubmit（无代码改动）
+
+- 32 个任务（`CMSSW_15_0_2/.../crab/crab_Muon{0,1}_Run2024{C..I}[_v2]_NanoH_phipimu[_SS]`，用户 1112 交）。我的 shell 里 `crab status` 能用了
+  （cmsenv 15_0_2 + `crab.sh prod` + `X509_USER_PROXY`）。
+- 上午：71 个 failed（8028 读输入为主；60328 ASO→EOS HTTP 500；50660 内存 3500>3000 MB ×5；−1 ×1）→ 用户让重交，22 个任务 `crab resubmit`
+  （Muon0 D OS、Muon0 H SS、Muon1 G SS 加 `--maxmemory 4000`），复查全部回到 idle/running；Muon0 D SS 新出 2 个 8901 也重交。
+- 15:44：12 个任务 100%；又有 26 个 failed（10 个任务；Muon0 D SS、Muon0 F OS 是 50660，重交要加 `--maxmemory 4000`），**用户：先不交**。
+  2533 个 idle 集中在 8 个任务；每个 dataset disk 副本只有 2-3 个站点（Muon0 I = Vanderbilt+Bari，完成的全在 Bari，OS/SS 几小时 0 running）；
+  CRAB 警告 3000 MB 只保证 2500。原因未定，未处理。proxy 当时只剩约 44 min，需用户续。
+- 2024 生产代码（`CMSSW_15_0_2`）仍不在 git 里。详见 memory `project_data_datasets_2022_2026`。
+
+## 上一 Session (2026-11-12)
 
 ### recoil calibration 进整套修正（CDF 映射，在 skim 里应用）；friend 删 nano 列；friend + SR skim 全量重跑
 
@@ -122,31 +135,3 @@ DY jet-bin SF 推导时照乘现值。nano jet/MET 列删掉（friend 也重跑�
 3. 提出 W+jets sideband 外推检查，被问才想到 sideband MC 缺 QCD、得不出结论，撤回。
 4. 154 个 genv job 没先单 job 上 condor 测就整批交（advisor 指出）；`pkill -f` 的模式匹配到自己的 shell。
 5. 用户说"失败的不管，删了就行"，我套用 MC 的 OS/SS 两边删规则删了 2023 data SS 的好文件（已从 recycle 恢复）。
-
-## 上一 Session (2026-11-06 ~ 11-09)
-
-### JME 拆解（Z→μμ）→ MET 变硬来自 MC 的 JER 进 MET；做了 hadronic recoil calibration；用户定「之后所有修正都要做全」
-
-**POG 分类**（用户贴的 JME 原文，memory `reference_jme_met_recommendations`）：Type-1、MC jet JER = mandatory；JER 进 MET、MET xy、recoil = optional。
-correctionlib / JME examples / jerc-application-tutorial 里都**没有** recoil，只在 JME 的 MET 文档里（SSO，我从没读过）。
-
-**逐步拆解**（`analysis/macros/jme_zmumu_study.py` → `Samples/CR/zmumu_jme_steps/`，161 condor job；`draw_zmumu_jme.py`）：
-- 变硬 = MC 的 JER 进 MET（S1→S4 MC ⟨MET⟩ +2.5 GeV，data 不变）；JES、xy 对 |MET| 几乎没影响。
-- 定位：2.5<|η|<3.14、pT<30、没配上 gen jet 的 jet（多半 pileup，推测）随机 smear（σ·√(SF²−1) 约 75% pT）；与 JME 的 horn 区 known issue 一致。
-- 不是 DY 的 q_T / N_jet 建模问题（按 (q_T, N_jet) 重新加权只改善约 2%）；nano 里 2022EE 的 MC recoil 本来就比 data 宽（u_⊥ 0.89–0.96），2022 接近 1。
-- jet pT 修正后/nano：|η|>2.5 时 data 下调 11–13%，MC 2022 −6%、2022EE +2%（`jetpt_corr_ratio_eta.py`）。
-
-**recoil calibration**（`analysis/macros/recoil_zmumu.py`；maps `Samples/CR/zmumu_recoil/recoil_<era>_{nojer,jer}.npz`）：
-按 era，q_T × N_jet{≤1,2,≥3} 做 u_∥/u_⊥ CDF 映射，目标 = data−TT，只修 DY；DY 偶数 event 推导、奇数检验。
-输入 = recoil 前的完整链（Type-1 + xy）：nojer 版用 Type-1(JES)+xy（`xy` 模式补算，已验证 xy(m4) ≡ m5），jer 版用 m5（当前默认）。
-两版修正后 MET/m_T/MET φ data/MC 基本平在 1（2022EE MET 60–75 GeV 约 0.9）。jet 量不变：N_jet≥4 约 0.75、H_T>200 约 0.75–0.8，未解决。
-图（`MVA/figures/sf/`）：`cr_zmumu_jme_recoil_final*`（全修正，data/MC 带修正前对比）、`cr_zmumu_jme_recoil_vs_norecoil*`、`cr_zmumu_recoil_{met,mt,uperp}_<era>`、
-`cr_zmumu_jme_met_{nano_vs_full,jer_options}*`、`cr_zmumu_jer_localization`、`cr_zmumu_jetpt_corr_ratio_vs_eta`、`signal_met_nano_vs_full*`；37 张中间诊断图已删（`draw_zmumu_jme.py` 再跑会重新生成）。
-
-**用户定**：之后所有修正都做全（jet JES+JER；MET Type-1(JES+JER)+xy+recoil）。ttbar eμ CR 不做了。
-**下一步**：recoil 映射平滑（2022 data 涨落会写进映射）→ 用到 SR（W+jets、信号：要 gen boson pT，信号参考系 W 还是 H 待定）→ 不确定度；tt̄ 不修。代码均未 commit。
-
-### 我犯的错
-1. lxplus 上 `xargs -P 11` 并行跑 nano 进程，把用户 ssh 弄断；中间结果放 /tmp，换主机丢了。
-2. 用户只要一个比值，我画了 3×3；脚本放 EOS；图上用 S1/S5 代号；对比图第三栏多了 xy；recoil 输入先没加 xy；标题离图远（以上都已记 memory）。
-3. JME 做了一个多月从没提 recoil；被问原因时还拿"optional"（用户最近才告诉我的）辩解。

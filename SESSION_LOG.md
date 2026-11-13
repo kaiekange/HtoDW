@@ -2,6 +2,34 @@
 
 从 CLAUDE.md 移出的旧 session 记录，原文未改。CLAUDE.md 只保留最近两次。
 
+## 上一 Session (2026-11-06 ~ 11-09)
+
+### JME 拆解（Z→μμ）→ MET 变硬来自 MC 的 JER 进 MET；做了 hadronic recoil calibration；用户定「之后所有修正都要做全」
+
+**POG 分类**（用户贴的 JME 原文，memory `reference_jme_met_recommendations`）：Type-1、MC jet JER = mandatory；JER 进 MET、MET xy、recoil = optional。
+correctionlib / JME examples / jerc-application-tutorial 里都**没有** recoil，只在 JME 的 MET 文档里（SSO，我从没读过）。
+
+**逐步拆解**（`analysis/macros/jme_zmumu_study.py` → `Samples/CR/zmumu_jme_steps/`，161 condor job；`draw_zmumu_jme.py`）：
+- 变硬 = MC 的 JER 进 MET（S1→S4 MC ⟨MET⟩ +2.5 GeV，data 不变）；JES、xy 对 |MET| 几乎没影响。
+- 定位：2.5<|η|<3.14、pT<30、没配上 gen jet 的 jet（多半 pileup，推测）随机 smear（σ·√(SF²−1) 约 75% pT）；与 JME 的 horn 区 known issue 一致。
+- 不是 DY 的 q_T / N_jet 建模问题（按 (q_T, N_jet) 重新加权只改善约 2%）；nano 里 2022EE 的 MC recoil 本来就比 data 宽（u_⊥ 0.89–0.96），2022 接近 1。
+- jet pT 修正后/nano：|η|>2.5 时 data 下调 11–13%，MC 2022 −6%、2022EE +2%（`jetpt_corr_ratio_eta.py`）。
+
+**recoil calibration**（`analysis/macros/recoil_zmumu.py`；maps `Samples/CR/zmumu_recoil/recoil_<era>_{nojer,jer}.npz`）：
+按 era，q_T × N_jet{≤1,2,≥3} 做 u_∥/u_⊥ CDF 映射，目标 = data−TT，只修 DY；DY 偶数 event 推导、奇数检验。
+输入 = recoil 前的完整链（Type-1 + xy）：nojer 版用 Type-1(JES)+xy（`xy` 模式补算，已验证 xy(m4) ≡ m5），jer 版用 m5（当前默认）。
+两版修正后 MET/m_T/MET φ data/MC 基本平在 1（2022EE MET 60–75 GeV 约 0.9）。jet 量不变：N_jet≥4 约 0.75、H_T>200 约 0.75–0.8，未解决。
+图（`MVA/figures/sf/`）：`cr_zmumu_jme_recoil_final*`（全修正，data/MC 带修正前对比）、`cr_zmumu_jme_recoil_vs_norecoil*`、`cr_zmumu_recoil_{met,mt,uperp}_<era>`、
+`cr_zmumu_jme_met_{nano_vs_full,jer_options}*`、`cr_zmumu_jer_localization`、`cr_zmumu_jetpt_corr_ratio_vs_eta`、`signal_met_nano_vs_full*`；37 张中间诊断图已删（`draw_zmumu_jme.py` 再跑会重新生成）。
+
+**用户定**：之后所有修正都做全（jet JES+JER；MET Type-1(JES+JER)+xy+recoil）。ttbar eμ CR 不做了。
+**下一步**：recoil 映射平滑（2022 data 涨落会写进映射）→ 用到 SR（W+jets、信号：要 gen boson pT，信号参考系 W 还是 H 待定）→ 不确定度；tt̄ 不修。代码均未 commit。
+
+### 我犯的错
+1. lxplus 上 `xargs -P 11` 并行跑 nano 进程，把用户 ssh 弄断；中间结果放 /tmp，换主机丢了。
+2. 用户只要一个比值，我画了 3×3；脚本放 EOS；图上用 S1/S5 代号；对比图第三栏多了 xy；recoil 输入先没加 xy；标题离图远（以上都已记 memory）。
+3. JME 做了一个多月从没提 recoil；被问原因时还拿"optional"（用户最近才告诉我的）辩解。
+
 ## 上一 Session (2026-11-04 晚 ~ 11-05)
 
 ### JME 完整链进 friend 并成为分析默认；全样本 friend / skim / merge 重做
