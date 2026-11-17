@@ -1,6 +1,6 @@
-"""2024 smoke-test checks on one NANO_DATA_H_phipimu.py output (CMSSW_15_0_2).
+"""2025 smoke-test checks on one NANO_DATA_H_phipimu.py output (CMSSW_15_0_10).
 
-  python3 check_smoke_2024.py nano_2024C_os.root
+  python3 check_smoke_2025.py nano_2025C_os.root
 
 1. jet ID: producer num_jets_pt20 vs nano sum(Jet_pt>20 && jetid.json AK4PUPPI_Tight), per event.
    (num_jets itself is not comparable: nano Jet has pt>15, the producer collection has no cut.)
@@ -14,7 +14,7 @@ import uproot
 import awkward as ak
 import correctionlib
 
-JETID = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_2/src/EDAnalyzers/Reconstruction/data/jetid_2024_Summer24.json"
+JETID = "/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_10/src/EDAnalyzers/Reconstruction/data/jetid_2025_Summer24.json"
 
 ev = uproot.open(sys.argv[1])["Events"]
 n = ev.num_entries

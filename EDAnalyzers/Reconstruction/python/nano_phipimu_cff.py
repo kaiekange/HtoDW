@@ -22,9 +22,9 @@ phipimuCand = cms.EDProducer(
     doTruth    = cms.bool(True),
     channel    = cms.string("DsW"),
     sameSignPi = cms.bool(False),
-    # 2024 (NanoAODv15) tight jet ID: JME jetid.json, md5-identical to jsonpog JME/2024_Summer24
-    # (unchanged 2025-05-08 .. 2026-07-16). This release only processes 2024.
-    jetIdFile  = cms.FileInPath("EDAnalyzers/Reconstruction/data/jetid_2024_Summer24.json"),
+    # 2025 (NanoAODv15) tight jet ID: JME jetid.json of Run3-25Prompt-Summer24-NanoAODv15 (latest,
+    # checked 2026-11-17), byte-identical to the 2024 one. This release only processes 2025.
+    jetIdFile  = cms.FileInPath("EDAnalyzers/Reconstruction/data/jetid_2025_Summer24.json"),
     jetIdName  = cms.string("AK4PUPPI_Tight"),
 )
 
@@ -733,6 +733,9 @@ UPART_DISC_NAMES = [
 ]
 UPART_WP = {
     "2024": (0.0246, 0.1272, 0.4648),
+    # 2025: BTV Run3-25Prompt-Summer24-NanoAODv15 (latest = 2026-10-14) UParTAK4_wp_values, same
+    # values as 2024 (both from Summer24 MC).
+    "2025": (0.0246, 0.1272, 0.4648),
 }
 
 
@@ -740,7 +743,7 @@ def set_btag_wp(process, year):
     """Set the era's b-tagger L/M/T WPs on every candidate producer in the process.
     2022/2022EE: ParticleNet, the producers' default bDiscNames (not touched here).
     2023/2023BPix: RobustParT (bDiscNames overridden).
-    2024: UnifiedParT (bDiscNames overridden)."""
+    2024/2025: UnifiedParT (bDiscNames overridden)."""
     if year in PNET_WP:
         disc_names, (loose, medium, tight) = None, PNET_WP[year]
     elif year in PART_WP:

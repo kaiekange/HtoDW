@@ -1,20 +1,20 @@
-"""Custom NanoAOD production cfg for 2024 Muon data (CMSSW_15_0_2, MINIv6 -> NanoAODv15): standard bare NANO + the H -> Ds(*)W
+"""Custom NanoAOD production cfg for 2025 Muon data (CMSSW_15_0_10, PromptReco MiniAOD -> NanoAODv15): standard bare NANO + the H -> Ds(*)W
 phi-pi candidate table. Submitted via CRAB (../crab/submitData.sh), which injects the
 per-job file list and applies the Golden-JSON lumi mask itself (config.Data.lumiMask) --
 this config never lists input files or a lumi mask on its own.
 
 Local smoke test:
-    cmsRun NANO_DATA_H_phipimu.py GLOBALTAG=150X_dataRun3_v2 YEAR=2024 OUTFILE=file:nano_data.root \
-        inputFiles=root://cms-xrd-global.cern.ch//store/data/Run2024C/Muon0/MINIAOD/MINIv6NANOv15-v1/...
+    cmsRun NANO_DATA_H_phipimu.py GLOBALTAG=150X_dataRun3_Prompt_v1 YEAR=2025 OUTFILE=file:nano_data.root \
+        inputFiles=root://cms-xrd-global.cern.ch//store/data/Run2025C/Muon0/MINIAOD/PromptReco-v1/...
 
 Knobs (VarParsing 'analysis'):
-  GLOBALTAG  required, no default -- per-dataset, from crab/DatasetList/data_2024.txt
-             (all 16 datasets: 150X_dataRun3_v2)
+  GLOBALTAG  required, no default -- per-dataset, from crab/DatasetList/data_2025.txt
+             (all 14 datasets: 150X_dataRun3_Prompt_v1)
   OUTFILE    output file (file:...)
   SS         0 | 1   -- same-sign-pi control region (int, not bool: bool reads SS=0 as truthy)
   NTHREADS   cmsRun threads
-  YEAR       2024, required -- Year column of data_2024.txt; picks the b-tag WPs (UnifiedParT).
-             This release only processes 2024 (era Run3_2024, 2024 jetid.json in the cff).
+  YEAR       2025, required -- Year column of data_2025.txt; picks the b-tag WPs (UnifiedParT).
+             This release only processes 2025 (era Run3_2025, 2025 jetid.json in the cff).
 
 doTruth is forced False and only the nominal (non-GenTag) tuplizer runs: GenTag reads
 prunedGenParticles, which doesn't exist on data. No JOBID/GROUPSIZE/FILELIST here -- CRAB
@@ -23,25 +23,25 @@ does its own LumiBased splitting and overrides process.source.fileNames per job.
 import sys
 import FWCore.ParameterSet.Config as cms
 from FWCore.ParameterSet.VarParsing import VarParsing
-from Configuration.Eras.Era_Run3_2024_cff import Run3_2024
+from Configuration.Eras.Era_Run3_2025_cff import Run3_2025
 
 options = VarParsing('analysis')
 options.register('GLOBALTAG', '', VarParsing.multiplicity.singleton, VarParsing.varType.string,
-                 'Conditions GlobalTag, e.g. 150X_dataRun3_v2 (required, no default)')
+                 'Conditions GlobalTag, e.g. 150X_dataRun3_Prompt_v1 (required, no default)')
 options.register('OUTFILE', 'file:nano.root', VarParsing.multiplicity.singleton, VarParsing.varType.string, 'output file')
 options.register('SS', 0, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'same-sign-pi control region (0/1)')
 options.register('NTHREADS', 1, VarParsing.multiplicity.singleton, VarParsing.varType.int, 'cmsRun threads')
 options.register('YEAR', '', VarParsing.multiplicity.singleton, VarParsing.varType.string,
-                 '2024 (required) -- the Year column of data_2024.txt; selects the b-tag WPs')
+                 '2025 (required) -- the Year column of data_2025.txt; selects the b-tag WPs')
 options.parseArguments()
 
 if not options.GLOBALTAG:
-    sys.exit("GLOBALTAG is required (see crab/DatasetList/data_2024.txt)")
-_YEAR_TO_ERA = {"2024": "2024"}
+    sys.exit("GLOBALTAG is required (see crab/DatasetList/data_2025.txt)")
+_YEAR_TO_ERA = {"2025": "2025"}
 if options.YEAR not in _YEAR_TO_ERA:
-    sys.exit("YEAR=%r must be one of %s (Year column of data_2024.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
+    sys.exit("YEAR=%r must be one of %s (Year column of data_2025.txt)" % (options.YEAR, sorted(_YEAR_TO_ERA)))
 
-process = cms.Process('NANO', Run3_2024)
+process = cms.Process('NANO', Run3_2025)
 
 process.load('Configuration.StandardSequences.Services_cff')
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')

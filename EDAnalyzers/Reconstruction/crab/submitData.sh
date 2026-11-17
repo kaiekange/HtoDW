@@ -1,15 +1,15 @@
 #!/bin/bash
 #
-# Submit the 2024 Muon data listed in DatasetList/data_2024.txt through the custom-NanoAOD
-# pset (../test/NANO_DATA_H_phipimu.py). CMSSW_15_0_2 copy of the 13_0_13 script (2022/2023);
-# this release only processes 2024 (MINIv6 -> NanoAODv15).
+# Submit the 2025 Muon data listed in DatasetList/data_2025.txt through the custom-NanoAOD
+# pset (../test/NANO_DATA_H_phipimu.py). CMSSW_15_0_10 copy of the 15_0_2 script (2024);
+# this release only processes 2025 (PromptReco MiniAOD -> NanoAODv15), output on T2_BE_IIHE.
 #
 #   ./submitData.sh OS                    # opposite-sign (SS=0), every active line
 #   ./submitData.sh SS                    # same-sign-pi control region (SS=1)
 #   ./submitData.sh OS --dryrun           # crab submit --dryrun
 #   ./submitData.sh OS --print            # write generated/<requestName>.py, submit nothing
-#   ./submitData.sh OS submit Run2024C    # 3rd arg: only datasets whose name contains this
-#   ./submitData.sh OS --dryrun Run2024C  # e.g. a single-era smoke test before the full table
+#   ./submitData.sh OS submit Run2025C    # 3rd arg: only datasets whose name contains this
+#   ./submitData.sh OS --dryrun Run2025C  # e.g. a single-era smoke test before the full table
 #
 # Comment a line out in the txt (leading '#') to skip that dataset -- that is how you
 # choose what to submit, rather than editing this script. See that file's header for the
@@ -38,15 +38,15 @@ esac
 
 cd "$(dirname "$0")"
 
-datasetlist="DatasetList/${LIST:-data_2024.txt}"   # relative: the script cd-s to its own dir above
+datasetlist="DatasetList/${LIST:-data_2025.txt}"   # relative: the script cd-s to its own dir above
 configtemplate="crabConfigTemplateData.py"
-PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_2/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
+PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_10/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
 
 [[ -f "${datasetlist}"     ]] || { echo "missing ${datasetlist}" >&2;     exit 1; }
 [[ -f "${configtemplate}"  ]] || { echo "missing ${configtemplate}" >&2;  exit 1; }
 [[ -f "${PSETNAME}"        ]] || { echo "missing pset ${PSETNAME}" >&2;   exit 1; }
 
-CMSSW_SRC="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_2/src"
+CMSSW_SRC="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_10/src"
 
 if [[ "${MODE}" != "--print" ]]; then
     # cmsenv BEFORE crab.sh, and unconditionally rather than relying on the caller's shell:
@@ -116,12 +116,19 @@ for i in "${!datasets[@]}"; do
     if [[ "${proc}" =~ _(v[0-9]+)$ ]]; then
         era="${era}_${BASH_REMATCH[1]}"
     fi
+    # 2025 PromptReco: the version is the dataset suffix instead (Run2025C-PromptReco-v1 / -v2,
+    # disjoint run ranges), which the _vN rule above does not see -> v1 and v2 would get the same
+    # request name. Append it for v2+: Muon0_Run2025C_NanoH_phipimu / Muon0_Run2025C_v2_NanoH_phipimu.
+    dsver="${split[1]##*-}"                           # v1 / v2
+    if [[ "${proc}" == "PromptReco" && "${dsver}" != "v1" ]]; then
+        era="${era}_${dsver}"
+    fi
 
-    # Output directory era and golden JSON, from the Year column. 2024 golden: the DQM
-    # 2026-08-04 version (287601 lumis), not the _before_TrkML2026_review one.
+    # Output directory era and golden JSON, from the Year column. 2025 golden: the latest DQM
+    # version (2026-07-30, 513 runs, 268078 lumis).
     case "${YEAR}" in
-        2024) ERADIR="2024"
-              LUMIMASK="${PWD}/JSON/Cert_Collisions2024_378981_386951_Golden.json" ;;
+        2025) ERADIR="2025"
+              LUMIMASK="${PWD}/JSON/Cert_Collisions2025_391658_398903_Golden.json" ;;
         *) echo "no output directory mapped for Year='${YEAR}'" >&2; exit 1 ;;
     esac
     [[ -f "${LUMIMASK}" ]] || { echo "missing golden JSON ${LUMIMASK}" >&2; exit 1; }

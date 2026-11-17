@@ -1,0 +1,30 @@
+# 2025 Muon data -- one line per dataset, read by submitData.sh (default list in CMSSW_15_0_10).
+# Same format as data_2024.txt:
+#
+#   <dataset>  <GlobalTag>  <Year>
+#
+#   GlobalTag: the PromptReco GT, read from the MiniAOD provenance (edmProvDump, 2026-11-17,
+#     Run2025C Muon0 / Run2025G Muon1): 150X_dataRun3_Prompt_v1 for all 2025 (user, 2026-11-17).
+#     PromptReco itself ran with CMSSW_15_0_6 .. 15_0_15_patch1; this production uses 15_0_10.
+#
+#   Year: 2025 -> NanoMVA/Data/2025 on T2_BE_IIHE; selects the UnifiedParT b-tag WPs in the
+#     pset and the 2025 golden JSON in submitData.sh.
+#
+# Muon0 and Muon1 are the two halves of the Muon stream; both are needed. C and F have a
+# PromptReco-v2 covering later, disjoint runs (C 393111-393516, F 397619-397853), both needed.
+# 2025B is not used (user, 2026-11-17).
+
+/Muon0/Run2025C-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025C-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025C-PromptReco-v2/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025C-PromptReco-v2/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025D-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025D-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025E-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025E-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025F-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025F-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025F-PromptReco-v2/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025F-PromptReco-v2/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon0/Run2025G-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025
+/Muon1/Run2025G-PromptReco-v1/MINIAOD  150X_dataRun3_Prompt_v1  2025

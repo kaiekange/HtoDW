@@ -44,8 +44,9 @@ config.Data.publication = False
 config.Data.inputDataset = '__INPUTDATASET__'
 config.Data.outputDatasetTag = '__OUTPUTDATASETTAG__'
 config.Data.publishDBS = 'https://cmsweb.cern.ch/dbs/prod/phys03/DBSWriter'
-# Lands on EOS as
-#   /eos/home-k/kakang/H2DW/Analysis/NanoMVA/Data/<era>/Muon/<outputDatasetTag>/<ts>/0000/*.root
+# 2025: lands on T2_BE_IIHE (CERNBox quota too small, 2026-11-17) as
+#   root://maite.iihe.ac.be//store/user/kakang/H2DW/Analysis/NanoMVA/Data/2025/<PD>/<outputDatasetTag>/<ts>/0000/*.root
+# (2022-2024 went to EOS /eos/home-k/kakang/H2DW/Analysis/NanoMVA/Data/<era>/...)
 # -- a Data/ sibling of NanoMVA/MC (see condor_submit.py's EOS_BASE), same 2022/2022EE era
 # names. The era is in the path, not just a comment: every Lumi_reweight downstream is
 # normalised per-era, so preEE and postEE data must never land in the same directory.
@@ -55,4 +56,4 @@ config.Data.outLFNDirBase = '/store/user/kakang/H2DW/Analysis/NanoMVA/Data/__ERA
 config.section_('User')
 config.User.voGroup = 'becms'
 config.section_('Site')
-config.Site.storageSite = 'T3_CH_CERNBOX'
+config.Site.storageSite = 'T2_BE_IIHE'
