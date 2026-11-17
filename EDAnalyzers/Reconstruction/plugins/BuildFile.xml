@@ -27,4 +27,6 @@
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/KinematicFit"/>
 
+<use name="correctionlib"/>
+
 <flags EDM_PLUGIN="1"/>

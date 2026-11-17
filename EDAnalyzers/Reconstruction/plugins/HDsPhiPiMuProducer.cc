@@ -13,6 +13,7 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+#include "FWCore/ParameterSet/interface/FileInPath.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Common/interface/TriggerNames.h"
 #include "FWCore/Utilities/interface/EDMException.h"
@@ -49,6 +50,8 @@
 #include "TMath.h"
 #include "TLorentzVector.h"
 
+#include "correction.h"
+
 #include "EDAnalyzers/Reconstruction/interface/H_phipimu_Tree.h"
 
 // Custom NanoAOD migration of the H_phipimu tuplizer: same triple-loop + KinematicParticleVertexFitter
@@ -78,6 +81,7 @@ private:
 	Bool_t ThreeBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id, const Int_t daughter3id) const;
 	Bool_t TwoBodyDecay(const reco::GenParticle &gp, const Int_t motherid, const Int_t daughter1id, const Int_t daughter2id) const;
 	Float_t bScore(const pat::Jet &jet) const;
+	bool passJetIdTight(const pat::Jet &jet) const;
 	Measurement1D distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 	Measurement1D distance3D(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const;
 
@@ -102,6 +106,7 @@ private:
 	bool sameSignPi_;
 	std::vector<std::string> bDiscNames_;
 	double bScoreWPLoose_, bScoreWPMedium_, bScoreWPTight_;
+	correction::Correction::Ref jetIdTight_;
 	std::string eleIdCutLoose_, eleIdCutMedium_, eleIdCutTight_, eleIdMvaWP80_, eleIdMvaWP90_;
 
 	const Float_t Mass_K    = 0.493677;
@@ -185,6 +190,14 @@ HDsPhiPiMuProducer::HDsPhiPiMuProducer(const edm::ParameterSet &iConfig)
 	bScoreWPLoose_  = iConfig.getParameter<double>("bScoreWPLoose");
 	bScoreWPMedium_ = iConfig.getParameter<double>("bScoreWPMedium");
 	bScoreWPTight_  = iConfig.getParameter<double>("bScoreWPTight");
+
+	// Tight jet ID (2024, NanoAODv15): updatedJetsPuppiWithUserData no longer carries
+	// userInt("tightId"); JME: "use the Jet ID definition in the matching jetid.json.gz".
+	// The json (shipped uncompressed in data/, md5-identical to jsonpog JME/2024_Summer24) is
+	// evaluated per jet with the same pat::Jet inputs as the 15_0_2 nano Jet table.
+	// REQUIRED, no default.
+	jetIdTight_ = correction::CorrectionSet::from_file(iConfig.getParameter<edm::FileInPath>("jetIdFile").fullPath())
+		->at(iConfig.getParameter<std::string>("jetIdName"));
 
 	// Electron ID names for the ss/os electron counts (via electron.electronID(name) > 0.5).
 	// Names are era-specific (2022 defaults below); a wrong name throws at runtime (fail
@@ -637,14 +650,17 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 	edm::Handle<pat::JetCollection> JetHandle;
 	iEvent.getByToken(JetToken_, JetHandle);
 
-	// Tight jet ID: the old analyzer read a standalone PatJetIDValueMapProducer ValueMap<int>
-	// (0/1). updatedJetsPuppiWithUserData carries the same decision as userInt("tightId")
-	// (populated by tightJetPuppiId, exactly what the nano Jet_jetId bit 2 is built from).
+	// Tight jet ID from the JME jetid.json (see the constructor), evaluated once per jet here and
+	// reused by the per-candidate jet loops below.
+	std::vector<bool> jetPassId(JetHandle->size());
+	for (size_t idx_jet = 0; idx_jet < JetHandle->size(); idx_jet++)
+		jetPassId[idx_jet] = passJetIdTight((*JetHandle)[idx_jet]);
+
 	Float_t jet_ht = 0, jet_ht_pt20 = 0, jet_leadpt = -1, jet_maxbscore = -999;
 	for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
 	{
 		const pat::Jet &Jet = (*JetHandle)[idx_jet];
-		if (Jet.userInt("tightId") == 0) continue;
+		if (!jetPassId[idx_jet]) continue;
 		ftree->num_jets++;
 		if (Jet.pt() > 20)  ftree->num_jets_pt20++;
 		if (Jet.pt() > 30)  ftree->num_jets_pt30++;
@@ -1030,7 +1046,7 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 					for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
 					{
 						const pat::Jet &Jet = (*JetHandle)[idx_jet];
-						if (Jet.userInt("tightId") == 0) continue;
+						if (!jetPassId[idx_jet]) continue;
 						if (std::abs(Jet.eta()) >= 2.5) continue;
 						Float_t dR = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
 						if (dR < near_dR) { near_dR = dR; near_bscore = bScore(Jet); }
@@ -1047,7 +1063,7 @@ void HDsPhiPiMuProducer::produce(edm::Event &iEvent, const edm::EventSetup &iSet
 					for (Int_t idx_jet = 0; idx_jet < static_cast<Int_t>(JetHandle->size()); idx_jet++)
 					{
 						const pat::Jet &Jet = (*JetHandle)[idx_jet];
-						if (Jet.userInt("tightId") == 0) continue;
+						if (!jetPassId[idx_jet]) continue;
 						if (std::abs(Jet.eta()) >= 2.5) continue;
 						Float_t dR = reco::deltaR(Ds_mtm.eta(), Ds_mtm.phi(), Jet.eta(), Jet.phi());
 						Bool_t pastDR03 = dR > 0.3f, pastDR04 = dR > 0.4f;
@@ -1644,6 +1660,20 @@ Float_t HDsPhiPiMuProducer::bScore(const pat::Jet &jet) const
 	return score;
 }
 
+// Inputs in the json's order, from the same pat::Jet accessors as the 15_0_2 nano Jet table
+// (chHEF ... muEF, chMultiplicity, neMultiplicity); multiplicity = ch + ne (json description);
+// raw eta (the json takes abs itself). Output 1 = pass, 0 = fail.
+bool HDsPhiPiMuProducer::passJetIdTight(const pat::Jet &jet) const
+{
+	const int chMult = jet.chargedMultiplicity();
+	const int neMult = jet.neutralMultiplicity();
+	return jetIdTight_->evaluate({jet.eta(),
+	                              jet.chargedHadronEnergyFraction(), jet.neutralHadronEnergyFraction(),
+	                              jet.chargedEmEnergyFraction(), jet.neutralEmEnergyFraction(),
+	                              jet.muonEnergyFraction(),
+	                              chMult, neMult, chMult + neMult}) > 0.5;
+}
+
 Measurement1D HDsPhiPiMuProducer::distanceXY(const GlobalPoint &vtx1Position, const GlobalError &vtx1PositionError, const GlobalPoint &vtx2Position, const GlobalError &vtx2PositionError) const
 {
 	AlgebraicSymMatrix33 error = vtx1PositionError.matrix() + vtx2PositionError.matrix();
@@ -1681,6 +1711,8 @@ void HDsPhiPiMuProducer::fillDescriptions(edm::ConfigurationDescriptions &descri
 	desc.add<double>("bScoreWPLoose");   // required, era-dependent (no default on purpose)
 	desc.add<double>("bScoreWPMedium");
 	desc.add<double>("bScoreWPTight");
+	desc.add<edm::FileInPath>("jetIdFile");   // required: JME jetid.json of the era
+	desc.add<std::string>("jetIdName");       // required: e.g. AK4PUPPI_Tight
 	descriptions.addDefault(desc);
 }
 

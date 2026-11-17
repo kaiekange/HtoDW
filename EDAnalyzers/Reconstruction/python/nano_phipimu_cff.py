@@ -22,6 +22,10 @@ phipimuCand = cms.EDProducer(
     doTruth    = cms.bool(True),
     channel    = cms.string("DsW"),
     sameSignPi = cms.bool(False),
+    # 2024 (NanoAODv15) tight jet ID: JME jetid.json, md5-identical to jsonpog JME/2024_Summer24
+    # (unchanged 2025-05-08 .. 2026-07-16). This release only processes 2024.
+    jetIdFile  = cms.FileInPath("EDAnalyzers/Reconstruction/data/jetid_2024_Summer24.json"),
+    jetIdName  = cms.string("AK4PUPPI_Tight"),
 )
 
 bestPhiPiMuCand = cms.EDFilter(
@@ -330,6 +334,12 @@ _phipimu_vars['gamma_match'] = Var("userInt('gamma_match')", int)
 _phipimu_vars['Dsst_match'] = Var("userInt('Dsst_match')", int)
 _phipimu_vars['event_match'] = Var("userInt('event_match')", int)
 _phipimu_vars["nCandidates"] = Var("userInt('nCandidates')", int, doc="Ds(*) candidates passing all cuts in the event")
+# 15_0_X: SimpleFlatTableProducer<reco::Candidate> parses expressions at construction unless
+# lazyEval=True (13_0_X hard-coded lazy=true), and reco::Candidate has no userFloat/userInt ->
+# "no method or data member named userFloat". Lazy = resolved on the concrete
+# pat::CompositeCandidate at runtime, as in 13_0_13.
+for _v in _phipimu_vars.values():
+    _v.lazyEval = cms.untracked.bool(True)
 
 phipimuCandTable = simpleSingletonCandidateFlatTableProducer.clone(
     src       = cms.InputTag("bestPhiPiMuCand"),
@@ -714,17 +724,31 @@ PART_WP = {
     "2023BPix": (0.0683, 0.3494, 0.7994),
 }
 
+# 2024 uses UnifiedParT (decided 2026-11-12). b-score = the single BvsAll discriminator, the same
+# label as nano's Jet_btagUParTAK4B (NOT a probb+probbb+problepb sum). WPs: BTV btagging.json
+# UParTAK4_wp_values, campaign Run3-24CDEReprocessingFGHIPrompt-Summer24-NanoAODv15 (unchanged
+# 2025-06-22 .. 2026-10-20). Analysis uses tight only; L/M stored as for 2022/2023.
+UPART_DISC_NAMES = [
+    "pfUnifiedParticleTransformerAK4DiscriminatorsJetTags:BvsAll",
+]
+UPART_WP = {
+    "2024": (0.0246, 0.1272, 0.4648),
+}
+
 
 def set_btag_wp(process, year):
     """Set the era's b-tagger L/M/T WPs on every candidate producer in the process.
     2022/2022EE: ParticleNet, the producers' default bDiscNames (not touched here).
-    2023/2023BPix: RobustParT (bDiscNames overridden)."""
+    2023/2023BPix: RobustParT (bDiscNames overridden).
+    2024: UnifiedParT (bDiscNames overridden)."""
     if year in PNET_WP:
         disc_names, (loose, medium, tight) = None, PNET_WP[year]
     elif year in PART_WP:
         disc_names, (loose, medium, tight) = PART_DISC_NAMES, PART_WP[year]
+    elif year in UPART_WP:
+        disc_names, (loose, medium, tight) = UPART_DISC_NAMES, UPART_WP[year]
     else:
-        raise ValueError("no b-tag WPs for year %r (have %s)" % (year, sorted(PNET_WP) + sorted(PART_WP)))
+        raise ValueError("no b-tag WPs for year %r (have %s)" % (year, sorted(PNET_WP) + sorted(PART_WP) + sorted(UPART_WP)))
     for name in ("phipimuCand", "phipimuCandGenTag"):
         if hasattr(process, name):
             mod = getattr(process, name)

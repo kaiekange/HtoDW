@@ -1,16 +1,15 @@
 #!/bin/bash
 #
-# Submit the 2022 Muon data listed in DatasetList/data_2022.txt
-# (moved from the old CMSSW_15_0_5 Tuples/Data/DatasetList -- a pure dataset/GlobalTag/Year table,
-# not release-specific) through the new custom-NanoAOD pset (../test/NANO_DATA_H_phipimu.py).
+# Submit the 2024 Muon data listed in DatasetList/data_2024.txt through the custom-NanoAOD
+# pset (../test/NANO_DATA_H_phipimu.py). CMSSW_15_0_2 copy of the 13_0_13 script (2022/2023);
+# this release only processes 2024 (MINIv6 -> NanoAODv15).
 #
 #   ./submitData.sh OS                    # opposite-sign (SS=0), every active line
 #   ./submitData.sh SS                    # same-sign-pi control region (SS=1)
 #   ./submitData.sh OS --dryrun           # crab submit --dryrun
 #   ./submitData.sh OS --print            # write generated/<requestName>.py, submit nothing
-#   ./submitData.sh OS submit Run2022C    # 4th arg: only datasets whose era contains this
-#   ./submitData.sh OS --dryrun Run2022C  # e.g. a single-era smoke test before the full table
-#   LIST=data_2023.txt ./submitData.sh OS --print   # another year's table (default data_2022.txt)
+#   ./submitData.sh OS submit Run2024C    # 3rd arg: only datasets whose name contains this
+#   ./submitData.sh OS --dryrun Run2024C  # e.g. a single-era smoke test before the full table
 #
 # Comment a line out in the txt (leading '#') to skip that dataset -- that is how you
 # choose what to submit, rather than editing this script. See that file's header for the
@@ -39,15 +38,15 @@ esac
 
 cd "$(dirname "$0")"
 
-datasetlist="DatasetList/${LIST:-data_2022.txt}"   # relative: the script cd-s to its own dir above
+datasetlist="DatasetList/${LIST:-data_2024.txt}"   # relative: the script cd-s to its own dir above
 configtemplate="crabConfigTemplateData.py"
-PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
+PSETNAME="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_2/src/EDAnalyzers/Reconstruction/test/NANO_DATA_H_phipimu.py"
 
 [[ -f "${datasetlist}"     ]] || { echo "missing ${datasetlist}" >&2;     exit 1; }
 [[ -f "${configtemplate}"  ]] || { echo "missing ${configtemplate}" >&2;  exit 1; }
 [[ -f "${PSETNAME}"        ]] || { echo "missing pset ${PSETNAME}" >&2;   exit 1; }
 
-CMSSW_SRC="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_13_0_13/src"
+CMSSW_SRC="/afs/cern.ch/work/k/kakang/H2DW/CMSSW_15_0_2/src"
 
 if [[ "${MODE}" != "--print" ]]; then
     # cmsenv BEFORE crab.sh, and unconditionally rather than relying on the caller's shell:
@@ -111,24 +110,19 @@ for i in "${!datasets[@]}"; do
     era="${split[1]%%-*}"
     # 2023 has several processings of one run era (Run2023C-22Sep2023_v1..v4-vN), covering
     # different runs. Append the _vN of the processing so their request names differ:
-    # Muon0_Run2023C_v1_NanoH_phipimu. 2022 names have no _vN and stay unchanged.
-    proc="${split[1]#*-}"; proc="${proc%-*}"          # 22Sep2023_v1 (2022: 22Sep2023)
+    # Muon0_Run2023C_v1_NanoH_phipimu. 2024: Run2024I has MINIv6NANOv15 and MINIv6NANOv15_v2
+    # -> Muon0_Run2024I_NanoH_phipimu and Muon0_Run2024I_v2_NanoH_phipimu.
+    proc="${split[1]#*-}"; proc="${proc%-*}"          # MINIv6NANOv15_v2 (or MINIv6NANOv15)
     if [[ "${proc}" =~ _(v[0-9]+)$ ]]; then
         era="${era}_${BASH_REMATCH[1]}"
     fi
 
-    # Output directory era and golden JSON, from the Year column. Same 2022 / 2022EE names
-    # the MC tree uses; 2023 / 2023BPix for Summer23 / Summer23BPix.
+    # Output directory era and golden JSON, from the Year column. 2024 golden: the DQM
+    # 2026-08-04 version (287601 lumis), not the _before_TrkML2026_review one.
     case "${YEAR}" in
-        2022Pre)  ERADIR="2022"     ;;
-        2022Post) ERADIR="2022EE"   ;;
-        2023Pre)  ERADIR="2023"     ;;
-        2023Post) ERADIR="2023BPix" ;;
+        2024) ERADIR="2024"
+              LUMIMASK="${PWD}/JSON/Cert_Collisions2024_378981_386951_Golden.json" ;;
         *) echo "no output directory mapped for Year='${YEAR}'" >&2; exit 1 ;;
-    esac
-    case "${YEAR}" in
-        2022*) LUMIMASK="${PWD}/JSON/Cert_Collisions2022_355100_362760_Golden.json" ;;
-        2023*) LUMIMASK="${PWD}/JSON/Cert_Collisions2023_366442_370790_Golden.json" ;;
     esac
     [[ -f "${LUMIMASK}" ]] || { echo "missing golden JSON ${LUMIMASK}" >&2; exit 1; }
 
